@@ -1,0 +1,256 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Opportunity Solution Tree Node",
+  "description": "Validates frontmatter for OST node files",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "dashboard"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "vision"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "status_tweet": {
+          "type": "string",
+          "description": "Succinct free-text status summary",
+          "maxLength": 256
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Categorization tags (e.g., theme/media-and-communication)"
+        }
+      },
+      "required": [
+        "type",
+        "status"
+      ],
+      "not": {
+        "required": [
+          "parent"
+        ]
+      },
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "mission"
+        },
+        "parent": {
+          "$ref": "#/$defs/wikilink"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "status_tweet": {
+          "type": "string",
+          "description": "Succinct free-text status summary"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Theme categorization tags"
+        }
+      },
+      "required": [
+        "type",
+        "status"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "goal"
+        },
+        "parent": {
+          "$ref": "#/$defs/wikilink"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "priority": {
+          "$ref": "#/$defs/priority"
+        },
+        "status_tweet": {
+          "type": "string",
+          "description": "Succinct free-text status summary"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Theme categorization tags"
+        }
+      },
+      "required": [
+        "type",
+        "status"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "opportunity"
+        },
+        "parent": {
+          "$ref": "#/$defs/wikilink"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "priority": {
+          "$ref": "#/$defs/priority"
+        },
+        "status_tweet": {
+          "type": "string",
+          "description": "Succinct free-text status summary"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Theme categorization tags"
+        },
+        "solutions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Lightweight inline solution references"
+        },
+        "impact": {
+          "$ref": "#/$defs/assessment"
+        },
+        "feasibility": {
+          "$ref": "#/$defs/assessment"
+        },
+        "resources": {
+          "$ref": "#/$defs/assessment"
+        },
+        "timeline": {
+          "type": "string",
+          "description": "Timeline estimate (e.g., S-M, M-L)"
+        },
+        "next_steps": {
+          "type": "string",
+          "description": "Next steps for this opportunity"
+        }
+      },
+      "required": [
+        "type",
+        "status"
+      ],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "solution"
+        },
+        "parent": {
+          "$ref": "#/$defs/wikilink"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "priority": {
+          "$ref": "#/$defs/priority"
+        },
+        "status_tweet": {
+          "type": "string",
+          "description": "Succinct free-text status summary"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Theme categorization tags"
+        },
+        "impact": {
+          "$ref": "#/$defs/assessment"
+        },
+        "feasibility": {
+          "$ref": "#/$defs/assessment"
+        },
+        "resources": {
+          "$ref": "#/$defs/assessment"
+        },
+        "timeline": {
+          "type": "string",
+          "description": "Timeline estimate (e.g., S-M, M-L)"
+        },
+        "next_steps": {
+          "type": "string",
+          "description": "Next steps for this solution"
+        }
+      },
+      "required": [
+        "type",
+        "status"
+      ],
+      "additionalProperties": true
+    }
+  ],
+  "$defs": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "identified",
+        "wondering",
+        "exploring",
+        "active",
+        "paused",
+        "completed",
+        "archived"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "p1",
+        "p2",
+        "p3",
+        "p4"
+      ]
+    },
+    "assessment": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Assessment score from 1-5"
+    },
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[.+\\]\\]$",
+      "description": "An Obsidian wikilink, e.g. [[Parent Node]]"
+    }
+  }
+}
