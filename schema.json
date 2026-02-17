@@ -46,7 +46,13 @@
           "parent"
         ]
       },
-      "additionalProperties": true
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "vision",
+          "status": "active"
+        }
+      ]
     },
     {
       "type": "object",
@@ -76,7 +82,14 @@
         "type",
         "status"
       ],
-      "additionalProperties": true
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "mission",
+          "status": "active",
+          "parent": "[[Personal Vision]]"
+        }
+      ]
     },
     {
       "type": "object",
@@ -109,7 +122,15 @@
         "type",
         "status"
       ],
-      "additionalProperties": true
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "goal",
+          "status": "active",
+          "parent": "[[My Mission (2026)]]",
+          "priority": "p2"
+        }
+      ]
     },
     {
       "type": "object",
@@ -166,7 +187,15 @@
         "type",
         "status"
       ],
-      "additionalProperties": true
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "opportunity",
+          "status": "identified",
+          "parent": "[[Career Growth]]",
+          "priority": "p2"
+        }
+      ]
     },
     {
       "type": "object",
@@ -216,7 +245,15 @@
         "type",
         "status"
       ],
-      "additionalProperties": true
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "solution",
+          "status": "identified",
+          "parent": "[[Some Opportunity]]",
+          "priority": "p3"
+        }
+      ]
     }
   ],
   "$defs": {

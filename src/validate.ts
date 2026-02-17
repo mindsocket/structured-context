@@ -12,15 +12,16 @@ interface Node {
 }
 
 interface ValidationResult {
-  validCount: number;
-  errorCount: number;
-  errors: Array<{ file: string; errors: any[] }>;
+  schemaValidCount: number;
+  schemaErrorCount: number;
+  schemaErrors: Array<{ file: string; errors: any[] }>;
+  refErrors: Array<{ file: string; parent: string; error: string }>;
   skipped: string[];
   nonOst: string[];
 }
 
 export async function validate(directory: string, options: { schema?: string }) {
-  const schemaPath = options.schema || '/Users/roger/Documents/Vaulty/Opportunity Solution Tree/ost-schema.json';
+  const schemaPath = options.schema || 'schema.json';
   const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
   const ajv = new Ajv();
 
@@ -54,9 +55,10 @@ export async function validate(directory: string, options: { schema?: string }) 
   }
 
   const result: ValidationResult = {
-    validCount: 0,
-    errorCount: 0,
-    errors: [],
+    schemaValidCount: 0,
+    schemaErrorCount: 0,
+    schemaErrors: [],
+    refErrors: [],
     skipped,
     nonOst,
   };
@@ -65,12 +67,40 @@ export async function validate(directory: string, options: { schema?: string }) 
     const valid = validateFunc(node.data);
 
     if (valid) {
-      result.validCount++;
+      result.schemaValidCount++;
     } else {
-      result.errorCount++;
-      result.errors.push({
+      result.schemaErrorCount++;
+      result.schemaErrors.push({
         file: node.filename,
         errors: validateFunc.errors || [],
+      });
+    }
+  }
+
+  // Build index of all node filenames (without .md extension)
+  const nodeIndex = new Map<string, Node>();
+  for (const node of nodes) {
+    const name = node.filename.replace(/\.md$/, '');
+    nodeIndex.set(name, node);
+  }
+
+  function extractWikilinkFilename(wikilink: string): string {
+    // Schema already validates format, so we can safely extract
+    // Handle both "[[Name]]" and [[Name]] formats
+    const cleaned = wikilink.replace(/^"|"$/g, ''); // Remove surrounding quotes if present
+    return cleaned.slice(2, -2); // Remove [[ and ]]
+  }
+
+  for (const node of nodes) {
+    const parent = node.data.parent as string | undefined;
+    if (!parent) continue;
+
+    const parentFile = extractWikilinkFilename(parent);
+    if (!nodeIndex.has(parentFile)) {
+      result.refErrors.push({
+        file: node.filename,
+        parent: parent,
+        error: `Parent node "${parentFile}" not found`,
       });
     }
   }
@@ -78,8 +108,9 @@ export async function validate(directory: string, options: { schema?: string }) 
   // Report
   console.log(`\n🔍 OST Validation Results`);
   console.log(`━`.repeat(50));
-  console.log(`✅ Valid: ${result.validCount}`);
-  console.log(`❌ Errors: ${result.errorCount}`);
+  console.log(`✅ Valid: ${result.schemaValidCount}`);
+  console.log(`❌ Schema Errors: ${result.schemaErrorCount}`);
+  console.log(`🔗 Reference Errors: ${result.refErrors.length}`);
   console.log(`⏭ Skipped (no frontmatter): ${result.skipped.length}`);
   console.log(`📄 Non-OST (no type field): ${result.nonOst.length}`);
 
@@ -93,9 +124,9 @@ export async function validate(directory: string, options: { schema?: string }) 
     result.nonOst.forEach(f => console.log(`   ${f}`));
   }
 
-  if (result.errors.length > 0) {
-    console.log(`\n❌ Validation errors:`);
-    result.errors.forEach(({ file, errors }) => {
+  if (result.schemaErrors.length > 0) {
+    console.log(`\n❌ Schema validation errors:`);
+    result.schemaErrors.forEach(({ file, errors }) => {
       console.log(`\n   ${file}:`);
       errors.forEach((err: any) => {
         console.log(`      ${err.instancePath || 'root'}: ${err.message}`);
@@ -103,10 +134,17 @@ export async function validate(directory: string, options: { schema?: string }) 
     });
   }
 
+  if (result.refErrors.length > 0) {
+    console.log(`\n🔗 Reference errors (dangling parent links):`);
+    result.refErrors.forEach(({ file, parent, error }) => {
+      console.log(`   ${file}: parent ${parent} → ${error}`);
+    });
+  }
+
   console.log(`\n`);
 
-  // Exit code 1 if errors
-  if (result.errorCount > 0) {
+  // Exit code 1 if schema or reference errors exist
+  if (result.schemaErrorCount > 0 || result.refErrors.length > 0) {
     process.exit(1);
   }
 }

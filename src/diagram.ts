@@ -26,7 +26,7 @@ function parseWikilink(wikilink: string): string {
 }
 
 export async function diagram(directory: string, options: { schema?: string; output?: string }) {
-  const schemaPath = options.schema || '/Users/roger/Documents/Vaulty/Opportunity Solution Tree/ost-schema.json';
+  const schemaPath = options.schema || 'schema.json';
   const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
   const ajv = new Ajv();
   const validateFunc = ajv.compile(schema);

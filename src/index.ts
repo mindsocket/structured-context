@@ -2,6 +2,7 @@
 import { Command } from 'commander';
 import { validate } from './validate.js';
 import { diagram } from './diagram.js';
+import { templateSync } from './template-sync.js';
 
 const program = new Command();
 
@@ -24,5 +25,13 @@ program
   .option('-o, --output <path>', 'Output file path (default: stdout)')
   .option('-s, --schema <path>', 'Path to JSON schema file')
   .action(diagram);
+
+program
+  .command('template-sync')
+  .description('Sync OST template frontmatter with schema examples')
+  .argument('<template-dir>', 'Directory containing OST template markdown files')
+  .option('-s, --schema <path>', 'Path to JSON schema file', 'schema.json')
+  .option('--dry-run', 'Preview changes without writing files')
+  .action(templateSync);
 
 program.parse();
