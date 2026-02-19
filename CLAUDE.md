@@ -1,19 +1,22 @@
 # OST Tools
 
-Opportunity Solution Tree validation and diagram generation tooling.
+Opportunity Solution Tree (OST) validation and diagram generation tooling.
 
 ## Development
 
-Run validation or diagram commands directly:
-
 ```bash
-bun run src/index.ts validate <directory>
-bun run src/index.ts diagram <directory>
+bun run src/index.ts validate <space-or-dir>
+bun run src/index.ts diagram <space-or-dir>
+bun run src/index.ts template-sync <template-dir>
 ```
+
+Space aliases (e.g. `personal`, `politics`) are resolved via `config.json`.
 
 ## Project Context
 
-This project validates OST (Opportunity Solution Tree) node files against a JSON schema. The schema defines valid node types (`vision`, `mission`, `goal`, `opportunity`, `solution`) and their required/optional properties.
+This project validates OST node markdown files against a JSON schema. Node types: `vision`, `mission`, `goal`, `opportunity`, `solution`, `dashboard`.
+
+As a convenience, directories can be registered as "space" aliases in `config.json`.
 
 ## Tooling
 
@@ -22,6 +25,7 @@ This project validates OST (Opportunity Solution Tree) node files against a JSON
 - `glob` - File discovery
 - `commander` - CLI interface
 
-## Schema Location
+## Key Files
 
-The OST JSON Schema is managed in the parent vault at `../Opportunity Solution Tree/ost-schema.json`.
+- `config.json` — Space registry (alias → absolute path)
+- `schema.json` — Entity type definitions and validation rules

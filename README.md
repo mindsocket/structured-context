@@ -8,12 +8,41 @@ Opportunity Solution Tree validation and diagram generation tool.
 bun install
 ```
 
+## Concepts
+
+### Entities in OST
+
+- **Vision**: The aspirational outcome at the top of a tree.
+- **Mission**: Strategic direction supporting a vision.
+- **Goal**: Concrete, measurable targets.
+- **Opportunity**: Identified chance to make progress.
+- **Solution**: Proposed approach to address an opportunity.
+- **Dashboard**: Index node for organizing and displaying tree structure.
+
+### Spaces
+
+A space is a named OST directory registered in `config.json`. Spaces let you reference a tree by alias instead of path:
+
+```bash
+bun run src/index.ts validate personal
+```
+
+`config.json` maps aliases to absolute paths:
+
+```json
+{
+  "spaces": [
+    { "alias": "personal", "path": "/path/to/Personal/Opportunity Solution Tree" }
+  ]
+}
+```
+
 ## Usage
 
 ### Validate OST nodes
 
 ```bash
-bunx ost-tools validate <directory> [--schema path/to/schema.json]
+bun run src/index.ts validate <space-or-dir> [--schema path/to/schema.json]
 ```
 
 Validates markdown files against the OST JSON schema:
@@ -25,7 +54,7 @@ Validates markdown files against the OST JSON schema:
 ### Generate Mermaid diagram
 
 ```bash
-bunx ost-tools diagram <directory> [--output path/to/output.mmd]
+bun run src/index.ts diagram <space-or-dir> [--output path/to/output.mmd]
 ```
 
 Generates Mermaid `graph TD` diagram from validated OST nodes:
@@ -34,14 +63,26 @@ Generates Mermaid `graph TD` diagram from validated OST nodes:
 - Handles orphan nodes (no parent) as a separate cluster
 - Outputs to file or stdout
 
+### Sync templates with schema
+
+```bash
+bun run src/index.ts template-sync <template-dir> [--schema path/to/schema.json] [--dry-run]
+```
+
+Keeps Obsidian template files in sync with schema examples:
+- Matches `OST - *.md` files in the template directory by `type` field
+- Rewrites frontmatter from the schema's `examples` entry for that type
+- Adds commented hints for optional fields not in the example
+- `--dry-run` previews changes without writing files
+
 ## Development
 
 ```bash
 # Run validate command
-bun run src/index.ts validate <directory>
+bun run src/index.ts validate personal
 
 # Run diagram command
-bun run src/index.ts diagram <directory>
+bun run src/index.ts diagram personal
 ```
 
 ## Schema

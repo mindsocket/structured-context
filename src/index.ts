@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { validate } from './validate.js';
 import { diagram } from './diagram.js';
 import { templateSync } from './template-sync.js';
+import { loadConfig, resolveSpace } from './config.js';
 
 const program = new Command();
 
@@ -14,17 +15,17 @@ program
 program
   .command('validate')
   .description('Validate OST nodes against JSON schema')
-  .argument('<directory>', 'Directory containing OST node markdown files')
+  .argument('<space-or-dir>', 'Space alias (e.g. "personal") or directory path')
   .option('-s, --schema <path>', 'Path to JSON schema file')
-  .action(validate);
+  .action((spaceOrDir, options) => validate(resolveSpace(spaceOrDir, loadConfig()), options));
 
 program
   .command('diagram')
   .description('Generate mermaid diagram from OST nodes')
-  .argument('<directory>', 'Directory containing OST node markdown files')
+  .argument('<space-or-dir>', 'Space alias (e.g. "personal") or directory path')
   .option('-o, --output <path>', 'Output file path (default: stdout)')
   .option('-s, --schema <path>', 'Path to JSON schema file')
-  .action(diagram);
+  .action((spaceOrDir, options) => diagram(resolveSpace(spaceOrDir, loadConfig()), options));
 
 program
   .command('template-sync')
