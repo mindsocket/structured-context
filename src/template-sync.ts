@@ -10,12 +10,26 @@ interface TypeVariant {
   example: Record<string, any>;
 }
 
+// Fields derived from the filesystem — present at validation time but not written to frontmatter
+const DERIVED_FIELDS = new Set(['title', 'content']);
+
 function resolveRef(propDef: any, schema: any): any {
   if (propDef?.$ref) {
     const path = (propDef.$ref as string).replace(/^#\//, '').split('/');
     return path.reduce((obj: any, key: string) => obj[key], schema);
   }
   return propDef;
+}
+
+// Merge properties from allOf sub-schemas into a single properties map
+function mergeAllOfProperties(variant: any, schema: any): Record<string, any> {
+  const merged: Record<string, any> = {};
+  for (const sub of variant.allOf ?? []) {
+    const resolved = resolveRef(sub, schema);
+    Object.assign(merged, resolved.properties ?? {});
+  }
+  Object.assign(merged, variant.properties ?? {});
+  return merged;
 }
 
 function enumPlaceholder(def: any): string {
@@ -54,17 +68,19 @@ function getTypeVariants(schema: any): Map<string, TypeVariant> {
   const map = new Map<string, TypeVariant>();
   for (const variant of schema.oneOf) {
     const typeName = variant.properties?.type?.const as string;
-    if (!typeName || typeName === 'dashboard') continue;
+    if (!typeName || typeName === 'dashboard' || typeName === 'ost_on_a_page') continue;
     if (!variant.examples?.[0]) continue;
 
-    const required = (variant.required as string[]).filter((k: string) => k !== 'type');
-    const properties = Object.fromEntries(
-      Object.entries(variant.properties as Record<string, any>).filter(([k]) => k !== 'type')
+    const required = (variant.required as string[])
+      .filter((k: string) => k !== 'type' && !DERIVED_FIELDS.has(k));
+    const allProperties = Object.fromEntries(
+      Object.entries(mergeAllOfProperties(variant, schema))
+        .filter(([k]) => k !== 'type' && !DERIVED_FIELDS.has(k))
     );
-    const optional = Object.keys(properties).filter(k => !required.includes(k));
+    const optional = Object.keys(allProperties).filter(k => !required.includes(k));
     const example = variant.examples[0] as Record<string, any>;
 
-    map.set(typeName, { required, optional, properties, example });
+    map.set(typeName, { required, optional, properties: allProperties, example });
   }
   return map;
 }

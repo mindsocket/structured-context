@@ -5,47 +5,33 @@
   "oneOf": [
     {
       "type": "object",
+      "allOf": [{ "$ref": "#/$defs/baseNodeProps" }],
       "properties": {
-        "type": {
-          "const": "dashboard"
-        }
+        "type": { "const": "dashboard" }
       },
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "additionalProperties": true
     },
     {
       "type": "object",
+      "allOf": [{ "$ref": "#/$defs/baseNodeProps" }],
       "properties": {
-        "type": {
-          "const": "vision"
-        },
-        "status": {
-          "$ref": "#/$defs/status"
-        },
-        "status_tweet": {
-          "type": "string",
-          "description": "Succinct free-text status summary",
-          "maxLength": 256
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Categorization tags (e.g., theme/media-and-communication)"
-        }
+        "type": { "const": "ost_on_a_page" }
       },
-      "required": [
-        "type",
-        "status"
+      "required": ["type"],
+      "additionalProperties": true
+    },
+    {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseNodeProps" },
+        { "$ref": "#/$defs/ostEntityProps" }
       ],
-      "not": {
-        "required": [
-          "parent"
-        ]
+      "properties": {
+        "type": { "const": "vision" }
       },
+      "required": ["type"],
+      "not": { "required": ["parent"] },
       "additionalProperties": true,
       "examples": [
         {
@@ -56,32 +42,15 @@
     },
     {
       "type": "object",
-      "properties": {
-        "type": {
-          "const": "mission"
-        },
-        "parent": {
-          "$ref": "#/$defs/wikilink"
-        },
-        "status": {
-          "$ref": "#/$defs/status"
-        },
-        "status_tweet": {
-          "type": "string",
-          "description": "Succinct free-text status summary"
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Theme categorization tags"
-        }
-      },
-      "required": [
-        "type",
-        "status"
+      "allOf": [
+        { "$ref": "#/$defs/baseNodeProps" },
+        { "$ref": "#/$defs/ostEntityProps" }
       ],
+      "properties": {
+        "type": { "const": "mission" },
+        "parent": { "$ref": "#/$defs/wikilink" }
+      },
+      "required": ["type"],
       "additionalProperties": true,
       "examples": [
         {
@@ -93,35 +62,16 @@
     },
     {
       "type": "object",
-      "properties": {
-        "type": {
-          "const": "goal"
-        },
-        "parent": {
-          "$ref": "#/$defs/wikilink"
-        },
-        "status": {
-          "$ref": "#/$defs/status"
-        },
-        "priority": {
-          "$ref": "#/$defs/priority"
-        },
-        "status_tweet": {
-          "type": "string",
-          "description": "Succinct free-text status summary"
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Theme categorization tags"
-        }
-      },
-      "required": [
-        "type",
-        "status"
+      "allOf": [
+        { "$ref": "#/$defs/baseNodeProps" },
+        { "$ref": "#/$defs/ostEntityProps" }
       ],
+      "properties": {
+        "type": { "const": "goal" },
+        "parent": { "$ref": "#/$defs/wikilink" },
+        "priority": { "$ref": "#/$defs/priority" }
+      },
+      "required": ["type"],
       "additionalProperties": true,
       "examples": [
         {
@@ -134,46 +84,17 @@
     },
     {
       "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseNodeProps" },
+        { "$ref": "#/$defs/ostEntityProps" }
+      ],
       "properties": {
-        "type": {
-          "const": "opportunity"
-        },
-        "parent": {
-          "$ref": "#/$defs/wikilink"
-        },
-        "status": {
-          "$ref": "#/$defs/status"
-        },
-        "priority": {
-          "$ref": "#/$defs/priority"
-        },
-        "status_tweet": {
-          "type": "string",
-          "description": "Succinct free-text status summary"
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Theme categorization tags"
-        },
-        "solutions": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Lightweight inline solution references"
-        },
-        "impact": {
-          "$ref": "#/$defs/assessment"
-        },
-        "feasibility": {
-          "$ref": "#/$defs/assessment"
-        },
-        "resources": {
-          "$ref": "#/$defs/assessment"
-        },
+        "type": { "const": "opportunity" },
+        "parent": { "$ref": "#/$defs/wikilink" },
+        "priority": { "$ref": "#/$defs/priority" },
+        "impact": { "$ref": "#/$defs/assessment" },
+        "feasibility": { "$ref": "#/$defs/assessment" },
+        "resources": { "$ref": "#/$defs/assessment" },
         "timeline": {
           "type": "string",
           "description": "Timeline estimate (e.g., S-M, M-L)"
@@ -183,10 +104,7 @@
           "description": "Next steps for this opportunity"
         }
       },
-      "required": [
-        "type",
-        "status"
-      ],
+      "required": ["type"],
       "additionalProperties": true,
       "examples": [
         {
@@ -199,39 +117,20 @@
     },
     {
       "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/baseNodeProps" },
+        { "$ref": "#/$defs/ostEntityProps" }
+      ],
       "properties": {
-        "type": {
-          "const": "solution"
-        },
+        "type": { "const": "solution" },
         "parent": {
-          "$ref": "#/$defs/wikilink"
+          "$ref": "#/$defs/wikilink",
+          "description": "Parent opportunity or solution (wikilink)"
         },
-        "status": {
-          "$ref": "#/$defs/status"
-        },
-        "priority": {
-          "$ref": "#/$defs/priority"
-        },
-        "status_tweet": {
-          "type": "string",
-          "description": "Succinct free-text status summary"
-        },
-        "tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Theme categorization tags"
-        },
-        "impact": {
-          "$ref": "#/$defs/assessment"
-        },
-        "feasibility": {
-          "$ref": "#/$defs/assessment"
-        },
-        "resources": {
-          "$ref": "#/$defs/assessment"
-        },
+        "priority": { "$ref": "#/$defs/priority" },
+        "impact": { "$ref": "#/$defs/assessment" },
+        "feasibility": { "$ref": "#/$defs/assessment" },
+        "resources": { "$ref": "#/$defs/assessment" },
         "timeline": {
           "type": "string",
           "description": "Timeline estimate (e.g., S-M, M-L)"
@@ -241,10 +140,7 @@
           "description": "Next steps for this solution"
         }
       },
-      "required": [
-        "type",
-        "status"
-      ],
+      "required": ["type"],
       "additionalProperties": true,
       "examples": [
         {
@@ -257,6 +153,43 @@
     }
   ],
   "$defs": {
+    "baseNodeProps": {
+      "type": "object",
+      "properties": {
+        "title": { "$ref": "#/$defs/title" },
+        "content": { "$ref": "#/$defs/content" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Categorization tags"
+        }
+      },
+      "required": ["title"]
+    },
+    "ostEntityProps": {
+      "type": "object",
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "summary": { "$ref": "#/$defs/summary" },
+        "status_tweet": {
+          "type": "string",
+          "description": "Succinct free-text status summary"
+        }
+      },
+      "required": ["status"]
+    },
+    "title": {
+      "type": "string",
+      "description": "Title of the node (derived from filename at validation time)"
+    },
+    "content": {
+      "type": "string",
+      "description": "Body content of the document (excluding frontmatter)"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Short summary of the node"
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -271,12 +204,7 @@
     },
     "priority": {
       "type": "string",
-      "enum": [
-        "p1",
-        "p2",
-        "p3",
-        "p4"
-      ]
+      "enum": ["p1", "p2", "p3", "p4"]
     },
     "assessment": {
       "type": "integer",

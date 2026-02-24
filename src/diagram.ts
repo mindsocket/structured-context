@@ -1,8 +1,8 @@
 import { glob } from 'glob';
 import { readFileSync, writeFileSync } from 'fs';
+import { basename, join } from 'path';
 import matter from 'gray-matter';
 import Ajv from 'ajv';
-import { join } from 'path';
 
 interface Node {
   filepath: string;
@@ -22,7 +22,7 @@ interface DiagramNode {
 // Parse [[wikilink]] to just the text inside
 function parseWikilink(wikilink: string): string {
   const match = wikilink.match(/^\[\[(.+)\]\]$/);
-  return match ? match[1] : wikilink;
+  return match ? match[1]! : wikilink;
 }
 
 export async function diagram(directory: string, options: { schema?: string; output?: string }) {
@@ -50,13 +50,14 @@ export async function diagram(directory: string, options: { schema?: string; out
       continue;
     }
 
-    const valid = validateFunc(parsed.data);
+    const data = { title: basename(file, '.md'), ...parsed.data };
+    const valid = validateFunc(data);
     if (!valid) {
       invalid.push(file);
       continue;
     }
 
-    const name = parsed.data.title || file.replace('.md', '');
+    const name = data.title;
     const parent = parsed.data.parent ? parseWikilink(parsed.data.parent) : undefined;
 
     nodes.push({

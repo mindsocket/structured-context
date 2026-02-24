@@ -1,8 +1,8 @@
 import { glob } from 'glob';
 import { readFileSync } from 'fs';
+import { basename, join } from 'path';
 import matter from 'gray-matter';
 import Ajv from 'ajv';
-import { join } from 'path';
 
 interface Node {
   filepath: string;
@@ -49,7 +49,7 @@ export async function validate(directory: string, options: { schema?: string }) 
     nodes.push({
       filepath: join(directory, file),
       filename: file,
-      data: parsed.data,
+      data: { title: basename(file, '.md'), ...parsed.data },
       content: parsed.content,
     });
   }
