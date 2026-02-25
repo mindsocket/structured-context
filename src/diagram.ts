@@ -1,15 +1,6 @@
-import { glob } from 'glob';
 import { readFileSync, writeFileSync } from 'fs';
-import { basename, join } from 'path';
-import matter from 'gray-matter';
 import Ajv from 'ajv';
-
-interface Node {
-  filepath: string;
-  filename: string;
-  data: any;
-  content: string;
-}
+import { readSpace } from './read-space.js';
 
 interface DiagramNode {
   id: string;
@@ -31,41 +22,27 @@ export async function diagram(directory: string, options: { schema?: string; out
   const ajv = new Ajv();
   const validateFunc = ajv.compile(schema);
 
-  const files = await glob('**/*.md', { cwd: directory, absolute: false });
+  const { nodes: spaceNodes, skipped, nonOst } = await readSpace(directory);
   const nodes: DiagramNode[] = [];
-  const skipped: string[] = [];
   const invalid: string[] = [];
 
-  for (const file of files) {
-    const content = readFileSync(join(directory, file), 'utf-8');
-    const parsed = matter(content);
-
-    if (!parsed.data || Object.keys(parsed.data).length === 0) {
-      skipped.push(file);
-      continue;
-    }
-
-    if (!parsed.data.type) {
-      skipped.push(file);
-      continue;
-    }
-
-    const data = { title: basename(file, '.md'), ...parsed.data };
-    const valid = validateFunc(data);
+  for (const node of spaceNodes) {
+    const valid = validateFunc(node.data);
     if (!valid) {
-      invalid.push(file);
+      invalid.push(node.label);
       continue;
     }
 
-    const name = data.title;
-    const parent = parsed.data.parent ? parseWikilink(parsed.data.parent) : undefined;
+    const parent = node.data.parent
+      ? parseWikilink(node.data.parent as string)
+      : undefined;
 
     nodes.push({
-      id: name,
-      type: parsed.data.type,
-      status: parsed.data.status,
+      id: node.data.title as string,
+      type: node.data.type as string,
+      status: node.data.status as string,
       parent,
-      priority: parsed.data.priority,
+      priority: node.data.priority as string | undefined,
     });
   }
 
@@ -84,14 +61,6 @@ export async function diagram(directory: string, options: { schema?: string; out
   }
 
   // Generate mermaid diagram
-  const typeStyles: Record<string, string> = {
-    vision: 'fill:#ff9999,stroke:#ff0000,stroke-width:2px',
-    mission: 'fill:#99ccff,stroke:#0066cc,stroke-width:2px',
-    goal: 'fill:#99ff99,stroke:#00cc00,stroke-width:2px',
-    opportunity: 'fill:#ffcc99,stroke:#cc9900,stroke-width:2px',
-    solution: 'fill:#cc99ff,stroke:#6600cc,stroke-width:2px',
-  };
-
   let mmd = 'graph TD\n';
 
   // Find roots (no parent) and orphans
@@ -150,6 +119,9 @@ export async function diagram(directory: string, options: { schema?: string; out
   console.error(`   Total nodes: ${nodes.length}`);
   console.error(`   Orphan nodes: ${orphans.length}`);
   console.error(`   Skipped: ${skipped.length}`);
+  if (nonOst.length > 0) {
+    console.error(`   Non-OST (no type field): ${nonOst.length}`);
+  }
   if (invalid.length > 0) {
     console.error(`   Invalid (skipped): ${invalid.length}`);
     invalid.forEach(f => console.error(`      ${f}`));

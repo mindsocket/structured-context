@@ -1,15 +1,6 @@
-import { glob } from 'glob';
 import { readFileSync } from 'fs';
-import { basename, join } from 'path';
-import matter from 'gray-matter';
 import Ajv from 'ajv';
-
-interface Node {
-  filepath: string;
-  filename: string;
-  data: any;
-  content: string;
-}
+import { readSpace } from './read-space.js';
 
 interface ValidationResult {
   schemaValidCount: number;
@@ -24,35 +15,9 @@ export async function validate(directory: string, options: { schema?: string }) 
   const schemaPath = options.schema || 'schema.json';
   const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
   const ajv = new Ajv();
-
   const validateFunc = ajv.compile(schema);
 
-  const files = await glob('**/*.md', { cwd: directory, absolute: false });
-  const nodes: Node[] = [];
-  const skipped: string[] = [];
-  const nonOst: string[] = [];
-
-  for (const file of files) {
-    const content = readFileSync(join(directory, file), 'utf-8');
-    const parsed = matter(content);
-
-    if (!parsed.data || Object.keys(parsed.data).length === 0) {
-      skipped.push(file);
-      continue;
-    }
-
-    if (!parsed.data.type) {
-      nonOst.push(file);
-      continue;
-    }
-
-    nodes.push({
-      filepath: join(directory, file),
-      filename: file,
-      data: { title: basename(file, '.md'), ...parsed.data },
-      content: parsed.content,
-    });
-  }
+  const { nodes, skipped, nonOst } = await readSpace(directory);
 
   const result: ValidationResult = {
     schemaValidCount: 0,
@@ -71,24 +36,20 @@ export async function validate(directory: string, options: { schema?: string }) 
     } else {
       result.schemaErrorCount++;
       result.schemaErrors.push({
-        file: node.filename,
+        file: node.label,
         errors: validateFunc.errors || [],
       });
     }
   }
 
-  // Build index of all node filenames (without .md extension)
-  const nodeIndex = new Map<string, Node>();
-  for (const node of nodes) {
-    const name = node.filename.replace(/\.md$/, '');
-    nodeIndex.set(name, node);
-  }
+  // Build index of all node labels (without .md extension)
+  const nodeIndex = new Map(
+    nodes.map(n => [n.label.replace(/\.md$/, ''), n])
+  );
 
   function extractWikilinkFilename(wikilink: string): string {
-    // Schema already validates format, so we can safely extract
-    // Handle both "[[Name]]" and [[Name]] formats
-    const cleaned = wikilink.replace(/^"|"$/g, ''); // Remove surrounding quotes if present
-    return cleaned.slice(2, -2); // Remove [[ and ]]
+    const cleaned = wikilink.replace(/^"|"$/g, '');
+    return cleaned.slice(2, -2);
   }
 
   for (const node of nodes) {
@@ -98,7 +59,7 @@ export async function validate(directory: string, options: { schema?: string }) 
     const parentFile = extractWikilinkFilename(parent);
     if (!nodeIndex.has(parentFile)) {
       result.refErrors.push({
-        file: node.filename,
+        file: node.label,
         parent: parent,
         error: `Parent node "${parentFile}" not found`,
       });
@@ -143,7 +104,6 @@ export async function validate(directory: string, options: { schema?: string }) 
 
   console.log(`\n`);
 
-  // Exit code 1 if schema or reference errors exist
   if (result.schemaErrorCount > 0 || result.refErrors.length > 0) {
     process.exit(1);
   }
