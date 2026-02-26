@@ -5,24 +5,43 @@ import Ajv from 'ajv';
 import { readOstPage } from '../src/read-ost-page.js';
 import { readSpace } from '../src/read-space.js';
 import type { OstNode } from '../src/types.js';
+import { labelToKey } from '../src/validate.js';
 
 const SCHEMA_PATH = join(import.meta.dir, '../schema.json');
 const VALID_DIR = join(import.meta.dir, 'fixtures/valid-ost');
 const INVALID_DIR = join(import.meta.dir, 'fixtures/invalid-ost');
 const VALID_PAGE = join(import.meta.dir, 'fixtures/on-a-page-valid.md');
+const HYBRID_PAGE = join(import.meta.dir, 'fixtures/hybrid-page-valid.md');
 
 const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf-8'));
 const ajv = new Ajv();
 const validateNode = ajv.compile(schema);
 
-// Inline ref-check helper — mirrors the logic in validate.ts
+/**
+ * Inline ref-check helper — mirrors the logic in validate.ts.
+ * Handles plain labels, compound embedded-node labels (filename#title),
+ * and anchor-based wikilinks ([[File#^anchor]]).
+ */
 function checkRefErrors(nodes: OstNode[]): Array<{ file: string; parent: string }> {
-  const titles = new Set(nodes.map((n) => n.label.replace(/\.md$/, '')));
+  const index = new Set(nodes.map((n) => labelToKey(n.label)));
+
+  // Also index by anchor so [[File#^anchorname]] resolves
+  for (const n of nodes) {
+    if (n.data.anchor) {
+      const hashIdx = n.label.indexOf('#');
+      const fileKey =
+        hashIdx >= 0
+          ? n.label.slice(0, hashIdx).replace(/\.md$/, '')
+          : n.label.replace(/\.md$/, '');
+      index.add(`${fileKey}#^${n.data.anchor}`);
+    }
+  }
+
   return nodes
     .filter((n) => n.data.parent)
     .filter((n) => {
-      const parentTitle = (n.data.parent as string).slice(2, -2);
-      return !titles.has(parentTitle);
+      const parentKey = (n.data.parent as string).slice(2, -2);
+      return !index.has(parentKey);
     })
     .map((n) => ({ file: n.label, parent: n.data.parent as string }));
 }
@@ -35,8 +54,8 @@ describe('Schema validation', () => {
       ({ nodes } = await readSpace(VALID_DIR));
     });
 
-    it('all 5 nodes pass schema validation', () => {
-      expect(nodes).toHaveLength(5);
+    it('all 9 nodes pass schema validation', () => {
+      expect(nodes).toHaveLength(9);
       for (const node of nodes) {
         expect(validateNode(node.data)).toBe(true);
       }
@@ -59,6 +78,25 @@ describe('Schema validation', () => {
       for (const node of nodes) {
         expect(validateNode(node.data)).toBe(true);
       }
+    });
+  });
+
+  describe('hybrid-page-valid.md nodes (readOstPage on a hybrid file)', () => {
+    let nodes: OstNode[];
+
+    beforeAll(() => {
+      ({ nodes } = readOstPage(HYBRID_PAGE));
+    });
+
+    it('all nodes pass schema validation', () => {
+      expect(nodes.length).toBeGreaterThan(0);
+      for (const node of nodes) {
+        expect(validateNode(node.data)).toBe(true);
+      }
+    });
+
+    it('has zero ref errors for internal refs in standalone context', () => {
+      expect(checkRefErrors(nodes)).toHaveLength(0);
     });
   });
 
@@ -90,6 +128,76 @@ describe('Schema validation', () => {
     it('detects dangling parent ref error for Nonexistent Node', () => {
       const refErrors = checkRefErrors(nodes);
       expect(refErrors.some((e) => e.parent === '[[Nonexistent Node]]')).toBe(true);
+    });
+  });
+
+  describe('labelToKey utility', () => {
+    it('strips .md extension from plain file labels', () => {
+      expect(labelToKey('Personal Vision.md')).toBe('Personal Vision');
+    });
+
+    it('handles compound embedded node labels (filename.md#title)', () => {
+      expect(labelToKey('hybrid_vision.md#Embedded Mission')).toBe(
+        'hybrid_vision#Embedded Mission',
+      );
+    });
+
+    it('handles bare heading titles (no .md, no #)', () => {
+      expect(labelToKey('Personal Vision')).toBe('Personal Vision');
+    });
+  });
+
+  describe('ref resolution for anchor-based wikilinks', () => {
+    it('resolves [[filename#^anchor]] to a node with that anchor', () => {
+      const nodes: OstNode[] = [
+        {
+          label: 'hybrid_vision.md#Embedded Mission',
+          data: {
+            title: 'Embedded Mission',
+            type: 'mission',
+            status: 'identified',
+            anchor: 'embmission',
+            parent: '[[hybrid_vision]]',
+          },
+        },
+        {
+          label: 'hybrid_vision.md',
+          data: { title: 'hybrid_vision', type: 'vision', status: 'active' },
+        },
+        {
+          label: 'some_goal.md',
+          data: {
+            title: 'some_goal',
+            type: 'goal',
+            status: 'identified',
+            parent: '[[hybrid_vision#^embmission]]',
+          },
+        },
+      ];
+
+      expect(checkRefErrors(nodes)).toHaveLength(0);
+    });
+
+    it('reports error when anchor-based wikilink points to nonexistent anchor', () => {
+      const nodes: OstNode[] = [
+        {
+          label: 'hybrid_vision.md',
+          data: { title: 'hybrid_vision', type: 'vision', status: 'active' },
+        },
+        {
+          label: 'some_goal.md',
+          data: {
+            title: 'some_goal',
+            type: 'goal',
+            status: 'identified',
+            parent: '[[hybrid_vision#^noanchor]]',
+          },
+        },
+      ];
+
+      const errors = checkRefErrors(nodes);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]?.parent).toBe('[[hybrid_vision#^noanchor]]');
     });
   });
 
@@ -144,6 +252,28 @@ describe('Schema validation', () => {
           parent: 'Not A Wikilink',
         }),
       ).toBe(false);
+    });
+
+    it('accepts mission with filename#section wikilink as parent', () => {
+      expect(
+        validateNode({
+          title: 'M',
+          type: 'mission',
+          status: 'active',
+          parent: '[[vision_page#Our Mission]]',
+        }),
+      ).toBe(true);
+    });
+
+    it('accepts goal with anchor-based wikilink as parent', () => {
+      expect(
+        validateNode({
+          title: 'G',
+          type: 'goal',
+          status: 'active',
+          parent: '[[vision_page#^mission]]',
+        }),
+      ).toBe(true);
     });
   });
 });

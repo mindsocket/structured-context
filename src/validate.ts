@@ -13,6 +13,34 @@ interface ValidationResult {
   nonOst: string[];
 }
 
+/**
+ * Convert a node label to the key used in the reference index.
+ *
+ * Handles both plain file labels and compound embedded-node labels:
+ *   "Personal Vision.md"             → "Personal Vision"
+ *   "Personal Vision.md#Our Mission" → "Personal Vision#Our Mission"
+ *   "Our Mission"                    → "Our Mission"  (standalone / ost_on_a_page)
+ */
+export function labelToKey(label: string): string {
+  const hashIdx = label.indexOf('#');
+  if (hashIdx >= 0) {
+    return label.slice(0, hashIdx).replace(/\.md$/, '') + label.slice(hashIdx);
+  }
+  return label.replace(/\.md$/, '');
+}
+
+/**
+ * Extract the lookup key from a wikilink string such as:
+ *   [[Personal Vision]]                → "Personal Vision"
+ *   [[Personal Vision#Our Mission]]    → "Personal Vision#Our Mission"
+ *   [[Personal Vision#^ourmission]]    → "Personal Vision#^ourmission"
+ */
+function wikilinkToKey(wikilink: string): string {
+  // Strip surrounding quotes if present (YAML sometimes keeps them)
+  const cleaned = wikilink.replace(/^"|"$/g, '');
+  return cleaned.slice(2, -2);
+}
+
 export async function validate(path: string, options: { schema: string }): Promise<void> {
   const schema = JSON.parse(readFileSync(options.schema, 'utf-8'));
   const ajv = new Ajv();
@@ -25,9 +53,7 @@ export async function validate(path: string, options: { schema: string }): Promi
   if (statSync(path).isFile()) {
     ({ nodes } = readOstPage(path));
   } else {
-    ({ nodes, skipped, nonOst } = await readSpace(path, {
-      includePageFiles: true,
-    }));
+    ({ nodes, skipped, nonOst } = await readSpace(path));
   }
 
   const result: ValidationResult = {
@@ -53,24 +79,33 @@ export async function validate(path: string, options: { schema: string }): Promi
     }
   }
 
-  // Build index of all node labels (without .md extension)
-  const nodeIndex = new Map(nodes.map((n) => [n.label.replace(/\.md$/, ''), n]));
+  // Build index: primary key (title / filename#title) + anchor-based keys.
+  const nodeIndex = new Map<string, OstNode>();
+  for (const n of nodes) {
+    const key = labelToKey(n.label);
+    nodeIndex.set(key, n);
 
-  function extractWikilinkFilename(wikilink: string): string {
-    const cleaned = wikilink.replace(/^"|"$/g, '');
-    return cleaned.slice(2, -2);
+    // Also index by anchor so [[File#^anchorname]] resolves correctly.
+    if (n.data.anchor) {
+      const hashIdx = n.label.indexOf('#');
+      const fileKey =
+        hashIdx >= 0
+          ? n.label.slice(0, hashIdx).replace(/\.md$/, '')
+          : n.label.replace(/\.md$/, '');
+      nodeIndex.set(`${fileKey}#^${n.data.anchor}`, n);
+    }
   }
 
   for (const node of nodes) {
     const parent = node.data.parent as string | undefined;
     if (!parent) continue;
 
-    const parentFile = extractWikilinkFilename(parent);
-    if (!nodeIndex.has(parentFile)) {
+    const parentKey = wikilinkToKey(parent);
+    if (!nodeIndex.has(parentKey)) {
       result.refErrors.push({
         file: node.label,
         parent: parent,
-        error: `Parent node "${parentFile}" not found`,
+        error: `Parent node "${parentKey}" not found`,
       });
     }
   }
