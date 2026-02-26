@@ -14,8 +14,8 @@ describe('readSpace', () => {
       result = await readSpace(VALID_DIR);
     });
 
-    it('returns 9 OST nodes (5 original + 1 hybrid_vision file + 2 embedded + 1 hybrid_solution)', () => {
-      expect(result.nodes).toHaveLength(9);
+    it('returns 7 OST nodes (5 original + hybrid_vision + hybrid_solution)', () => {
+      expect(result.nodes).toHaveLength(7);
     });
 
     it('injects title from filename for file-based nodes', () => {
@@ -47,9 +47,8 @@ describe('readSpace', () => {
       expect(ts?.data.priority).toBe('p3');
     });
 
-    it('Community OST.md (ost_on_a_page with no body) contributes no nodes', () => {
+    it('Community OST.md (ost_on_a_page) is excluded from nodes', () => {
       expect(result.nodes.every((n) => n.label !== 'Community OST.md')).toBe(true);
-      expect(result.nodes.every((n) => !n.label.startsWith('Community OST#'))).toBe(true);
     });
 
     it('Community OST.md does not appear in skipped or nonOst', () => {
@@ -58,51 +57,28 @@ describe('readSpace', () => {
     });
   });
 
-  describe('hybrid page support', () => {
+  describe('hybrid file support', () => {
     let result: SpaceReadResult;
 
     beforeAll(async () => {
       result = await readSpace(VALID_DIR);
     });
 
-    it('includes hybrid_vision.md as its own node', () => {
+    it('includes hybrid_vision.md as a single node (no embedded extraction)', () => {
       const node = result.nodes.find((n) => n.label === 'hybrid_vision.md');
       expect(node).toBeDefined();
       expect(node?.data.type).toBe('vision');
       expect(node?.data.title).toBe('hybrid_vision');
     });
 
-    it('extracts embedded mission with compound label', () => {
-      const node = result.nodes.find((n) => n.label === 'hybrid_vision.md#Embedded Mission');
-      expect(node).toBeDefined();
-      expect(node?.data.type).toBe('mission');
-      expect(node?.data.title).toBe('Embedded Mission');
+    it('does not extract embedded nodes from hybrid files', () => {
+      expect(result.nodes.every((n) => !n.label.includes('#'))).toBe(true);
     });
 
-    it('embedded mission parent points to the vision file', () => {
-      const node = result.nodes.find((n) => n.label === 'hybrid_vision.md#Embedded Mission');
-      expect(node?.data.parent).toBe('[[hybrid_vision]]');
-    });
-
-    it('stores anchor on embedded mission node', () => {
-      const node = result.nodes.find((n) => n.label === 'hybrid_vision.md#Embedded Mission');
-      expect(node?.data.anchor).toBe('embmission');
-    });
-
-    it('extracts nested embedded goal with compound label', () => {
-      const node = result.nodes.find((n) => n.label === 'hybrid_vision.md#Embedded Goal');
-      expect(node).toBeDefined();
-      expect(node?.data.type).toBe('goal');
-    });
-
-    it('embedded goal parent points to the embedded mission via filename#title', () => {
-      const node = result.nodes.find((n) => n.label === 'hybrid_vision.md#Embedded Goal');
-      expect(node?.data.parent).toBe('[[hybrid_vision#Embedded Mission]]');
-    });
-
-    it('hybrid_solution.md references embedded goal as parent', () => {
+    it('includes hybrid_solution.md with parent pointing to hybrid_vision', () => {
       const node = result.nodes.find((n) => n.label === 'hybrid_solution.md');
-      expect(node?.data.parent).toBe('[[hybrid_vision#Embedded Goal]]');
+      expect(node).toBeDefined();
+      expect(node?.data.parent).toBe('[[hybrid_vision]]');
     });
   });
 

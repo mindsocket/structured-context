@@ -23,7 +23,6 @@ export function readOstPage(filePath: string): OstPageReadResult {
     const { nodes: embeddedNodes, diagnostics } = extractEmbeddedNodes(body, {
       pageTitle,
       pageType,
-      labelPrefix: '',
     });
 
     return {
@@ -36,7 +35,6 @@ export function readOstPage(filePath: string): OstPageReadResult {
   const { nodes, diagnostics } = extractEmbeddedNodes(body, {
     pageTitle: undefined,
     pageType: undefined,
-    labelPrefix: '',
   });
 
   return { nodes, diagnostics };

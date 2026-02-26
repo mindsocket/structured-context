@@ -168,12 +168,6 @@ export interface ExtractEmbeddedOptions {
    *   type inference (classic ost_on_a_page behaviour).
    */
   pageType?: string;
-  /**
-   * Prefix prepended to node labels: `labelPrefix + headingTitle`.
-   * In space context use e.g. `"filename#"` so labels become `"filename#Heading Title"`.
-   * In standalone context leave empty — labels are just heading titles.
-   */
-  labelPrefix?: string;
 }
 
 export interface ExtractEmbeddedResult {
@@ -191,7 +185,7 @@ export function extractEmbeddedNodes(
   body: string,
   options: ExtractEmbeddedOptions = {},
 ): ExtractEmbeddedResult {
-  const { pageTitle, pageType, labelPrefix = '' } = options;
+  const { pageTitle, pageType } = options;
   const isHybridMode = pageType !== undefined && pageType !== 'ost_on_a_page';
 
   const nodes: OstNode[] = [];
@@ -218,7 +212,7 @@ export function extractEmbeddedNodes(
   };
 
   function makeLabel(title: string): string {
-    return labelPrefix ? `${labelPrefix}${title}` : title;
+    return title;
   }
 
   /**
@@ -235,13 +229,13 @@ export function extractEmbeddedNodes(
         return pageTitle ? `[[${pageTitle}]]` : undefined;
       }
       // An embedded heading is the parent
-      return labelPrefix ? `[[${labelPrefix}${entry.title}]]` : `[[${entry.title}]]`;
+      return `[[${entry.title}]]`;
     }
     return undefined;
   }
 
   function makeParentRef(title: string): string {
-    return labelPrefix ? `[[${labelPrefix}${title}]]` : `[[${title}]]`;
+    return `[[${title}]]`;
   }
 
   for (const child of tree.children) {

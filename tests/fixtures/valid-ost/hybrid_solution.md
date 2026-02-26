@@ -1,5 +1,5 @@
 ---
 type: solution
 status: identified
-parent: "[[hybrid_vision#Embedded Goal]]"
+parent: "[[hybrid_vision]]"
 ---

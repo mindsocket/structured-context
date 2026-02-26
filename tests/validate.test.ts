@@ -19,8 +19,7 @@ const validateNode = ajv.compile(schema);
 
 /**
  * Inline ref-check helper — mirrors the logic in validate.ts.
- * Handles plain labels, compound embedded-node labels (filename#title),
- * and anchor-based wikilinks ([[File#^anchor]]).
+ * Handles plain labels (heading titles, filename.md) and wikilink parent refs.
  */
 function checkRefErrors(nodes: OstNode[]): Array<{ file: string; parent: string }> {
   const index = new Set(nodes.map((n) => labelToKey(n.label)));
@@ -54,8 +53,8 @@ describe('Schema validation', () => {
       ({ nodes } = await readSpace(VALID_DIR));
     });
 
-    it('all 9 nodes pass schema validation', () => {
-      expect(nodes).toHaveLength(9);
+    it('all 7 nodes pass schema validation', () => {
+      expect(nodes).toHaveLength(7);
       for (const node of nodes) {
         expect(validateNode(node.data)).toBe(true);
       }
@@ -136,68 +135,8 @@ describe('Schema validation', () => {
       expect(labelToKey('Personal Vision.md')).toBe('Personal Vision');
     });
 
-    it('handles compound embedded node labels (filename.md#title)', () => {
-      expect(labelToKey('hybrid_vision.md#Embedded Mission')).toBe(
-        'hybrid_vision#Embedded Mission',
-      );
-    });
-
-    it('handles bare heading titles (no .md, no #)', () => {
+    it('handles bare heading titles (no .md)', () => {
       expect(labelToKey('Personal Vision')).toBe('Personal Vision');
-    });
-  });
-
-  describe('ref resolution for anchor-based wikilinks', () => {
-    it('resolves [[filename#^anchor]] to a node with that anchor', () => {
-      const nodes: OstNode[] = [
-        {
-          label: 'hybrid_vision.md#Embedded Mission',
-          data: {
-            title: 'Embedded Mission',
-            type: 'mission',
-            status: 'identified',
-            anchor: 'embmission',
-            parent: '[[hybrid_vision]]',
-          },
-        },
-        {
-          label: 'hybrid_vision.md',
-          data: { title: 'hybrid_vision', type: 'vision', status: 'active' },
-        },
-        {
-          label: 'some_goal.md',
-          data: {
-            title: 'some_goal',
-            type: 'goal',
-            status: 'identified',
-            parent: '[[hybrid_vision#^embmission]]',
-          },
-        },
-      ];
-
-      expect(checkRefErrors(nodes)).toHaveLength(0);
-    });
-
-    it('reports error when anchor-based wikilink points to nonexistent anchor', () => {
-      const nodes: OstNode[] = [
-        {
-          label: 'hybrid_vision.md',
-          data: { title: 'hybrid_vision', type: 'vision', status: 'active' },
-        },
-        {
-          label: 'some_goal.md',
-          data: {
-            title: 'some_goal',
-            type: 'goal',
-            status: 'identified',
-            parent: '[[hybrid_vision#^noanchor]]',
-          },
-        },
-      ];
-
-      const errors = checkRefErrors(nodes);
-      expect(errors).toHaveLength(1);
-      expect(errors[0]?.parent).toBe('[[hybrid_vision#^noanchor]]');
     });
   });
 
