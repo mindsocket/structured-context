@@ -13,9 +13,8 @@ interface ValidationResult {
   nonOst: string[];
 }
 
-export async function validate(path: string, options: { schema?: string }) {
-  const schemaPath = options.schema || 'schema.json';
-  const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+export async function validate(path: string, options: { schema: string }): Promise<void> {
+  const schema = JSON.parse(readFileSync(options.schema, 'utf-8'));
   const ajv = new Ajv();
   const validateFunc = ajv.compile(schema);
 

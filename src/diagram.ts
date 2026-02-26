@@ -18,9 +18,8 @@ function parseWikilink(wikilink: string): string {
   return match ? match[1]! : wikilink;
 }
 
-export async function diagram(path: string, options: { schema?: string; output?: string }) {
-  const schemaPath = options.schema || 'schema.json';
-  const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+export async function diagram(path: string, options: { schema: string; output?: string }): Promise<void> {
+  const schema = JSON.parse(readFileSync(options.schema, 'utf-8'));
   const ajv = new Ajv();
   const validateFunc = ajv.compile(schema);
 
@@ -56,18 +55,10 @@ export async function diagram(path: string, options: { schema?: string; output?:
     });
   }
 
-  // Build parent-child relationships
-  const parentMap = new Map<string, DiagramNode[]>();
+  // Build node lookup for edge validation
   const nodeMap = new Map<string, DiagramNode>();
-
   for (const node of nodes) {
     nodeMap.set(node.id, node);
-    if (node.parent) {
-      if (!parentMap.has(node.parent)) {
-        parentMap.set(node.parent, []);
-      }
-      parentMap.get(node.parent)!.push(node);
-    }
   }
 
   // Generate mermaid diagram

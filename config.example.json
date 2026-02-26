@@ -1,5 +1,11 @@
 {
   "spaces": [
-    { "alias": "ProductX", "path": "/path/to/ProductX/Opportunity Solution Tree" }
-  ]
+    {
+      "alias": "ProductX",
+      "path": "/path/to/ProductX/Opportunity Solution Tree",
+      "miroBoardId": "iAmAB04rdId",
+      "miroFrameId": "1234567789"
+    }
+  ],
+  "templateDir": "/path/to/ProductX/Templates"
 }
