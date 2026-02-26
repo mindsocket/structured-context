@@ -181,10 +181,7 @@ export interface ExtractEmbeddedResult {
  * Shared by both readOstPage (single-file) and readSpace (directory) to find
  * embedded sub-nodes within a page's content.
  */
-export function extractEmbeddedNodes(
-  body: string,
-  options: ExtractEmbeddedOptions = {},
-): ExtractEmbeddedResult {
+export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptions = {}): ExtractEmbeddedResult {
   const { pageTitle, pageType } = options;
   const isHybridMode = pageType !== undefined && pageType !== 'ost_on_a_page';
 
@@ -197,9 +194,7 @@ export function extractEmbeddedNodes(
   // In hybrid mode: stack starts with the page's own virtual entry (depth 0).
   // In ost_on_a_page mode: stack starts empty (first heading has no parent).
   const stack: StackEntry[] =
-    isHybridMode && pageTitle !== undefined
-      ? [{ depth: 0, title: pageTitle, ostType: pageType }]
-      : [];
+    isHybridMode && pageTitle !== undefined ? [{ depth: 0, title: pageTitle, ostType: pageType }] : [];
 
   let currentContextNode: OstNode = rootNode;
 
@@ -282,9 +277,7 @@ export function extractEmbeddedNodes(
       if (!isHybridMode && stack.length > 0) {
         const topDepth = stack[stack.length - 1]!.depth;
         if (depth > topDepth + 1) {
-          throw new Error(
-            `Heading level skipped: jumped from H${topDepth} to H${depth} at "${title}"`,
-          );
+          throw new Error(`Heading level skipped: jumped from H${topDepth} to H${depth} at "${title}"`);
         }
       }
 

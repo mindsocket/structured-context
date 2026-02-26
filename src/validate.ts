@@ -88,10 +88,7 @@ export async function validate(path: string, options: { schema: string }): Promi
     // Also index by anchor so [[File#^anchorname]] resolves correctly.
     if (n.data.anchor) {
       const hashIdx = n.label.indexOf('#');
-      const fileKey =
-        hashIdx >= 0
-          ? n.label.slice(0, hashIdx).replace(/\.md$/, '')
-          : n.label.replace(/\.md$/, '');
+      const fileKey = hashIdx >= 0 ? n.label.slice(0, hashIdx).replace(/\.md$/, '') : n.label.replace(/\.md$/, '');
       nodeIndex.set(`${fileKey}#^${n.data.anchor}`, n);
     }
   }
