@@ -15,7 +15,7 @@ fi
 
 echo "" >&2
 echo "→ Running tests..." >&2
-if ! bun test --only-failures; then
+if ! bun run test --only-failures; then
     STATUS=1
 fi
 

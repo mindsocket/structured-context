@@ -10,14 +10,14 @@ bun install
 
 ## Concepts
 
-### Entities in OST
+See [docs/concepts.md](docs/concepts.md) for the full terminology reference, including definitions of OST nodes, embedded nodes, spaces, schemas, rules, and more.
 
-- **Vision**: The aspirational outcome at the top of a tree.
-- **Mission**: Strategic direction supporting a vision.
-- **Goal**: Concrete, measurable targets.
-- **Opportunity**: Identified chance to make progress.
-- **Solution**: Proposed approach to address an opportunity.
-- **Dashboard**: Index node for organizing and displaying tree structure.
+
+### Schemas
+
+A JSON-schema file defines the set of entities that a space adheres to. This allows for customisation and extension.
+
+Currently a single schema is included that combines a basic vision/mission/goals hierarchy with a hierarchy _similar_ to Opportunity Solution Trees. It is designed to be a bit more flexible to allow rapid initial adoption. The plan is to extend the set of schemas available to include some more opinionated and strict examples, and to support composability.
 
 ### Spaces
 
@@ -113,10 +113,13 @@ bun run src/index.ts validate personal
 bun run src/index.ts diagram personal
 
 # Run unit tests (fixtures in tests/)
-bun test
+bun run test
 
-# Run smoke tests against all configured spaces
-bun run smoke
+# Run validation smoke tests against all locally configured spaces
+bun run test:smoke
+
+# Run all tests
+bun run test:all
 ```
 
 ## Schema

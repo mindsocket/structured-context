@@ -11,7 +11,8 @@
     "validate": "bun run src/index.ts validate",
     "diagram": "bun run src/index.ts diagram",
     "test": "bun test tests/",
-    "smoke": "bun test smoke/",
+    "test:smoke": "bun test smoke/",
+    "test:all": "bun test",
     "lint": "biome check",
     "lint:fix": "biome check --write"
   },
