@@ -12,7 +12,7 @@ export interface SpaceNode {
 export interface SpaceOnAPageDiagnostics {
   /** Top-level mdast nodes before the first heading (ignored as preamble). */
   preambleNodeCount: number;
-  /** Heading titles encountered after the --- terminator (OST nodes that were not parsed). */
+  /** Heading titles encountered after the --- terminator (space nodes that were not parsed). */
   terminatedHeadings: string[];
 }
 
