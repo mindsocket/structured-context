@@ -62,6 +62,8 @@ A `typed page` may contain embedded nodes in its body. Those nodes become full m
 
 A **type alias** is an alternative name accepted in the `type` field for a given `space node` type. Aliases allow teams to use their own vocabulary while still receiving schema validation. For example, a schema might accept `outcome` as an alias for `goal`.
 
+A `space node`'s resolved type (`resolvedType`) is its canonical type after alias resolution. Prefer resolvedType over the raw type field for all comparisons in rules and hierarchy checks.
+
 ---
 
 ## Typed page
