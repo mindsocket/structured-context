@@ -6,26 +6,35 @@
   // "Continuous Discovery Habits" (2021) and at producttalk.org.
   "$defs": {
     "_metadata": {
-      "hierarchy": ["outcome", "opportunity", "solution", "experiment"],
+      "hierarchy": ["outcome", "opportunity", "solution", "assumption_test"],
+      "allowSelfRef": ["opportunity"],
       "rules": {
-        "general": [
-          "Only one outcome should be active at a time",
-          "Only one target opportunity should be active at a time"
+        "workflow": [
+          {
+            "id": "active-outcome-count",
+            "description": "Only one outcome should be active at a time",
+            "scope": "global",
+            "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+          },
+          {
+            "id": "active-opportunity-count",
+            "description": "Only one target opportunity should be active at a time",
+            "scope": "global",
+            "check": "$count(nodes[resolvedType='opportunity' and status='active']) <= 1"
+          },
+          {
+            "id": "active-node-parent-active",
+            "description": "An active node's parent should also be active",
+            "check": "current.status != 'active' or $exists(parent) = false or parent.status = 'active'"
+          }
         ],
-        "outcome": ["Should be a specific product metric with a directional component (e.g., 'increase X')"],
-        "opportunity": [
-          "Frame in the customer's voice — something a customer would actually say",
-          "Must be in the problem space (addressable by more than one solution)",
-          "Must be grounded in customer research (use the 'source' field to track origin)"
-        ],
-        "solution": [
-          "Parent must be an opportunity (not another solution)",
-          "Explore multiple candidate solutions (aim for at least three) for the target opportunity before committing to one"
-        ],
-        "experiment": [
-          "Parent must be a solution",
-          "Tests a single assumption — not the whole idea",
-          "Run tests on the riskiest assumption for each solution candidate"
+        "bestPractice": [
+          {
+            "id": "solution-quantity",
+            "description": "Explore multiple candidate solutions (aim for at least three) for the target opportunity",
+            "type": "opportunity",
+            "check": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
+          }
         ]
       }
     },
@@ -51,7 +60,7 @@
       },
       "required": ["source"]
     },
-    "experimentProps": {
+    "assumptionTestProps": {
       "type": "object",
       "description": "Properties for an Assumption Test (the fourth level of the OST)",
       "properties": {

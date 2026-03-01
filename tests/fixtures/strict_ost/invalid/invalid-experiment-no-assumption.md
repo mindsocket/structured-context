@@ -1,7 +1,7 @@
 ---
-type: experiment
+type: assumption_test
 status: exploring
 parent: "[[Some Solution]]"
 ---
 
-This experiment is missing the required 'assumption' field.
+This test is missing the required 'assumption' field.

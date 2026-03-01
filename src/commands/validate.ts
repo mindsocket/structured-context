@@ -3,14 +3,20 @@ import type { ErrorObject } from 'ajv';
 import { readSpaceDirectory } from '../read-space-directory';
 import { readSpaceOnAPage } from '../read-space-on-a-page';
 import { wikilinkToTarget } from '../resolve-links';
-import { createValidator } from '../schema';
-import type { SpaceNode } from '../types';
+import { createValidator, loadMetadata } from '../schema';
+import type { HierarchyViolation, RuleViolation, SpaceNode } from '../types';
+import { validateHierarchy } from '../validate-hierarchy';
+import { validateRules } from '../validate-rules';
 
 interface ValidationResult {
-  schemaValidCount: number;
-  schemaErrorCount: number;
-  schemaErrors: Array<{ file: string; errors: ErrorObject[] }>;
+  validCount: number;
+  nodeErrorCount: number;
+  nodeErrors: Array<{ file: string; errors: ErrorObject[] }>;
   refErrors: Array<{ file: string; parent: string; error: string }>;
+  duplicateErrors: Array<{ title: string; files: string[] }>;
+  configErrors: string[];
+  ruleViolations: RuleViolation[];
+  hierarchyViolations: HierarchyViolation[];
   skipped: string[];
   nonSpace: string[];
 }
@@ -29,10 +35,14 @@ export async function validate(path: string, options: { schema: string }): Promi
   }
 
   const result: ValidationResult = {
-    schemaValidCount: 0,
-    schemaErrorCount: 0,
-    schemaErrors: [],
+    validCount: 0,
+    nodeErrorCount: 0,
+    nodeErrors: [],
     refErrors: [],
+    duplicateErrors: [],
+    configErrors: [],
+    ruleViolations: [],
+    hierarchyViolations: [],
     skipped,
     nonSpace: nonSpace,
   };
@@ -41,25 +51,46 @@ export async function validate(path: string, options: { schema: string }): Promi
     const valid = validateFunc(node.schemaData);
 
     if (valid) {
-      result.schemaValidCount++;
+      result.validCount++;
     } else {
-      result.schemaErrorCount++;
-      result.schemaErrors.push({
+      result.nodeErrorCount++;
+      result.nodeErrors.push({
         file: node.label,
         errors: validateFunc.errors || [],
       });
     }
   }
 
-  // Parent refs are resolved to canonical titles on node.resolvedParent in read-* code.
+  // Detect duplicate node keys (titles) and build nodeIndex for parent ref validation
+  const titleToFiles = new Map<string, string[]>();
   const nodeIndex = new Map<string, SpaceNode>();
-  for (const n of nodes) {
-    nodeIndex.set(n.schemaData.title as string, n);
+  for (const node of nodes) {
+    const title = node.schemaData.title as string;
+    if (!titleToFiles.has(title)) {
+      titleToFiles.set(title, []);
+    }
+    titleToFiles.get(title)!.push(node.label);
+    nodeIndex.set(title, node);
+  }
+
+  for (const [title, files] of titleToFiles) {
+    if (files.length > 1) {
+      result.duplicateErrors.push({ title, files });
+    }
   }
 
   for (const node of nodes) {
-    const parent = node.schemaData.parent as string | undefined;
-    if (!parent) continue;
+    const parent = node.schemaData.parent;
+    if (typeof parent !== 'string') {
+      if (parent) {
+        result.refErrors.push({
+          file: node.label,
+          parent: String(parent),
+          error: `Parent field must be a wikilink string, got ${typeof parent}`,
+        });
+      }
+      continue;
+    }
 
     const parentKey = node.resolvedParent;
     if (!parentKey) {
@@ -80,12 +111,32 @@ export async function validate(path: string, options: { schema: string }): Promi
     }
   }
 
+  // Load and execute hierarchy validation if schema defines hierarchy
+  const metadata = loadMetadata(options.schema);
+
+  // Validate schema metadata configuration
+  const badSelfRefTypes = (metadata.allowSelfRef ?? []).filter((t) => !metadata.hierarchy.includes(t));
+  for (const t of badSelfRefTypes) {
+    result.configErrors.push(`allowSelfRef contains "${t}" which is not in the hierarchy`);
+  }
+
+  result.hierarchyViolations = validateHierarchy(nodes, metadata);
+
+  // Load and execute rules validation if schema defines rules
+  if (metadata.rules) {
+    result.ruleViolations = await validateRules(nodes, metadata.rules);
+  }
+
   // Report
   console.log(`\n🔍 Space Validation Results`);
   console.log(`━`.repeat(50));
-  console.log(`✅ Valid: ${result.schemaValidCount}`);
-  console.log(`❌ Schema Errors: ${result.schemaErrorCount}`);
+  console.log(`✅ Valid: ${result.validCount}`);
+  console.log(`❌ Node Errors: ${result.nodeErrorCount}`);
   console.log(`🔗 Reference Errors: ${result.refErrors.length}`);
+  console.log(`🔁 Duplicate Keys: ${result.duplicateErrors.length}`);
+  console.log(`⚙️ Config Errors: ${result.configErrors.length}`);
+  console.log(`📋 Rule Violations: ${result.ruleViolations.length}`);
+  console.log(`🏗️ Hierarchy Violations: ${result.hierarchyViolations.length}`);
   console.log(`⏭ Skipped (no frontmatter): ${result.skipped.length}`);
   console.log(`📄 Non-space (no type field): ${result.nonSpace.length}`);
 
@@ -99,9 +150,9 @@ export async function validate(path: string, options: { schema: string }): Promi
     for (const f of result.nonSpace) console.log(`   ${f}`);
   }
 
-  if (result.schemaErrors.length > 0) {
-    console.log(`\n❌ Schema validation errors:`);
-    result.schemaErrors.forEach(({ file, errors }) => {
+  if (result.nodeErrors.length > 0) {
+    console.log(`\n❌ Node errors:`);
+    result.nodeErrors.forEach(({ file, errors }) => {
       console.log(`\n   ${file}:`);
       errors.forEach((err: ErrorObject) => {
         console.log(`      ${err.instancePath || 'root'}: ${err.message}`);
@@ -116,9 +167,61 @@ export async function validate(path: string, options: { schema: string }): Promi
     });
   }
 
+  if (result.duplicateErrors.length > 0) {
+    console.log(`\n🔁 Duplicate node keys (same title in multiple files):`);
+    result.duplicateErrors.forEach(({ title, files }) => {
+      console.log(`   "${title}":`);
+      for (const f of files) {
+        console.log(`      ${f}`);
+      }
+    });
+  }
+
+  if (result.configErrors.length > 0) {
+    console.log(`\n⚙️  Config errors:`);
+    for (const e of result.configErrors) {
+      console.log(`   ${e}`);
+    }
+  }
+
+  if (result.ruleViolations.length > 0) {
+    console.log(`\n📋 Rule violations:`);
+
+    // Group by category
+    const byCategory = new Map<string, RuleViolation[]>();
+    for (const v of result.ruleViolations) {
+      if (!byCategory.has(v.category)) {
+        byCategory.set(v.category, []);
+      }
+      byCategory.get(v.category)!.push(v);
+    }
+
+    // Report each category
+    for (const [category, violations] of byCategory) {
+      console.log(`  ${category.toUpperCase()} (${violations.length}):`);
+      for (const v of violations) {
+        console.log(`    ${v.file ? `${v.file}: ` : ''}${v.description}`);
+      }
+    }
+  }
+
+  if (result.hierarchyViolations.length > 0) {
+    console.log(`\n🏗️  Hierarchy violations:`);
+    for (const v of result.hierarchyViolations) {
+      console.log(`   ${v.file}: ${v.description}`);
+    }
+  }
+
   console.log(`\n`);
 
-  if (result.schemaErrorCount > 0 || result.refErrors.length > 0) {
+  if (
+    result.nodeErrorCount > 0 ||
+    result.refErrors.length > 0 ||
+    result.duplicateErrors.length > 0 ||
+    result.configErrors.length > 0 ||
+    result.ruleViolations.length > 0 ||
+    result.hierarchyViolations.length > 0
+  ) {
     process.exit(1);
   }
 }

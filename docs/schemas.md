@@ -43,7 +43,7 @@ A flexible, opinionated schema supporting a multi-level strategy hierarchy along
 **Features:**
 - Allows `vision`, `mission`, `goal` hierarchy for strategic planning
 - Optional numeric assessment fields (1-5 scale) for opportunities and solutions
-- Type aliases: `goal` and `outcome` are accepted for the same entity type
+- Type aliases: alternative terms accepted for some types
 - `additionalProperties: true` allows extensibility
 
 **Use when:**
@@ -58,18 +58,12 @@ A schema following the canonical 4-level Opportunity Solution Tree structure, ba
 - `outcome` — Root-level outcome (product metric, no parent)
 - `opportunity` — Customer pain points, desires, and needs (can be nested)
 - `solution` — Solutions to explore for target opportunities
-- `experiment`|`assumption_test`|`test` — Assumption tests for solutions
-
-**Structure:**
-- `outcome` cannot have a parent (it's the root)
-- `opportunity` can have `outcome` or another `opportunity` as parent (nested hierarchy)
-- `solution` must have an `opportunity` parent
-- `experiment`|`assumption_test`|`test` must have a `solution` parent
+- `assumption_test` — Assumption tests for solutions
 
 **Fields:**
-- `outcome` includes optional `metric` field for the product metric
-- `opportunity` includes optional `source` field to track research origin
-- `experiment` includes required `assumption` field and optional `category` enum
+- `outcome` requires a `metric` field for the product metric
+- `opportunity` requires a `source` field to track research origin
+- `assumption_test` requires an `assumption` field and accepts an optional `category`
 
 **Use when:**
 - You want to follow Teresa Torres' OST methodology strictly
@@ -93,9 +87,46 @@ Common definitions used across multiple schemas:
 
 Shared definitions specific to the strict OST schema:
 
-- `OutcomeProps` — Outcome-specific properties (metric)
+- `outcomeProps` — Outcome-specific properties (metric)
 - `opportunityProps` — Opportunity properties (source)
-- `experimentProps` — Experiment properties (assumption, category)
+- `assumptionTestProps` — Assumption test properties (assumption, category)
+- `_metadata` — Hierarchy, type aliases, and executable rules for strict OST validation
+
+## Schema Metadata
+
+The `_metadata` block in `$defs` carries non-structural validation configuration. It is not a JSON Schema construct — the tooling reads it separately from the schema validator.
+
+```jsonc
+{
+  "$defs": {
+    "_metadata": {
+      "hierarchy": ["outcome", "opportunity", "solution", "assumption_test"],
+      "aliases": { "test": "assumption_test" },
+      "allowSelfRef": ["opportunity"],
+      "allowSkipLevels": false,
+      "rules": { ... }
+    }
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `hierarchy` | `string[]` | Ordered list of canonical types from root to leaf |
+| `aliases` | `Record<string, string>` | Maps alternative type names to canonical types |
+| `allowSelfRef` | `string[]` | Types that may have a parent of the same type (e.g. nested opportunities) |
+| `allowSkipLevels` | `boolean` | When `true`, a node may have any ancestor type above it, not just the immediate parent |
+| `rules` | `object` | Executable validation rules — see [docs/rules.md](rules.md) |
+
+### Hierarchy validation
+
+The validator checks every node type and its parent type against the hierarchy order, with violations flagged.
+
+`allowSelfRef` and `allowSkipLevels` modify the strictness. For example, `"allowSelfRef": ["opportunity"]` permits nested opportunity trees.
+
+### Type aliases
+
+`aliases` maps alternative type names to canonical types. A node with `type: outcome` and `"aliases": { "outcome": "goal" }` will have `resolvedType: goal` and be treated as a `goal` everywhere — in hierarchy checks, rule type filters, and output.
 
 ## Schema Composability
 
@@ -104,6 +135,8 @@ Schemas are designed to be composable. You can create custom schemas by:
 1. Creating a new `.json` file in the `schemas/` directory
 2. Using `$ref` to reference shared definitions from `_shared.json` or other schemas
 3. Defining your own node types and constraints
+
+Referencing another schema file merges its `$defs` into the compiled schema, including any `_metadata` block. If multiple referenced files each define `_metadata`, only the last one merged is used — `rules` arrays are not combined across sources.
 
 Example of referencing shared definitions:
 
@@ -134,6 +167,6 @@ Schema files support JSONC (JSON with Comments) format, allowing inline document
 
 ## Further Reading
 
-- [ Teresa Torres' work on Opportunity Solution Trees](https://producttalk.org/2021/02/using-opportunity-solution-trees/)
+- [Teresa Torres' work on Opportunity Solution Trees](https://producttalk.org/2021/02/using-opportunity-solution-trees/)
 - "Continuous Discovery Habits" (2021) by Teresa Torres
 - [JSON Schema specification](https://json-schema.org/)

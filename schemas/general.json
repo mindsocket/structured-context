@@ -5,7 +5,13 @@
   "description": "Validates frontmatter for space node files",
   "$defs": {
     "_metadata": {
-      "hierarchy": ["vision", "mission", "goal", "opportunity", "solution", "experiment"]
+      "hierarchy": ["vision", "mission", "goal", "opportunity", "solution", "experiment"],
+      "aliases": {
+        "outcome": "goal",
+        "assumption_test": "experiment",
+        "test": "experiment"
+      },
+      "allowSelfRef": ["goal", "opportunity", "solution"]
     }
   },
   "oneOf": [

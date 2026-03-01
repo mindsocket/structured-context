@@ -31,5 +31,9 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 - `bun run test` — unit tests (fixtures in `tests/`)
 - `bun run test:smoke` — smoke tests that run `validate` against every space in `config.json` (`smoke/`)
 
+## Debugging
+
+- `bun run src/index.ts dump <path>` — Output parsed node data with resolved parents, useful for debugging rule violations
+
 ## Hooks
 A Stop hook runs linting, autoformatting and unit tests. If it reports issues related to change you made, address them.

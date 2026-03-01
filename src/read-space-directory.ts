@@ -5,7 +5,7 @@ import matter from 'gray-matter';
 import { loadConfig, resolveSchema } from './config';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
 import { resolveParentLinks } from './resolve-links';
-import { loadHierarchy } from './schema';
+import { loadMetadata, resolveNodeType } from './schema';
 import type { SpaceDirectoryReadResult, SpaceNode } from './types';
 
 export async function readSpaceDirectory(
@@ -17,10 +17,9 @@ export async function readSpaceDirectory(
   const skipped: string[] = [];
   const nonSpace: string[] = [];
 
-  // Resolve schema and load hierarchy for depth-based type inference
   const config = loadConfig();
   const resolvedSchemaPath = resolveSchema(options?.schemaPath, config);
-  const hierarchyArray = loadHierarchy(resolvedSchemaPath);
+  const { hierarchy, aliases } = loadMetadata(resolvedSchemaPath);
 
   for (const file of files) {
     const content = readFileSync(join(directory, file), 'utf-8');
@@ -47,6 +46,7 @@ export async function readSpaceDirectory(
       label: file,
       schemaData: { title: fileBase, ...parsed.data },
       linkTargets: [fileBase],
+      resolvedType: resolveNodeType(pageType, aliases),
     });
 
     // Extract embedded child nodes from the page body (typed pages with embedded nodes).
@@ -55,7 +55,8 @@ export async function readSpaceDirectory(
       const { nodes: embedded } = extractEmbeddedNodes(parsed.content, {
         pageTitle: fileBase,
         pageType,
-        hierarchy: hierarchyArray,
+        hierarchy,
+        aliases,
       });
       nodes.push(...embedded);
     }

@@ -4,6 +4,7 @@ import { toString as mdastToString } from 'mdast-util-to-string';
 import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
+import { resolveNodeType } from './schema';
 import type { SpaceNode, SpaceOnAPageDiagnostics } from './types';
 
 /** Type values that identify a space_on_a_page container (not themselves space nodes). */
@@ -127,6 +128,7 @@ function processListItem(
   nodes: SpaceNode[],
   makeLabel: (title: string) => string,
   buildLinkTargets: (title: string) => string[],
+  aliases: Record<string, string>,
 ): void {
   const firstPara = item.children.find((c) => c.type === 'paragraph') as Paragraph | undefined;
 
@@ -153,14 +155,19 @@ function processListItem(
     if (summary) schemaData.summary = summary;
 
     const linkTargets = buildLinkTargets(title);
-    const newNode: SpaceNode = { label: makeLabel(title), schemaData, linkTargets };
+    const newNode: SpaceNode = {
+      label: makeLabel(title),
+      schemaData,
+      linkTargets,
+      resolvedType: resolveNodeType(fields.type, aliases),
+    };
     nodes.push(newNode);
 
     const nestedParentRef = `[[${linkTargets[0] ?? title}]]`;
     for (const child of item.children) {
       if (child.type === 'list') {
         for (const subItem of (child as List).children) {
-          processListItem(subItem, nestedParentRef, newNode, nodes, makeLabel, buildLinkTargets);
+          processListItem(subItem, nestedParentRef, newNode, nodes, makeLabel, buildLinkTargets, aliases);
         }
       }
     }
@@ -187,6 +194,10 @@ export interface ExtractEmbeddedOptions {
    * Hierarchy of node types for depth-based type inference in space-on-a-page mode.
    */
   hierarchy: readonly string[];
+  /**
+   * Type aliases mapping (alias -> canonical type) for resolving types.
+   */
+  aliases?: Record<string, string>;
 }
 
 export interface ExtractEmbeddedResult {
@@ -201,12 +212,17 @@ export interface ExtractEmbeddedResult {
  * (directory) to find embedded sub-nodes within a page's content.
  */
 export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptions): ExtractEmbeddedResult {
-  const { pageTitle, pageType, hierarchy } = options;
+  const { pageTitle, pageType, hierarchy, aliases = {} } = options;
   const isOnAPageMode = pageType === undefined || ON_A_PAGE_TYPES.includes(pageType);
 
   const nodes: SpaceNode[] = [];
   // Preamble/root content sink - never added to nodes
-  const rootNode: SpaceNode = { label: '_root_', schemaData: { type: 'space_on_a_page' }, linkTargets: [] };
+  const rootNode: SpaceNode = {
+    label: '_root_',
+    schemaData: { type: 'space_on_a_page' },
+    linkTargets: [],
+    resolvedType: 'space_on_a_page',
+  };
 
   const tree = unified().use(remarkParse).use(remarkGfm).parse(body) as Root;
 
@@ -334,7 +350,12 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       if (parentRef) schemaData.parent = parentRef;
 
       const linkTargets = buildHeadingLinkTargets(rawText, title, anchor);
-      const headingNode: SpaceNode = { label: makeLabel(title), schemaData, linkTargets };
+      const headingNode: SpaceNode = {
+        label: makeLabel(title),
+        schemaData,
+        linkTargets,
+        resolvedType: resolveNodeType(type, aliases),
+      };
       nodes.push(headingNode);
       currentContextNode = headingNode;
 
@@ -345,7 +366,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     } else if (child.type === 'list') {
       const parentRef = currentParentRef();
       for (const item of (child as List).children) {
-        processListItem(item, parentRef, currentContextNode, nodes, makeLabel, buildListItemLinkTargets);
+        processListItem(item, parentRef, currentContextNode, nodes, makeLabel, buildListItemLinkTargets, aliases);
       }
     } else if (child.type === 'paragraph') {
       const rawText = mdastToString(child);

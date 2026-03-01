@@ -3,6 +3,7 @@ import { dirname, join, resolve } from 'node:path';
 import type { AnySchemaObject, SchemaObject } from 'ajv';
 import Ajv, { type ValidateFunction } from 'ajv';
 import { parse } from 'jsonc-parser';
+import type { RulesMetadata, SchemaMetadata } from './types';
 
 /** Parsed JSON schema object — always a plain object (never a boolean schema). */
 type JsonSchemaObject = Record<string, unknown>;
@@ -76,33 +77,8 @@ export function createValidator(schemaPath: string): ValidateFunction {
 }
 
 /**
- * Extract the hierarchy array from a schema's $defs._metadata.hierarchy.
- * Used by read-space-directory and read-space-on-a-page for depth-based type inference.
- *
- * @throws {Error} If schema doesn't define a hierarchy array
- */
-export function loadHierarchy(schemaPath: string): string[] {
-  const schema = loadSchema(schemaPath);
-  const metadata = (schema.$defs as Record<string, unknown>)?._metadata as Record<string, unknown> | undefined;
-  const hierarchyArray = (metadata?.hierarchy as string[]) ?? [];
-
-  if (!Array.isArray(hierarchyArray) || hierarchyArray.length === 0) {
-    throw new Error(
-      `Schema at ${schemaPath} must define "$defs._metadata.hierarchy" array for depth-based type inference`,
-    );
-  }
-
-  return hierarchyArray;
-}
-
-/**
  * Resolve a $ref within a schema, handling both external refs (ost-tools://...) and internal refs (#/$defs/...).
  * Used by template-sync for traversing schema structures.
- *
- * @param propDef - A property definition that may contain a $ref
- * @param schema - The root schema object (for internal refs)
- * @param registry - Schema registry for external ref resolution
- * @returns The resolved schema object, or undefined if no $ref was present
  */
 export function resolveRef(
   propDef: AnySchemaObject | undefined,
@@ -135,4 +111,28 @@ export function resolveRef(
     return path.reduce((obj: any, key: string) => obj[key], schema);
   }
   return propDef;
+}
+
+export function resolveNodeType(type: string, aliases: Record<string, string> | undefined): string {
+  return aliases?.[type] ?? type;
+}
+
+export function loadMetadata(schemaPath: string): SchemaMetadata {
+  const schema = loadSchema(schemaPath);
+  const metadata = (schema.$defs as Record<string, unknown>)?._metadata as Record<string, unknown> | undefined;
+
+  const hierarchy = (metadata?.hierarchy as string[]) ?? undefined;
+  if (!hierarchy || hierarchy.length === 0) {
+    throw new Error(
+      `Schema at ${schemaPath} must define "$defs._metadata.hierarchy" array for depth-based type inference`,
+    );
+  }
+
+  return {
+    hierarchy,
+    aliases: (metadata?.aliases as Record<string, string>) ?? undefined,
+    allowSkipLevels: (metadata?.allowSkipLevels as boolean) ?? undefined,
+    allowSelfRef: (metadata?.allowSelfRef as string[]) ?? undefined,
+    rules: (metadata?.rules as RulesMetadata) ?? undefined,
+  };
 }

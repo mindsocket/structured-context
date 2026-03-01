@@ -6,11 +6,6 @@
   // and at producttalk.org.
   // Structure: outcome → opportunity → solution → assumption test
   "description": "Validates frontmatter for space node files following the canonical 4-level OST structure: outcome → opportunity → solution → assumption test",
-  "$defs": {
-    "_metadata": {
-      "hierarchy": ["outcome", "opportunity", "solution", "experiment"]
-    }
-  },
   "oneOf": [
     {
       "type": "object",
@@ -86,10 +81,10 @@
       "allOf": [
         { "$ref": "ost-tools://_shared#/$defs/baseNodeProps" },
         { "$ref": "ost-tools://_shared#/$defs/ostEntityProps" },
-        { "$ref": "ost-tools://_strict#/$defs/experimentProps" }
+        { "$ref": "ost-tools://_strict#/$defs/assumptionTestProps" }
       ],
       "properties": {
-        "type": { "enum": ["experiment", "assumption_test", "test"] },
+        "type": { "const": "assumption_test" },
         "parent": {
           "$ref": "ost-tools://_shared#/$defs/wikilink",
           "description": "Parent solution (wikilink)"
@@ -104,13 +99,6 @@
           "parent": "[[Simplify Signup Flow]]",
           "assumption": "Users can complete the simplified signup in under 2 minutes",
           "category": "usability"
-        },
-        {
-          "type": "test",
-          "status": "active",
-          "parent": "[[Prototype Landing Page]]",
-          "assumption": "Users will understand the value proposition within 5 seconds",
-          "category": "desirability"
         }
       ]
     }

@@ -100,6 +100,7 @@ describe('Schema validation', () => {
           label: 'anchor_vision.md',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
+          resolvedType: 'vision',
         },
         {
           label: 'Our Mission',
@@ -110,6 +111,7 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision]]',
           },
           linkTargets: ['anchor_vision#Our Mission mission', 'anchor_vision#^mission'],
+          resolvedType: 'mission',
         },
         {
           label: 'Another Goal',
@@ -120,6 +122,7 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision#^mission]]',
           },
           linkTargets: ['anchor_vision#Another Goal goal1', 'anchor_vision#^goal1'],
+          resolvedType: 'goal',
         },
         {
           label: 'solution_page.md',
@@ -130,6 +133,7 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision#^goal1]]',
           },
           linkTargets: ['solution_page'],
+          resolvedType: 'solution',
         },
       ];
 
@@ -148,6 +152,7 @@ describe('Schema validation', () => {
           label: 'anchor_vision.md',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
+          resolvedType: 'vision',
         },
         {
           label: 'some-solution.md',
@@ -158,6 +163,7 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision#^noanchor]]',
           },
           linkTargets: ['some-solution'],
+          resolvedType: 'solution',
         },
       ];
 
@@ -174,6 +180,7 @@ describe('Schema validation', () => {
           label: 'vision_page.md',
           schemaData: { title: 'vision_page', type: 'vision', status: 'active' },
           linkTargets: ['vision_page'],
+          resolvedType: 'vision',
         },
         {
           label: 'Embedded Goal',
@@ -184,6 +191,7 @@ describe('Schema validation', () => {
             parent: '[[vision_page]]',
           },
           linkTargets: ['vision_page#Embedded Goal'],
+          resolvedType: 'goal',
         },
         {
           label: 'solution_page.md',
@@ -194,6 +202,7 @@ describe('Schema validation', () => {
             parent: '[[Embedded Goal]]',
           },
           linkTargets: ['solution_page'],
+          resolvedType: 'solution',
         },
       ];
 
@@ -279,6 +288,40 @@ describe('Schema validation', () => {
           parent: '[[vision_page#^mission]]',
         }),
       ).toBe(true);
+    });
+  });
+
+  describe('duplicate title detection', () => {
+    it('detects duplicate titles from same filename in different directories', async () => {
+      const { nodes } = await readSpaceDirectory(join(import.meta.dir, 'fixtures/general/duplicate-titles'));
+      const titleCounts = new Map<string, SpaceNode[]>();
+      for (const node of nodes) {
+        const title = node.schemaData.title as string;
+        if (!titleCounts.has(title)) {
+          titleCounts.set(title, []);
+        }
+        titleCounts.get(title)!.push(node);
+      }
+
+      const duplicates = Array.from(titleCounts.entries()).filter(([_, nodes]) => nodes.length > 1);
+      expect(duplicates.length).toBeGreaterThan(0);
+      expect(duplicates.some(([title]) => title === 'Same Title')).toBe(true);
+    });
+
+    it('detects duplicate titles from embedded nodes', () => {
+      const { nodes } = readSpaceOnAPage(join(import.meta.dir, 'fixtures/general/duplicate-embedded.md'));
+      const titleCounts = new Map<string, SpaceNode[]>();
+      for (const node of nodes) {
+        const title = node.schemaData.title as string;
+        if (!titleCounts.has(title)) {
+          titleCounts.set(title, []);
+        }
+        titleCounts.get(title)!.push(node);
+      }
+
+      const duplicates = Array.from(titleCounts.entries()).filter(([_, nodes]) => nodes.length > 1);
+      expect(duplicates.length).toBeGreaterThan(0);
+      expect(duplicates.some(([title, nodes]) => title === 'Duplicate Heading' && nodes.length === 2)).toBe(true);
     });
   });
 });

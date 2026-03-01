@@ -4,7 +4,7 @@ import matter from 'gray-matter';
 import { loadConfig, resolveSchema } from './config';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
 import { resolveParentLinks } from './resolve-links';
-import { loadHierarchy } from './schema';
+import { loadMetadata } from './schema';
 import type { SpaceOnAPageReadResult } from './types';
 
 export function readSpaceOnAPage(filePath: string, schemaPath?: string): SpaceOnAPageReadResult {
@@ -19,16 +19,16 @@ export function readSpaceOnAPage(filePath: string, schemaPath?: string): SpaceOn
     );
   }
 
-  // Resolve schema and load hierarchy for depth-based type inference
   const config = loadConfig();
   const resolvedSchemaPath = resolveSchema(schemaPath, config);
-  const hierarchyArray = loadHierarchy(resolvedSchemaPath);
+  const { hierarchy, aliases } = loadMetadata(resolvedSchemaPath);
 
   const pageTitle = basename(filePath, '.md');
   const { nodes, diagnostics } = extractEmbeddedNodes(body, {
     pageTitle,
     pageType: 'space_on_a_page',
-    hierarchy: hierarchyArray,
+    hierarchy,
+    aliases,
   });
   resolveParentLinks(nodes);
   return { nodes, diagnostics };

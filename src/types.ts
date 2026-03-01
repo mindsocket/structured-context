@@ -7,6 +7,8 @@ export interface SpaceNode {
   linkTargets: string[];
   /** Resolved canonical parent title (derived from schemaData.parent + linkTargets). */
   resolvedParent?: string;
+  /** Resolved canonical type (after applying type aliases from schema metadata). */
+  resolvedType: string;
 }
 
 export interface SpaceOnAPageDiagnostics {
@@ -25,4 +27,50 @@ export interface SpaceDirectoryReadResult {
   nodes: SpaceNode[];
   skipped: string[]; // files with no frontmatter
   nonSpace: string[]; // files with frontmatter but no type field
+}
+
+/** Rule categories for organizing executable validation rules */
+export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-practice';
+
+/** A single executable rule with JSONata check expression */
+export interface Rule {
+  id: string;
+  description: string;
+  /** JSONata expression that evaluates to boolean (true = pass) */
+  check: string;
+  /** If set, only applies to nodes of this resolved type */
+  type?: string;
+  /** If 'global', evaluated once against the full node set rather than per node */
+  scope?: 'global';
+}
+
+export interface RulesMetadata {
+  validation?: Rule[];
+  coherence?: Rule[];
+  workflow?: Rule[];
+  bestPractice?: Rule[];
+}
+
+export interface RuleViolation {
+  file: string;
+  ruleId: string;
+  category: RuleCategory;
+  description: string;
+}
+
+export interface HierarchyViolation {
+  file: string;
+  nodeType: string;
+  nodeTitle: string;
+  parentType: string;
+  parentTitle: string;
+  description: string;
+}
+
+export interface SchemaMetadata {
+  hierarchy: string[];
+  aliases?: Record<string, string>;
+  allowSkipLevels?: boolean;
+  allowSelfRef?: string[];
+  rules?: RulesMetadata;
 }
