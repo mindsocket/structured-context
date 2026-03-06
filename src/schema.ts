@@ -1,22 +1,28 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { AnySchemaObject, SchemaObject } from 'ajv';
 import Ajv, { type ValidateFunction } from 'ajv';
 import { parse } from 'jsonc-parser';
 import type { RulesMetadata, SchemaMetadata } from './types';
 
+const packageDir = dirname(fileURLToPath(import.meta.url));
 /** Parsed JSON schema object — always a plain object (never a boolean schema). */
 type JsonSchemaObject = Record<string, unknown>;
 
 /**
  * Build a registry of all schemas in the given directory, keyed by $id.
- * Used both by createValidator (AJV) and loadSchema (template-sync bundling).
+ * Only loads "partial" schemas (starting with _) and an optional target file.
  */
-export function buildSchemaRegistry(dir: string): Map<string, JsonSchemaObject> {
+export function buildSchemaRegistry(dir: string, targetFile?: string): Map<string, JsonSchemaObject> {
   const registry = new Map<string, JsonSchemaObject>();
   if (!existsSync(dir)) return registry;
   for (const file of readdirSync(dir)) {
     if (!file.endsWith('.json')) continue;
+    const isPartial = file.startsWith('_');
+    const isTarget = targetFile !== undefined && file === targetFile;
+    if (!isPartial && !isTarget) continue;
+
     const schema = parse(readFileSync(join(dir, file), 'utf-8')) as JsonSchemaObject;
     if (typeof schema.$id === 'string') registry.set(schema.$id, schema);
   }
@@ -33,7 +39,7 @@ export function buildSchemaRegistry(dir: string): Map<string, JsonSchemaObject> 
 export function loadSchema(schemaPath: string): JsonSchemaObject {
   const absPath = resolve(schemaPath);
   const schema = parse(readFileSync(absPath, 'utf-8')) as JsonSchemaObject;
-  const registry = buildSchemaRegistry(dirname(absPath));
+  const registry = buildSchemaRegistry(dirname(absPath), basename(absPath));
 
   // Collect $defs from any externally-referenced schemas
   const mergedDefs: Record<string, unknown> = {};
@@ -64,15 +70,43 @@ export function loadSchema(schemaPath: string): JsonSchemaObject {
  * Compile a schema into an AJV ValidateFunction using the registry approach.
  * All peer schemas in the same directory are registered so AJV can resolve
  * cross-file $refs transitively.
+ * Also registers schemas from the default schemas/ directory as a fallback.
  */
 export function createValidator(schemaPath: string): ValidateFunction {
   const absPath = resolve(schemaPath);
-  const targetSchema = parse(readFileSync(absPath, 'utf-8'));
+  const targetSchema = parse(readFileSync(absPath, 'utf-8')) as JsonSchemaObject;
+  const targetFile = basename(absPath);
+  const targetDir = dirname(absPath);
   const ajv = new Ajv();
-  for (const [id, peerSchema] of buildSchemaRegistry(dirname(absPath))) {
-    if (id === targetSchema.$id) continue; // already compiled below
-    ajv.addSchema(peerSchema);
+
+  const registry = new Map<string, JsonSchemaObject>();
+
+  // 1. Register schemas from the default schemas/ directory (fallback)
+  const defaultSchemasDir = join(packageDir, '..', 'schemas');
+  if (existsSync(defaultSchemasDir)) {
+    for (const [id, schema] of buildSchemaRegistry(defaultSchemasDir)) {
+      registry.set(id, schema);
+    }
   }
+
+  // 2. Register peer schemas from the target schema's directory (priority)
+  if (targetDir !== defaultSchemasDir) {
+    for (const [id, schema] of buildSchemaRegistry(targetDir, targetFile)) {
+      if (registry.has(id)) {
+        throw new Error(
+          `Schema collision: partial schema in ${targetDir} uses $id "${id}" which is reserved by a default schema. Please use a unique $id for local partials.`,
+        );
+      }
+      registry.set(id, schema);
+    }
+  }
+
+  // Register all except target schema (AJV compiles targetSchema explicitly)
+  for (const [id, schema] of registry) {
+    if (id === targetSchema.$id) continue;
+    ajv.addSchema(schema);
+  }
+
   return ajv.compile(targetSchema);
 }
 

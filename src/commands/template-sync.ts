@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { basename, dirname } from 'node:path';
 import type { AnySchemaObject, SchemaObject } from 'ajv';
 import { glob } from 'glob';
 import matter from 'gray-matter';
@@ -11,6 +11,7 @@ interface TypeVariant {
   optional: string[];
   properties: Record<string, AnySchemaObject>;
   example: Record<string, string | number | boolean>;
+  description: string | undefined;
 }
 
 // Fields derived from the filesystem — present at validation time but not written to frontmatter
@@ -68,6 +69,7 @@ function commentedHint(
         type?: string;
         minimum?: number;
         maximum?: number;
+        description?: string;
       }
     | undefined;
   if (defTyped?.enum) {
@@ -79,7 +81,8 @@ function commentedHint(
   } else {
     value = '""';
   }
-  return `# ${fieldName}: ${value}`;
+  const description = defTyped?.description;
+  return `# ${fieldName}: ${value}${description ? `  # ${description}` : ''}`;
 }
 
 function getTypeVariants(schema: SchemaObject, registry: Map<string, AnySchemaObject>): Map<string, TypeVariant> {
@@ -97,12 +100,14 @@ function getTypeVariants(schema: SchemaObject, registry: Map<string, AnySchemaOb
     );
     const optional = Object.keys(allProperties).filter((k) => !required.includes(k));
     const example = variant.examples[0] as Record<string, string | number | boolean>;
+    const description = (variant as { description?: string }).description;
 
     map.set(typeName, {
       required,
       optional,
       properties: allProperties,
       example,
+      description,
     });
   }
   return map;
@@ -113,20 +118,20 @@ export async function templateSync(templateDir: string, options: { schema: strin
 
   // Build schema registry for cross-file $ref resolution
   const schemaDir = dirname(options.schema);
-  const registry = buildSchemaRegistry(schemaDir);
+  const registry = buildSchemaRegistry(schemaDir, basename(options.schema));
 
   const typeVariants = getTypeVariants(schema, registry);
 
-  const files = await glob('OST - *.md', { cwd: templateDir, absolute: true });
+  const files = await glob('*.md', { cwd: templateDir, absolute: true });
   if (files.length === 0) {
-    console.log(`No OST template files found in ${templateDir}`);
+    console.log(`No template files found in ${templateDir}`);
     return;
   }
 
   const dryRun = options.dryRun ?? false;
   let filesModified = 0;
 
-  console.log(`\n🔄 OST Template Sync`);
+  console.log(`\n🔄 Template Sync`);
   console.log('━'.repeat(50));
   if (dryRun) console.log('(dry run — no files will be modified)\n');
 
@@ -154,11 +159,29 @@ export async function templateSync(templateDir: string, options: { schema: strin
       continue;
     }
 
-    const { example, optional, properties } = variant;
+    const { example, optional, properties, description } = variant;
     const exampleKeys = new Set(Object.keys(example));
 
     const exampleWithPlaceholders = withEnumPlaceholders(example, properties, schema, registry);
-    const frontmatterYaml = (yaml.dump(exampleWithPlaceholders, { lineWidth: -1 }) as string).trim();
+    let frontmatterYaml = (yaml.dump(exampleWithPlaceholders, { lineWidth: -1 }) as string).trim();
+
+    // Append property descriptions as comments
+    const lines = frontmatterYaml.split('\n');
+    const commentedLines = lines.map((line) => {
+      const match = line.match(/^([^:]+):/);
+      if (match) {
+        const key = match[1].trim();
+        const propDef = resolveRef(properties[key], schema, registry);
+        const propDescription = (propDef as { description?: string })?.description;
+        if (propDescription) {
+          return `${line}  # ${propDescription}`;
+        }
+      }
+      return line;
+    });
+
+    frontmatterYaml = `# Template for a \`${nodeType}\` from schema: ${schema.title}\n${description ? `# ${description}\n` : ''}${commentedLines.join('\n')}`;
+
     const hints = optional
       .filter((field) => !exampleKeys.has(field))
       .map((field) => commentedHint(field, properties[field], schema, registry));
@@ -171,6 +194,30 @@ export async function templateSync(templateDir: string, options: { schema: strin
       console.log(`✓  ${filename}`);
     } else {
       console.log(`📝 ${filename}: updated`);
+      if (dryRun) {
+        // Simple line-based diff for preview
+        const oldLines = content.split('\n');
+        const newLines = newContent.split('\n');
+        const maxLines = Math.max(oldLines.length, newLines.length);
+        for (let i = 0; i < maxLines; i++) {
+          const isFmEnd = oldLines[i] === '---' && i > 0;
+          if (oldLines[i] !== newLines[i]) {
+            if (i < oldLines.length) console.log(`\x1b[31m- ${oldLines[i] || ''}\x1b[0m`);
+            if (i < newLines.length) console.log(`\x1b[32m+ ${newLines[i] || ''}\x1b[0m`);
+          } else if (i < 15) {
+             // Show some context but not too much
+             console.log(`  ${oldLines[i]}`);
+          }
+          if (isFmEnd) {
+            if (i + 1 < maxLines && oldLines[i+1] !== newLines[i+1]) {
+               // continue if next line is different
+            } else {
+               break;
+            }
+          }
+        }
+        console.log('');
+      }
       if (!dryRun) {
         writeFileSync(file, newContent);
         filesModified++;

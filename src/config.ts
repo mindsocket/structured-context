@@ -16,6 +16,7 @@ const CONFIG_SCHEMA = {
           alias: { type: 'string', pattern: '^[a-z0-9_-]+$' },
           path: { type: 'string' },
           schema: { type: 'string' },
+          templateDir: { type: 'string' },
           miroBoardId: { type: 'string' },
           miroFrameId: { type: 'string' },
         },
@@ -34,6 +35,7 @@ export interface SpaceConfig {
   alias: string;
   path: string;
   schema?: string;
+  templateDir?: string;
   miroBoardId?: string;
   miroFrameId?: string;
 }
@@ -100,9 +102,9 @@ export function resolveSchema(cliArg: string | undefined, config: Config, space?
   return cliArg ?? space?.schema ?? config.schema ?? join(packageDir, '..', 'schemas', 'general.json');
 }
 
-/** Resolve template dir: CLI arg > config entry > error. */
-export function resolveTemplateDir(cliArg: string | undefined, config: Config): string {
-  const dir = cliArg ?? config.templateDir;
+/** Resolve template dir: CLI arg > space-level config > global config > error. */
+export function resolveTemplateDir(cliArg: string | undefined, config: Config, space?: SpaceConfig): string {
+  const dir = cliArg ?? space?.templateDir ?? config.templateDir;
   if (!dir) {
     console.error('Error: template-dir is required (specify as argument or set templateDir in config.json)');
     process.exit(1);

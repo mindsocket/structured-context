@@ -1,19 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "ost-tools://_shared",
-  "description": "Shared definitions referenced by OST schema files",
+  "$id": "ost-tools://_ost_tools_base",
+  "description": "Shared definitions for OST tools schemas",
   "$defs": {
     "title": {
       "type": "string",
-      "description": "Title of the node (derived from filename at validation time)"
+      "description": "Title of the node"
     },
     "content": {
       "type": "string",
-      "description": "Body content of the document (excluding frontmatter)"
+      "description": "Body content"
     },
     "summary": {
       "type": "string",
-      "description": "Short summary of the node"
+      "description": "Short summary"
     },
     "status": {
       "type": "string",

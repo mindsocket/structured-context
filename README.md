@@ -32,9 +32,14 @@ ost-tools validate ProductX
 
 ### Schemas
 
-A JSON schema file defines the set of entities a space adheres to, allowing customisation and extension.
+Schemas define the structure and rules for the entities in a space, allowing customisation and extension to different models.
 
-A single schema (`general`) is included, combining a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption.
+Two schemas (`general` and `strict_ost`) are included. The general schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely.
+
+**Customizing Schemas:**
+- **Partial schemas**: Files starting with an underscore (like `_ost_tools_base.json`) are loaded and used to resolve references (using `$ref`).
+- **Loading priority**: Partial schemas are loaded from both the default schema directory and the directory of your specified target schema.
+- **Unique IDs**: To encourage clean namespacing, local partial schemas **must** have unique `$id`s that do not collide with the default schemas. If a collision is detected, validation will fail with an error.
 
 Schema resolution order: CLI `--schema` > space config `schema` > global config `schema` > bundled `schemas/general.json`
 

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "ost-tools://_strict",
+  "$id": "ost-tools://_ost_strict",
   // Shared definitions for the strict OST (Opportunity Solution Tree) schema.
   // This schema follows Teresa Torres' canonical 4-level structure as described in
   // "Continuous Discovery Habits" (2021) and at producttalk.org.

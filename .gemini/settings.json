@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "AfterAgent": [
+      {
+        "hooks": [
+          {
+            "name": "lint-and-test",
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/.agents/hooks/lint-and-test.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

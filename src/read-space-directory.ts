@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { glob } from 'glob';
 import matter from 'gray-matter';
 import { loadConfig, resolveSchema } from './config';
@@ -10,18 +10,30 @@ import type { SpaceDirectoryReadResult, SpaceNode } from './types';
 
 export async function readSpaceDirectory(
   directory: string,
-  options?: { includeOnAPageFiles?: boolean; schemaPath?: string },
+  options?: { includeOnAPageFiles?: boolean; schemaPath?: string; templateDir?: string },
 ): Promise<SpaceDirectoryReadResult> {
+  const absoluteDirectory = resolve(directory);
+  const config = loadConfig();
+  const space = config.spaces.find((s) => resolve(s.path) === absoluteDirectory);
+
+  const resolvedSchemaPath = resolveSchema(options?.schemaPath, config, space);
+  const { hierarchy, aliases } = loadMetadata(resolvedSchemaPath);
+
+  const templateDir = options?.templateDir ?? space?.templateDir ?? config.templateDir;
+  const absoluteTemplateDir = templateDir ? resolve(templateDir) : undefined;
+
   const files = await glob('**/*.md', { cwd: directory, absolute: false });
   const nodes: SpaceNode[] = [];
   const skipped: string[] = [];
   const nonSpace: string[] = [];
 
-  const config = loadConfig();
-  const resolvedSchemaPath = resolveSchema(options?.schemaPath, config);
-  const { hierarchy, aliases } = loadMetadata(resolvedSchemaPath);
-
   for (const file of files) {
+    const absoluteFilePath = resolve(directory, file);
+
+    if (absoluteTemplateDir && absoluteFilePath.startsWith(absoluteTemplateDir)) {
+      continue;
+    }
+
     const content = readFileSync(join(directory, file), 'utf-8');
     const parsed = matter(content);
 

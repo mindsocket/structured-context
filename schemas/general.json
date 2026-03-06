@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "ost-tools://general",
-  "title": "Opportunity Solution Tree Node",
+  "title": "Strategy and opportunity ladder",
   "description": "Validates frontmatter for space node files",
   "$defs": {
     "_metadata": {
@@ -17,7 +17,7 @@
   "oneOf": [
     {
       "type": "object",
-      "allOf": [{ "$ref": "ost-tools://_shared#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "dashboard" }
       },
@@ -26,7 +26,7 @@
     },
     {
       "type": "object",
-      "allOf": [{ "$ref": "ost-tools://_shared#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "enum": ["ost_on_a_page", "space_on_a_page"] }
       },
@@ -36,8 +36,8 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_shared#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_shared#/$defs/ostEntityProps" }
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "vision" }
@@ -55,12 +55,12 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_shared#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_shared#/$defs/ostEntityProps" }
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "mission" },
-        "parent": { "$ref": "ost-tools://_shared#/$defs/wikilink" }
+        "parent": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" }
       },
       "required": ["type"],
       "additionalProperties": true,
@@ -75,13 +75,13 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_shared#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_shared#/$defs/ostEntityProps" }
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "enum": ["goal", "outcome"] },
-        "parent": { "$ref": "ost-tools://_shared#/$defs/wikilink" },
-        "priority": { "$ref": "ost-tools://_shared#/$defs/priority" }
+        "parent": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+        "priority": { "$ref": "ost-tools://_ost_tools_base#/$defs/priority" }
       },
       "required": ["type"],
       "additionalProperties": true,
@@ -97,16 +97,16 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_shared#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_shared#/$defs/ostEntityProps" }
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "opportunity" },
-        "parent": { "$ref": "ost-tools://_shared#/$defs/wikilink" },
-        "priority": { "$ref": "ost-tools://_shared#/$defs/priority" },
-        "impact": { "$ref": "ost-tools://_shared#/$defs/assessment" },
-        "feasibility": { "$ref": "ost-tools://_shared#/$defs/assessment" },
-        "resources": { "$ref": "ost-tools://_shared#/$defs/assessment" },
+        "parent": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+        "priority": { "$ref": "ost-tools://_ost_tools_base#/$defs/priority" },
+        "impact": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
+        "feasibility": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
+        "resources": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
         "timeline": {
           "type": "string",
           "description": "Timeline estimate (e.g., S-M, M-L)"
@@ -130,19 +130,19 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_shared#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_shared#/$defs/ostEntityProps" }
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "solution" },
         "parent": {
-          "$ref": "ost-tools://_shared#/$defs/wikilink",
+          "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink",
           "description": "Parent opportunity or solution (wikilink)"
         },
-        "priority": { "$ref": "ost-tools://_shared#/$defs/priority" },
-        "impact": { "$ref": "ost-tools://_shared#/$defs/assessment" },
-        "feasibility": { "$ref": "ost-tools://_shared#/$defs/assessment" },
-        "resources": { "$ref": "ost-tools://_shared#/$defs/assessment" },
+        "priority": { "$ref": "ost-tools://_ost_tools_base#/$defs/priority" },
+        "impact": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
+        "feasibility": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
+        "resources": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
         "timeline": {
           "type": "string",
           "description": "Timeline estimate (e.g., S-M, M-L)"
@@ -166,13 +166,13 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_shared#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_shared#/$defs/ostEntityProps" }
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "enum": ["experiment", "assumption_test", "test"] },
         "parent": {
-          "$ref": "ost-tools://_shared#/$defs/wikilink",
+          "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink",
           "description": "Parent solution (wikilink)"
         }
       },

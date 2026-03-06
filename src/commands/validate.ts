@@ -21,7 +21,7 @@ interface ValidationResult {
   nonSpace: string[];
 }
 
-export async function validate(path: string, options: { schema: string }): Promise<void> {
+export async function validate(path: string, options: { schema: string; templateDir?: string }): Promise<void> {
   const validateFunc = createValidator(options.schema);
 
   let nodes: SpaceNode[];
@@ -31,7 +31,14 @@ export async function validate(path: string, options: { schema: string }): Promi
   if (statSync(path).isFile()) {
     ({ nodes } = readSpaceOnAPage(path, options.schema));
   } else {
-    ({ nodes, skipped, nonSpace: nonSpace } = await readSpaceDirectory(path, { schemaPath: options.schema }));
+    ({
+      nodes,
+      skipped,
+      nonSpace: nonSpace,
+    } = await readSpaceDirectory(path, {
+      schemaPath: options.schema,
+      templateDir: options.templateDir,
+    }));
   }
 
   const result: ValidationResult = {

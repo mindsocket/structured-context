@@ -26,6 +26,7 @@ program
     validate(space?.path ?? resolveSpacePath(spaceOrDir, config), {
       ...options,
       schema: resolveSchema(options.schema, config, space),
+      templateDir: space?.templateDir ?? config.templateDir,
     });
   });
 
@@ -41,6 +42,7 @@ program
     diagram(space?.path ?? resolveSpacePath(spaceOrDir, config), {
       ...options,
       schema: resolveSchema(options.schema, config, space),
+      templateDir: space?.templateDir ?? config.templateDir,
     });
   });
 
@@ -70,12 +72,18 @@ program
   .description('Sync template frontmatter with schema examples')
   .argument('[template-dir]', 'Directory containing template markdown files')
   .option('-s, --schema <path>', 'Path to JSON schema file')
+  .option('--space <alias>', 'Space alias to use for template-dir and schema')
   .option('--dry-run', 'Preview changes without writing files')
   .action((templateDir, options) => {
     const config = loadConfig();
-    templateSync(resolveTemplateDir(templateDir, config), {
+    const space = options.space ? config.spaces.find((s) => s.alias === options.space) : undefined;
+    if (options.space && !space) {
+      console.error(`Error: Unknown space "${options.space}"`);
+      process.exit(1);
+    }
+    templateSync(resolveTemplateDir(templateDir, config, space), {
       ...options,
-      schema: resolveSchema(options.schema, config),
+      schema: resolveSchema(options.schema, config, space),
     });
   });
 
