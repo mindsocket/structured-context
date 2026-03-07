@@ -31,10 +31,9 @@ export function buildSchemaRegistry(dir: string, targetFile?: string): Map<strin
 
 /**
  * Load a schema as a self-contained object for direct traversal (e.g. template-sync).
- * External $refs are resolved against peer schemas in the same directory: their $defs
+ * External $refs are resolved against peer schemas: their $defs
  * are merged in and the refs rewritten to internal #/$defs/... form.
- * Note: only one level of ref resolution is performed here. Full cross-schema traversal
- * will be addressed when template-sync is updated in #15.
+ * Note: only one level of ref resolution is performed here currently.
  */
 export function loadSchema(schemaPath: string): JsonSchemaObject {
   const absPath = resolve(schemaPath);

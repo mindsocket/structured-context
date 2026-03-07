@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { diagram } from './commands/diagram';
 import { dump } from './commands/dump';
@@ -8,12 +9,15 @@ import { validate } from './commands/validate';
 import { loadConfig, resolveSchema, resolveSpacePath, resolveTemplateSettings, setConfigPath } from './config';
 import { miroSync } from './miro/sync';
 
+const require = createRequire(import.meta.url);
+const packageJson = require('../package.json');
+
 const program = new Command();
 
 program
   .name('ost-tools')
   .description('Opportunity Solution Tree validation and diagram generation tool')
-  .version('0.1.0')
+  .version(packageJson.version)
   .option('--config <path>', 'Path to config file (overrides default config.json locations)');
 
 program.hook('preAction', () => {

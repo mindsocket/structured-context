@@ -96,10 +96,10 @@ function resolveRelativePaths(config: Config, configDir: string): Config {
   };
 }
 
-export function loadConfig(): Config {
-  const path = configPath();
+function _loadConfig(path: string): Config {
   if (!existsSync(path)) {
-    return { spaces: [] };
+    console.error(`Config file not found: ${path}`);
+    process.exit(1);
   }
 
   const config = JSON5.parse(readFileSync(path, 'utf-8'));
@@ -110,8 +110,13 @@ export function loadConfig(): Config {
     console.error('Invalid config.json:', validate.errors);
     process.exit(1);
   }
+  return config as unknown as Config;
+}
 
-  return resolveRelativePaths(config as unknown as Config, dirname(resolve(path)));
+export function loadConfig(): Config {
+  const path = configPath();
+  const config = _loadConfig(path);
+  return resolveRelativePaths(config, dirname(resolve(path)));
 }
 
 /** Resolve alias-or-path to a filesystem path. Falls through if not an alias. */
@@ -153,14 +158,11 @@ export function resolveTemplateSettings(config: Config, space?: SpaceConfig): Te
 /** Update a field on a space entry and persist config.json. */
 export function updateSpaceField(alias: string, field: keyof SpaceConfig, value: string): void {
   const path = configPath();
-  if (!existsSync(path)) {
-    throw new Error(`Config file not found: ${path}`);
-  }
-  const raw = JSON5.parse(readFileSync(path, 'utf-8'));
-  const space = raw.spaces?.find((s: SpaceConfig) => s.alias === alias);
+  const config = _loadConfig(path);
+  const space = config.spaces?.find((s: SpaceConfig) => s.alias === alias);
   if (!space) {
     throw new Error(`Unknown space config: "${alias}". Check config.json.`);
   }
   space[field] = value;
-  writeFileSync(path, `${JSON.stringify(raw, null, 2)}\n`);
+  writeFileSync(path, `${JSON5.stringify(config, null, 2)}\n`);
 }
