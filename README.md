@@ -51,6 +51,10 @@ Two schemas (`general` and `strict_ost`) are included. The general schema combin
 
 Schema resolution order: CLI `--schema` > space config `schema` > global config `schema` > bundled `schemas/general.json`
 
+**⚠️ Security Notice: Only use schemas and configuration files from trusted sources.**
+
+The tool executes JSONata expressions defined in schema files for rule validation. A maliciously crafted schema could make JSONata access JavaScript's prototype chain and execute arbitrary code. Only use schemas you've created or reviewed personally.
+
 ## Usage
 
 ### Validate nodes

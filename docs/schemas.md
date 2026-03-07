@@ -96,7 +96,7 @@ Shared definitions specific to the strict OST schema:
 
 The `_metadata` block in `$defs` carries non-structural validation configuration. It is not a JSON Schema construct — the tooling reads it separately from the schema validator.
 
-```jsonc
+```json5
 {
   "$defs": {
     "_metadata": {
@@ -140,7 +140,7 @@ Referencing another schema file merges its `$defs` into the compiled schema, inc
 
 Example of referencing shared definitions:
 
-```jsonc
+```json5
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "ost-tools://my-custom-schema",
@@ -161,9 +161,9 @@ Example of referencing shared definitions:
 }
 ```
 
-## JSONC Format
+## JSON5 Format
 
-Schema files support JSONC (JSON with Comments) format, allowing inline documentation via `//` comments.
+Schema files support JSON5 format, allowing inline documentation via `//` comments and more flexible formatting.
 
 ## Further Reading
 
