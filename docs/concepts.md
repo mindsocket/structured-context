@@ -8,17 +8,45 @@ This document is the canonical reference for concepts and terminology used in th
 
 A **space** is a named collection of nodes organised according to a schema. Spaces are the primary unit of organisation — a space has a backing format (a `space directory` or a `space on a page` file) and may be registered in `config.json` with an alias for convenient access.
 
-```json
-{ "alias": "personal", "path": "/path/to/planning directory" }
-```
+```mermaid
+flowchart TD
+    subgraph dir [Space Directory]
+        direction TB
+        tp[Typed Page<br>type: goal in frontmatter]
+        en[Embedded Nodes<br>headings with type annotations<br>or anchor-implied types]
+        other[Other files<br>no frontmatter → skipped<br>no type field → nonSpace]
+        tp -->|body parsed for| en
+    end
 
-A space carries optional configuration alongside its alias: schema path, template directory, and integration settings (e.g. Miro board ID).
+    subgraph soap [Space on a Page]
+        direction TB
+        sf[Single .md file<br>type: space_on_a_page]
+        hn[Heading nodes<br>depth → type via hierarchy]
+        bn[Bullet nodes<br>explicit inline type annotation]
+        sf -->|headings| hn
+        sf -->|typed bullets| bn
+    end
+
+    pe[parse-embedded<br>extractEmbeddedNodes]
+    nodes[(Space Nodes)]
+
+    dir --> pe
+    soap --> pe
+    pe --> nodes
+```
 
 > The term "space" is preferred over "OST" or "tree" because the tooling is not limited to a specific framework, and future schemas may not be strictly tree-shaped.
 
 ### Space directory
 
 A **space directory** is a directory of markdown files that backs a `space`. Each file may represent a `space node`, embed child nodes in its body, or be an unrelated file that the tooling ignores.
+
+Each `.md` file with a `type` frontmatter field is a **typed page** — it represents one node. Its body is also scanned for **embedded nodes**:
+
+- **Heading with `[type:: x]`** or **anchor-implied type** (e.g. `## My Goal ^goal1`) → becomes a child node.
+- **Untyped headings** → update the depth stack for parent resolution but do not become nodes.
+- **Typed bullet items** (`- [type:: solution] Title`) → become child nodes at any nesting depth.
+- **YAML blocks** and **unbracketed `key:: value` paragraph fields** → merged into the current node's `schemaData`.
 
 Parsing behaviour for a space directory:
 - Files declaring a `space node` type via frontmatter are included as nodes.
@@ -36,6 +64,7 @@ A file in this format carries `type: space_on_a_page` in its frontmatter. It is 
 Key properties:
 - Heading hierarchy determines node depth and infers `space node` type (depth-based type inference).
 - Heading levels must not skip — each level must be exactly one deeper than its parent.
+- Typed bullets work the same as in typed pages.
 - A horizontal rule (`---`) terminates parsing; headings below it are ignored.
 
 #### Preamble

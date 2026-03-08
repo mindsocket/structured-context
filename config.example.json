@@ -6,6 +6,8 @@
       "schema": "/path/to/custom/schemas/my-projectx-schema.json",
       "miroBoardId": "iAmAB04rdId",
       "miroFrameId": "1234567789"
+      //       "templateDir": "../templates",
+      //       "templatePrefix": "prodx-"
     }
   ],
   "schema": "/path/to/custom/schemas/my-general-schema.json",

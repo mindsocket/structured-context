@@ -7,6 +7,15 @@ Tools for working with Opportunity Solution Tree structures and other product ma
 Get a list of commands: `bun run src/index.ts --help`
 Space aliases (e.g. `personal`, `politics`) are resolved via `config.json`.
 
+## Definition of done
+
+There are several places that need reviewing and updating with any new feature or change added:
+
+- README.md - documentation, also displayed with `ost-tools readme` command
+- AGENTS.md - this file
+- docs/* - includes architecture, concepts etc
+- skills/ost-skills/* - skills information for AI agents
+
 ## Project Context
 
 This project validates data in markdown files against a JSON schema representing product and strategy frameworks, including Opportunity Solution Trees.

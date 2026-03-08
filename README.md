@@ -16,6 +16,14 @@ Or use directly via `bunx`:
 bunx ost-tools validate <path>
 ```
 
+## Setup for AI Agents
+
+An AI agent skill is included with this project. To install it run:
+
+```
+npx skills add mindsocket/ost-tools
+```
+
 ## Concepts
 
 See [docs/concepts.md](docs/concepts.md) for the full terminology reference, including definitions of nodes, embedded nodes, spaces, schemas, rules, and more.
