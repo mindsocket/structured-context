@@ -54,7 +54,7 @@ Schemas define the structure and rules for the entities in a space, allowing cus
 
 Two schemas (`general` and `strict_ost`) are included. The general schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely.
 
-ost-tools schemas use a Draft-07-based metaschema (`$schema: "ost-tools://_ost_tools_schema_meta"`) that adds a top-level `$metadata` block.
+ost-tools schemas use a Draft-07-based metaschema that adds a top-level `$metadata` block.
 
 Schema hierarchy levels support DAG (multi-parent) relationships via configurable edge fields. Each level in `$metadata.hierarchy` can be a plain type name string (defaults to `parent` field on child nodes) or an object:
 

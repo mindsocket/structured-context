@@ -91,7 +91,8 @@ export function createValidator(schemaPath: string): ValidateFunction {
     valid: true,
     errors: false,
   });
-  ajv.addSchema(OST_TOOLS_DIALECT_META_SCHEMA as unknown as JsonSchemaObject);
+  const metaSchema = OST_TOOLS_DIALECT_META_SCHEMA as unknown as JsonSchemaObject;
+  ajv.addSchema(metaSchema, OST_TOOLS_SCHEMA_META_ID);
 
   const registry = buildFullRegistry(schemaPath);
 

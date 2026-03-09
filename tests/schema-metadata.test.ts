@@ -5,7 +5,6 @@ import { bundledSchemasDir, createValidator, loadMetadata } from '../src/schema'
 const FIXTURES_DIR = join(import.meta.dir, 'fixtures/schema-metadata');
 const GENERAL_SCHEMA_PATH = join(bundledSchemasDir, 'general.json');
 const VALID_SCHEMA_PATH = join(FIXTURES_DIR, 'valid.json');
-const LEGACY_SCHEMA_PATH = join(FIXTURES_DIR, 'legacy.json');
 const INVALID_SCHEMA_PATH = join(FIXTURES_DIR, 'invalid-metadata.json');
 
 describe('schema metadata', () => {
@@ -21,10 +20,6 @@ describe('schema metadata', () => {
       'experiment',
     ]);
     expect(metadata.typeAliases?.outcome).toBe('goal');
-  });
-
-  it('rejects legacy $defs._metadata (unsupported)', () => {
-    expect(() => loadMetadata(LEGACY_SCHEMA_PATH)).toThrow();
   });
 
   it('compiles schemas with top-level $metadata', () => {

@@ -14,7 +14,8 @@
   ],
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "bun run clean && tsc && cp -r schemas dist/ && chmod +x dist/index.js",
+    "generate:schema-meta": "bun run scripts/generate-schema-meta.ts",
+    "build": "bun run clean && bun run generate:schema-meta && tsc && cp -r schemas dist/ && chmod +x dist/index.js",
     "prepublishOnly": "bun run build",
     "validate": "bun run src/index.ts validate",
     "diagram": "bun run src/index.ts diagram",

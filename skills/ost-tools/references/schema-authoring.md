@@ -1,6 +1,6 @@
 # Schema Authoring Reference
 
-Schema files use an ost-tools-specific Draft-07-based schema dialect (`$schema: "ost-tools://_ost_tools_schema_meta"`) with a top-level `$metadata` block.
+Schema files use an ost-tools-specific Draft-07-based schema dialect with a top-level `$metadata` block.
 See `~/src/ost-tools/schemas/` for full examples (`general.json`, `strict_ost.json`).
 
 ## `$metadata` (top-level)

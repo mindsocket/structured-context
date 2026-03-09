@@ -1,6 +1,7 @@
 import type { FromSchema } from 'json-schema-to-ts';
 
-export const OST_TOOLS_SCHEMA_META_ID = 'ost-tools://_ost_tools_schema_meta';
+export const OST_TOOLS_SCHEMA_META_ID =
+  'https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json';
 
 const HIERARCHY_LEVEL_SCHEMA = {
   type: 'object',

@@ -94,7 +94,7 @@ Shared definitions specific to the strict OST schema:
 
 ## Schema Metadata
 
-ost-tools uses a Draft-07-based schema dialect (`$schema: "ost-tools://_ost_tools_schema_meta"`) that adds a top-level `$metadata` block for non-structural validation configuration.
+ost-tools uses a Draft-07-based schema dialect that adds a top-level `$metadata` block for non-structural validation configuration.
 
 ```json5
 {
@@ -170,7 +170,7 @@ Example of referencing shared definitions:
 
 ```json5
 {
-  "$schema": "ost-tools://_ost_tools_schema_meta",
+  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
   "$id": "ost-tools://my-custom-schema",
   "oneOf": [
     {

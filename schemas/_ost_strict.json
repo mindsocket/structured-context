@@ -1,5 +1,5 @@
 {
-  "$schema": "ost-tools://_ost_tools_schema_meta",
+  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
   "$id": "ost-tools://_ost_strict",
   // Shared definitions for the strict OST (Opportunity Solution Tree) schema.
   // This schema follows Teresa Torres' canonical 4-level structure as described in
