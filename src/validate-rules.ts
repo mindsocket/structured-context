@@ -1,16 +1,15 @@
 import { buildEvalContext, evaluateExpression } from './evaluate-rule';
-import type { MetadataContractRule, MetadataContractRuleGroups } from './metadata-contract';
-import type { RuleCategory, RuleViolation, SpaceNode } from './types';
+import type { RulesMetadata, RuleViolation, SpaceNode } from './types';
 
 /**
  * Validate nodes against rules metadata.
  * Returns a list of rule violations found.
  *
  * @param nodes - All nodes in the space
- * @param rules - Rules metadata with categorized rules
+ * @param rules - Rules metadata list
  * @returns Array of rule violations
  */
-export async function validateRules(nodes: SpaceNode[], rules: MetadataContractRuleGroups): Promise<RuleViolation[]> {
+export async function validateRules(nodes: SpaceNode[], rules: RulesMetadata): Promise<RuleViolation[]> {
   const violations: RuleViolation[] = [];
 
   // Build node index for efficient lookups
@@ -22,36 +21,31 @@ export async function validateRules(nodes: SpaceNode[], rules: MetadataContractR
     }
   }
 
-  // Collect all rules from each category
-  const allCategories: Array<{ category: RuleCategory; rules: MetadataContractRule[] }> = [
-    { category: 'validation', rules: rules.validation ?? [] },
-    { category: 'coherence', rules: rules.coherence ?? [] },
-    { category: 'workflow', rules: rules.workflow ?? [] },
-    { category: 'best-practice', rules: rules.bestPractice ?? [] },
-  ];
-
   // Evaluate each rule against applicable nodes
-  for (const { category, rules: categoryRules } of allCategories) {
-    for (const rule of categoryRules) {
-      if (rule.scope === 'global') {
-        // Global rules are evaluated once against the full node set.
-        // A sentinel node provides the evaluation context (nodes array is what matters).
-        const sentinel = nodes[0];
-        if (sentinel) {
-          const context = buildEvalContext(sentinel, nodes, nodeIndex);
-          const result = await evaluateExpression(rule.check, context);
-          if (result !== true) {
-            violations.push({ file: '', ruleId: rule.id, category, description: rule.description });
-          }
+  for (const rule of rules) {
+    if (rule.scope === 'global') {
+      // Global rules are evaluated once against the full node set.
+      // A sentinel node provides the evaluation context (nodes array is what matters).
+      const sentinel = nodes[0];
+      if (sentinel) {
+        const context = buildEvalContext(sentinel, nodes, nodeIndex);
+        const result = await evaluateExpression(rule.check, context);
+        if (result !== true) {
+          violations.push({ file: '', ruleId: rule.id, category: rule.category, description: rule.description });
         }
-      } else {
-        const targetNodes = rule.type ? nodes.filter((n) => n.resolvedType === rule.type) : nodes;
-        for (const node of targetNodes) {
-          const context = buildEvalContext(node, nodes, nodeIndex);
-          const result = await evaluateExpression(rule.check, context);
-          if (result !== true) {
-            violations.push({ file: node.label, ruleId: rule.id, category, description: rule.description });
-          }
+      }
+    } else {
+      const targetNodes = rule.type ? nodes.filter((n) => n.resolvedType === rule.type) : nodes;
+      for (const node of targetNodes) {
+        const context = buildEvalContext(node, nodes, nodeIndex);
+        const result = await evaluateExpression(rule.check, context);
+        if (result !== true) {
+          violations.push({
+            file: node.label,
+            ruleId: rule.id,
+            category: rule.category,
+            description: rule.description,
+          });
         }
       }
     }

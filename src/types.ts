@@ -1,4 +1,4 @@
-import type { MetadataContractRuleGroups } from "./metadata-contract";
+import type { MetadataContractRule, MetadataContractRules } from './metadata-contract';
 
 export interface HierarchyLevel {
   type: string;
@@ -42,6 +42,9 @@ export interface SpaceDirectoryReadResult {
 /** Rule categories for organizing executable validation rules */
 export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-practice';
 
+/** A single executable rule with JSONata check expression */
+export type Rule = MetadataContractRule;
+export type RulesMetadata = MetadataContractRules;
 
 export interface RuleViolation {
   file: string;
@@ -65,5 +68,5 @@ export interface SchemaMetadata {
     allowSkipLevels?: boolean;
   };
   typeAliases?: Record<string, string>;
-  rules?: MetadataContractRuleGroups;
+  rules?: RulesMetadata;
 }

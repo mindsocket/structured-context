@@ -19,18 +19,14 @@ const RULE_SCHEMA = {
   type: 'object',
   properties: {
     id: { type: 'string', minLength: 1 },
+    category: { enum: ['validation', 'coherence', 'workflow', 'best-practice'] },
     description: { type: 'string', minLength: 1 },
     check: { type: 'string', minLength: 1 },
     type: { type: 'string', minLength: 1 },
     scope: { enum: ['global'] },
   },
-  required: ['id', 'description', 'check'],
+  required: ['id', 'category', 'description', 'check'],
   additionalProperties: false,
-} as const;
-
-const RULE_LIST_SCHEMA = {
-  type: 'array',
-  items: RULE_SCHEMA,
 } as const;
 
 export const OST_TOOLS_METADATA_SCHEMA = {
@@ -56,14 +52,8 @@ export const OST_TOOLS_METADATA_SCHEMA = {
       additionalProperties: { type: 'string', minLength: 1 },
     },
     rules: {
-      type: 'object',
-      properties: {
-        validation: RULE_LIST_SCHEMA,
-        coherence: RULE_LIST_SCHEMA,
-        workflow: RULE_LIST_SCHEMA,
-        bestPractice: RULE_LIST_SCHEMA,
-      },
-      additionalProperties: false,
+      type: 'array',
+      items: RULE_SCHEMA,
     },
   },
   required: ['hierarchy'],
@@ -84,8 +74,5 @@ export const OST_TOOLS_DIALECT_META_SCHEMA = {
 
 export type MetadataContract = FromSchema<typeof OST_TOOLS_METADATA_SCHEMA>;
 export type MetadataContractHierarchy = MetadataContract['hierarchy'];
-export type MetadataContractRuleGroups = Exclude<MetadataContract['rules'], undefined>;
-export type MetadataContractRule = Exclude<
-  MetadataContractRuleGroups[keyof MetadataContractRuleGroups],
-  undefined
->[number];
+export type MetadataContractRules = Exclude<MetadataContract['rules'], undefined>;
+export type MetadataContractRule = MetadataContractRules[number];

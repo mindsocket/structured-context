@@ -68,28 +68,29 @@ describe('validate-rules', () => {
     ];
 
     describe('validation rules', () => {
-      const validationRules: RulesMetadata = {
-        validation: [
-          {
-            id: 'solution-parent-type',
-            description: 'Parent must be an opportunity',
-            type: 'solution',
-            check: '$exists(parent) = false or $exists(nodes[title=$$.current.parent and resolvedType="opportunity"])',
-          },
-          {
-            id: 'experiment-parent-type',
-            description: 'Parent must be a solution',
-            type: 'experiment',
-            check: '$exists(parent) and $exists(nodes[title=$$.current.parent and resolvedType="solution"])',
-          },
-          {
-            id: 'outcome-no-parent',
-            description: 'Outcome nodes should not have a parent',
-            type: 'outcome',
-            check: '$exists(parent) = false',
-          },
-        ],
-      };
+      const validationRules: RulesMetadata = [
+        {
+          id: 'solution-parent-type',
+          category: 'validation',
+          description: 'Parent must be an opportunity',
+          type: 'solution',
+          check: '$exists(parent) = false or $exists(nodes[title=$$.current.parent and resolvedType="opportunity"])',
+        },
+        {
+          id: 'experiment-parent-type',
+          category: 'validation',
+          description: 'Parent must be a solution',
+          type: 'experiment',
+          check: '$exists(parent) and $exists(nodes[title=$$.current.parent and resolvedType="solution"])',
+        },
+        {
+          id: 'outcome-no-parent',
+          category: 'validation',
+          description: 'Outcome nodes should not have a parent',
+          type: 'outcome',
+          check: '$exists(parent) = false',
+        },
+      ];
 
       it('passes validation when all rules are satisfied', async () => {
         const validNodes = mockNodes.filter((n) => n.label === 'solution.md');
@@ -141,16 +142,15 @@ describe('validate-rules', () => {
     });
 
     describe('best-practice rules', () => {
-      const bestPracticeRules: RulesMetadata = {
-        bestPractice: [
-          {
-            id: 'solution-quantity',
-            description: 'Explore multiple candidate solutions for the target opportunity',
-            type: 'opportunity',
-            check: '$count(nodes[resolvedParentTitle=$$.current.title and resolvedType="solution"]) >= 3',
-          },
-        ],
-      };
+      const bestPracticeRules: RulesMetadata = [
+        {
+          id: 'solution-quantity',
+          category: 'best-practice',
+          description: 'Explore multiple candidate solutions for the target opportunity',
+          type: 'opportunity',
+          check: '$count(nodes[resolvedParentTitle=$$.current.title and resolvedType="solution"]) >= 3',
+        },
+      ];
 
       it('passes when opportunity has enough solutions', async () => {
         const opportunityNode: SpaceNode = {
@@ -217,21 +217,21 @@ describe('validate-rules', () => {
     });
 
     describe('workflow rules', () => {
-      const workflowRules: RulesMetadata = {
-        workflow: [
-          {
-            id: 'active-outcome-count',
-            description: 'Only one outcome should be active at a time',
-            scope: 'global',
-            check: '$count(nodes[resolvedType="outcome" and status="active"]) <= 1',
-          },
-          {
-            id: 'active-node-parent-active',
-            description: "An active node's parent should also be active",
-            check: "current.status != 'active' or $exists(parent) = false or parent.status = 'active'",
-          },
-        ],
-      };
+      const workflowRules: RulesMetadata = [
+        {
+          id: 'active-outcome-count',
+          category: 'workflow',
+          description: 'Only one outcome should be active at a time',
+          scope: 'global',
+          check: '$count(nodes[resolvedType="outcome" and status="active"]) <= 1',
+        },
+        {
+          id: 'active-node-parent-active',
+          category: 'workflow',
+          description: "An active node's parent should also be active",
+          check: "current.status != 'active' or $exists(parent) = false or parent.status = 'active'",
+        },
+      ];
 
       it('passes when only one outcome is active', async () => {
         const nodes = mockNodes.filter((n) => n.schemaData.type === 'outcome');
@@ -263,9 +263,7 @@ describe('validate-rules', () => {
             resolvedType: 'solution',
           },
         ];
-        const activeCountViolations = await validateRules(multipleActiveOutcomes, {
-          workflow: [workflowRules.workflow![0]!],
-        });
+        const activeCountViolations = await validateRules(multipleActiveOutcomes, [workflowRules[0]!]);
         expect(activeCountViolations).toHaveLength(1); // global rule produces one violation regardless of node count
         expect(activeCountViolations[0]?.ruleId).toBe('active-outcome-count');
         expect(activeCountViolations[0]?.category).toBe('workflow');
@@ -293,7 +291,7 @@ describe('validate-rules', () => {
           resolvedParents: ['Outcome'],
           resolvedType: 'opportunity',
         };
-        const violations = await validateRules([parentNode, childNode], { workflow: [workflowRules.workflow![1]!] });
+        const violations = await validateRules([parentNode, childNode], [workflowRules[1]!]);
         expect(violations).toHaveLength(1);
         expect(violations[0]?.ruleId).toBe('active-node-parent-active');
         expect(violations[0]?.category).toBe('workflow');
@@ -321,30 +319,28 @@ describe('validate-rules', () => {
           resolvedParents: ['Outcome'],
           resolvedType: 'opportunity',
         };
-        const violations = await validateRules([parentNode, childNode], { workflow: [workflowRules.workflow![1]!] });
+        const violations = await validateRules([parentNode, childNode], [workflowRules[1]!]);
         expect(violations).toHaveLength(0);
       });
     });
 
     describe('mixed categories', () => {
-      const mixedRules: RulesMetadata = {
-        validation: [
-          {
-            id: 'solution-parent-type',
-            description: 'Parent must be an opportunity',
-            type: 'solution',
-            check: '$exists(parent) = false or $exists(nodes[title=$$.current.parent and resolvedType="opportunity"])',
-          },
-        ],
-        workflow: [
-          {
-            id: 'active-outcome-count',
-            description: 'Only one outcome should be active at a time',
-            scope: 'global',
-            check: '$count(nodes[resolvedType="outcome" and status="active"]) <= 1',
-          },
-        ],
-      };
+      const mixedRules: RulesMetadata = [
+        {
+          id: 'solution-parent-type',
+          category: 'validation',
+          description: 'Parent must be an opportunity',
+          type: 'solution',
+          check: '$exists(parent) = false or $exists(nodes[title=$$.current.parent and resolvedType="opportunity"])',
+        },
+        {
+          id: 'active-outcome-count',
+          category: 'workflow',
+          description: 'Only one outcome should be active at a time',
+          scope: 'global',
+          check: '$count(nodes[resolvedType="outcome" and status="active"]) <= 1',
+        },
+      ];
 
       it('collects violations from multiple categories', async () => {
         const nodes: SpaceNode[] = [

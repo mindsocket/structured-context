@@ -8,35 +8,35 @@
     "hierarchy": {
       "levels": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"]
     },
-    "rules": {
-      "workflow": [
-        {
-          "id": "active-outcome-count",
-          "description": "Only one outcome should be active at a time",
-          "scope": "global",
-          "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
-        },
-        {
-          "id": "active-opportunity-count",
-          "description": "Only one target opportunity should be active at a time",
-          "scope": "global",
-          "check": "$count(nodes[resolvedType='opportunity' and status='active']) <= 1"
-        },
-        {
-          "id": "active-node-parent-active",
-          "description": "An active node's parent should also be active",
-          "check": "current.status != 'active' or $exists(parent) = false or parent.status = 'active'"
-        }
-      ],
-      "bestPractice": [
-        {
-          "id": "solution-quantity",
-          "description": "Explore multiple candidate solutions (aim for at least three) for the target opportunity",
-          "type": "opportunity",
-          "check": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
-        }
-      ]
-    }
+    "rules": [
+      {
+        "id": "active-outcome-count",
+        "category": "workflow",
+        "description": "Only one outcome should be active at a time",
+        "scope": "global",
+        "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+      },
+      {
+        "id": "active-opportunity-count",
+        "category": "workflow",
+        "description": "Only one target opportunity should be active at a time",
+        "scope": "global",
+        "check": "$count(nodes[resolvedType='opportunity' and status='active']) <= 1"
+      },
+      {
+        "id": "active-node-parent-active",
+        "category": "workflow",
+        "description": "An active node's parent should also be active",
+        "check": "current.status != 'active' or $exists(parent) = false or parent.status = 'active'"
+      },
+      {
+        "id": "solution-quantity",
+        "category": "best-practice",
+        "description": "Explore multiple candidate solutions (aim for at least three) for the target opportunity",
+        "type": "opportunity",
+        "check": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
+      }
+    ]
   },
   "$defs": {
     "outcomeProps": {

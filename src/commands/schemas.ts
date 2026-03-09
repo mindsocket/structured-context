@@ -92,12 +92,18 @@ function showMetadata(metadata: SchemaMetadata): void {
   }
 
   if (metadata.rules) {
-    const groups = Object.entries(metadata.rules).filter(([, v]) => Array.isArray(v) && v.length > 0);
-    if (groups.length > 0) {
+    const groups = new Map<string, Array<{ id: string; description: string }>>();
+    for (const rule of metadata.rules) {
+      const rules = groups.get(rule.category) ?? [];
+      rules.push({ id: rule.id, description: rule.description });
+      groups.set(rule.category, rules);
+    }
+
+    if (groups.size > 0) {
       console.log('\nRules:');
       for (const [group, items] of groups) {
         console.log(`  ${group}:`);
-        for (const item of items as Record<string, unknown>[]) {
+        for (const item of items) {
           console.log(`    ${item.id}: ${item.description}`);
         }
       }

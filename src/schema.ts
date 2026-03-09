@@ -5,7 +5,7 @@ import Ajv, { type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
 import {
   type MetadataContract,
-  type MetadataContractRuleGroups,
+  type MetadataContractRules,
   OST_TOOLS_DIALECT_META_SCHEMA,
   OST_TOOLS_METADATA_SCHEMA,
   OST_TOOLS_SCHEMA_META_ID,
@@ -187,6 +187,6 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
       allowSkipLevels: metadata?.hierarchy?.allowSkipLevels,
     },
     typeAliases: (metadata?.aliases as Record<string, string>) ?? undefined,
-    rules: (metadata?.rules as MetadataContractRuleGroups) ?? undefined,
+    rules: (metadata?.rules as MetadataContractRules) ?? undefined,
   };
 }
