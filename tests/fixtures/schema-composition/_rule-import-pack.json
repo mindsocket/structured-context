@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
+  "$id": "ost-tools-test://schema-composition/imports/pack",
+  "$defs": {
+    "workflowRule": {
+      "id": "workflow-rule",
+      "category": "workflow",
+      "description": "Imported workflow rule",
+      "scope": "global",
+      "check": "true"
+    },
+    "coherenceRule": {
+      "id": "coherence-rule",
+      "category": "coherence",
+      "description": "Imported coherence rule",
+      "check": "true"
+    },
+    "ruleSet": {
+      "rules": [
+        { "$ref": "#/$defs/coherenceRule" },
+        {
+          "id": "validation-rule",
+          "category": "validation",
+          "description": "Imported validation rule",
+          "check": "true"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

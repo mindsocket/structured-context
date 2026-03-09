@@ -1,4 +1,4 @@
-import type { MetadataContractRule, MetadataContractRules } from './metadata-contract';
+import type { MetadataContractResolvedRules, MetadataContractRule } from './metadata-contract';
 
 export interface HierarchyLevel {
   type: string;
@@ -44,7 +44,7 @@ export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-pract
 
 /** A single executable rule with JSONata check expression */
 export type Rule = MetadataContractRule;
-export type RulesMetadata = MetadataContractRules;
+export type RulesMetadata = MetadataContractResolvedRules;
 
 export interface RuleViolation {
   file: string;

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
+  "$id": "ost-tools-test://schema-composition/imports/compile/root",
+  "$metadata": {
+    "hierarchy": {
+      "levels": ["goal"]
+    },
+    "rules": [{ "$ref": "ost-tools-test://schema-composition/imports/compile/pack#/$defs/workflowRule" }]
+  },
+  "type": "object"
+}
