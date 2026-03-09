@@ -26,6 +26,8 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 
 - config — JSON5 file with spaces registered
 - `schemas/` — Bundled default schema files (JSON5) using the ost-tools schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`) and are loaded automatically. Local partials in a schema's directory **must** have unique `$id`s.
+- `src/metadata-contract.ts` — Single source of truth for the `$metadata` contract (TS `as const` + inferred types)
+- `schemas/generated/_ost_tools_schema_meta.json` — Generated metaschema artifact (regenerate with `bun run generate:schema-meta`)
 
 ## Testing
 

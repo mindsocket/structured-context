@@ -1,33 +1,72 @@
 # Schema Authoring Reference
 
-Schema files use an ost-tools-specific Draft-07-based schema dialect with a top-level `$metadata` block.
-See `~/src/ost-tools/schemas/` for full examples (`general.json`, `strict_ost.json`).
+Schema files use a Draft-07-based dialect with top-level `$metadata`.
+See `~/src/ost-tools/schemas/` for examples (`general.json`, `strict_ost.json`, `_ost_strict.json`).
 
 ## `$metadata` (top-level)
 
-```json
+```json5
 "$metadata": {
-  "hierarchy": [
-    "outcome",
-    { "type": "opportunity" },
-    { "type": "solution", "field": "parent", "selfRef": true },
-    { "type": "assumption_test", "field": "assumptions", "fieldOn": "parent", "multiple": true } // Solutions list assumption_tests as an array of wikilinks under `assumptions:` field
-  ],
+  "hierarchy": {
+    "levels": [
+      "outcome",
+      { "type": "opportunity", "selfRef": true },
+      "solution",
+      "assumption_test"
+    ],
+    "allowSkipLevels": false
+  },
   "aliases": { "experiment": "assumption_test" },
-  "allowSkipLevels": false,
-  "rules": { "validation": [...], "coherence": [...], "workflow": [...], "bestPractice": [...] }
+  "rules": [
+    {
+      "id": "active-outcome-count",
+      "category": "workflow",
+      "description": "Only one outcome should be active at a time",
+      "scope": "global",
+      "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+    }
+  ]
 }
 ```
 
-`hierarchy` is required. Plain strings are shorthand — `"outcome"` equals `{ "type": "outcome", "field": "parent", "fieldOn": "child", "multiple": false, "selfRef": false }`. Types not in `hierarchy` can still be defined and related to other types — they just won't participate in hierarchy order checks.
+`hierarchy.levels` is required. String entries are shorthand for default edge settings:
+`{ "type": "...", "field": "parent", "fieldOn": "child", "multiple": false, "selfRef": false }`.
 
-Use object entries to configure non-default edges: `field` changes the frontmatter field name; `fieldOn: "parent"` means the parent node has the field pointing to children (reversed direction); `multiple: true` means the field is an array of wikilinks.
+Use object entries to override defaults:
+- `field` for relationship field name
+- `fieldOn: "parent"` when parent points to children
+- `multiple: true` for array wikilinks
+- `selfRef: true` for same-type parent links
 
-Rule categories are informational labels only; they don't change how rules are evaluated.
+Rules are a flat array. Categories are labels only (`validation`, `coherence`, `workflow`, `best-practice`).
+
+## Metadata composition semantics
+
+Across `$ref` graphs:
+- metadata providers are traversed DFS, root metadata applied last
+- exactly one provider may define `hierarchy`
+- `aliases` shallow-merge (later wins)
+- `rules` merge by `id`
+- duplicate rule IDs with different payloads error unless later rule sets `override: true`
+
+## Rule imports in `$metadata.rules`
+
+Rule entries may be inline or `$ref` imports:
+
+```json5
+"rules": [
+  { "$ref": "ost-tools://my-rule-pack#/$defs/workflowRule" },
+  { "$ref": "ost-tools://my-rule-pack#/$defs/ruleSet" }
+]
+```
+
+Import targets can be:
+- single rule object
+- object with `rules: []`
 
 ## `fieldMap` in config
 
-When content uses non-standard field names, remap them in the space config:
+When content uses different field names, remap in space config:
 
 ```json5
 {
@@ -41,72 +80,46 @@ When content uses non-standard field names, remap them in the space config:
 }
 ```
 
-The schema always uses the **target** names after remapping. If `record_type` → `type`,
-the schema uses `"type": { "const": "opportunity" }`. Document remapped fields in `$defs`
-descriptions so maintainers understand the mapping.
+Schema definitions use the mapped target names.
 
 ## Schema file notes
 
-Schema files support **JSON5** format — `//` comments and trailing commas are allowed.
-This is useful for documenting enum values and property intent inline.
-
-**Partial schemas:** files starting with `_` in the same directory as your schema are loaded
-automatically and their `$defs` are available for `$ref`. Use these for reusable definition
-groups. Their `$id` must be unique and must not collide with built-in partials
-(`_ost_tools_base`, `_ost_strict`) — ost-tools will error on collision.
+- Schema files are parsed as JSON5.
+- Files starting with `_` in the same directory are auto-loaded partials.
+- Local partial `$id` values must be unique and must not collide with bundled IDs.
 
 ## `$ref` patterns
 
-Run `bunx ost-tools schemas show _ost_tools_base.json` to see all available built-in definitions
-and their `$id` URIs. Key ones: `baseNodeProps` (title/content/tags), `wikilink` (`[[...]]` pattern).
+Use `bunx ost-tools schemas show _ost_tools_base.json` to inspect built-in defs.
 
-**Convention:** define any field that is or might become a structured concept in `$defs` and
-reference it with `$ref`, even if currently a plain string. Makes it easy to add an enum or
-constraints later without restructuring the `oneOf` entries.
+Convention:
+- define reusable concepts in `$defs`
+- reference via `$ref` from `oneOf` entries
 
-## Key `oneOf` entry patterns
+## `oneOf` authoring pattern
 
-```json
+```json5
 {
-  "not": { "required": ["parent"] },  // root types only: explicitly disallow parent field
-  "additionalProperties": true,        // always use — allows future fields without schema breakage
-  "examples": [{ "type": "my-type", "my_field": "example" }]  // used by template-sync
+  "type": "object",
+  "allOf": [
+    { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+    { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+  ],
+  "properties": {
+    "type": { "const": "opportunity" }
+  },
+  "required": ["type"],
+  "additionalProperties": true,
+  "examples": [{ "type": "opportunity", "status": "identified" }]
 }
 ```
 
 ## JSONata rules
 
-```json
-{
-  "id": "solution-has-assumption-test",
-  "description": "Each solution should have at least one assumption test",
-  "type": "solution",      // optional: only run on this resolvedType (after alias resolution)
-  "scope": "local",        // default: evaluate per-node
-  "check": "$count(nodes[resolvedParentTitle=$$.current.title and resolvedType='assumption_test']) >= 1"
-}
-```
+Each rule evaluation receives: `nodes`, `current`, `parent`, `parents`.
 
-Each rule receives: `nodes` (all space nodes), `current` (node being evaluated), `parent`
-(resolved parent node object — absent if none).
-
-**Non-obvious:** `parent` is the resolved node object; `current.parent` is the raw wikilink
-string. Use `$exists(parent)` to test whether a parent resolved.
-
-**Non-obvious:** inside a predicate `nodes[...]`, bare names refer to the predicate's item.
-Use `$$` to reach outer scope:
+Use `resolvedType` in comparisons (not raw `type`) so aliases are respected.
 
 ```jsonata
-// Count child solutions of the current node (an opportunity)
 $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
-```
-
-Always use `resolvedType` (not `type`) in comparisons — aliases are resolved to canonical names.
-
-### Common patterns
-
-```jsonata
-$exists(current.metric) = true                            // required field present
-$count(current.sources) >= 1                              // array non-empty
-$count(nodes[resolvedType='outcome' and status='active']) <= 1  // global aggregate (use scope: 'global')
-current.status != 'active' or $exists(parent) = false or parent.status = 'active'  // conditional
 ```

@@ -1,93 +1,120 @@
 # Executable Rules
 
-Rules are JSONata expressions embedded in a schema's `$metadata.rules` block. Each rule is evaluated against applicable nodes at validation time and must return `true` to pass. Rules encode checks that JSON Schema structural validation cannot express — cross-node consistency, quantitative thresholds, and qualitative best practices.
+Rules are JSONata expressions in schema metadata (`$metadata.rules`). They run after structural JSON Schema validation and let you enforce cross-node checks and workflow constraints.
 
-For how rules fit into the broader schema metadata, see [docs/schemas.md](schemas.md).
+For metadata structure and composition behavior, see [docs/schemas.md](schemas.md).
 
-## Rule Categories
+## Rule shape
 
-Rules are grouped into categories under `$metadata.rules`. Categories are informational — they determine how violations are labelled and grouped in output, but do not affect how the rule is evaluated. Use `scope` to control evaluation mode.
+Rules are a flat array.
 
-| Category | Purpose |
-|---|---|
-| `validation` | Structural correctness — a violation means the node is incorrect and should be fixed |
-| `coherence` | Cross-node checks — for flagging conflicts or contradictions between nodes |
-| `workflow` | Process discipline checks — for keeping the tree in an operational working state (active counts, status consistency) |
-| `bestPractice` | Advisory guidance — signals the space may benefit from additional work |
-
-## Rule Object Structure
+```json5
+"rules": [
+  {
+    "id": "active-outcome-count",
+    "category": "workflow",
+    "description": "Only one outcome should be active at a time",
+    "scope": "global",
+    "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+  }
+]
+```
 
 | Field | Required | Description |
 |---|---|---|
-| `id` | yes | Unique identifier (kebab-case) |
-| `description` | yes | Human-readable description of what the rule checks |
-| `check` | yes | JSONata expression that must evaluate to `true` to pass |
-| `type` | no | If set, only applies to nodes of this resolved type |
-| `scope` | no | Set to `'global'` to evaluate the rule once against the full node set |
+| `id` | yes | Unique rule identifier |
+| `category` | yes | `validation` \| `coherence` \| `workflow` \| `best-practice` |
+| `description` | yes | Human-readable rule intent |
+| `check` | yes | JSONata expression; must evaluate to `true` |
+| `type` | no | Restrict rule to nodes of this `resolvedType` |
+| `scope` | no | Use `"global"` to evaluate once for the whole space |
+| `override` | no | Only for merge conflicts: allows later duplicate `id` to replace earlier |
 
-Rules without `scope: 'global'` are evaluated once per applicable node (all nodes, or only those matching `type`). A global rule is evaluated once and produces at most one violation for the space — use this for aggregate checks, like counts, across all nodes.
+## Categories
 
-## JSONata Expression Context
+Categories label violations for reporting. They do not change expression execution semantics.
 
-Each expression is evaluated once per applicable node with the following input:
+| Category | Typical use |
+|---|---|
+| `validation` | Hard correctness constraints |
+| `coherence` | Cross-node consistency checks |
+| `workflow` | Process/operating-discipline checks |
+| `best-practice` | Advisory quality checks |
+
+## Evaluation model
+
+- Rules with `scope: "global"` run once.
+- Other rules run per applicable node.
+- If `type` is set, only nodes with matching `resolvedType` are evaluated.
+
+## Expression context
+
+Each evaluation receives:
 
 | Variable | Description |
 |---|---|
-| `nodes` | Array of all nodes in the space |
-| `current` | The node being evaluated |
-| `parent` | First resolved parent node — absent if no parent was resolved. Provided for convenience with single-parent relationships; use `parents` for DAG hierarchies. |
-| `parents` | Array of all resolved parent nodes — absent if no parents were resolved |
+| `nodes` | All nodes in the space |
+| `current` | Current node for this evaluation |
+| `parent` | First resolved parent node (if any) |
+| `parents` | All resolved parent nodes (if any) |
 
-Nodes include all node properties (title, type, status, parent wikilink, etc.) plus resolved fields: `resolvedType` (canonical type after type alias resolution), `resolvedParentTitle` (first parent title), and `resolvedParentTitles` (array of all parent titles).
+Useful resolved fields on nodes:
+- `resolvedType`
+- `resolvedParentTitle`
+- `resolvedParentTitles`
 
-Prefer `resolvedType` over `type` for type comparisons. When aliases are in use, `type` reflects the raw frontmatter value and may not match canonical names.
+Prefer `resolvedType` over raw `type` so aliases are handled correctly.
 
-### Referencing `current` inside predicates
+## Predicate scoping (`$$`)
 
-Inside a predicate (`nodes[...]`), bare names refer to fields on each item. Use `$$` (JSONata root) to reach outer-scope variables:
+Inside `nodes[...]`, bare names refer to each candidate node. Use `$$` to reference outer variables:
 
 ```jsonata
-// Count solutions whose parent title matches the current node's title
 $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
 ```
 
-### `parent` vs `current.parent`
+## Rule imports (`$ref`)
 
-- `parent` — the resolved parent **node object**; absent if the parent was not found in the space
-- `current.parent` — the raw wikilink string from frontmatter (e.g. `[[My Outcome]]`)
+`$metadata.rules` can include `$ref` entries that import:
+- one rule
+- a rule-set object with `rules: []`
 
-Use `$exists(parent)` to test whether the current node has a resolved parent:
+Example:
 
-```jsonata
-$exists(parent) = false   // true for root nodes
+```json5
+"rules": [
+  { "$ref": "ost-tools://rule-pack#/$defs/workflowRule" },
+  { "$ref": "ost-tools://rule-pack#/$defs/coreRuleSet" }
+]
 ```
 
-## Examples
+Imported entries are normalized into the same flat runtime list.
 
-```json
+## Merge and conflict behavior
+
+When metadata is composed across `$ref`:
+- Rules are merged by `id`.
+- Different payloads for the same `id` are an error by default.
+- A later rule may replace an earlier one only with `override: true`.
+
+Example override:
+
+```json5
 {
-  "workflow": [
-    {
-      "id": "active-outcome-count",
-      "description": "Only one outcome should be active at a time",
-      "scope": "global",
-      "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
-    },
-    {
-      "id": "active-node-parent-active",
-      "description": "An active node's parent should also be active",
-      "check": "current.status != 'active' or $exists(parent) = false or parent.status = 'active'"
-    }
-  ],
-  "bestPractice": [
-    {
-      "id": "solution-quantity",
-      "description": "Explore multiple candidate solutions (aim for at least three) for the target opportunity",
-      "type": "opportunity",
-      "check": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
-    }
-  ]
+  "id": "active-outcome-count",
+  "override": true,
+  "category": "workflow",
+  "description": "Require exactly one active outcome",
+  "scope": "global",
+  "check": "$count(nodes[resolvedType='outcome' and status='active']) = 1"
 }
 ```
 
-The first workflow rule uses `scope: 'global'` — evaluated once against the whole space, producing at most one violation. The second runs per-node with no `type` filter, checking every node. The best-practice rule only runs against `opportunity` nodes where status is `exploring` or `active`, using `resolvedParentTitle` to count child solutions.
+## Common patterns
+
+```jsonata
+$exists(current.metric) = true
+$count(current.sources) >= 1
+$count(nodes[resolvedType='outcome' and status='active']) <= 1
+current.status != 'active' or $exists(parent) = false or parent.status = 'active'
+```

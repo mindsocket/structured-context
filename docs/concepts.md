@@ -107,9 +107,9 @@ Typed pages are distinct from `space on a page` files: a typed page *is* a `spac
 
 A **schema** defines the valid structure for nodes in a `space`: the fields, types, constraints, and descriptive `rules` for each entity type. A space uses the default schema unless a custom one is declared in its config.
 
-The schema handles structural validation. It does not encode qualitative or cross-node checks — those are handled by `rules`, which may be embedded within the schema or applied separately.
+The schema handles structural validation. Cross-node and workflow checks are handled by executable `rules` defined in `$metadata.rules`.
 
-Schemas are designed to be composable: shared building blocks (common field sets, scoring models, constraint overlays) can be referenced across schema files, letting teams tailor a schema without forking their foundations. *(Schema composability is under development — see [GitHub issue #17](https://github.com/mindsocket/ost-tools/issues/17).)*
+Schemas are composable: structural definitions and metadata can be sourced across `$ref` graphs, then merged deterministically (root metadata applied last, single hierarchy provider, aliases merged, rules merged by `id` with explicit override semantics).
 
 ### Rules
 
@@ -142,7 +142,7 @@ See [docs/rules.md](rules.md) for the rules reference, including JSONata express
 
 ## Hierarchy
 
-The **hierarchy** is the ordered list of node types in a space, from root to leaf. It is defined in the schema's `$metadata.hierarchy` array and drives depth-based type inference (for `space on a page`), tree rendering, and hierarchy validation. The root type has no parent; every other type has parents in the level immediately above (unless `allowSkipLevels` is set).
+The **hierarchy** is the ordered list of node types in a space, from root to leaf. It is defined in the schema's `$metadata.hierarchy.levels` array and drives depth-based type inference (for `space on a page`), tree rendering, and hierarchy validation. The root type has no parent; every other type has parents in the level immediately above (unless `$metadata.hierarchy.allowSkipLevels` is set).
 
 Relationships between levels are modelled as a layered DAG: a non-root node may have zero parents (orphaned), one parent, or multiple parents. The `show` command renders this as an indented tree, marking repeated nodes with `(*)` where the subtree is already shown elsewhere.
 
@@ -155,6 +155,7 @@ A **hierarchy edge** is a directional link connecting a child node to one or mor
 | `field` | `"parent"` | The frontmatter field that holds the wikilink(s) |
 | `fieldOn` | `"child"` | `"parent"` means the field is on the **parent** node and points to children (reversed direction) |
 | `multiple` | `false` | When `true`, the field holds an **array** of wikilinks rather than a single one |
+| `selfRef` | `false` | When `true`, a node may have a parent of the same resolved type |
 
 Dangling wikilinks — edge field values that do not resolve to any known node — are reported as reference errors during validation.
 

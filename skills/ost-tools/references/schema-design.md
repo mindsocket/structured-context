@@ -25,20 +25,19 @@ Produce an inventory table:
 
 ## 2. Identify the hierarchy
 
-ost-tools works best with a declared `hierarchy` in `$metadata`. Identify the main chain of
+ost-tools works best with a declared `hierarchy` in `$metadata.hierarchy.levels`. Identify the main chain of
 parent→child relationships.
 
 - Which entity types are "root" concepts (no natural parent)? (e.g., `outcome`)
 - Which are subordinate to others, and via which field?
 - Does the content use a `parent` field, or a named relationship field (`opportunity`, `solution`, etc.)?
 
-**Note:** ost-tools' built-in hierarchy validation, `show`, and `diagram` commands rely on
-nodes using a `parent` field with wikilinks. If content uses named relationship fields
-(e.g. `opportunity: "[[Signup is too complex]]"`) instead of `parent`, declare the hierarchy in
-`$metadata` for structural context, but tree-based commands won't traverse those relationships
-automatically until ost-tools adds support for custom parent fields.
+**Note:** `show`, `diagram`, and hierarchy validation support custom relationship fields via
+per-level hierarchy edge configuration (`field`, `fieldOn`, `multiple`). If content uses a named
+relationship field (e.g. `opportunity: "[[Signup is too complex]]"`), encode that at the relevant
+level object in `$metadata.hierarchy.levels`.
 
-For a mixed graph (some hierarchical, some lateral entities), put the main chain in `hierarchy`
+For a mixed graph (some hierarchical, some lateral entities), put the main chain in `hierarchy.levels`
 and include lateral types in `oneOf` without hierarchy constraints.
 
 ## 3. Handle naming conflicts

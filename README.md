@@ -36,7 +36,7 @@ See [docs/concepts.md](docs/concepts.md) for the full terminology reference, inc
 2. `~/.config/ost-tools/config.json` (or `$XDG_CONFIG_HOME/ost-tools/config.json`)
 3. `./config.json` in the current working directory
 
-See `config.example.json` for the full structure. The config maps space namees to paths, with optional Miro integration fields and global defaults. Paths in config files are resolved relative to the config file. 
+See `config.example.json` for the full structure. The config maps space names to paths, with optional Miro integration fields and global defaults. Paths in config files are resolved relative to the config file.
 
 **Including spaces from other configs:** Use `includeSpacesFrom` to import space definitions from other config files. This is useful for aggregating spaces from multiple projects into a central config, reducing the need to specify `--config` on CLI commands. Duplicate space names are not allowed.
 
@@ -54,9 +54,30 @@ Schemas define the structure and rules for the entities in a space, allowing cus
 
 Two schemas (`general` and `strict_ost`) are included. The general schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely.
 
-ost-tools schemas use a Draft-07-based metaschema that adds a top-level `$metadata` block.
+ost-tools schemas use a Draft-07-based metaschema that adds a top-level `$metadata` block:
 
-Schema hierarchy levels support DAG (multi-parent) relationships via configurable edge fields. Each level in `$metadata.hierarchy` can be a plain type name string (defaults to `parent` field on child nodes) or an object:
+```json5
+"$metadata": {
+  "hierarchy": {
+    "levels": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"],
+    "allowSkipLevels": false
+  },
+  "aliases": { "experiment": "assumption_test" },
+  "rules": [
+    {
+      "id": "active-outcome-count",
+      "category": "workflow",
+      "description": "Only one outcome should be active at a time",
+      "scope": "global",
+      "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+    }
+  ]
+}
+```
+
+Rules are a flat array (`rules[]`) with per-rule `category`.
+
+Schema hierarchy levels support DAG (multi-parent) relationships via configurable edge fields. Each entry in `$metadata.hierarchy.levels` can be a plain type name string (defaults to `parent` field on child nodes) or an object:
 
 ```json
 { "type": "opportunity", "selfRef": true }
@@ -71,6 +92,12 @@ Schema hierarchy levels support DAG (multi-parent) relationships via configurabl
 | `fieldOn` | `"child"` | Which side holds the field: `"child"` (child points up) or `"parent"` (parent points down) |
 | `multiple` | `false` | Whether the field is an array of wikilinks (enables multi-parent DAG) |
 | `selfRef` | `false` | Whether a node of this type may reference a same-type parent |
+
+Metadata is composable across `$ref` graphs:
+- exactly one metadata provider may define `hierarchy`
+- `aliases` are shallow-merged (later wins)
+- `rules` merge by `id`; conflicts error unless the later rule sets `override: true`
+- `$metadata.rules` supports `$ref` imports for reusable rule packs
 
 **Customizing Schemas:**
 - **Partial schemas**: Files starting with an underscore (like `_ost_tools_base.json`) are loaded and used to resolve references (using `$ref`).

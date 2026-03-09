@@ -36,8 +36,8 @@ bunx ost-tools show <space>
 Prints a hierarchical tree of all nodes, indented by parent→child relationships. Useful for
 browsing structure, verifying parent links are correct, and spotting orphaned nodes.
 
-Requires nodes to use the `parent` field with wikilinks. Spaces that express relationships
-via other fields (e.g. `opportunity`, `solution`) will show a flat list.
+Uses hierarchy edge config from `$metadata.hierarchy.levels` (`field`, `fieldOn`, `multiple`).
+If those are misconfigured for your content, output will appear flatter than expected.
 
 ## dump
 
