@@ -29,7 +29,7 @@ See `~/src/ost-tools/schemas/` for examples (`general.json`, `strict_ost.json`, 
 }
 ```
 
-`hierarchy.levels` is required. String entries are shorthand for default edge settings:
+`hierarchy.levels` is required only when the schema needs hierarchy-based behavior (tree rendering, hierarchy validation, `space_on_a_page` parsing). String entries are shorthand for default edge settings:
 `{ "type": "...", "field": "parent", "fieldOn": "child", "multiple": false, "selfRef": false }`.
 
 Use object entries to override defaults:
@@ -44,7 +44,7 @@ Rules are a flat array. Categories are labels only (`validation`, `coherence`, `
 
 Across `$ref` graphs:
 - metadata providers are traversed DFS, root metadata applied last
-- exactly one provider may define `hierarchy`
+- zero or one provider may define `hierarchy`
 - `aliases` shallow-merge (later wins)
 - `rules` merge by `id`
 - duplicate rule IDs with different payloads error unless later rule sets `override: true`
@@ -87,6 +87,7 @@ Schema definitions use the mapped target names.
 - Schema files are parsed as JSON5.
 - Files starting with `_` in the same directory are auto-loaded partials.
 - Local partial `$id` values must be unique and must not collide with bundled IDs.
+- If a partial has no `$metadata`, use `$schema: "http://json-schema.org/draft-07/schema#"` so it remains a standalone-valid JSON Schema fragment.
 
 ## `$ref` patterns
 

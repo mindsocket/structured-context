@@ -87,7 +87,7 @@ export async function validate(path: string, options: { schema: string; template
 
   // Build targetIndex for link validation
   const linkTargetIndex = buildTargetIndex(nodes);
-  const levels = metadata.hierarchy.levels;
+  const levels = metadata.hierarchy?.levels ?? [];
 
   // Validate edge field references for each hierarchy level
   for (let i = 1; i < levels.length; i++) {

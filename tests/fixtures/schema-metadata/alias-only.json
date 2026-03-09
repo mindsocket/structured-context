@@ -1,15 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
-  "$id": "ost-tools-test://schema-metadata/invalid",
+  "$id": "ost-tools-test://schema-metadata/alias-only",
   "$metadata": {
-    "rules": [
-      {
-        "id": "invalid-category",
-        "category": "not-a-category",
-        "description": "Invalid category should fail schema validation",
-        "check": "true"
-      }
-    ]
+    "aliases": {
+      "outcome": "goal"
+    }
   },
   "type": "object",
   "properties": {

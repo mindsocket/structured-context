@@ -18,7 +18,8 @@ export async function readSpaceDirectory(
 
   const resolvedSchemaPath = resolveSchema(options?.schemaPath, config, space);
   const metadata = loadMetadata(resolvedSchemaPath);
-  const hierarchyTypes = metadata.hierarchy.levels.map((level) => level.type);
+  const hierarchyLevels = metadata.hierarchy?.levels ?? [];
+  const hierarchyTypes = hierarchyLevels.map((level) => level.type);
   const { typeAliases } = metadata;
   const fieldMap = space?.fieldMap;
 
@@ -81,6 +82,6 @@ export async function readSpaceDirectory(
     }
   }
 
-  resolveLinks(nodes, metadata.hierarchy.levels);
+  resolveLinks(nodes, hierarchyLevels);
   return { nodes, skipped, nonSpace };
 }

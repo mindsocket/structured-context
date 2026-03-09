@@ -12,7 +12,7 @@ export async function show(path: string) {
   const space = config.spaces.find((s) => resolve(s.path) === absolutePath);
   const resolvedSchemaPath = resolveSchema(undefined, config, space);
   const metadata = loadMetadata(resolvedSchemaPath);
-  const levels = metadata.hierarchy.levels;
+  const levels = metadata.hierarchy?.levels ?? [];
 
   const rootType = levels[0]?.type;
   const hierarchyTypes = new Set(levels.map((level) => level.type));

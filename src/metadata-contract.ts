@@ -69,7 +69,6 @@ export const OST_TOOLS_METADATA_SCHEMA = {
       },
     },
   },
-  required: ['hierarchy'],
   additionalProperties: false,
 } as const;
 

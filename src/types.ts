@@ -63,7 +63,7 @@ export interface HierarchyViolation {
 }
 
 export interface SchemaMetadata {
-  hierarchy: {
+  hierarchy?: {
     levels: HierarchyLevel[]; // full per-level config
     allowSkipLevels?: boolean;
   };

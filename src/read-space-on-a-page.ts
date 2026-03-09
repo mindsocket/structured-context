@@ -23,7 +23,13 @@ export function readSpaceOnAPage(filePath: string, schemaPath?: string): SpaceOn
   const space = config.spaces.find((s) => resolve(s.path) === resolve(filePath));
   const resolvedSchemaPath = resolveSchema(schemaPath, config, space);
   const metadata = loadMetadata(resolvedSchemaPath);
-  const hierarchyTypes = metadata.hierarchy.levels.map((level) => level.type);
+  const hierarchyLevels = metadata.hierarchy?.levels;
+  if (!hierarchyLevels || hierarchyLevels.length === 0) {
+    throw new Error(
+      `Schema at ${resolvedSchemaPath} must define "$metadata.hierarchy.levels" to read a space_on_a_page file.`,
+    );
+  }
+  const hierarchyTypes = hierarchyLevels.map((level) => level.type);
   const { typeAliases } = metadata;
 
   const pageTitle = basename(filePath, '.md');
@@ -33,6 +39,6 @@ export function readSpaceOnAPage(filePath: string, schemaPath?: string): SpaceOn
     hierarchy: hierarchyTypes,
     typeAliases,
   });
-  resolveLinks(nodes, metadata.hierarchy.levels);
+  resolveLinks(nodes, hierarchyLevels);
   return { nodes, diagnostics };
 }
