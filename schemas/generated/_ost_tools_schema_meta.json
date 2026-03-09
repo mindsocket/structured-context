@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
+  "title": "ost-tools schema dialect",
+  "description": "Extends JSON Schema Draft-07 with top-level $metadata for hierarchy and rule metadata.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "http://json-schema.org/draft-07/schema#"
+    }
+  ],
+  "properties": {
+    "$metadata": {
+      "type": "object",
+      "properties": {
+        "hierarchy": {
+          "type": "object",
+          "properties": {
+            "levels": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "field": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "fieldOn": {
+                        "enum": [
+                          "child",
+                          "parent"
+                        ]
+                      },
+                      "multiple": {
+                        "type": "boolean"
+                      },
+                      "selfRef": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "allowSkipLevels": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "levels"
+          ],
+          "additionalProperties": false
+        },
+        "aliases": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "category": {
+                "enum": [
+                  "validation",
+                  "coherence",
+                  "workflow",
+                  "best-practice"
+                ]
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1
+              },
+              "check": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scope": {
+                "enum": [
+                  "global"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "category",
+              "description",
+              "check"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "hierarchy"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
