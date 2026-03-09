@@ -13,7 +13,7 @@ const CONFIG_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          alias: { type: 'string', pattern: '^[a-z0-9_-]+$' },
+          name: { type: 'string', pattern: '^[a-z0-9_-]+$' },
           path: { type: 'string' },
           schema: { type: 'string' },
           templateDir: { type: 'string' },
@@ -22,7 +22,7 @@ const CONFIG_SCHEMA = {
           miroFrameId: { type: 'string' },
           fieldMap: { type: 'object', additionalProperties: { type: 'string' } },
         },
-        required: ['alias', 'path'],
+        required: ['name', 'path'],
         additionalProperties: false,
       },
     },
@@ -36,7 +36,7 @@ const CONFIG_SCHEMA = {
 };
 
 export interface SpaceConfig {
-  alias: string;
+  name: string;
   path: string;
   schema?: string;
   templateDir?: string;
@@ -130,7 +130,7 @@ export function loadConfig(): Config {
   _spaceSourceFiles.clear();
   // Track which spaces come from the main config file
   for (const space of config.spaces) {
-    _spaceSourceFiles.set(space.alias, path);
+    _spaceSourceFiles.set(space.name, path);
   }
   // Load includeSpacesFrom configs and merge their spaces in, with later entries taking precedence over earlier ones
   if (config.includeSpacesFrom) {
@@ -138,12 +138,12 @@ export function loadConfig(): Config {
       // Resolve relative to the main config file
       const resolvedIncludePath = isAbsolute(includePath) ? includePath : resolve(dirname(path), includePath);
       const includedConfig = resolveRelativePaths(_loadConfig(resolvedIncludePath), dirname(resolvedIncludePath));
-      if (includedConfig.spaces.some((s) => config.spaces.some((existing) => existing.alias === s.alias))) {
-        throw new Error(`Included config contains spaces with duplicate aliases: ${resolvedIncludePath}`);
+      if (includedConfig.spaces.some((s) => config.spaces.some((existing) => existing.name === s.name))) {
+        throw new Error(`Included config contains spaces with duplicate names: ${resolvedIncludePath}`);
       }
       // Track which spaces come from this included config file
       for (const space of includedConfig.spaces) {
-        _spaceSourceFiles.set(space.alias, resolvedIncludePath);
+        _spaceSourceFiles.set(space.name, resolvedIncludePath);
       }
       config.spaces.push(...includedConfig.spaces);
     }
@@ -151,17 +151,17 @@ export function loadConfig(): Config {
   return resolveRelativePaths(config, dirname(resolve(path)));
 }
 
-/** Resolve alias-or-path to a filesystem path. Falls through if not an alias. */
-export function resolveSpacePath(aliasOrPath: string, config: Config): string {
-  const space = config.spaces.find((s) => s.alias === aliasOrPath);
-  return space ? space.path : aliasOrPath;
+/** Resolve spaceNameOrPath to a filesystem path. Falls through if not a space name. */
+export function resolveSpacePath(spaceNameOrPath: string, config: Config): string {
+  const space = config.spaces.find((s) => s.name === spaceNameOrPath);
+  return space ? space.path : spaceNameOrPath;
 }
 
-/** Get the full space config entry by alias. Throws if not found. */
-export function getSpaceConfig(alias: string, config: Config): SpaceConfig {
-  const space = config.spaces.find((s) => s.alias === alias);
+/** Get the full space config entry by name. Throws if not found. */
+export function getSpaceConfig(name: string, config: Config): SpaceConfig {
+  const space = config.spaces.find((s) => s.name === name);
   if (!space) {
-    throw new Error(`Unknown space config: "${alias}". Check config.`);
+    throw new Error(`Unknown space: "${name}". Check config.`);
   }
   return space;
 }
@@ -214,15 +214,15 @@ export function invertFieldMap(fieldMap: Record<string, string>): Record<string,
 type StringFields<T> = { [K in keyof T]: T[K] extends string | undefined ? K : never }[keyof T];
 
 /** Update a string field on a space entry and persist config. */
-export function updateSpaceField(alias: string, field: StringFields<SpaceConfig>, value: string): void {
-  const sourcePath = _spaceSourceFiles.get(alias);
+export function updateSpaceField(spaceName: string, field: StringFields<SpaceConfig>, value: string): void {
+  const sourcePath = _spaceSourceFiles.get(spaceName);
   if (!sourcePath) {
-    throw new Error(`Space "${alias}" not found in any config file`);
+    throw new Error(`Space "${spaceName}" not found in any config file`);
   }
   const config = _loadConfig(sourcePath);
-  const space = config.spaces?.find((s: SpaceConfig) => s.alias === alias);
+  const space = config.spaces?.find((s: SpaceConfig) => s.name === spaceName);
   if (!space) {
-    throw new Error(`Unknown space config: "${alias}". Check config.`);
+    throw new Error(`Unknown space config: "${spaceName}". Check config.`);
   }
   (space as unknown as Record<string, unknown>)[field as string] = value;
   writeFileSync(sourcePath, `${JSON5.stringify(config, null, 2)}\n`);

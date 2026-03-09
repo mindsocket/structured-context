@@ -36,13 +36,13 @@ See [docs/concepts.md](docs/concepts.md) for the full terminology reference, inc
 2. `~/.config/ost-tools/config.json` (or `$XDG_CONFIG_HOME/ost-tools/config.json`)
 3. `./config.json` in the current working directory
 
-See `config.example.json` for the full structure. The config maps space aliases to paths, with optional Miro integration fields and global defaults. Paths in config files are resolved relative to the config file. 
+See `config.example.json` for the full structure. The config maps space namees to paths, with optional Miro integration fields and global defaults. Paths in config files are resolved relative to the config file. 
 
 **Including spaces from other configs:** Use `includeSpacesFrom` to import space definitions from other config files. This is useful for aggregating spaces from multiple projects into a central config, reducing the need to specify `--config` on CLI commands. Duplicate space names are not allowed.
 
 ### Spaces
 
-A space is a named directory or single file registered in the config. Spaces let you reference content by alias instead of path:
+A space is a named directory or single file registered in the config. Spaces let you reference content by name instead of path:
 
 ```bash
 ost-tools validate ProductX
@@ -135,7 +135,7 @@ Sync is one-way (OST → Miro) and scoped to a single frame. Only cards and conn
 ### Sync templates with schema
 
 ```bash
-ost-tools template-sync [--space alias] [--schema path/to/my-schema.json] [--create-missing] [--dry-run]
+ost-tools template-sync [--space name] [--schema path/to/my-schema.json] [--create-missing] [--dry-run]
 ```
 
 Keeps Obsidian template files in sync with schema examples:

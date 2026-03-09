@@ -78,7 +78,7 @@ export interface HierarchyViolation {
 export interface SchemaMetadata {
   hierarchy: string[]; // derived type-name list (same length/order as levels)
   levels: HierarchyLevel[]; // full per-level config
-  aliases?: Record<string, string>;
+  typeAliases?: Record<string, string>;
   allowSkipLevels?: boolean;
   rules?: RulesMetadata;
 }

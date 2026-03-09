@@ -14,12 +14,12 @@ function run(...args: string[]) {
 }
 
 describe('Smoke: spaces command', () => {
-  it('spaces exits 0 and lists all aliases', () => {
+  it('spaces exits 0 and lists all names', () => {
     const result = run('spaces');
     expect(result.exitCode).toBe(0);
     const out = new TextDecoder().decode(result.stdout);
     for (const space of config.spaces) {
-      expect(out).toContain(space.alias);
+      expect(out).toContain(space.name);
     }
   });
 });
@@ -40,8 +40,8 @@ describe('Smoke: schemas command', () => {
   });
 
   for (const space of config.spaces) {
-    it(`schemas show --space ${space.alias} exits 0`, () => {
-      const result = run('schemas', 'show', '--space', space.alias);
+    it(`schemas show --space ${space.name} exits 0`, () => {
+      const result = run('schemas', 'show', '--space', space.name);
       expect(result.exitCode).toBe(0);
       const out = new TextDecoder().decode(result.stdout);
       expect(out).toContain('Registry');

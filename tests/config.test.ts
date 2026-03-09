@@ -33,7 +33,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       includedConfigPath,
       JSON.stringify(
         {
-          spaces: [{ alias: 'included-space', path: '/path/to/included' }],
+          spaces: [{ name: 'included-space', path: '/path/to/included' }],
         },
         null,
         2,
@@ -45,7 +45,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       JSON.stringify(
         {
           includeSpacesFrom: ['included-config.json'],
-          spaces: [{ alias: 'main-space', path: '/path/to/main' }],
+          spaces: [{ name: 'main-space', path: '/path/to/main' }],
         },
         null,
         2,
@@ -56,8 +56,8 @@ describe('loadConfig with includeSpacesFrom', () => {
     const config = loadConfig();
 
     expect(config.spaces).toHaveLength(2);
-    expect(config.spaces.find((s) => s.alias === 'main-space')?.path).toBe('/path/to/main');
-    expect(config.spaces.find((s) => s.alias === 'included-space')?.path).toBe('/path/to/included');
+    expect(config.spaces.find((s) => s.name === 'main-space')?.path).toBe('/path/to/main');
+    expect(config.spaces.find((s) => s.name === 'included-space')?.path).toBe('/path/to/included');
   });
 
   it('resolves relative paths relative to included config file', () => {
@@ -65,7 +65,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       includedConfigPath,
       JSON.stringify(
         {
-          spaces: [{ alias: 'included-space', path: './relative-path' }],
+          spaces: [{ name: 'included-space', path: './relative-path' }],
         },
         null,
         2,
@@ -87,7 +87,7 @@ describe('loadConfig with includeSpacesFrom', () => {
     setConfigPath(mainConfigPath);
     const config = loadConfig();
 
-    const includedSpace = config.spaces.find((s) => s.alias === 'included-space');
+    const includedSpace = config.spaces.find((s) => s.name === 'included-space');
     expect(includedSpace?.path).toMatch(/\/tmp-config-test\/relative-path$/);
   });
 
@@ -99,7 +99,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       firstIncludedPath,
       JSON.stringify(
         {
-          spaces: [{ alias: 'first-space', path: '/first' }],
+          spaces: [{ name: 'first-space', path: '/first' }],
         },
         null,
         2,
@@ -110,7 +110,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       secondIncludedPath,
       JSON.stringify(
         {
-          spaces: [{ alias: 'second-space', path: '/second' }],
+          spaces: [{ name: 'second-space', path: '/second' }],
         },
         null,
         2,
@@ -122,7 +122,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       JSON.stringify(
         {
           includeSpacesFrom: ['first.json', 'second.json'],
-          spaces: [{ alias: 'main-space', path: '/main' }],
+          spaces: [{ name: 'main-space', path: '/main' }],
         },
         null,
         2,
@@ -134,9 +134,9 @@ describe('loadConfig with includeSpacesFrom', () => {
 
     expect(config.spaces).toHaveLength(3);
     // Main config spaces come first, then included in order
-    expect(config.spaces[0].alias).toBe('main-space');
-    expect(config.spaces[1].alias).toBe('first-space');
-    expect(config.spaces[2].alias).toBe('second-space');
+    expect(config.spaces[0].name).toBe('main-space');
+    expect(config.spaces[1].name).toBe('first-space');
+    expect(config.spaces[2].name).toBe('second-space');
   });
 
   it('handles absolute paths in includeSpacesFrom', () => {
@@ -144,7 +144,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       includedConfigPath,
       JSON.stringify(
         {
-          spaces: [{ alias: 'abs-space', path: '/absolute/path' }],
+          spaces: [{ name: 'abs-space', path: '/absolute/path' }],
         },
         null,
         2,
@@ -167,15 +167,15 @@ describe('loadConfig with includeSpacesFrom', () => {
     const config = loadConfig();
 
     expect(config.spaces).toHaveLength(1);
-    expect(config.spaces[0].alias).toBe('abs-space');
+    expect(config.spaces[0].name).toBe('abs-space');
   });
 
-  it('throws error when included config has duplicate alias', () => {
+  it('throws error when included config has duplicate name', () => {
     writeFileSync(
       includedConfigPath,
       JSON.stringify(
         {
-          spaces: [{ alias: 'duplicate-space', path: '/included' }],
+          spaces: [{ name: 'duplicate-space', path: '/included' }],
         },
         null,
         2,
@@ -187,7 +187,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       JSON.stringify(
         {
           includeSpacesFrom: ['included-config.json'],
-          spaces: [{ alias: 'duplicate-space', path: '/main' }],
+          spaces: [{ name: 'duplicate-space', path: '/main' }],
         },
         null,
         2,
@@ -196,7 +196,7 @@ describe('loadConfig with includeSpacesFrom', () => {
 
     setConfigPath(mainConfigPath);
 
-    expect(() => loadConfig()).toThrow('Included config contains spaces with duplicate aliases');
+    expect(() => loadConfig()).toThrow('Included config contains spaces with duplicate names');
   });
 
   it('handles included configs with their own relative paths correctly', () => {
@@ -204,7 +204,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       nestedConfigPath,
       JSON.stringify(
         {
-          spaces: [{ alias: 'nested-space', path: './nested-space' }],
+          spaces: [{ name: 'nested-space', path: './nested-space' }],
         },
         null,
         2,
@@ -226,7 +226,7 @@ describe('loadConfig with includeSpacesFrom', () => {
     setConfigPath(mainConfigPath);
     const config = loadConfig();
 
-    const nestedSpace = config.spaces.find((s) => s.alias === 'nested-space');
+    const nestedSpace = config.spaces.find((s) => s.name === 'nested-space');
     expect(nestedSpace?.path).toMatch(/\/tmp-config-test\/nested\/nested-space$/);
   });
 
@@ -239,7 +239,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       otherConfigPath,
       JSON.stringify(
         {
-          spaces: [{ alias: 'other-space', path: './other-space' }],
+          spaces: [{ name: 'other-space', path: './other-space' }],
         },
         null,
         2,
@@ -261,7 +261,7 @@ describe('loadConfig with includeSpacesFrom', () => {
     setConfigPath(mainConfigPath);
     const config = loadConfig();
 
-    const otherSpace = config.spaces.find((s) => s.alias === 'other-space');
+    const otherSpace = config.spaces.find((s) => s.name === 'other-space');
     expect(otherSpace?.path).toMatch(/\/tmp-config-test\/other\/other-space$/);
   });
 
@@ -274,7 +274,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       otherConfigPath,
       JSON.stringify(
         {
-          spaces: [{ alias: 'included-space', path: '/included', miroFrameId: 'old-frame-id' }],
+          spaces: [{ name: 'included-space', path: '/included', miroFrameId: 'old-frame-id' }],
         },
         null,
         2,
@@ -286,7 +286,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       JSON.stringify(
         {
           includeSpacesFrom: ['other/config.json'],
-          spaces: [{ alias: 'main-space', path: '/main' }],
+          spaces: [{ name: 'main-space', path: '/main' }],
         },
         null,
         2,
@@ -305,6 +305,6 @@ describe('loadConfig with includeSpacesFrom', () => {
 
     // Verify the main config was not modified
     const mainConfig = JSON5.parse(readFileSync(mainConfigPath, 'utf-8'));
-    expect(mainConfig.spaces[0].alias).toBe('main-space');
+    expect(mainConfig.spaces[0].name).toBe('main-space');
   });
 });

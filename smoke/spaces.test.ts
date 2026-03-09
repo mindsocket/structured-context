@@ -7,8 +7,8 @@ const config = loadConfig();
 
 describe('Smoke: validate all configured spaces', () => {
   for (const space of config.spaces) {
-    it(`${space.alias} passes validation`, () => {
-      const result = Bun.spawnSync(['bun', 'run', 'src/index.ts', 'validate', space.alias], {
+    it(`${space.name} passes validation`, () => {
+      const result = Bun.spawnSync(['bun', 'run', 'src/index.ts', 'validate', space.name], {
         cwd: ROOT,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -17,8 +17,8 @@ describe('Smoke: validate all configured spaces', () => {
       if (result.exitCode !== 0) {
         const output = new TextDecoder().decode(result.stdout);
         const errors = new TextDecoder().decode(result.stderr);
-        console.error(`\n--- ${space.alias} stdout ---\n${output}`);
-        if (errors) console.error(`--- ${space.alias} stderr ---\n${errors}`);
+        console.error(`\n--- ${space.name} stdout ---\n${output}`);
+        if (errors) console.error(`--- ${space.name} stderr ---\n${errors}`);
       }
 
       expect(result.exitCode).toBe(0);

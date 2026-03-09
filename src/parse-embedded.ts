@@ -129,7 +129,7 @@ function processListItem(
   nodes: SpaceNode[],
   makeLabel: (title: string) => string,
   buildLinkTargets: (title: string) => string[],
-  aliases: Record<string, string>,
+  typeAliases: Record<string, string>,
   fieldMap?: Record<string, string>,
 ): void {
   const firstPara = item.children.find((c) => c.type === 'paragraph') as Paragraph | undefined;
@@ -163,7 +163,7 @@ function processListItem(
       schemaData,
       linkTargets,
       resolvedParents: [],
-      resolvedType: resolveNodeType(fields.type, aliases),
+      resolvedType: resolveNodeType(fields.type, typeAliases),
     };
     nodes.push(newNode);
 
@@ -171,7 +171,7 @@ function processListItem(
     for (const child of item.children) {
       if (child.type === 'list') {
         for (const subItem of (child as List).children) {
-          processListItem(subItem, nestedParentRef, newNode, nodes, makeLabel, buildLinkTargets, aliases, fieldMap);
+          processListItem(subItem, nestedParentRef, newNode, nodes, makeLabel, buildLinkTargets, typeAliases, fieldMap);
         }
       }
     }
@@ -201,7 +201,7 @@ export interface ExtractEmbeddedOptions {
   /**
    * Type aliases mapping (alias -> canonical type) for resolving types.
    */
-  aliases?: Record<string, string>;
+  typeAliases?: Record<string, string>;
   /**
    * Field name remapping (file field name → canonical field name).
    * Applied to all extracted inline fields, YAML blocks, and paragraph fields.
@@ -222,7 +222,7 @@ export interface ExtractEmbeddedResult {
  * (directory) to find embedded sub-nodes within a page's content.
  */
 export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptions): ExtractEmbeddedResult {
-  const { pageTitle, pageType, hierarchy, aliases = {}, fieldMap } = options;
+  const { pageTitle, pageType, hierarchy, typeAliases = {}, fieldMap } = options;
   const isOnAPageMode = pageType === undefined || ON_A_PAGE_TYPES.includes(pageType);
 
   const nodes: SpaceNode[] = [];
@@ -367,7 +367,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         schemaData,
         linkTargets,
         resolvedParents: [],
-        resolvedType: resolveNodeType(type, aliases),
+        resolvedType: resolveNodeType(type, typeAliases),
       };
       nodes.push(headingNode);
       currentContextNode = headingNode;
@@ -386,7 +386,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
           nodes,
           makeLabel,
           buildListItemLinkTargets,
-          aliases,
+          typeAliases,
           fieldMap,
         );
       }

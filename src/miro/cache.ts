@@ -15,7 +15,7 @@ export interface CachedConnector {
 export interface SyncCache {
   boardId: string;
   frameId: string;
-  spaceAlias?: string;
+  spaceName?: string;
   lastSync: string;
   nodes: Record<string, CachedNode>; // keyed by node title
   connectors: Record<string, CachedConnector>; // keyed by "parent→child"

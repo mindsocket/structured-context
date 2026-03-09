@@ -17,7 +17,7 @@ describe('validate-hierarchy', () => {
     const metadata: SchemaMetadata = {
       hierarchy,
       levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
-      aliases: {},
+      typeAliases: {},
       allowSkipLevels: false,
     };
 
@@ -82,7 +82,7 @@ describe('validate-hierarchy', () => {
     const metadata: SchemaMetadata = {
       hierarchy,
       levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
-      aliases: {},
+      typeAliases: {},
       allowSkipLevels: true,
     };
 
@@ -114,7 +114,7 @@ describe('validate-hierarchy', () => {
     const metadata: SchemaMetadata = {
       hierarchy,
       levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
-      aliases: {},
+      typeAliases: {},
       allowSkipLevels: false,
     };
 
@@ -153,7 +153,7 @@ describe('validate-hierarchy', () => {
     const metadata: SchemaMetadata = {
       hierarchy,
       levels: hierarchy.map((t) => makeLevel(t)),
-      aliases: {},
+      typeAliases: {},
       allowSkipLevels: false,
     };
 

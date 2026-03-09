@@ -17,7 +17,7 @@ export async function readSpaceDirectory(
   const space = config.spaces.find((s) => resolve(s.path) === absoluteDirectory);
 
   const resolvedSchemaPath = resolveSchema(options?.schemaPath, config, space);
-  const { hierarchy, levels, aliases } = loadMetadata(resolvedSchemaPath);
+  const { hierarchy, levels, typeAliases } = loadMetadata(resolvedSchemaPath);
   const fieldMap = space?.fieldMap;
 
   const templateDir = options?.templateDir ?? space?.templateDir ?? config.templateDir;
@@ -62,7 +62,7 @@ export async function readSpaceDirectory(
       schemaData: { title: fileBase, ...data },
       linkTargets: [fileBase],
       resolvedParents: [],
-      resolvedType: resolveNodeType(pageType, aliases),
+      resolvedType: resolveNodeType(pageType, typeAliases),
     });
 
     // Extract embedded child nodes from the page body (typed pages with embedded nodes).
@@ -72,7 +72,7 @@ export async function readSpaceDirectory(
         pageTitle: fileBase,
         pageType,
         hierarchy,
-        aliases,
+        typeAliases: typeAliases,
         fieldMap,
       });
       nodes.push(...embedded);

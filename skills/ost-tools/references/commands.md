@@ -97,7 +97,7 @@ MIRO_TOKEN=xxx bunx ost-tools miro-sync <space> --dry-run
 ## template-sync
 
 ```bash
-bunx ost-tools template-sync [--space <alias>] [--schema <path>] [--create-missing] [--dry-run] [--config <path>]
+bunx ost-tools template-sync [--space <name>] [--schema <path>] [--create-missing] [--dry-run] [--config <path>]
 ```
 
 Keeps Obsidian template files in sync with schema `examples`. For each node type:
@@ -122,7 +122,7 @@ bunx ost-tools template-sync --space <space> --create-missing
 {
   spaces: [
     {
-      alias: 'my-space',         // used in all CLI commands
+      name: 'my-space',         // used in all CLI commands
       path: '../content',        // relative to config file, or absolute
       schema: 'my-schema.json',  // relative to config file, or absolute
       fieldMap: {                // optional: remap frontmatter field names

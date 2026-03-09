@@ -12,7 +12,7 @@ To specify a schema for a space, add the `schema` field to your space entry in `
 
 ```json
 {
-  "alias": "my-space",
+  "name": "my-space",
   "path": "/path/to/space",
   "schema": "schemas/strict_ost.json"
 }

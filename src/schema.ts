@@ -150,8 +150,8 @@ export function mergeVariantProperties(
   return { properties, required: [...new Set(required)] };
 }
 
-export function resolveNodeType(type: string, aliases: Record<string, string> | undefined): string {
-  return aliases?.[type] ?? type;
+export function resolveNodeType(type: string, typeAliases: Record<string, string> | undefined): string {
+  return typeAliases?.[type] ?? type;
 }
 
 export function loadMetadata(schemaPath: string): SchemaMetadata {
@@ -194,7 +194,7 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
   return {
     hierarchy,
     levels,
-    aliases: (metadata?.aliases as Record<string, string>) ?? undefined,
+    typeAliases: (metadata?.aliases as Record<string, string>) ?? undefined,
     allowSkipLevels: (metadata?.allowSkipLevels as boolean) ?? undefined,
     rules: (metadata?.rules as RulesMetadata) ?? undefined,
   };

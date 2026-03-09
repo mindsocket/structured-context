@@ -6,7 +6,7 @@ export function listSpaces(): void {
   const config = loadConfig();
   console.log(`Config: ${path}\n`);
   for (const space of config.spaces) {
-    console.log(`${space.alias}`);
+    console.log(`${space.name}`);
     console.log(`  path:    ${space.path}`);
     console.log(`  schema:  ${basename(resolveSchema(undefined, config, space))}`);
     const templateDir = space.templateDir ?? config.templateDir;

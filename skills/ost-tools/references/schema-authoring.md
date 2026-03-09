@@ -31,7 +31,7 @@ When content uses non-standard field names, remap them in the space config:
 
 ```json5
 {
-  alias: 'my-space',
+  name: 'my-space',
   path: '../content',
   schema: 'my-schema.json',
   fieldMap: {

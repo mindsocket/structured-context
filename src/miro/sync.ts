@@ -23,17 +23,17 @@ export async function miroSync(spaceOrPath: string, options: SyncOptions): Promi
 
   // 1. Resolve space and board
   const config = loadConfig();
-  const space = config.spaces.find((s) => s.alias === spaceOrPath);
+  const space = config.spaces.find((s) => s.name === spaceOrPath);
 
   if (!space) {
     console.error(
-      `"${spaceOrPath}" is not a known space alias. miro-sync requires a configured space with miroBoardId.`,
+      `"${spaceOrPath}" is not a known space name. miro-sync requires a configured space with miroBoardId.`,
     );
     process.exit(1);
   }
 
   if (!space.miroBoardId) {
-    console.error(`No miroBoardId configured for space "${space.alias}".`);
+    console.error(`No miroBoardId configured for space "${space.name}".`);
     console.error('Add miroBoardId to the space entry in config.');
     process.exit(1);
   }
@@ -94,7 +94,7 @@ export async function miroSync(spaceOrPath: string, options: SyncOptions): Promi
       });
       frameId = frame.id;
       console.log(`Created frame "${options.newFrame}" (${frameId}) - size: ${finalFrameWidth}x${finalFrameHeight}`);
-      updateSpaceField(space.alias, 'miroFrameId', frameId);
+      updateSpaceField(space.name, 'miroFrameId', frameId);
       console.log(`Saved miroFrameId to config`);
     }
   } else {
@@ -103,7 +103,7 @@ export async function miroSync(spaceOrPath: string, options: SyncOptions): Promi
 
   // 4. Load cache
   const cache = loadCache(boardId, frameId);
-  cache.spaceAlias = space.alias;
+  cache.spaceName = space.name;
 
   // 5. Verify cache against actual board state
   // Fetch all cards from the frame to build a verified mapping

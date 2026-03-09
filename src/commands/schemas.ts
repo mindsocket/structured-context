@@ -85,9 +85,9 @@ function showMetadata(metadata: SchemaMetadata): void {
   const parts = metadata.levels.map((l) => (l.selfRef ? `${l.type}(+)` : l.type));
   console.log(`\nhierarchy: ${parts.join(' → ')}`);
 
-  if (metadata.aliases && Object.keys(metadata.aliases).length > 0) {
-    const aliasParts = Object.entries(metadata.aliases).map(([k, v]) => `${k} → ${v}`);
-    console.log(`aliases: ${aliasParts.join(', ')}`);
+  if (metadata.typeAliases && Object.keys(metadata.typeAliases).length > 0) {
+    const aliasParts = Object.entries(metadata.typeAliases).map(([k, v]) => `${k} → ${v}`);
+    console.log(`type aliases: ${aliasParts.join(', ')}`);
   }
 
   if (metadata.rules) {
@@ -146,7 +146,7 @@ export function listSchemas(): void {
 
   for (const space of config.spaces) {
     if (space.schema && !seen.has(space.schema) && !isBundledPath(space.schema)) {
-      configured.push({ source: space.alias, path: space.schema });
+      configured.push({ source: space.name, path: space.schema });
       seen.add(space.schema);
     }
   }
@@ -164,7 +164,7 @@ export function showSchema(file: string | undefined, options: { space?: string; 
 
   let schemaPath: string;
   if (options.space) {
-    const space = config.spaces.find((s) => s.alias === options.space);
+    const space = config.spaces.find((s) => s.name === options.space);
     if (!space) {
       console.error(`Error: Unknown space "${options.space}"`);
       process.exit(1);

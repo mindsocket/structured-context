@@ -5,7 +5,7 @@ Tools for working with Opportunity Solution Tree structures and other product ma
 ## Development
 
 Get a list of commands: `bun run src/index.ts --help`
-Space aliases (e.g. `personal`, `politics`) are resolved via a config file - `$OST_TOOLS_CONFIG`, `$XDG_CONFIG_HOME/ost-tools/config.json`, `--config <file>` param, or `./config.json`
+Space names (e.g. `personal`, `politics`) are resolved via a config file - `$OST_TOOLS_CONFIG`, `$XDG_CONFIG_HOME/ost-tools/config.json`, `--config <file>` param, or `./config.json`
 
 ## Definition of done
 
