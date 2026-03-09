@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "ost-tools-test://schema-composition/imports/pack",
   "$defs": {
     "workflowRule": {

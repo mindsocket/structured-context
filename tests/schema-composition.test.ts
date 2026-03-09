@@ -55,4 +55,8 @@ describe('schema composition metadata', () => {
   it('compiles schemas that use rule import refs in $metadata.rules', () => {
     expect(() => createValidator(join(FIXTURES_DIR, 'compile/rule-import-root.json'))).not.toThrow();
   });
+
+  it('compiles schemas where only one metadata provider defines hierarchy', () => {
+    expect(() => createValidator(join(FIXTURES_DIR, 'merge-root.json'))).not.toThrow();
+  });
 });

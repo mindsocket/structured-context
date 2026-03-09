@@ -94,13 +94,16 @@ Schema hierarchy levels support DAG (multi-parent) relationships via configurabl
 | `selfRef` | `false` | Whether a node of this type may reference a same-type parent |
 
 Metadata is composable across `$ref` graphs:
-- exactly one metadata provider may define `hierarchy`
+- zero or one metadata provider may define `hierarchy`
 - `aliases` are shallow-merged (later wins)
 - `rules` merge by `id`; conflicts error unless the later rule sets `override: true`
 - `$metadata.rules` supports `$ref` imports for reusable rule packs
 
+If no provider defines `hierarchy`, hierarchy-specific checks are skipped. Reading a `space_on_a_page` file still requires `hierarchy.levels`.
+
 **Customizing Schemas:**
 - **Partial schemas**: Files starting with an underscore (like `_ost_tools_base.json`) are loaded and used to resolve references (using `$ref`).
+- **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "http://json-schema.org/draft-07/schema#"` so it validates standalone as plain JSON Schema.
 - **Loading priority**: Partial schemas are loaded from both the default schema directory and the directory of your specified target schema.
 - **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).
 - **Unique IDs**: To encourage clean namespacing, local partial schemas **must** have unique `$id`s that do not collide with the default schemas. If a collision is detected, validation will fail with an error.

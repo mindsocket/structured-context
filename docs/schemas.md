@@ -94,7 +94,7 @@ Top-level metadata shape:
 
 | Field | Type | Notes |
 |---|---|---|
-| `hierarchy` | object | Required (exactly one provider after composition) |
+| `hierarchy` | object | Optional per provider; at most one provider may define it after composition |
 | `hierarchy.levels` | `(string \| HierarchyLevel)[]` | Ordered root→leaf types |
 | `hierarchy.allowSkipLevels` | `boolean` | Optional; allows parent to be any ancestor level |
 | `aliases` | `Record<string, string>` | Optional type alias map |
@@ -121,11 +121,13 @@ Metadata is composed across the `$ref` graph with deterministic behavior:
 2. Apply root schema metadata last.
 
 Merge rules:
-- `hierarchy`: exactly one provider allowed. Multiple providers error.
+- `hierarchy`: zero or one provider allowed. Multiple providers error.
 - `aliases`: shallow merged; later provider wins per key.
 - `rules`: merged by `id`.
 - Duplicate rule `id` with different payload errors by default.
 - A later rule may replace an earlier one only with `"override": true`.
+
+When no provider defines `hierarchy`, hierarchy-based behavior is disabled (`show` tree shape, hierarchy validation, parent-edge checks). `space_on_a_page` parsing still requires hierarchy and will error without it.
 
 ### Rule imports via `$ref`
 
@@ -169,6 +171,7 @@ Imported rules are normalized into one executable flat list before validation.
 - Both bundled partials and local schema-directory partials are registered.
 - Local partial `$id` values must not collide with bundled IDs.
 - `$ref` resolution is transitive across files.
+- Partials with no `$metadata` should prefer `$schema: "http://json-schema.org/draft-07/schema#"` so they validate standalone as plain JSON Schema fragments.
 
 ## Editor expectations
 

@@ -377,12 +377,7 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
     }
   }
 
-  const rawHierarchy = mergedHierarchy?.levels;
-  if (!rawHierarchy || rawHierarchy.length === 0) {
-    throw new Error(`Schema at ${schemaPath} must define "$metadata.hierarchy.levels" for depth-based type inference`);
-  }
-
-  const levels: HierarchyLevel[] = rawHierarchy.map((entry) => {
+  const levels: HierarchyLevel[] | undefined = mergedHierarchy?.levels.map((entry) => {
     if (typeof entry === 'string') {
       return { type: entry, field: 'parent', fieldOn: 'child', multiple: false, selfRef: false };
     }
@@ -396,10 +391,13 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
   });
 
   return {
-    hierarchy: {
-      levels,
-      allowSkipLevels: mergedHierarchy?.allowSkipLevels,
-    },
+    hierarchy:
+      levels !== undefined
+        ? {
+            levels,
+            allowSkipLevels: mergedHierarchy?.allowSkipLevels,
+          }
+        : undefined,
     typeAliases: Object.keys(mergedAliases).length > 0 ? mergedAliases : undefined,
     rules: mergedRules.size > 0 ? [...mergedRules.values()].map(({ rule }) => normalizeRule(rule)) : undefined,
   };

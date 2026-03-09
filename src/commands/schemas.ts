@@ -83,8 +83,12 @@ function showDefs(defs: Record<string, unknown>): void {
 }
 
 function showMetadata(metadata: SchemaMetadata): void {
-  const parts = metadata.hierarchy.levels.map((l) => (l.selfRef ? `${l.type}(+)` : l.type));
-  console.log(`\nhierarchy: ${parts.join(' → ')}`);
+  if (metadata.hierarchy?.levels.length) {
+    const parts = metadata.hierarchy.levels.map((l) => (l.selfRef ? `${l.type}(+)` : l.type));
+    console.log(`\nhierarchy: ${parts.join(' → ')}`);
+  } else {
+    console.log('\nhierarchy: (none)');
+  }
 
   if (metadata.typeAliases && Object.keys(metadata.typeAliases).length > 0) {
     const aliasParts = Object.entries(metadata.typeAliases).map(([k, v]) => `${k} → ${v}`);

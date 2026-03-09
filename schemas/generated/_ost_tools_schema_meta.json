@@ -117,7 +117,6 @@
           }
         }
       },
-      "required": ["hierarchy"],
       "additionalProperties": false
     }
   }
