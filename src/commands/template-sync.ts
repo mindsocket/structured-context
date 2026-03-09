@@ -5,7 +5,8 @@ import { glob } from 'glob';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
 import { invertFieldMap } from '../config';
-import { buildFullRegistry, mergeVariantProperties, readRawSchema, resolveRef } from '../schema';
+import { buildFullRegistry, readRawSchema } from '../schema';
+import { mergeVariantProperties, resolveRef } from '../schema-refs';
 
 interface TypeVariant {
   required: string[];

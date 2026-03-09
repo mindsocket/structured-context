@@ -163,7 +163,7 @@ The validator checks every node type and its parent type(s) against the hierarch
 Schemas are designed to be composable. You can create custom schemas by:
 
 1. Creating a new `.json` file in the `schemas/` directory
-2. Using `$ref` to reference shared definitions from `_shared.json` or other schemas
+2. Using `$ref` to reference shared definitions from `_shared.json` or other schemas. This works transitively, including nested `allOf` compositions.
 3. Defining your own node types and constraints
 
 Referencing another schema file merges its `$defs` into the compiled schema, including any `_metadata` block. If multiple referenced files each define `_metadata`, only the last one merged is used — `rules` arrays are not combined across sources.

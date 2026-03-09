@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "test://root",
+  "oneOf": [
+    {
+      "type": "object",
+      "allOf": [{ "$ref": "test://mid#/$defs/midProps" }],
+      "properties": {
+        "type": { "const": "thing" }
+      },
+      "required": ["type"],
+      "examples": [
+        {
+          "type": "thing",
+          "mood": "happy",
+          "status": "active",
+          "score": 3
+        }
+      ]
+    }
+  ]
+}

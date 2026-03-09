@@ -1,7 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AnySchemaObject, SchemaObject } from 'ajv';
 import Ajv, { type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
 import type { HierarchyLevel, RulesMetadata, SchemaMetadata } from './types';
@@ -87,67 +86,6 @@ export function createValidator(schemaPath: string): ValidateFunction {
   }
 
   return ajv.compile(targetSchema);
-}
-
-/**
- * Resolve a $ref within a schema, handling both external refs (ost-tools://...) and internal refs (#/$defs/...).
- * Used by template-sync for traversing schema structures.
- */
-export function resolveRef(
-  propDef: AnySchemaObject | undefined,
-  schema: SchemaObject,
-  registry: Map<string, AnySchemaObject>,
-): AnySchemaObject | undefined {
-  if (propDef?.$ref) {
-    const ref = propDef.$ref as string;
-
-    // Handle external refs (e.g., "ost-tools://_shared#/$defs/baseNodeProps")
-    if (!ref.startsWith('#/')) {
-      const [baseId, hashPath] = ref.split('#');
-      const externalSchema = registry.get(baseId ?? '');
-      if (!externalSchema) {
-        throw new Error(`Cannot resolve external $ref: ${ref}`);
-      }
-
-      // Resolve the hash path in the external schema
-      if (hashPath) {
-        const path = hashPath.replace(/^\//, '').split('/');
-        // biome-ignore lint/suspicious/noExplicitAny: JSON schema traversal
-        return path.reduce((obj: any, key: string) => obj[key], externalSchema);
-      }
-      return externalSchema;
-    }
-
-    // Handle internal refs (e.g., "#/$defs/baseNodeProps")
-    const path = ref.replace(/^#\//, '').split('/');
-    // biome-ignore lint/suspicious/noExplicitAny: JSON schema traversal
-    return path.reduce((obj: any, key: string) => obj[key], schema);
-  }
-  return propDef;
-}
-
-/**
- * Merge properties and required fields from allOf refs and direct variant properties.
- * allOf entries are resolved via resolveRef; direct properties take precedence.
- */
-export function mergeVariantProperties(
-  variant: AnySchemaObject,
-  schema: SchemaObject,
-  registry: Map<string, AnySchemaObject>,
-): { properties: Record<string, AnySchemaObject>; required: string[] } {
-  const properties: Record<string, AnySchemaObject> = {};
-  const required: string[] = [];
-
-  for (const sub of (variant.allOf as AnySchemaObject[] | undefined) ?? []) {
-    const resolved = resolveRef(sub, schema, registry);
-    Object.assign(properties, resolved?.properties ?? {});
-    required.push(...((resolved?.required ?? []) as string[]));
-  }
-
-  Object.assign(properties, variant.properties ?? {});
-  required.push(...((variant.required ?? []) as string[]));
-
-  return { properties, required: [...new Set(required)] };
 }
 
 export function resolveNodeType(type: string, typeAliases: Record<string, string> | undefined): string {
