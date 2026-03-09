@@ -7,8 +7,70 @@ import type { HierarchyLevel, RulesMetadata, SchemaMetadata } from './types';
 
 const packageDir = dirname(fileURLToPath(import.meta.url));
 export const bundledSchemasDir = join(packageDir, '..', 'schemas');
+export const OST_TOOLS_SCHEMA_META_ID = 'ost-tools://_ost_tools_schema_meta';
 /** Parsed JSON schema object — always a plain object (never a boolean schema). */
 type JsonSchemaObject = Record<string, unknown>;
+const METADATA_KEYWORD_SCHEMA: JsonSchemaObject = {
+  type: 'object',
+  properties: {
+    hierarchy: {
+      type: 'array',
+      minItems: 1,
+      items: {
+        oneOf: [
+          { type: 'string', minLength: 1 },
+          {
+            type: 'object',
+            properties: {
+              type: { type: 'string', minLength: 1 },
+              field: { type: 'string', minLength: 1 },
+              fieldOn: { enum: ['child', 'parent'] },
+              multiple: { type: 'boolean' },
+              selfRef: { type: 'boolean' },
+            },
+            required: ['type'],
+            additionalProperties: false,
+          },
+        ],
+      },
+    },
+    aliases: {
+      type: 'object',
+      additionalProperties: { type: 'string', minLength: 1 },
+    },
+    allowSkipLevels: { type: 'boolean' },
+    rules: {
+      type: 'object',
+      properties: {
+        validation: { $ref: '#/$defs/rulesList' },
+        coherence: { $ref: '#/$defs/rulesList' },
+        workflow: { $ref: '#/$defs/rulesList' },
+        bestPractice: { $ref: '#/$defs/rulesList' },
+      },
+      additionalProperties: false,
+    },
+  },
+  required: ['hierarchy'],
+  additionalProperties: false,
+  $defs: {
+    rulesList: {
+      type: 'array',
+      items: { $ref: '#/$defs/rule' },
+    },
+    rule: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', minLength: 1 },
+        description: { type: 'string', minLength: 1 },
+        check: { type: 'string', minLength: 1 },
+        type: { type: 'string', minLength: 1 },
+        scope: { enum: ['global'] },
+      },
+      required: ['id', 'description', 'check'],
+      additionalProperties: false,
+    },
+  },
+};
 
 export function readRawSchema(schemaPath: string): JsonSchemaObject {
   return JSON5.parse(readFileSync(resolve(schemaPath), 'utf-8')) as JsonSchemaObject;
@@ -76,12 +138,25 @@ export function buildFullRegistry(schemaPath: string): Map<string, JsonSchemaObj
 export function createValidator(schemaPath: string): ValidateFunction {
   const targetSchema = readRawSchema(schemaPath);
   const ajv = new Ajv();
+  ajv.addKeyword({
+    keyword: '$metadata',
+    schemaType: 'object',
+    metaSchema: METADATA_KEYWORD_SCHEMA,
+    valid: true,
+    errors: false,
+  });
 
   const registry = buildFullRegistry(schemaPath);
+  const dialectSchema = registry.get(OST_TOOLS_SCHEMA_META_ID);
+
+  // Register dialect metaschema first so other schemas can reference it via "$schema".
+  if (dialectSchema && targetSchema.$id !== OST_TOOLS_SCHEMA_META_ID) {
+    ajv.addSchema(dialectSchema);
+  }
 
   // Register all except target schema (AJV compiles targetSchema explicitly)
   for (const [id, schema] of registry) {
-    if (id === targetSchema.$id) continue;
+    if (id === targetSchema.$id || id === OST_TOOLS_SCHEMA_META_ID) continue;
     ajv.addSchema(schema);
   }
 
@@ -92,26 +167,64 @@ export function resolveNodeType(type: string, typeAliases: Record<string, string
   return typeAliases?.[type] ?? type;
 }
 
+function readTopLevelMetadata(schema: JsonSchemaObject): Record<string, unknown> | undefined {
+  const metadata = schema.$metadata;
+  return typeof metadata === 'object' && metadata !== null ? (metadata as Record<string, unknown>) : undefined;
+}
+
+function collectExternalRefIds(schema: unknown, refs: Set<string>): void {
+  if (typeof schema !== 'object' || schema === null) return;
+  for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
+    if (key === '$ref' && typeof value === 'string' && !value.startsWith('#')) {
+      refs.add(value.split('#', 1)[0] ?? value);
+      continue;
+    }
+    collectExternalRefIds(value, refs);
+  }
+}
+
+function findMetadataInReferencedSchemas(
+  rootSchema: JsonSchemaObject,
+  registry: Map<string, JsonSchemaObject>,
+): Record<string, unknown> | undefined {
+  const visitedSchemaIds = new Set<string>();
+
+  const walk = (schema: JsonSchemaObject): Record<string, unknown> | undefined => {
+    const refs = new Set<string>();
+    collectExternalRefIds(schema, refs);
+
+    for (const schemaId of refs) {
+      if (visitedSchemaIds.has(schemaId)) continue;
+      visitedSchemaIds.add(schemaId);
+
+      const referencedSchema = registry.get(schemaId);
+      if (!referencedSchema) continue;
+
+      const metadata = readTopLevelMetadata(referencedSchema);
+      if (metadata) return metadata;
+
+      const nested = walk(referencedSchema);
+      if (nested) return nested;
+    }
+
+    return undefined;
+  };
+
+  return walk(rootSchema);
+}
+
 export function loadMetadata(schemaPath: string): SchemaMetadata {
   const schema = readRawSchema(schemaPath);
-  let metadata = (schema.$defs as Record<string, unknown>)?._metadata as Record<string, unknown> | undefined;
+  let metadata = readTopLevelMetadata(schema);
 
-  // _metadata may live in a partial schema rather than the target
+  // Metadata may live in a partial schema rather than the target.
   if (!metadata) {
-    for (const s of buildFullRegistry(schemaPath).values()) {
-      const m = (s.$defs as Record<string, unknown> | undefined)?._metadata;
-      if (m) {
-        metadata = m as Record<string, unknown>;
-        break;
-      }
-    }
+    metadata = findMetadataInReferencedSchemas(schema, buildFullRegistry(schemaPath));
   }
 
   const rawHierarchy = metadata?.hierarchy as Array<string | Record<string, unknown>> | undefined;
   if (!rawHierarchy || rawHierarchy.length === 0) {
-    throw new Error(
-      `Schema at ${schemaPath} must define "$defs._metadata.hierarchy" array for depth-based type inference`,
-    );
+    throw new Error(`Schema at ${schemaPath} must define "$metadata.hierarchy" for depth-based type inference`);
   }
 
   const levels: HierarchyLevel[] = rawHierarchy.map((entry) => {

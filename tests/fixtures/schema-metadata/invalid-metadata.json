@@ -1,0 +1,17 @@
+{
+  "$schema": "ost-tools://_ost_tools_schema_meta",
+  "$id": "ost-tools-test://schema-metadata/invalid",
+  "$metadata": {
+    "aliases": {
+      "outcome": "goal"
+    }
+  },
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "goal"
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": true
+}

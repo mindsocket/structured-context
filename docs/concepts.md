@@ -127,7 +127,7 @@ Rules may be:
 
 Rules are distinct from schema validation: the schema checks structure; rules check meaning and quality.
 
-See [docs/rules.md](rules.md) for the rules reference, including JSONata expression syntax and the full `_metadata` field reference.
+See [docs/rules.md](rules.md) for the rules reference, including JSONata expression syntax and the full `$metadata` field reference.
 
 ---
 
@@ -142,7 +142,7 @@ See [docs/rules.md](rules.md) for the rules reference, including JSONata express
 
 ## Hierarchy
 
-The **hierarchy** is the ordered list of node types in a space, from root to leaf. It is defined in the schema's `_metadata.hierarchy` array and drives depth-based type inference (for `space on a page`), tree rendering, and hierarchy validation. The root type has no parent; every other type has parents in the level immediately above (unless `allowSkipLevels` is set).
+The **hierarchy** is the ordered list of node types in a space, from root to leaf. It is defined in the schema's `$metadata.hierarchy` array and drives depth-based type inference (for `space on a page`), tree rendering, and hierarchy validation. The root type has no parent; every other type has parents in the level immediately above (unless `allowSkipLevels` is set).
 
 Relationships between levels are modelled as a layered DAG: a non-root node may have zero parents (orphaned), one parent, or multiple parents. The `show` command renders this as an indented tree, marking repeated nodes with `(*)` where the subtree is already shown elsewhere.
 

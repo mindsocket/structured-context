@@ -90,21 +90,19 @@ Shared definitions specific to the strict OST schema:
 - `outcomeProps` — Outcome-specific properties (metric)
 - `opportunityProps` — Opportunity properties (source)
 - `assumptionTestProps` — Assumption test properties (assumption, category)
-- `_metadata` — Hierarchy, type aliases, and executable rules for strict OST validation
+- `$metadata` — Hierarchy, type aliases, and executable rules for strict OST validation
 
 ## Schema Metadata
 
-The `_metadata` block in `$defs` carries non-structural validation configuration. It is not a JSON Schema construct — the tooling reads it separately from the schema validator.
+ost-tools uses a Draft-07-based schema dialect (`$schema: "ost-tools://_ost_tools_schema_meta"`) that adds a top-level `$metadata` block for non-structural validation configuration.
 
 ```json5
 {
-  "$defs": {
-    "_metadata": {
-      "hierarchy": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"],
-      "aliases": { "test": "assumption_test" },
-      "allowSkipLevels": false,
-      "rules": { ... }
-    }
+  "$metadata": {
+    "hierarchy": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"],
+    "aliases": { "test": "assumption_test" },
+    "allowSkipLevels": false,
+    "rules": { ... }
   }
 }
 ```
@@ -166,13 +164,13 @@ Schemas are designed to be composable. You can create custom schemas by:
 2. Using `$ref` to reference shared definitions from `_shared.json` or other schemas. This works transitively, including nested `allOf` compositions.
 3. Defining your own node types and constraints
 
-Referencing another schema file merges its `$defs` into the compiled schema, including any `_metadata` block. If multiple referenced files each define `_metadata`, only the last one merged is used — `rules` arrays are not combined across sources.
+Metadata can be defined either directly on the target schema (`$metadata`) or in a loaded partial schema. If multiple loaded schemas define metadata, the first `$metadata` found in load order is used.
 
 Example of referencing shared definitions:
 
 ```json5
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "ost-tools://_ost_tools_schema_meta",
   "$id": "ost-tools://my-custom-schema",
   "oneOf": [
     {

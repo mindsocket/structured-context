@@ -25,7 +25,7 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 ## Key Files
 
 - config — JSON5 file with spaces registered
-- `schemas/` — Bundled default schema files (json-schema with metadata extension, JSON5 format). Files starting with `_` are "partials" (fragments for `$ref`) and are loaded automatically. Local partials in a schema's directory **must** have unique `$id`s.
+- `schemas/` — Bundled default schema files (JSON5) using the ost-tools schema dialect (`$schema: ost-tools://_ost_tools_schema_meta`) and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`) and are loaded automatically. Local partials in a schema's directory **must** have unique `$id`s.
 
 ## Testing
 

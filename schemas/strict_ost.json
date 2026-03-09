@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "ost-tools://_ost_tools_schema_meta",
   "$id": "ost-tools://strict_ost",
   "title": "Opportunity Solution Tree (Strict)",
   // Follows Teresa Torres' 4-level OST structure as described in "Continuous Discovery Habits" (2021)

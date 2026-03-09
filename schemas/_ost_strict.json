@@ -1,42 +1,42 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "ost-tools://_ost_tools_schema_meta",
   "$id": "ost-tools://_ost_strict",
   // Shared definitions for the strict OST (Opportunity Solution Tree) schema.
   // This schema follows Teresa Torres' canonical 4-level structure as described in
   // "Continuous Discovery Habits" (2021) and at producttalk.org.
+  "$metadata": {
+    "hierarchy": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"],
+    "rules": {
+      "workflow": [
+        {
+          "id": "active-outcome-count",
+          "description": "Only one outcome should be active at a time",
+          "scope": "global",
+          "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+        },
+        {
+          "id": "active-opportunity-count",
+          "description": "Only one target opportunity should be active at a time",
+          "scope": "global",
+          "check": "$count(nodes[resolvedType='opportunity' and status='active']) <= 1"
+        },
+        {
+          "id": "active-node-parent-active",
+          "description": "An active node's parent should also be active",
+          "check": "current.status != 'active' or $exists(parent) = false or parent.status = 'active'"
+        }
+      ],
+      "bestPractice": [
+        {
+          "id": "solution-quantity",
+          "description": "Explore multiple candidate solutions (aim for at least three) for the target opportunity",
+          "type": "opportunity",
+          "check": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
+        }
+      ]
+    }
+  },
   "$defs": {
-    "_metadata": {
-      "hierarchy": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"],
-      "rules": {
-        "workflow": [
-          {
-            "id": "active-outcome-count",
-            "description": "Only one outcome should be active at a time",
-            "scope": "global",
-            "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
-          },
-          {
-            "id": "active-opportunity-count",
-            "description": "Only one target opportunity should be active at a time",
-            "scope": "global",
-            "check": "$count(nodes[resolvedType='opportunity' and status='active']) <= 1"
-          },
-          {
-            "id": "active-node-parent-active",
-            "description": "An active node's parent should also be active",
-            "check": "current.status != 'active' or $exists(parent) = false or parent.status = 'active'"
-          }
-        ],
-        "bestPractice": [
-          {
-            "id": "solution-quantity",
-            "description": "Explore multiple candidate solutions (aim for at least three) for the target opportunity",
-            "type": "opportunity",
-            "check": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
-          }
-        ]
-      }
-    },
     "outcomeProps": {
       "type": "object",
       "description": "Properties for an Outcome node (product metric, not vision/mission)",

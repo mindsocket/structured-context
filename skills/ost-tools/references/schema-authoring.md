@@ -1,12 +1,12 @@
 # Schema Authoring Reference
 
-Schema files use JSON Schema draft-07 with an ost-tools-specific `_metadata` block.
+Schema files use an ost-tools-specific Draft-07-based schema dialect (`$schema: "ost-tools://_ost_tools_schema_meta"`) with a top-level `$metadata` block.
 See `~/src/ost-tools/schemas/` for full examples (`general.json`, `strict_ost.json`).
 
-## `_metadata` (in `$defs`)
+## `$metadata` (top-level)
 
 ```json
-"_metadata": {
+"$metadata": {
   "hierarchy": [
     "outcome",
     { "type": "opportunity" },

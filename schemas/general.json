@@ -1,23 +1,21 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "ost-tools://_ost_tools_schema_meta",
   "$id": "ost-tools://general",
   "title": "Strategy and opportunity ladder",
   "description": "Validates frontmatter for space node files",
-  "$defs": {
-    "_metadata": {
-      "hierarchy": [
-        "vision",
-        "mission",
-        { "type": "goal", "selfRef": true },
-        { "type": "opportunity", "selfRef": true },
-        { "type": "solution", "selfRef": true },
-        "experiment"
-      ],
-      "aliases": {
-        "outcome": "goal",
-        "assumption_test": "experiment",
-        "test": "experiment"
-      }
+  "$metadata": {
+    "hierarchy": [
+      "vision",
+      "mission",
+      { "type": "goal", "selfRef": true },
+      { "type": "opportunity", "selfRef": true },
+      { "type": "solution", "selfRef": true },
+      "experiment"
+    ],
+    "aliases": {
+      "outcome": "goal",
+      "assumption_test": "experiment",
+      "test": "experiment"
     }
   },
   "oneOf": [

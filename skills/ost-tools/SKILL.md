@@ -71,7 +71,7 @@ inspect exactly what JSONata rules see when a rule fires unexpectedly.
 **Rule violations on every node of a type** — the rule may be too strict or misconfigured. Use `dump` to verify
 what the rule actually sees in the `current` object, then adjust the rule in the schema.
 
-**`show`/`diagram` show only orphans and non-hierarchy types** — the schema's `_metadata.hierarchy` may not have edge configuration for the space's relationship fields. Use `schemas show --space <name>` to check the hierarchy definition. Each non-root level can define a `field` entry (overriding default `parent:` field (and optionally `fieldOn: "parent"` / `multiple: true`) to wire up the correct relationship field.
+**`show`/`diagram` show only orphans and non-hierarchy types** — the schema's `$metadata.hierarchy` may not have edge configuration for the space's relationship fields. Use `schemas show --space <name>` to check the hierarchy definition. Each non-root level can define a `field` entry (overriding default `parent:` field (and optionally `fieldOn: "parent"` / `multiple: true`) to wire up the correct relationship field.
 
 ## Troubleshooting Common Errors
 
@@ -80,10 +80,10 @@ what the rule actually sees in the `current` object, then adjust the rule in the
 | `File has no type field` | Discriminator field missing or named differently | Check `fieldMap` in config or add `type` to frontmatter |
 | `must have property 'X'` | Required schema property missing | Check `schemas show --space` to see required properties |
 | `could not find node '[[Title]]'` | Broken wikilink | Fix the title in the link or ensure the target file exists and has that title |
-| `JSONata error: ...` | Syntax error in schema `_metadata.rules` | Verify the expression with `dump` and a JSONata tester |
+| `JSONata error: ...` | Syntax error in schema `$metadata.rules` | Verify the expression with `dump` and a JSONata tester |
 
 ## References
 
-- **`references/schema-authoring.md`** — schema file structure, `_metadata`, `fieldMap`, JSONata rules
+- **`references/schema-authoring.md`** — schema file structure, `$metadata`, `fieldMap`, JSONata rules
 - **`references/schema-design.md`** — process for designing a schema from existing content
 - **`references/commands.md`** — detailed CLI usage and examples

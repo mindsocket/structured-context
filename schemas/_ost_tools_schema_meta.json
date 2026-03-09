@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ost-tools://_ost_tools_schema_meta",
+  "title": "ost-tools schema dialect",
+  "description": "Extends JSON Schema Draft-07 with top-level $metadata for hierarchy and rule metadata.",
+  "type": "object",
+  "allOf": [{ "$ref": "http://json-schema.org/draft-07/schema#" }],
+  "properties": {
+    "$metadata": { "$ref": "#/$defs/schemaMetadata" }
+  },
+  "$defs": {
+    "schemaMetadata": {
+      "type": "object",
+      "properties": {
+        "hierarchy": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [{ "type": "string", "minLength": 1 }, { "$ref": "#/$defs/hierarchyLevel" }]
+          }
+        },
+        "aliases": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "allowSkipLevels": { "type": "boolean" },
+        "rules": {
+          "type": "object",
+          "properties": {
+            "validation": { "$ref": "#/$defs/rulesList" },
+            "coherence": { "$ref": "#/$defs/rulesList" },
+            "workflow": { "$ref": "#/$defs/rulesList" },
+            "bestPractice": { "$ref": "#/$defs/rulesList" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["hierarchy"],
+      "additionalProperties": false
+    },
+    "hierarchyLevel": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "field": { "type": "string", "minLength": 1, "default": "parent" },
+        "fieldOn": { "enum": ["child", "parent"], "default": "child" },
+        "multiple": { "type": "boolean", "default": false },
+        "selfRef": { "type": "boolean", "default": false }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "rulesList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    },
+    "rule": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "check": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "scope": { "enum": ["global"] }
+      },
+      "required": ["id", "description"],
+      "additionalProperties": false
+    }
+  }
+}

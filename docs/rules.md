@@ -1,12 +1,12 @@
 # Executable Rules
 
-Rules are JSONata expressions embedded in a schema's `_metadata.rules` block. Each rule is evaluated against applicable nodes at validation time and must return `true` to pass. Rules encode checks that JSON Schema structural validation cannot express — cross-node consistency, quantitative thresholds, and qualitative best practices.
+Rules are JSONata expressions embedded in a schema's `$metadata.rules` block. Each rule is evaluated against applicable nodes at validation time and must return `true` to pass. Rules encode checks that JSON Schema structural validation cannot express — cross-node consistency, quantitative thresholds, and qualitative best practices.
 
 For how rules fit into the broader schema metadata, see [docs/schemas.md](schemas.md).
 
 ## Rule Categories
 
-Rules are grouped into categories under `_metadata.rules`. Categories are informational — they determine how violations are labelled and grouped in output, but do not affect how the rule is evaluated. Use `scope` to control evaluation mode.
+Rules are grouped into categories under `$metadata.rules`. Categories are informational — they determine how violations are labelled and grouped in output, but do not affect how the rule is evaluated. Use `scope` to control evaluation mode.
 
 | Category | Purpose |
 |---|---|
