@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
+  "$id": "ost-tools-test://schema-composition/imports/root",
+  "$metadata": {
+    "hierarchy": {
+      "levels": ["goal"]
+    },
+    "rules": [
+      { "$ref": "ost-tools-test://schema-composition/imports/pack#/$defs/workflowRule" },
+      { "$ref": "ost-tools-test://schema-composition/imports/pack#/$defs/ruleSet" },
+      { "$ref": "#/$defs/localRule" },
+      { "$ref": "#/$defs/localRuleSet" }
+    ]
+  },
+  "$defs": {
+    "localRule": {
+      "id": "local-rule",
+      "category": "validation",
+      "description": "Local single rule",
+      "check": "true"
+    },
+    "localRuleSet": {
+      "rules": [
+        {
+          "id": "local-set-rule",
+          "category": "best-practice",
+          "description": "Local rule-set rule",
+          "check": "true"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

@@ -76,45 +76,65 @@
         "rules": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "minLength": 1
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "category": {
+                    "enum": [
+                      "validation",
+                      "coherence",
+                      "workflow",
+                      "best-practice"
+                    ]
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "check": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "scope": {
+                    "enum": [
+                      "global"
+                    ]
+                  },
+                  "override": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "category",
+                  "description",
+                  "check"
+                ],
+                "additionalProperties": false
               },
-              "category": {
-                "enum": [
-                  "validation",
-                  "coherence",
-                  "workflow",
-                  "best-practice"
-                ]
-              },
-              "description": {
-                "type": "string",
-                "minLength": 1
-              },
-              "check": {
-                "type": "string",
-                "minLength": 1
-              },
-              "type": {
-                "type": "string",
-                "minLength": 1
-              },
-              "scope": {
-                "enum": [
-                  "global"
-                ]
+              {
+                "type": "object",
+                "properties": {
+                  "$ref": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "$ref"
+                ],
+                "additionalProperties": false
               }
-            },
-            "required": [
-              "id",
-              "category",
-              "description",
-              "check"
-            ],
-            "additionalProperties": false
+            ]
           }
         }
       },

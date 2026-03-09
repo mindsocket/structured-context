@@ -1,16 +1,19 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import Ajv, { type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
 import {
   type MetadataContract,
-  type MetadataContractRules,
+  type MetadataContractRule,
+  type MetadataContractRuleEntry,
   OST_TOOLS_DIALECT_META_SCHEMA,
   OST_TOOLS_METADATA_SCHEMA,
   OST_TOOLS_SCHEMA_META_ID,
 } from './metadata-contract';
-import type { HierarchyLevel, SchemaMetadata } from './types';
+import { isObject, resolveJsonPointer } from './schema-refs';
+import type { HierarchyLevel, RuleCategory, SchemaMetadata } from './types';
 
 const packageDir = dirname(fileURLToPath(import.meta.url));
 export const bundledSchemasDir = join(packageDir, '..', 'schemas');
@@ -109,32 +112,82 @@ export function resolveNodeType(type: string, typeAliases: Record<string, string
   return typeAliases?.[type] ?? type;
 }
 
+interface MetadataProvider {
+  schemaId: string;
+  schema: JsonSchemaObject;
+  metadata: MetadataContract;
+}
+
+const RULE_CATEGORIES = new Set<RuleCategory>(['validation', 'coherence', 'workflow', 'best-practice']);
+const RULE_ALLOWED_KEYS = new Set(['id', 'category', 'description', 'check', 'type', 'scope', 'override']);
+
 function readTopLevelMetadata(schema: JsonSchemaObject): MetadataContract | undefined {
   const metadata = schema.$metadata;
-  return typeof metadata === 'object' && metadata !== null ? (metadata as MetadataContract) : undefined;
+  return isObject(metadata) ? (metadata as MetadataContract) : undefined;
 }
 
-function collectExternalRefIds(schema: unknown, refs: Set<string>): void {
-  if (typeof schema !== 'object' || schema === null) return;
-  for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
-    if (key === '$ref' && typeof value === 'string' && !value.startsWith('#')) {
-      refs.add(value.split('#', 1)[0] ?? value);
-      continue;
-    }
-    collectExternalRefIds(value, refs);
+function resolveRefTargetForRule(
+  ref: string,
+  currentRootSchema: JsonSchemaObject,
+  registry: Map<string, JsonSchemaObject>,
+): { value: unknown; rootSchema: JsonSchemaObject; refKey: string } {
+  if (ref.startsWith('#')) {
+    const pointer = ref.slice(1);
+    const rootId = typeof currentRootSchema.$id === 'string' ? currentRootSchema.$id : '(root schema)';
+    return {
+      value: resolveJsonPointer(currentRootSchema, pointer, ref),
+      rootSchema: currentRootSchema,
+      refKey: `${rootId}#${pointer}`,
+    };
   }
+
+  const hashIndex = ref.indexOf('#');
+  const baseId = hashIndex >= 0 ? ref.slice(0, hashIndex) : ref;
+  const pointer = hashIndex >= 0 ? ref.slice(hashIndex + 1) : '';
+  const externalSchema = registry.get(baseId);
+  if (!externalSchema) {
+    throw new Error(`Cannot resolve external $ref: ${ref}`);
+  }
+
+  return {
+    value: resolveJsonPointer(externalSchema, pointer, ref),
+    rootSchema: externalSchema,
+    refKey: `${baseId}#${pointer}`,
+  };
 }
 
-function findMetadataInReferencedSchemas(
+function collectExternalRefIdsInOrder(schema: unknown): string[] {
+  const refs: string[] = [];
+  const seen = new Set<string>();
+
+  const walk = (value: unknown): void => {
+    if (!isObject(value)) return;
+    for (const [key, child] of Object.entries(value)) {
+      if (key === '$ref' && typeof child === 'string' && !child.startsWith('#')) {
+        const schemaId = child.split('#', 1)[0] ?? child;
+        if (!seen.has(schemaId)) {
+          seen.add(schemaId);
+          refs.push(schemaId);
+        }
+        continue;
+      }
+      walk(child);
+    }
+  };
+
+  walk(schema);
+  return refs;
+}
+
+function collectMetadataProviders(
   rootSchema: JsonSchemaObject,
   registry: Map<string, JsonSchemaObject>,
-): MetadataContract | undefined {
+): MetadataProvider[] {
+  const providers: MetadataProvider[] = [];
   const visitedSchemaIds = new Set<string>();
 
-  const walk = (schema: JsonSchemaObject): MetadataContract | undefined => {
-    const refs = new Set<string>();
-    collectExternalRefIds(schema, refs);
-
+  const walk = (schema: JsonSchemaObject): void => {
+    const refs = collectExternalRefIdsInOrder(schema);
     for (const schemaId of refs) {
       if (visitedSchemaIds.has(schemaId)) continue;
       visitedSchemaIds.add(schemaId);
@@ -142,29 +195,189 @@ function findMetadataInReferencedSchemas(
       const referencedSchema = registry.get(schemaId);
       if (!referencedSchema) continue;
 
+      walk(referencedSchema);
+
       const metadata = readTopLevelMetadata(referencedSchema);
-      if (metadata) return metadata;
-
-      const nested = walk(referencedSchema);
-      if (nested) return nested;
+      if (metadata) {
+        providers.push({ schemaId, schema: referencedSchema, metadata });
+      }
     }
-
-    return undefined;
   };
 
-  return walk(rootSchema);
+  walk(rootSchema);
+
+  const rootMetadata = readTopLevelMetadata(rootSchema);
+  if (rootMetadata) {
+    const rootSchemaId = typeof rootSchema.$id === 'string' ? rootSchema.$id : '(root schema)';
+    providers.push({ schemaId: rootSchemaId, schema: rootSchema, metadata: rootMetadata });
+  }
+
+  return providers;
+}
+
+function isRuleRefEntry(value: unknown): value is { $ref: string } {
+  if (!isObject(value)) return false;
+  return typeof value.$ref === 'string' && value.$ref.length > 0 && Object.keys(value).length === 1;
+}
+
+function isMetadataRule(value: unknown): value is MetadataContractRule {
+  if (!isObject(value)) return false;
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.id !== 'string' || record.id.length === 0) return false;
+  if (typeof record.category !== 'string' || !RULE_CATEGORIES.has(record.category as RuleCategory)) return false;
+  if (typeof record.description !== 'string' || record.description.length === 0) return false;
+  if (typeof record.check !== 'string' || record.check.length === 0) return false;
+
+  if ('type' in record && (typeof record.type !== 'string' || record.type.length === 0)) return false;
+  if ('scope' in record && record.scope !== 'global') return false;
+  if ('override' in record && typeof record.override !== 'boolean') return false;
+
+  for (const key of Object.keys(record)) {
+    if (!RULE_ALLOWED_KEYS.has(key)) return false;
+  }
+
+  return true;
+}
+
+function resolveRuleEntries(
+  ruleEntry: MetadataContractRuleEntry,
+  provider: MetadataProvider,
+  registry: Map<string, JsonSchemaObject>,
+  stack: Set<string>,
+): MetadataContractRule[] {
+  if (isMetadataRule(ruleEntry)) {
+    return [ruleEntry];
+  }
+
+  if (!isRuleRefEntry(ruleEntry)) {
+    throw new Error(`Invalid rule entry in metadata from "${provider.schemaId}".`);
+  }
+
+  const target = resolveRefTargetForRule(ruleEntry.$ref, provider.schema, registry);
+  if (stack.has(target.refKey)) {
+    throw new Error(
+      `Cyclic rule import detected while loading metadata from "${provider.schemaId}": ${[...stack, target.refKey].join(
+        ' -> ',
+      )}`,
+    );
+  }
+
+  stack.add(target.refKey);
+  try {
+    const value = target.value;
+
+    const resolveArray = (arr: unknown[]): MetadataContractRule[] => {
+      const resolvedRules: MetadataContractRule[] = [];
+      for (const child of arr) {
+        if (!isObject(child)) {
+          throw new Error(
+            `Invalid rule import target for "${ruleEntry.$ref}" from "${provider.schemaId}". Rule sets must contain objects.`,
+          );
+        }
+        resolvedRules.push(
+          ...resolveRuleEntries(
+            child as MetadataContractRuleEntry,
+            { ...provider, schema: target.rootSchema },
+            registry,
+            stack,
+          ),
+        );
+      }
+      return resolvedRules;
+    };
+
+    if (Array.isArray(value)) {
+      return resolveArray(value);
+    }
+
+    if (isObject(value) && 'rules' in value) {
+      const nestedRules = value.rules;
+      if (!Array.isArray(nestedRules)) {
+        throw new Error(
+          `Invalid rule import target for "${ruleEntry.$ref}" from "${provider.schemaId}". "rules" must be an array.`,
+        );
+      }
+      return resolveArray(nestedRules);
+    }
+
+    if (isObject(value)) {
+      return resolveRuleEntries(
+        value as MetadataContractRuleEntry,
+        { ...provider, schema: target.rootSchema },
+        registry,
+        stack,
+      );
+    }
+
+    throw new Error(
+      `Invalid rule import target for "${ruleEntry.$ref}" from "${provider.schemaId}". Expected a rule object or rule set.`,
+    );
+  } finally {
+    stack.delete(target.refKey);
+  }
+}
+
+function normalizeRule(rule: MetadataContractRule): MetadataContractRule {
+  const { override, ...normalized } = rule;
+  return normalized;
+}
+
+function areRulesEquivalent(left: MetadataContractRule, right: MetadataContractRule): boolean {
+  return isDeepStrictEqual(normalizeRule(left), normalizeRule(right));
 }
 
 export function loadMetadata(schemaPath: string): SchemaMetadata {
   const schema = readRawSchema(schemaPath);
-  let metadata = readTopLevelMetadata(schema);
+  const registry = buildFullRegistry(schemaPath);
+  const metadataProviders = collectMetadataProviders(schema, registry);
 
-  // Metadata may live in a partial schema rather than the target.
-  if (!metadata) {
-    metadata = findMetadataInReferencedSchemas(schema, buildFullRegistry(schemaPath));
+  let hierarchyProvider: string | undefined;
+  let mergedHierarchy: MetadataContract['hierarchy'] | undefined;
+  const mergedAliases: Record<string, string> = {};
+  const mergedRules = new Map<string, { providerId: string; rule: MetadataContractRule }>();
+
+  for (const provider of metadataProviders) {
+    if (provider.metadata.hierarchy) {
+      if (mergedHierarchy) {
+        throw new Error(
+          `Multiple metadata providers define "$metadata.hierarchy": "${hierarchyProvider}" and "${provider.schemaId}". Exactly one provider is allowed.`,
+        );
+      }
+      hierarchyProvider = provider.schemaId;
+      mergedHierarchy = provider.metadata.hierarchy;
+    }
+
+    if (provider.metadata.aliases) {
+      Object.assign(mergedAliases, provider.metadata.aliases);
+    }
+
+    if (provider.metadata.rules) {
+      for (const entry of provider.metadata.rules) {
+        const resolvedRules = resolveRuleEntries(entry, provider, registry, new Set());
+        for (const incomingRule of resolvedRules) {
+          const existingRule = mergedRules.get(incomingRule.id);
+          if (!existingRule) {
+            mergedRules.set(incomingRule.id, { providerId: provider.schemaId, rule: incomingRule });
+            continue;
+          }
+
+          if (incomingRule.override === true) {
+            mergedRules.set(incomingRule.id, { providerId: provider.schemaId, rule: incomingRule });
+            continue;
+          }
+
+          if (!areRulesEquivalent(existingRule.rule, incomingRule)) {
+            throw new Error(
+              `Conflicting rule "${incomingRule.id}" found in "${existingRule.providerId}" and "${provider.schemaId}". Set "override": true on the later rule to replace it.`,
+            );
+          }
+        }
+      }
+    }
   }
 
-  const rawHierarchy = metadata?.hierarchy?.levels;
+  const rawHierarchy = mergedHierarchy?.levels;
   if (!rawHierarchy || rawHierarchy.length === 0) {
     throw new Error(`Schema at ${schemaPath} must define "$metadata.hierarchy.levels" for depth-based type inference`);
   }
@@ -185,9 +398,9 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
   return {
     hierarchy: {
       levels,
-      allowSkipLevels: metadata?.hierarchy?.allowSkipLevels,
+      allowSkipLevels: mergedHierarchy?.allowSkipLevels,
     },
-    typeAliases: (metadata?.aliases as Record<string, string>) ?? undefined,
-    rules: (metadata?.rules as MetadataContractRules) ?? undefined,
+    typeAliases: Object.keys(mergedAliases).length > 0 ? mergedAliases : undefined,
+    rules: mergedRules.size > 0 ? [...mergedRules.values()].map(({ rule }) => normalizeRule(rule)) : undefined,
   };
 }

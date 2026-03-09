@@ -25,8 +25,18 @@ const RULE_SCHEMA = {
     check: { type: 'string', minLength: 1 },
     type: { type: 'string', minLength: 1 },
     scope: { enum: ['global'] },
+    override: { type: 'boolean' },
   },
   required: ['id', 'category', 'description', 'check'],
+  additionalProperties: false,
+} as const;
+
+const RULE_REF_SCHEMA = {
+  type: 'object',
+  properties: {
+    $ref: { type: 'string', minLength: 1 },
+  },
+  required: ['$ref'],
   additionalProperties: false,
 } as const;
 
@@ -54,7 +64,9 @@ export const OST_TOOLS_METADATA_SCHEMA = {
     },
     rules: {
       type: 'array',
-      items: RULE_SCHEMA,
+      items: {
+        oneOf: [RULE_SCHEMA, RULE_REF_SCHEMA],
+      },
     },
   },
   required: ['hierarchy'],
@@ -75,5 +87,8 @@ export const OST_TOOLS_DIALECT_META_SCHEMA = {
 
 export type MetadataContract = FromSchema<typeof OST_TOOLS_METADATA_SCHEMA>;
 export type MetadataContractHierarchy = MetadataContract['hierarchy'];
+export type MetadataContractRule = FromSchema<typeof RULE_SCHEMA>;
+export type MetadataContractRuleRef = FromSchema<typeof RULE_REF_SCHEMA>;
 export type MetadataContractRules = Exclude<MetadataContract['rules'], undefined>;
-export type MetadataContractRule = MetadataContractRules[number];
+export type MetadataContractRuleEntry = MetadataContractRules[number];
+export type MetadataContractResolvedRules = MetadataContractRule[];

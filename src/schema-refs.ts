@@ -1,5 +1,7 @@
 import type { AnySchemaObject } from 'ajv';
 
+export { isObject, resolveRefTarget, resolveJsonPointer, decodeJsonPointerToken };
+
 interface ResolvedSchema {
   schema: AnySchemaObject;
   rootSchema: AnySchemaObject;

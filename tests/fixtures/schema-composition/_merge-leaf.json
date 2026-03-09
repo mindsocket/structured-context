@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
+  "$id": "ost-tools-test://schema-composition/merge/leaf",
+  "$metadata": {
+    "hierarchy": {
+      "levels": ["vision", "goal"]
+    },
+    "aliases": {
+      "north_star": "vision"
+    },
+    "rules": [
+      {
+        "id": "leaf-rule",
+        "category": "coherence",
+        "description": "Leaf coherence rule",
+        "check": "true"
+      }
+    ]
+  },
+  "type": "object"
+}
