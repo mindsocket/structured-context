@@ -3,7 +3,7 @@ import { basename, resolve } from 'node:path';
 import matter from 'gray-matter';
 import { loadConfig, resolveSchema } from './config';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
-import { resolveParentLinks } from './resolve-links';
+import { resolveLinks } from './resolve-links';
 import { loadMetadata } from './schema';
 import type { SpaceOnAPageReadResult } from './types';
 
@@ -22,7 +22,7 @@ export function readSpaceOnAPage(filePath: string, schemaPath?: string): SpaceOn
   const config = loadConfig();
   const space = config.spaces.find((s) => resolve(s.path) === resolve(filePath));
   const resolvedSchemaPath = resolveSchema(schemaPath, config, space);
-  const { hierarchy, aliases } = loadMetadata(resolvedSchemaPath);
+  const { hierarchy, levels, aliases } = loadMetadata(resolvedSchemaPath);
 
   const pageTitle = basename(filePath, '.md');
   const { nodes, diagnostics } = extractEmbeddedNodes(body, {
@@ -31,6 +31,6 @@ export function readSpaceOnAPage(filePath: string, schemaPath?: string): SpaceOn
     hierarchy,
     aliases,
   });
-  resolveParentLinks(nodes);
+  resolveLinks(nodes, levels);
   return { nodes, diagnostics };
 }

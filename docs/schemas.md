@@ -100,9 +100,8 @@ The `_metadata` block in `$defs` carries non-structural validation configuration
 {
   "$defs": {
     "_metadata": {
-      "hierarchy": ["outcome", "opportunity", "solution", "assumption_test"],
+      "hierarchy": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"],
       "aliases": { "test": "assumption_test" },
-      "allowSelfRef": ["opportunity"],
       "allowSkipLevels": false,
       "rules": { ... }
     }
@@ -112,17 +111,48 @@ The `_metadata` block in `$defs` carries non-structural validation configuration
 
 | Field | Type | Description |
 |---|---|---|
-| `hierarchy` | `string[]` | Ordered list of canonical types from root to leaf |
+| `hierarchy` | `(string \| HierarchyLevel)[]` | Ordered list of types from root to leaf; plain strings use defaults |
 | `aliases` | `Record<string, string>` | Maps alternative type names to canonical types |
-| `allowSelfRef` | `string[]` | Types that may have a parent of the same type (e.g. nested opportunities) |
 | `allowSkipLevels` | `boolean` | When `true`, a node may have any ancestor type above it, not just the immediate parent |
 | `rules` | `object` | Executable validation rules — see [docs/rules.md](rules.md) |
 
+### Hierarchy levels
+
+Each entry in `hierarchy` may be a plain string (shorthand for `{ type: "..." }`) or a `HierarchyLevel` object:
+
+```json5
+"hierarchy": [
+  { "type": "Outcomes" },                          // root — no edge config
+  { "type": "Opportunities", "field": "outcome" },    // child has single wikilink in 'outcome' field instead of 'parent'
+  {
+    "type": "Solution",
+    "field": "has_solutions",
+    "fieldOn": "parent",   // parent (Opportunities) has the field pointing to children
+    "multiple": true       // field is an array of wikilinks
+  },
+  {
+    "type": "Experiments",
+    "field": "informs",
+    "multiple": true       // child (Experiments) has array of parent wikilinks instead of single
+  }
+]
+```
+
+| Level option | Default | Meaning |
+|---|---|---|
+| `type` | — | Canonical type name |
+| `field` | `"parent"` | Frontmatter field holding the wikilink(s) |
+| `fieldOn` | `"child"` | `"parent"` means the field is on the **parent** node and points to children |
+| `multiple` | `false` | When `true`, the field is an array of wikilinks |
+| `selfRef` | `false` | When `true`, a node of this type may have a parent of the same type (e.g. nested opportunities) |
+
+Plain string entries normalize to `{ type: "...", field: "parent", fieldOn: "child", multiple: false, selfRef: false }`.
+
 ### Hierarchy validation
 
-The validator checks every node type and its parent type against the hierarchy order, with violations flagged.
+The validator checks every node type and its parent type(s) against the hierarchy order, with violations flagged. A node may have multiple resolved parents (layered DAG); each is checked independently.
 
-`allowSelfRef` and `allowSkipLevels` modify the strictness. For example, `"allowSelfRef": ["opportunity"]` permits nested opportunity trees.
+`allowSkipLevels` and per-level `selfRef` modify the strictness. For example, `{ "type": "opportunity", "selfRef": true }` permits nested opportunity trees.
 
 ### Type aliases
 

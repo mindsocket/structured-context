@@ -1,22 +1,24 @@
 import { describe, expect, it } from 'bun:test';
-import type { SpaceNode } from '../src/types';
+import type { SchemaMetadata, SpaceNode } from '../src/types';
 import { validateHierarchy } from '../src/validate-hierarchy';
+import { makeLevel } from './test-helpers';
 
 describe('validate-hierarchy', () => {
   const buildNode = (title: string, type: string, parentTitle?: string): SpaceNode => ({
     label: `${title}.md`,
     schemaData: { title, type, status: 'active' },
     linkTargets: [title],
+    resolvedParents: parentTitle ? [parentTitle] : [],
     resolvedType: type, // In tests, no alias resolution needed
-    ...(parentTitle ? { resolvedParent: parentTitle } : {}),
   });
 
-  describe('hierarchy with allowSelfRef', () => {
-    const metadata = {
-      hierarchy: ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'],
+  describe('hierarchy with selfRef', () => {
+    const hierarchy = ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'];
+    const metadata: SchemaMetadata = {
+      hierarchy,
+      levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
       aliases: {},
       allowSkipLevels: false,
-      allowSelfRef: ['goal', 'opportunity', 'solution'],
     };
 
     it('passes when node has immediate parent in hierarchy', () => {
@@ -30,7 +32,7 @@ describe('validate-hierarchy', () => {
       expect(violations).toHaveLength(0);
     });
 
-    it('passes when node has same-type parent if allowSelfRef includes type', () => {
+    it('passes when node has same-type parent if selfRef is true for that type', () => {
       const nodes: SpaceNode[] = [
         buildNode('Main Goal', 'goal'),
         buildNode('Sub Goal', 'goal', 'Main Goal'),
@@ -42,7 +44,7 @@ describe('validate-hierarchy', () => {
       expect(violations).toHaveLength(0);
     });
 
-    it('fails when node has same-type parent if allowSelfRef excludes type', () => {
+    it('fails when node has same-type parent if selfRef is false for that type', () => {
       const nodes: SpaceNode[] = [buildNode('Mission 1', 'mission'), buildNode('Mission 2', 'mission', 'Mission 1')];
 
       const violations = validateHierarchy(nodes, metadata);
@@ -76,11 +78,12 @@ describe('validate-hierarchy', () => {
   });
 
   describe('hierarchy with allowSkipLevels', () => {
-    const metadata = {
-      hierarchy: ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'],
+    const hierarchy = ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'];
+    const metadata: SchemaMetadata = {
+      hierarchy,
+      levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
       aliases: {},
       allowSkipLevels: true,
-      allowSelfRef: ['goal', 'opportunity', 'solution'],
     };
 
     it('allows skipping hierarchy levels when allowSkipLevels is true', () => {
@@ -107,11 +110,12 @@ describe('validate-hierarchy', () => {
   });
 
   describe('edge cases', () => {
-    const metadata = {
-      hierarchy: ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'],
+    const hierarchy = ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'];
+    const metadata: SchemaMetadata = {
+      hierarchy,
+      levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
       aliases: {},
       allowSkipLevels: false,
-      allowSelfRef: ['goal', 'opportunity', 'solution'],
     };
 
     it('skips nodes not in hierarchy', () => {
@@ -145,11 +149,12 @@ describe('validate-hierarchy', () => {
   });
 
   describe('violation format', () => {
-    const metadata = {
-      hierarchy: ['vision', 'mission', 'goal'],
+    const hierarchy = ['vision', 'mission', 'goal'];
+    const metadata: SchemaMetadata = {
+      hierarchy,
+      levels: hierarchy.map((t) => makeLevel(t)),
       aliases: {},
       allowSkipLevels: false,
-      allowSelfRef: [],
     };
 
     it('includes all required fields in violation', () => {

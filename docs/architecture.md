@@ -21,7 +21,7 @@ flowchart LR
         rdir --> embed
     end
 
-    nodes[(Space Nodes<br>schemaData · linkTargets<br>resolvedType · resolvedParent)]
+    nodes[(Space Nodes<br>schemaData · linkTargets<br>resolvedType · resolvedParents)]
 
     subgraph validate [Validate]
         direction TB
@@ -55,8 +55,8 @@ flowchart LR
 | Boundary | Data |
 |---|---|
 | Space → Read | Raw markdown files / `space_on_a_page` file |
-| Read → Nodes | `SpaceNode[]` — schemaData (canonical fields), resolvedType, resolvedParent, linkTargets |
-| Schema → Read | Hierarchy, aliases (for type resolution during parse) |
+| Read → Nodes | `SpaceNode[]` — schemaData (canonical fields), resolvedType, resolvedParents, linkTargets |
+| Schema → Read | Hierarchy levels (type names, edge fields, direction, cardinality), type aliases |
 | Schema → Validate | AJV validator, hierarchy rules, JSONata rule expressions |
 | Nodes → Output | Validated node set; output commands interpret as needed |
 | Config → Output | `fieldMap` (reverse) applied by template-sync for file field names |

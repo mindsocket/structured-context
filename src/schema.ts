@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { AnySchemaObject, SchemaObject } from 'ajv';
 import Ajv, { type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
-import type { RulesMetadata, SchemaMetadata } from './types';
+import type { HierarchyLevel, RulesMetadata, SchemaMetadata } from './types';
 
 const packageDir = dirname(fileURLToPath(import.meta.url));
 export const bundledSchemasDir = join(packageDir, '..', 'schemas');
@@ -169,18 +169,33 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
     }
   }
 
-  const hierarchy = (metadata?.hierarchy as string[]) ?? undefined;
-  if (!hierarchy || hierarchy.length === 0) {
+  const rawHierarchy = metadata?.hierarchy as Array<string | Record<string, unknown>> | undefined;
+  if (!rawHierarchy || rawHierarchy.length === 0) {
     throw new Error(
       `Schema at ${schemaPath} must define "$defs._metadata.hierarchy" array for depth-based type inference`,
     );
   }
 
+  const levels: HierarchyLevel[] = rawHierarchy.map((entry) => {
+    if (typeof entry === 'string') {
+      return { type: entry, field: 'parent', fieldOn: 'child', multiple: false, selfRef: false };
+    }
+    return {
+      type: entry.type as string,
+      field: (entry.field as string | undefined) ?? 'parent',
+      fieldOn: (entry.fieldOn as string | undefined) === 'parent' ? 'parent' : 'child',
+      multiple: (entry.multiple as boolean | undefined) ?? false,
+      selfRef: (entry.selfRef as boolean | undefined) ?? false,
+    };
+  });
+
+  const hierarchy = levels.map((l) => l.type);
+
   return {
     hierarchy,
+    levels,
     aliases: (metadata?.aliases as Record<string, string>) ?? undefined,
     allowSkipLevels: (metadata?.allowSkipLevels as boolean) ?? undefined,
-    allowSelfRef: (metadata?.allowSelfRef as string[]) ?? undefined,
     rules: (metadata?.rules as RulesMetadata) ?? undefined,
   };
 }

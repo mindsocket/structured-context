@@ -1,3 +1,11 @@
+export interface HierarchyLevel {
+  type: string;
+  field: string; // default "parent"
+  fieldOn: 'child' | 'parent'; // default "child" - "parent" means the parent node has the field pointing to children
+  multiple: boolean; // default false - when true, field is an array of wikilinks
+  selfRef: boolean; // default false - when true, a node of this type may have a parent of the same type
+}
+
 export interface SpaceNode {
   /** Source identifier for error messages (filename or heading title) */
   label: string;
@@ -5,8 +13,8 @@ export interface SpaceNode {
   schemaData: Record<string, unknown>;
   /** Valid navigation targets this node can be linked to (wikilink key without [[ ]]). */
   linkTargets: string[];
-  /** Resolved canonical parent title (derived from schemaData.parent + linkTargets). */
-  resolvedParent?: string;
+  /** Resolved canonical parent titles (derived from edge fields + linkTargets). Always present, empty if no parents. */
+  resolvedParents: string[];
   /** Resolved canonical type (after applying type aliases from schema metadata). */
   resolvedType: string;
 }
@@ -68,9 +76,9 @@ export interface HierarchyViolation {
 }
 
 export interface SchemaMetadata {
-  hierarchy: string[];
+  hierarchy: string[]; // derived type-name list (same length/order as levels)
+  levels: HierarchyLevel[]; // full per-level config
   aliases?: Record<string, string>;
   allowSkipLevels?: boolean;
-  allowSelfRef?: string[];
   rules?: RulesMetadata;
 }

@@ -6,8 +6,7 @@
   // "Continuous Discovery Habits" (2021) and at producttalk.org.
   "$defs": {
     "_metadata": {
-      "hierarchy": ["outcome", "opportunity", "solution", "assumption_test"],
-      "allowSelfRef": ["opportunity"],
+      "hierarchy": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"],
       "rules": {
         "workflow": [
           {

@@ -35,9 +35,10 @@ Each expression is evaluated once per applicable node with the following input:
 |---|---|
 | `nodes` | Array of all nodes in the space |
 | `current` | The node being evaluated |
-| `parent` | The resolved parent node — absent if no parent was resolved |
+| `parent` | First resolved parent node — absent if no parent was resolved. Provided for convenience with single-parent relationships; use `parents` for DAG hierarchies. |
+| `parents` | Array of all resolved parent nodes — absent if no parents were resolved |
 
-Nodes include all node properties (title, type, status, parent wikilink, etc.) plus two resolved fields: `resolvedType` (canonical type after alias resolution) and `resolvedParentTitle` (parent title after resolving any links).
+Nodes include all node properties (title, type, status, parent wikilink, etc.) plus resolved fields: `resolvedType` (canonical type after alias resolution), `resolvedParentTitle` (first parent title), and `resolvedParentTitles` (array of all parent titles).
 
 Prefer `resolvedType` over `type` for type comparisons. When aliases are in use, `type` reflects the raw frontmatter value and may not match canonical names.
 

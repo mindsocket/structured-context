@@ -140,15 +140,31 @@ See [docs/rules.md](rules.md) for the rules reference, including JSONata express
 
 ---
 
-## Parent reference
+## Hierarchy
 
-A **parent reference** is the `parent` field on a `space node` — a `wikilink` pointing to the node's direct parent in the tree. Root-level node types (such as `vision` in the default schema) carry no parent. Other node types carry one optionally, allowing for orphaned nodes — useful while drafting a tree or when explicitly capturing ideas like "solutions looking for a problem".
+The **hierarchy** is the ordered list of node types in a space, from root to leaf. It is defined in the schema's `_metadata.hierarchy` array and drives depth-based type inference (for `space on a page`), tree rendering, and hierarchy validation. The root type has no parent; every other type has parents in the level immediately above (unless `allowSkipLevels` is set).
 
-Parent references are validated during ref-checking: each `parent` wikilink must resolve to a known node title in the parsed node set.
+Relationships between levels are modelled as a layered DAG: a non-root node may have zero parents (orphaned), one parent, or multiple parents. The `show` command renders this as an indented tree, marking repeated nodes with `(*)` where the subtree is already shown elsewhere.
+
+### Edge configuration
+
+A **hierarchy edge** is a directional link connecting a child node to one or more parent nodes. Each non-root level in the hierarchy defines how its edges are expressed in frontmatter. The default is a single `parent` wikilink on the child node, but any field name, direction, and cardinality can be configured.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `field` | `"parent"` | The frontmatter field that holds the wikilink(s) |
+| `fieldOn` | `"child"` | `"parent"` means the field is on the **parent** node and points to children (reversed direction) |
+| `multiple` | `false` | When `true`, the field holds an **array** of wikilinks rather than a single one |
+
+Dangling wikilinks — edge field values that do not resolve to any known node — are reported as reference errors during validation.
+
+### Resolved parents
+
+**Resolved parents** (`resolvedParents`) is the set of parent node titles derived from a node's edge field(s) at *parse* time. It is always an array (empty if unresolved or root-level). Tooling uses `resolvedParents` for tree rendering, hierarchy validation, rule evaluation, and diagram/Miro sync.
 
 ### Wikilink
 
-A **wikilink** is the `[[Title]]` linking syntax (compatible with Obsidian) used to express `parent references` between `space nodes`. The `parent` field of a node holds a wikilink to its parent.
+A **wikilink** is the `[[Title]]` linking syntax (compatible with Obsidian) used to express hierarchy edges between `space nodes`. Any edge field — whether named `parent` or a custom name — holds wikilinks to linked nodes.
 
 Two forms are supported:
 

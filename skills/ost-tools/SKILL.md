@@ -13,7 +13,7 @@ description: >
 
 ## Finding the config
 
-ost-tools looks in `~/.local/ost-tools/config.json`, unless given an explicit config, e.g.:
+ost-tools looks in `$XDG_CONFIG_HOME/ost-tools/config.json`, unless given an explicit config, e.g.:
 
 ```bash
 bunx ost-tools validate <space> --config path/to/config.json
@@ -71,8 +71,7 @@ inspect exactly what JSONata rules see when a rule fires unexpectedly.
 **Rule violations on every node of a type** — the rule may be too strict or misconfigured. Use `dump` to verify
 what the rule actually sees in the `current` object, then adjust the rule in the schema.
 
-**`show`/`diagram` show a flat list** — these commands rely on a `parent` field with wikilinks.
-If the space uses named relationship fields (e.g., `opportunity: "[[...]]"`), it won't produce a tree until custom parent field support is added.
+**`show`/`diagram` show only orphans and non-hierarchy types** — the schema's `_metadata.hierarchy` may not have edge configuration for the space's relationship fields. Use `schemas show --space <alias>` to check the hierarchy definition. Each non-root level can define a `field` entry (overriding default `parent:` field (and optionally `fieldOn: "parent"` / `multiple: true`) to wire up the correct relationship field.
 
 ## Troubleshooting Common Errors
 

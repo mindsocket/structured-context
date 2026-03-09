@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
-import { writeFileSync, existsSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
+import { afterAll, beforeEach, describe, expect, it } from 'bun:test';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import JSON5 from 'json5';
 import { loadConfig, setConfigPath, updateSpaceField } from '../src/config';
@@ -20,19 +20,37 @@ describe('loadConfig with includeSpacesFrom', () => {
     setConfigPath(undefined);
   });
 
-  it('loads spaces from included config file', () => {
-    writeFileSync(includedConfigPath, JSON.stringify({
-      spaces: [
-        { alias: 'included-space', path: '/path/to/included' },
-      ],
-    }, null, 2));
+  afterAll(() => {
+    // Clean up test directory and reset config path override after all tests
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+    setConfigPath(undefined);
+  });
 
-    writeFileSync(mainConfigPath, JSON.stringify({
-      includeSpacesFrom: ['included-config.json'],
-      spaces: [
-        { alias: 'main-space', path: '/path/to/main' },
-      ],
-    }, null, 2));
+  it('loads spaces from included config file', () => {
+    writeFileSync(
+      includedConfigPath,
+      JSON.stringify(
+        {
+          spaces: [{ alias: 'included-space', path: '/path/to/included' }],
+        },
+        null,
+        2,
+      ),
+    );
+
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: ['included-config.json'],
+          spaces: [{ alias: 'main-space', path: '/path/to/main' }],
+        },
+        null,
+        2,
+      ),
+    );
 
     setConfigPath(mainConfigPath);
     const config = loadConfig();
@@ -43,16 +61,28 @@ describe('loadConfig with includeSpacesFrom', () => {
   });
 
   it('resolves relative paths relative to included config file', () => {
-    writeFileSync(includedConfigPath, JSON.stringify({
-      spaces: [
-        { alias: 'included-space', path: './relative-path' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      includedConfigPath,
+      JSON.stringify(
+        {
+          spaces: [{ alias: 'included-space', path: './relative-path' }],
+        },
+        null,
+        2,
+      ),
+    );
 
-    writeFileSync(mainConfigPath, JSON.stringify({
-      includeSpacesFrom: ['included-config.json'],
-      spaces: [],
-    }, null, 2));
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: ['included-config.json'],
+          spaces: [],
+        },
+        null,
+        2,
+      ),
+    );
 
     setConfigPath(mainConfigPath);
     const config = loadConfig();
@@ -65,24 +95,39 @@ describe('loadConfig with includeSpacesFrom', () => {
     const firstIncludedPath = join(testDir, 'first.json');
     const secondIncludedPath = join(testDir, 'second.json');
 
-    writeFileSync(firstIncludedPath, JSON.stringify({
-      spaces: [
-        { alias: 'first-space', path: '/first' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      firstIncludedPath,
+      JSON.stringify(
+        {
+          spaces: [{ alias: 'first-space', path: '/first' }],
+        },
+        null,
+        2,
+      ),
+    );
 
-    writeFileSync(secondIncludedPath, JSON.stringify({
-      spaces: [
-        { alias: 'second-space', path: '/second' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      secondIncludedPath,
+      JSON.stringify(
+        {
+          spaces: [{ alias: 'second-space', path: '/second' }],
+        },
+        null,
+        2,
+      ),
+    );
 
-    writeFileSync(mainConfigPath, JSON.stringify({
-      includeSpacesFrom: ['first.json', 'second.json'],
-      spaces: [
-        { alias: 'main-space', path: '/main' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: ['first.json', 'second.json'],
+          spaces: [{ alias: 'main-space', path: '/main' }],
+        },
+        null,
+        2,
+      ),
+    );
 
     setConfigPath(mainConfigPath);
     const config = loadConfig();
@@ -95,16 +140,28 @@ describe('loadConfig with includeSpacesFrom', () => {
   });
 
   it('handles absolute paths in includeSpacesFrom', () => {
-    writeFileSync(includedConfigPath, JSON.stringify({
-      spaces: [
-        { alias: 'abs-space', path: '/absolute/path' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      includedConfigPath,
+      JSON.stringify(
+        {
+          spaces: [{ alias: 'abs-space', path: '/absolute/path' }],
+        },
+        null,
+        2,
+      ),
+    );
 
-    writeFileSync(mainConfigPath, JSON.stringify({
-      includeSpacesFrom: [includedConfigPath],
-      spaces: [],
-    }, null, 2));
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: [includedConfigPath],
+          spaces: [],
+        },
+        null,
+        2,
+      ),
+    );
 
     setConfigPath(mainConfigPath);
     const config = loadConfig();
@@ -114,18 +171,28 @@ describe('loadConfig with includeSpacesFrom', () => {
   });
 
   it('throws error when included config has duplicate alias', () => {
-    writeFileSync(includedConfigPath, JSON.stringify({
-      spaces: [
-        { alias: 'duplicate-space', path: '/included' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      includedConfigPath,
+      JSON.stringify(
+        {
+          spaces: [{ alias: 'duplicate-space', path: '/included' }],
+        },
+        null,
+        2,
+      ),
+    );
 
-    writeFileSync(mainConfigPath, JSON.stringify({
-      includeSpacesFrom: ['included-config.json'],
-      spaces: [
-        { alias: 'duplicate-space', path: '/main' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: ['included-config.json'],
+          spaces: [{ alias: 'duplicate-space', path: '/main' }],
+        },
+        null,
+        2,
+      ),
+    );
 
     setConfigPath(mainConfigPath);
 
@@ -133,16 +200,28 @@ describe('loadConfig with includeSpacesFrom', () => {
   });
 
   it('handles included configs with their own relative paths correctly', () => {
-    writeFileSync(nestedConfigPath, JSON.stringify({
-      spaces: [
-        { alias: 'nested-space', path: './nested-space' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      nestedConfigPath,
+      JSON.stringify(
+        {
+          spaces: [{ alias: 'nested-space', path: './nested-space' }],
+        },
+        null,
+        2,
+      ),
+    );
 
-    writeFileSync(mainConfigPath, JSON.stringify({
-      includeSpacesFrom: ['nested/nested-config.json'],
-      spaces: [],
-    }, null, 2));
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: ['nested/nested-config.json'],
+          spaces: [],
+        },
+        null,
+        2,
+      ),
+    );
 
     setConfigPath(mainConfigPath);
     const config = loadConfig();
@@ -156,16 +235,28 @@ describe('loadConfig with includeSpacesFrom', () => {
     mkdirSync(otherDir, { recursive: true });
     const otherConfigPath = join(otherDir, 'config.json');
 
-    writeFileSync(otherConfigPath, JSON.stringify({
-      spaces: [
-        { alias: 'other-space', path: './other-space' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      otherConfigPath,
+      JSON.stringify(
+        {
+          spaces: [{ alias: 'other-space', path: './other-space' }],
+        },
+        null,
+        2,
+      ),
+    );
 
-    writeFileSync(mainConfigPath, JSON.stringify({
-      includeSpacesFrom: ['other/config.json'],
-      spaces: [],
-    }, null, 2));
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: ['other/config.json'],
+          spaces: [],
+        },
+        null,
+        2,
+      ),
+    );
 
     setConfigPath(mainConfigPath);
     const config = loadConfig();
@@ -179,18 +270,28 @@ describe('loadConfig with includeSpacesFrom', () => {
     mkdirSync(otherDir, { recursive: true });
     const otherConfigPath = join(otherDir, 'config.json');
 
-    writeFileSync(otherConfigPath, JSON.stringify({
-      spaces: [
-        { alias: 'included-space', path: '/included', miroFrameId: 'old-frame-id' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      otherConfigPath,
+      JSON.stringify(
+        {
+          spaces: [{ alias: 'included-space', path: '/included', miroFrameId: 'old-frame-id' }],
+        },
+        null,
+        2,
+      ),
+    );
 
-    writeFileSync(mainConfigPath, JSON.stringify({
-      includeSpacesFrom: ['other/config.json'],
-      spaces: [
-        { alias: 'main-space', path: '/main' },
-      ],
-    }, null, 2));
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: ['other/config.json'],
+          spaces: [{ alias: 'main-space', path: '/main' }],
+        },
+        null,
+        2,
+      ),
+    );
 
     setConfigPath(mainConfigPath);
     loadConfig(); // Load and track space sources

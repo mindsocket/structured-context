@@ -34,7 +34,7 @@ export async function miroSync(spaceOrPath: string, options: SyncOptions): Promi
 
   if (!space.miroBoardId) {
     console.error(`No miroBoardId configured for space "${space.alias}".`);
-    console.error('Add miroBoardId to the space entry in config.json.');
+    console.error('Add miroBoardId to the space entry in config.');
     process.exit(1);
   }
 
@@ -95,7 +95,7 @@ export async function miroSync(spaceOrPath: string, options: SyncOptions): Promi
       frameId = frame.id;
       console.log(`Created frame "${options.newFrame}" (${frameId}) - size: ${finalFrameWidth}x${finalFrameHeight}`);
       updateSpaceField(space.alias, 'miroFrameId', frameId);
-      console.log(`Saved miroFrameId to config.json`);
+      console.log(`Saved miroFrameId to config`);
     }
   } else {
     frameId = space.miroFrameId!;
@@ -303,13 +303,13 @@ export async function miroSync(spaceOrPath: string, options: SyncOptions): Promi
   // Only include edges where both endpoints have verified cards on the board
   const desiredEdges = new Map<string, { parentTitle: string; childTitle: string }>();
   for (const node of nodes) {
-    const parentTitle = node.resolvedParent;
-    if (!parentTitle) continue;
     const childTitle = node.schemaData.title as string;
-    // Both endpoints must have verified cards on the board
-    if (verifiedCardIds.has(parentTitle) && verifiedCardIds.has(childTitle)) {
-      const key = `${parentTitle}\u2192${childTitle}`;
-      desiredEdges.set(key, { parentTitle, childTitle });
+    for (const parentTitle of node.resolvedParents) {
+      // Both endpoints must have verified cards on the board
+      if (verifiedCardIds.has(parentTitle) && verifiedCardIds.has(childTitle)) {
+        const key = `${parentTitle}\u2192${childTitle}`;
+        desiredEdges.set(key, { parentTitle, childTitle });
+      }
     }
   }
 

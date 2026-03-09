@@ -162,6 +162,7 @@ function processListItem(
       label: makeLabel(title),
       schemaData,
       linkTargets,
+      resolvedParents: [],
       resolvedType: resolveNodeType(fields.type, aliases),
     };
     nodes.push(newNode);
@@ -230,6 +231,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     label: '_root_',
     schemaData: { type: 'space_on_a_page' },
     linkTargets: [],
+    resolvedParents: [],
     resolvedType: 'space_on_a_page',
   };
 
@@ -364,6 +366,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         label: makeLabel(title),
         schemaData,
         linkTargets,
+        resolvedParents: [],
         resolvedType: resolveNodeType(type, aliases),
       };
       nodes.push(headingNode);

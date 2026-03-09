@@ -9,8 +9,10 @@ export interface EvalContext {
   nodes: Record<string, unknown>[];
   /** Current node being evaluated (flattened) */
   $$: Record<string, unknown>;
-  /** Resolved parent node (undefined if no parent) (flattened) */
+  /** First resolved parent node (undefined if no parent) (flattened) — provided as a convenience */
   parent?: Record<string, unknown>;
+  /** All resolved parent nodes (flattened) */
+  parents?: Record<string, unknown>[];
 }
 
 /**
@@ -32,6 +34,11 @@ export async function evaluateExpression(expr: string, context: EvalContext): Pr
   // Only add parent if it exists (not undefined)
   if (context.parent !== undefined) {
     input.parent = context.parent;
+  }
+
+  // Add parents array if present
+  if (context.parents !== undefined) {
+    input.parents = context.parents;
   }
 
   try {
@@ -61,7 +68,8 @@ function flattenNode(node: SpaceNode): Record<string, unknown> {
   return {
     ...node.schemaData,
     resolvedType: node.resolvedType,
-    resolvedParentTitle: node.resolvedParent,
+    resolvedParentTitle: node.resolvedParents[0], // first parent or undefined, provided for convenience
+    resolvedParentTitles: node.resolvedParents, // full array
   };
 }
 
@@ -81,18 +89,19 @@ export function buildEvalContext(
   // Flatten all nodes for JSONata access
   const flattenedNodes = allNodes.map(flattenNode);
 
-  // Find parent node if resolvedParent is set
-  let flattenedParent: Record<string, unknown> | undefined;
-  if (node.resolvedParent) {
-    const parentNode = nodeIndex.get(node.resolvedParent);
+  // Build all parent objects from resolvedParents array
+  const flattenedParents: Record<string, unknown>[] = [];
+  for (const parentTitle of node.resolvedParents) {
+    const parentNode = nodeIndex.get(parentTitle);
     if (parentNode) {
-      flattenedParent = flattenNode(parentNode);
+      flattenedParents.push(flattenNode(parentNode));
     }
   }
 
   return {
     nodes: flattenedNodes,
     $$: flattenNode(node),
-    parent: flattenedParent,
+    parent: flattenedParents[0],
+    parents: flattenedParents.length > 0 ? flattenedParents : undefined,
   };
 }

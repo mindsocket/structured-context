@@ -2,9 +2,10 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 import { readSpaceDirectory } from '../src/read-space-directory';
 import { readSpaceOnAPage } from '../src/read-space-on-a-page';
-import { resolveParentLinks } from '../src/resolve-links';
+import { resolveLinks } from '../src/resolve-links';
 import { bundledSchemasDir, createValidator } from '../src/schema';
 import type { SpaceNode } from '../src/types';
+import { makeLevel } from './test-helpers';
 
 const DEFAULT_SCHEMA_PATH = join(bundledSchemasDir, 'general.json');
 const VALID_DIR = join(import.meta.dir, 'fixtures/general/valid-ost');
@@ -20,7 +21,7 @@ function checkRefErrors(nodes: SpaceNode[]): Array<{ file: string; parent: strin
   return nodes
     .filter((n) => n.schemaData.parent)
     .filter((n) => {
-      const parentKey = n.resolvedParent;
+      const parentKey = n.resolvedParents[0];
       if (!parentKey) return true;
       return !index.has(parentKey);
     })
@@ -100,6 +101,7 @@ describe('Schema validation', () => {
           label: 'anchor_vision.md',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
+          resolvedParents: [],
           resolvedType: 'vision',
         },
         {
@@ -111,6 +113,7 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision]]',
           },
           linkTargets: ['anchor_vision#Our Mission mission', 'anchor_vision#^mission'],
+          resolvedParents: [],
           resolvedType: 'mission',
         },
         {
@@ -122,6 +125,7 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision#^mission]]',
           },
           linkTargets: ['anchor_vision#Another Goal goal1', 'anchor_vision#^goal1'],
+          resolvedParents: [],
           resolvedType: 'goal',
         },
         {
@@ -133,16 +137,17 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision#^goal1]]',
           },
           linkTargets: ['solution_page'],
+          resolvedParents: [],
           resolvedType: 'solution',
         },
       ];
 
-      resolveParentLinks(nodes);
+      resolveLinks(nodes, [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]);
 
       expect(nodes.find((n) => n.label === 'Another Goal')?.schemaData.parent).toBe('[[anchor_vision#^mission]]');
-      expect(nodes.find((n) => n.label === 'Another Goal')?.resolvedParent).toBe('Our Mission');
+      expect(nodes.find((n) => n.label === 'Another Goal')?.resolvedParents[0]).toBe('Our Mission');
       expect(nodes.find((n) => n.label === 'solution_page.md')?.schemaData.parent).toBe('[[anchor_vision#^goal1]]');
-      expect(nodes.find((n) => n.label === 'solution_page.md')?.resolvedParent).toBe('Another Goal');
+      expect(nodes.find((n) => n.label === 'solution_page.md')?.resolvedParents[0]).toBe('Another Goal');
       expect(checkRefErrors(nodes)).toHaveLength(0);
     });
 
@@ -152,6 +157,7 @@ describe('Schema validation', () => {
           label: 'anchor_vision.md',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
+          resolvedParents: [],
           resolvedType: 'vision',
         },
         {
@@ -163,11 +169,12 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision#^noanchor]]',
           },
           linkTargets: ['some-solution'],
+          resolvedParents: [],
           resolvedType: 'solution',
         },
       ];
 
-      resolveParentLinks(nodes);
+      resolveLinks(nodes, [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]);
 
       const errors = checkRefErrors(nodes);
       expect(errors).toHaveLength(1);
@@ -180,6 +187,7 @@ describe('Schema validation', () => {
           label: 'vision_page.md',
           schemaData: { title: 'vision_page', type: 'vision', status: 'active' },
           linkTargets: ['vision_page'],
+          resolvedParents: [],
           resolvedType: 'vision',
         },
         {
@@ -191,6 +199,7 @@ describe('Schema validation', () => {
             parent: '[[vision_page]]',
           },
           linkTargets: ['vision_page#Embedded Goal'],
+          resolvedParents: [],
           resolvedType: 'goal',
         },
         {
@@ -202,13 +211,14 @@ describe('Schema validation', () => {
             parent: '[[Embedded Goal]]',
           },
           linkTargets: ['solution_page'],
+          resolvedParents: [],
           resolvedType: 'solution',
         },
       ];
 
-      resolveParentLinks(nodes);
+      resolveLinks(nodes, [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]);
 
-      expect(nodes.find((n) => n.label === 'solution_page.md')?.resolvedParent).toBeUndefined();
+      expect(nodes.find((n) => n.label === 'solution_page.md')?.resolvedParents).toHaveLength(0);
       const errors = checkRefErrors(nodes);
       expect(errors).toHaveLength(1);
       expect(errors[0]?.parent).toBe('[[Embedded Goal]]');

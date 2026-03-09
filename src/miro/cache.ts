@@ -54,7 +54,7 @@ export function computeNodeHash(node: SpaceNode): string {
     status: node.schemaData.status,
     summary: node.schemaData.summary,
     priority: node.schemaData.priority,
-    parent: node.resolvedParent ?? node.schemaData.parent,
+    parents: node.resolvedParents,
   };
   return createHash('sha256').update(JSON.stringify(relevant)).digest('hex').slice(0, 16);
 }

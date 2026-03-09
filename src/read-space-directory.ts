@@ -4,7 +4,7 @@ import { glob } from 'glob';
 import matter from 'gray-matter';
 import { applyFieldMap, loadConfig, resolveSchema } from './config';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
-import { resolveParentLinks } from './resolve-links';
+import { resolveLinks } from './resolve-links';
 import { loadMetadata, resolveNodeType } from './schema';
 import type { SpaceDirectoryReadResult, SpaceNode } from './types';
 
@@ -17,7 +17,7 @@ export async function readSpaceDirectory(
   const space = config.spaces.find((s) => resolve(s.path) === absoluteDirectory);
 
   const resolvedSchemaPath = resolveSchema(options?.schemaPath, config, space);
-  const { hierarchy, aliases } = loadMetadata(resolvedSchemaPath);
+  const { hierarchy, levels, aliases } = loadMetadata(resolvedSchemaPath);
   const fieldMap = space?.fieldMap;
 
   const templateDir = options?.templateDir ?? space?.templateDir ?? config.templateDir;
@@ -61,6 +61,7 @@ export async function readSpaceDirectory(
       label: file,
       schemaData: { title: fileBase, ...data },
       linkTargets: [fileBase],
+      resolvedParents: [],
       resolvedType: resolveNodeType(pageType, aliases),
     });
 
@@ -78,6 +79,6 @@ export async function readSpaceDirectory(
     }
   }
 
-  resolveParentLinks(nodes);
+  resolveLinks(nodes, levels);
   return { nodes, skipped, nonSpace };
 }

@@ -2,7 +2,7 @@ import { statSync } from 'node:fs';
 import type { ErrorObject } from 'ajv';
 import { readSpaceDirectory } from '../read-space-directory';
 import { readSpaceOnAPage } from '../read-space-on-a-page';
-import { wikilinkToTarget } from '../resolve-links';
+import { buildTargetIndex, wikilinkToTarget } from '../resolve-links';
 import { createValidator, loadMetadata } from '../schema';
 import type { HierarchyViolation, RuleViolation, SpaceNode } from '../types';
 import { validateHierarchy } from '../validate-hierarchy';
@@ -14,7 +14,6 @@ interface ValidationResult {
   nodeErrors: Array<{ file: string; errors: ErrorObject[] }>;
   refErrors: Array<{ file: string; parent: string; error: string }>;
   duplicateErrors: Array<{ title: string; files: string[] }>;
-  configErrors: string[];
   ruleViolations: RuleViolation[];
   hierarchyViolations: HierarchyViolation[];
   skipped: string[];
@@ -47,12 +46,14 @@ export async function validate(path: string, options: { schema: string; template
     nodeErrors: [],
     refErrors: [],
     duplicateErrors: [],
-    configErrors: [],
     ruleViolations: [],
     hierarchyViolations: [],
     skipped,
     nonSpace: nonSpace,
   };
+
+  // Load metadata early — needed for levels-based ref validation
+  const metadata = loadMetadata(options.schema);
 
   for (const node of nodes) {
     const valid = validateFunc(node.schemaData);
@@ -68,16 +69,14 @@ export async function validate(path: string, options: { schema: string; template
     }
   }
 
-  // Detect duplicate node keys (titles) and build nodeIndex for parent ref validation
+  // Detect duplicate node keys (titles)
   const titleToFiles = new Map<string, string[]>();
-  const nodeIndex = new Map<string, SpaceNode>();
   for (const node of nodes) {
     const title = node.schemaData.title as string;
     if (!titleToFiles.has(title)) {
       titleToFiles.set(title, []);
     }
     titleToFiles.get(title)!.push(node.label);
-    nodeIndex.set(title, node);
   }
 
   for (const [title, files] of titleToFiles) {
@@ -86,45 +85,77 @@ export async function validate(path: string, options: { schema: string; template
     }
   }
 
-  for (const node of nodes) {
-    const parent = node.schemaData.parent;
-    if (typeof parent !== 'string') {
-      if (parent) {
-        result.refErrors.push({
-          file: node.label,
-          parent: String(parent),
-          error: `Parent field must be a wikilink string, got ${typeof parent}`,
-        });
+  // Build targetIndex for link validation
+  const linkTargetIndex = buildTargetIndex(nodes);
+
+  // Validate edge field references for each hierarchy level
+  for (let i = 1; i < metadata.levels.length; i++) {
+    const level = metadata.levels[i]!;
+    const parentLevel = metadata.levels[i - 1]!;
+
+    // Determine which nodes to check based on who has the field
+    const nodesToCheck =
+      level.fieldOn === 'parent'
+        ? nodes.filter((n) => n.resolvedType === parentLevel.type)
+        : nodes.filter((n) => n.resolvedType === level.type);
+
+    for (const node of nodesToCheck) {
+      const rawField = node.schemaData[level.field];
+      if (rawField === undefined || rawField === null) continue;
+
+      if (level.multiple) {
+        if (!Array.isArray(rawField)) {
+          result.refErrors.push({
+            file: node.label,
+            parent: String(rawField),
+            error: `Field "${level.field}" must be an array of wikilinks, got ${typeof rawField}`,
+          });
+          continue;
+        }
+        for (const ref of rawField) {
+          if (typeof ref !== 'string') continue;
+          const target = wikilinkToTarget(ref);
+          const resolved = linkTargetIndex.get(target);
+          if (resolved === undefined) {
+            result.refErrors.push({
+              file: node.label,
+              parent: ref,
+              error: `Link target "${target}" in field "${level.field}" not found`,
+            });
+          } else if (resolved === null) {
+            result.refErrors.push({
+              file: node.label,
+              parent: ref,
+              error: `Link target "${target}" in field "${level.field}" is ambiguous (matches multiple nodes)`,
+            });
+          }
+        }
+      } else {
+        if (typeof rawField !== 'string') {
+          result.refErrors.push({
+            file: node.label,
+            parent: String(rawField),
+            error: `Field "${level.field}" must be a wikilink string, got ${typeof rawField}`,
+          });
+          continue;
+        }
+        const target = wikilinkToTarget(rawField);
+        const resolved = linkTargetIndex.get(target);
+        if (resolved === undefined) {
+          result.refErrors.push({
+            file: node.label,
+            parent: rawField,
+            error: `Link target "${target}" in field "${level.field}" not found`,
+          });
+        } else if (resolved === null) {
+          result.refErrors.push({
+            file: node.label,
+            parent: rawField,
+            error: `Link target "${target}" in field "${level.field}" is ambiguous (matches multiple nodes)`,
+          });
+        }
       }
-      continue;
     }
-
-    const parentKey = node.resolvedParent;
-    if (!parentKey) {
-      result.refErrors.push({
-        file: node.label,
-        parent: parent,
-        error: `Parent link target "${wikilinkToTarget(parent)}" not found`,
-      });
-      continue;
-    }
-
-    if (!nodeIndex.has(parentKey)) {
-      result.refErrors.push({
-        file: node.label,
-        parent: parent,
-        error: `Parent node "${parentKey}" not found`,
-      });
-    }
-  }
-
-  // Load and execute hierarchy validation if schema defines hierarchy
-  const metadata = loadMetadata(options.schema);
-
-  // Validate schema metadata configuration
-  const badSelfRefTypes = (metadata.allowSelfRef ?? []).filter((t) => !metadata.hierarchy.includes(t));
-  for (const t of badSelfRefTypes) {
-    result.configErrors.push(`allowSelfRef contains "${t}" which is not in the hierarchy`);
   }
 
   result.hierarchyViolations = validateHierarchy(nodes, metadata);
@@ -141,7 +172,6 @@ export async function validate(path: string, options: { schema: string; template
   console.log(`❌ Node Errors: ${result.nodeErrorCount}`);
   console.log(`🔗 Reference Errors: ${result.refErrors.length}`);
   console.log(`🔁 Duplicate Keys: ${result.duplicateErrors.length}`);
-  console.log(`⚙️ Config Errors: ${result.configErrors.length}`);
   console.log(`📋 Rule Violations: ${result.ruleViolations.length}`);
   console.log(`🏗️ Hierarchy Violations: ${result.hierarchyViolations.length}`);
   console.log(`⏭ Skipped (no frontmatter): ${result.skipped.length}`);
@@ -168,9 +198,9 @@ export async function validate(path: string, options: { schema: string; template
   }
 
   if (result.refErrors.length > 0) {
-    console.log(`\n🔗 Reference errors (dangling parent links):`);
+    console.log(`\n🔗 Reference errors (dangling links):`);
     result.refErrors.forEach(({ file, parent, error }) => {
-      console.log(`   ${file}: parent ${parent} → ${error}`);
+      console.log(`   ${file}: ${parent} → ${error}`);
     });
   }
 
@@ -182,13 +212,6 @@ export async function validate(path: string, options: { schema: string; template
         console.log(`      ${f}`);
       }
     });
-  }
-
-  if (result.configErrors.length > 0) {
-    console.log(`\n⚙️  Config errors:`);
-    for (const e of result.configErrors) {
-      console.log(`   ${e}`);
-    }
   }
 
   if (result.ruleViolations.length > 0) {
@@ -225,7 +248,6 @@ export async function validate(path: string, options: { schema: string; template
     result.nodeErrorCount > 0 ||
     result.refErrors.length > 0 ||
     result.duplicateErrors.length > 0 ||
-    result.configErrors.length > 0 ||
     result.ruleViolations.length > 0 ||
     result.hierarchyViolations.length > 0
   ) {

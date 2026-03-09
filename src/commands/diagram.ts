@@ -8,7 +8,7 @@ interface DiagramNode {
   id: string;
   type: string;
   status: string;
-  parent?: string;
+  parents: string[]; // DAG: may have multiple parents
   priority?: string;
 }
 
@@ -44,13 +44,11 @@ export async function diagram(
       continue;
     }
 
-    const parent = node.resolvedParent;
-
     nodes.push({
       id: node.schemaData.title as string,
       type: node.schemaData.type as string,
       status: node.schemaData.status as string,
-      parent,
+      parents: node.resolvedParents,
       priority: node.schemaData.priority as string | undefined,
     });
   }
@@ -64,8 +62,8 @@ export async function diagram(
   // Generate mermaid diagram
   let mmd = 'graph TD\n';
 
-  // Find roots (no parent) and orphans
-  const roots = nodes.filter((n) => !n.parent);
+  // Find roots (no parents) and orphans
+  const roots = nodes.filter((n) => n.parents.length === 0);
   const orphans = roots.filter((n) => n.type !== 'vision');
 
   // Add styling
@@ -93,8 +91,10 @@ export async function diagram(
 
   // Add edges
   for (const node of nodes) {
-    if (node.parent && nodeMap.has(node.parent)) {
-      mmd += `  "${node.parent}" --> "${node.id}"\n`;
+    for (const parent of node.parents) {
+      if (nodeMap.has(parent)) {
+        mmd += `  "${parent}" --> "${node.id}"\n`;
+      }
     }
   }
 

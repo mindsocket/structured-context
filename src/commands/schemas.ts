@@ -3,7 +3,8 @@ import { dirname, join } from 'node:path';
 import type { AnySchemaObject, SchemaObject } from 'ajv';
 import JSON5 from 'json5';
 import { loadConfig, resolveSchema } from '../config';
-import { buildFullRegistry, bundledSchemasDir, mergeVariantProperties, readRawSchema } from '../schema';
+import { buildFullRegistry, bundledSchemasDir, loadMetadata, mergeVariantProperties, readRawSchema } from '../schema';
+import type { SchemaMetadata } from '../types';
 
 function isBundledPath(schemaPath: string): boolean {
   return dirname(schemaPath) === bundledSchemasDir;
@@ -80,23 +81,17 @@ function showDefs(defs: Record<string, unknown>): void {
   }
 }
 
-function showMetadata(defs: Record<string, unknown>): void {
-  const metadata = defs._metadata as Record<string, unknown> | undefined;
-  if (!metadata) return;
+function showMetadata(metadata: SchemaMetadata): void {
+  const parts = metadata.levels.map((l) => (l.selfRef ? `${l.type}(+)` : l.type));
+  console.log(`\nhierarchy: ${parts.join(' → ')}`);
 
-  if (Array.isArray(metadata.hierarchy) && metadata.hierarchy.length > 0) {
-    console.log(`\nhierarchy: ${(metadata.hierarchy as string[]).join(' → ')}`);
+  if (metadata.aliases && Object.keys(metadata.aliases).length > 0) {
+    const aliasParts = Object.entries(metadata.aliases).map(([k, v]) => `${k} → ${v}`);
+    console.log(`aliases: ${aliasParts.join(', ')}`);
   }
 
-  const aliases = metadata.aliases as Record<string, string> | undefined;
-  if (aliases && Object.keys(aliases).length > 0) {
-    const parts = Object.entries(aliases).map(([k, v]) => `${k} → ${v}`);
-    console.log(`aliases: ${parts.join(', ')}`);
-  }
-
-  const rules = metadata.rules as Record<string, unknown[]> | undefined;
-  if (rules) {
-    const groups = Object.entries(rules).filter(([, v]) => Array.isArray(v) && v.length > 0);
+  if (metadata.rules) {
+    const groups = Object.entries(metadata.rules).filter(([, v]) => Array.isArray(v) && v.length > 0);
     if (groups.length > 0) {
       console.log('\nRules:');
       for (const [group, items] of groups) {
@@ -203,13 +198,13 @@ export function showSchema(file: string | undefined, options: { space?: string; 
   if (schema.title) console.log(`title: ${schema.title}`);
   if (schema.description) console.log(`description: ${schema.description}`);
 
-  const defs = schema.$defs as Record<string, unknown> | undefined;
-  if (defs) showMetadata(defs);
+  showMetadata(loadMetadata(schemaPath));
 
   if (Array.isArray(schema.oneOf)) {
     showEntities(schema.oneOf, registry, schema);
   }
 
+  const defs = schema.$defs as Record<string, unknown> | undefined;
   if (defs) showDefs(defs);
 
   const refs = new Set<string>();

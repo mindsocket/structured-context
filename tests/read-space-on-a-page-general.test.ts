@@ -23,28 +23,28 @@ describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
     it('infers H2 as mission with parent from H1', () => {
       const node = result.nodes.find((n) => n.label === 'Personal Mission');
       expect(node?.schemaData.type).toBe('mission');
-      expect(node?.resolvedParent).toBe('Personal Vision');
+      expect(node?.resolvedParents[0]).toBe('Personal Vision');
       expect(node?.schemaData.parent).toContain('[[on-a-page-valid#');
     });
 
     it('infers H3 as goal with parent from H2', () => {
       const node = result.nodes.find((n) => n.label === 'Career Growth');
       expect(node?.schemaData.type).toBe('goal');
-      expect(node?.resolvedParent).toBe('Personal Mission');
+      expect(node?.resolvedParents[0]).toBe('Personal Mission');
       expect(node?.schemaData.parent).toContain('[[on-a-page-valid#');
     });
 
     it('infers H4 as opportunity with parent from H3', () => {
       const node = result.nodes.find((n) => n.label === 'Technical Skills');
       expect(node?.schemaData.type).toBe('opportunity');
-      expect(node?.resolvedParent).toBe('Career Growth');
+      expect(node?.resolvedParents[0]).toBe('Career Growth');
       expect(node?.schemaData.parent).toContain('[[on-a-page-valid#');
     });
 
     it('infers H5 as solution with parent from H4', () => {
       const node = result.nodes.find((n) => n.label === 'Build a Side Project');
       expect(node?.schemaData.type).toBe('solution');
-      expect(node?.resolvedParent).toBe('Technical Skills');
+      expect(node?.resolvedParents[0]).toBe('Technical Skills');
       expect(node?.schemaData.parent).toContain('[[on-a-page-valid#');
     });
   });
@@ -88,7 +88,7 @@ describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
 
     it('sets parent and summary on Learn TypeScript from dash separator', () => {
       const node = result.nodes.find((n) => n.label === 'Learn TypeScript');
-      expect(node?.resolvedParent).toBe('Technical Skills');
+      expect(node?.resolvedParents[0]).toBe('Technical Skills');
       expect(node?.schemaData.parent).toContain('[[on-a-page-valid#');
       expect(node?.schemaData.summary).toBe('Master TypeScript for tool development');
     });

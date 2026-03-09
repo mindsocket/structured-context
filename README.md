@@ -54,6 +54,22 @@ Schemas define the structure and rules for the entities in a space, allowing cus
 
 Two schemas (`general` and `strict_ost`) are included. The general schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely.
 
+Schema hierarchy levels support DAG (multi-parent) relationships via configurable edge fields. Each level in `_metadata.hierarchy` can be a plain type name string (defaults to `parent` field on child nodes) or an object:
+
+```json
+{ "type": "opportunity", "selfRef": true }
+{ "type": "solution", "field": "fulfills", "multiple": true }
+{ "type": "requirement", "field": "generates", "fieldOn": "parent", "multiple": true }
+```
+
+| Property | Default | Description |
+|---|---|---|
+| `type` | required | The node type at this hierarchy level |
+| `field` | `"parent"` | Name of the edge field |
+| `fieldOn` | `"child"` | Which side holds the field: `"child"` (child points up) or `"parent"` (parent points down) |
+| `multiple` | `false` | Whether the field is an array of wikilinks (enables multi-parent DAG) |
+| `selfRef` | `false` | Whether a node of this type may reference a same-type parent |
+
 **Customizing Schemas:**
 - **Partial schemas**: Files starting with an underscore (like `_ost_tools_base.json`) are loaded and used to resolve references (using `$ref`).
 - **Loading priority**: Partial schemas are loaded from both the default schema directory and the directory of your specified target schema.
@@ -77,6 +93,16 @@ Validates markdown files against the JSON schema:
 - Extracts YAML frontmatter from each `.md` file
 - Skips files without frontmatter or without a `type` field
 - Reports validation results with counts and per-file errors
+
+### Show space tree
+
+```bash
+ost-tools show <space-or-dir>
+```
+
+Prints the space as an indented hierarchy tree. Hierarchy roots are listed first, followed by orphans (nodes in the hierarchy but with no resolved parent) and non-hierarchy nodes.
+
+When a node appears under multiple parents (DAG hierarchy), it is printed in full under its first parent. Subsequent appearances with children show a `(*)` marker indicating the subtree is omitted.
 
 ### Generate Mermaid diagram
 

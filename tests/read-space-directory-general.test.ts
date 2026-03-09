@@ -81,7 +81,7 @@ describe('readSpaceDirectory', () => {
     it('embedded mission parent points to the containing page', () => {
       const node = result.nodes.find((n) => n.label === 'Embedded Mission');
       expect(node?.schemaData.parent).toBe('[[vision_page]]');
-      expect(node?.resolvedParent).toBe('vision_page');
+      expect(node?.resolvedParents[0]).toBe('vision_page');
     });
 
     it('stores navigation targets for embedded mission', () => {
@@ -99,13 +99,13 @@ describe('readSpaceDirectory', () => {
     it('embedded goal parent is stored as an implied section target and resolved to title', () => {
       const node = result.nodes.find((n) => n.label === 'Embedded Goal');
       expect(node?.schemaData.parent).toBe('[[vision_page#[type mission] Embedded Mission embmission]]');
-      expect(node?.resolvedParent).toBe('Embedded Mission');
+      expect(node?.resolvedParents[0]).toBe('Embedded Mission');
     });
 
     it('solution_page.md keeps source parent link and resolves to embedded goal title', () => {
       const node = result.nodes.find((n) => n.label === 'solution_page.md');
       expect(node?.schemaData.parent).toBe('[[vision_page#^embgoal]]');
-      expect(node?.resolvedParent).toBe('Embedded Goal');
+      expect(node?.resolvedParents[0]).toBe('Embedded Goal');
     });
   });
 
@@ -145,9 +145,9 @@ describe('readSpaceDirectory', () => {
       const goal = result.nodes.find((n) => n.label === 'Embedded Goal');
       const solutionPage = result.nodes.find((n) => n.label === 'solution_page.md');
       expect(goal?.schemaData.parent).toBe('[[vision_page#[type mission] Embedded Mission embmission]]');
-      expect(goal?.resolvedParent).toBe('Embedded Mission');
+      expect(goal?.resolvedParents[0]).toBe('Embedded Mission');
       expect(solutionPage?.schemaData.parent).toBe('[[vision_page#^embgoal]]');
-      expect(solutionPage?.resolvedParent).toBe('Embedded Goal');
+      expect(solutionPage?.resolvedParents[0]).toBe('Embedded Goal');
     });
   });
 

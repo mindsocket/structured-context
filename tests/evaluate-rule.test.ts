@@ -13,7 +13,7 @@ describe('evaluate-rule', () => {
         parent: '[[Parent Opportunity]]',
       },
       linkTargets: ['Test Node'],
-      resolvedParent: 'Parent Opportunity',
+      resolvedParents: ['Parent Opportunity'],
       resolvedType: 'solution',
     };
 
@@ -25,6 +25,7 @@ describe('evaluate-rule', () => {
         status: 'active',
       },
       linkTargets: ['Parent Opportunity'],
+      resolvedParents: [],
       resolvedType: 'opportunity',
     };
 
@@ -86,6 +87,7 @@ describe('evaluate-rule', () => {
           status: 'active',
         },
         linkTargets: ['Orphan Node'],
+        resolvedParents: [],
         resolvedType: 'goal', // outcome is an alias for goal
       };
       const context = buildEvalContext(nodeWithoutParent, allNodes, mockNodeIndex);
@@ -119,7 +121,7 @@ describe('evaluate-rule', () => {
       label: 'child.md',
       schemaData: { title: 'Child', type: 'solution', parent: '[[Parent]]' },
       linkTargets: ['Child'],
-      resolvedParent: 'Parent',
+      resolvedParents: ['Parent'],
       resolvedType: 'solution',
     };
 
@@ -127,6 +129,7 @@ describe('evaluate-rule', () => {
       label: 'parent.md',
       schemaData: { title: 'Parent', type: 'opportunity' },
       linkTargets: ['Parent'],
+      resolvedParents: [],
       resolvedType: 'opportunity',
     };
 
@@ -164,6 +167,7 @@ describe('evaluate-rule', () => {
         label: 'orphan.md',
         schemaData: { title: 'Orphan', type: 'outcome' },
         linkTargets: ['Orphan'],
+        resolvedParents: [],
         resolvedType: 'goal', // outcome is an alias for goal
       };
       const context = buildEvalContext(orphanNode, mockNodes, nodeIndex);

@@ -9,6 +9,7 @@ describe('validate-rules', () => {
         label: 'outcome.md',
         schemaData: { title: 'Outcome', type: 'outcome', status: 'active', metric: 'Increase X' },
         linkTargets: ['Outcome'],
+        resolvedParents: [],
         resolvedType: 'goal', // outcome is an alias for goal
       },
       {
@@ -21,21 +22,21 @@ describe('validate-rules', () => {
           source: 'Interview',
         },
         linkTargets: ['Opportunity'],
-        resolvedParent: 'Outcome',
+        resolvedParents: ['Outcome'],
         resolvedType: 'opportunity',
       },
       {
         label: 'solution.md',
         schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
         linkTargets: ['Solution'],
-        resolvedParent: 'Opportunity',
+        resolvedParents: ['Opportunity'],
         resolvedType: 'solution',
       },
       {
         label: 'bad-solution.md',
         schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },
         linkTargets: ['Bad Solution'],
-        resolvedParent: 'Solution',
+        resolvedParents: ['Solution'],
         resolvedType: 'solution',
       },
       {
@@ -48,7 +49,7 @@ describe('validate-rules', () => {
           assumption: 'Test',
         },
         linkTargets: ['Experiment'],
-        resolvedParent: 'Solution',
+        resolvedParents: ['Solution'],
         resolvedType: 'experiment',
       },
       {
@@ -61,7 +62,7 @@ describe('validate-rules', () => {
           assumption: 'Test',
         },
         linkTargets: ['Bad Experiment'],
-        resolvedParent: 'Opportunity',
+        resolvedParents: ['Opportunity'],
         resolvedType: 'experiment',
       },
     ];
@@ -122,13 +123,14 @@ describe('validate-rules', () => {
           label: 'bad-outcome.md',
           schemaData: { title: 'Bad Outcome', type: 'outcome', status: 'active', parent: '[[Vision]]' },
           linkTargets: ['Bad Outcome'],
-          resolvedParent: 'Vision',
+          resolvedParents: ['Vision'],
           resolvedType: 'outcome',
         };
         const visionNode: SpaceNode = {
           label: 'vision.md',
           schemaData: { title: 'Vision', type: 'vision', status: 'active' },
           linkTargets: ['Vision'],
+          resolvedParents: [],
           resolvedType: 'vision',
         };
         // Pass both nodes so the parent can be found in the index
@@ -161,7 +163,7 @@ describe('validate-rules', () => {
             source: 'Interview',
           },
           linkTargets: ['Opportunity'],
-          resolvedParent: 'Outcome',
+          resolvedParents: ['Outcome'],
           resolvedType: 'opportunity',
         };
 
@@ -174,7 +176,7 @@ describe('validate-rules', () => {
             parent: '[[Opportunity]]',
           },
           linkTargets: [`Solution ${i}`],
-          resolvedParent: 'Opportunity',
+          resolvedParents: ['Opportunity'],
           resolvedType: 'solution',
         }));
 
@@ -194,7 +196,7 @@ describe('validate-rules', () => {
             source: 'Interview',
           },
           linkTargets: ['Opportunity'],
-          resolvedParent: 'Outcome',
+          resolvedParents: ['Outcome'],
           resolvedType: 'opportunity',
         };
 
@@ -202,7 +204,7 @@ describe('validate-rules', () => {
           label: 'solution.md',
           schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
           linkTargets: ['Solution'],
-          resolvedParent: 'Opportunity',
+          resolvedParents: ['Opportunity'],
           resolvedType: 'solution',
         };
 
@@ -243,18 +245,21 @@ describe('validate-rules', () => {
             label: 'outcome1.md',
             schemaData: { title: 'Outcome 1', type: 'outcome', status: 'active', metric: 'X' },
             linkTargets: ['Outcome 1'],
+            resolvedParents: [],
             resolvedType: 'outcome',
           },
           {
             label: 'outcome2.md',
             schemaData: { title: 'Outcome 2', type: 'outcome', status: 'active', metric: 'Y' },
             linkTargets: ['Outcome 2'],
+            resolvedParents: [],
             resolvedType: 'outcome',
           },
           {
             label: 'unrelated.md',
             schemaData: { title: 'Unrelated', type: 'solution', status: 'exploring' },
             linkTargets: ['Unrelated'],
+            resolvedParents: [],
             resolvedType: 'solution',
           },
         ];
@@ -272,6 +277,7 @@ describe('validate-rules', () => {
           label: 'outcome.md',
           schemaData: { title: 'Outcome', type: 'outcome', status: 'inactive', metric: 'X' },
           linkTargets: ['Outcome'],
+          resolvedParents: [],
           resolvedType: 'outcome',
         };
         const childNode: SpaceNode = {
@@ -284,7 +290,7 @@ describe('validate-rules', () => {
             source: 'Interview',
           },
           linkTargets: ['Opportunity'],
-          resolvedParent: 'Outcome',
+          resolvedParents: ['Outcome'],
           resolvedType: 'opportunity',
         };
         const violations = await validateRules([parentNode, childNode], { workflow: [workflowRules.workflow![1]!] });
@@ -299,6 +305,7 @@ describe('validate-rules', () => {
           label: 'outcome.md',
           schemaData: { title: 'Outcome', type: 'outcome', status: 'active', metric: 'X' },
           linkTargets: ['Outcome'],
+          resolvedParents: [],
           resolvedType: 'outcome',
         };
         const childNode: SpaceNode = {
@@ -311,7 +318,7 @@ describe('validate-rules', () => {
             source: 'Interview',
           },
           linkTargets: ['Opportunity'],
-          resolvedParent: 'Outcome',
+          resolvedParents: ['Outcome'],
           resolvedType: 'opportunity',
         };
         const violations = await validateRules([parentNode, childNode], { workflow: [workflowRules.workflow![1]!] });
@@ -345,26 +352,28 @@ describe('validate-rules', () => {
             label: 'outcome1.md',
             schemaData: { title: 'Outcome 1', type: 'outcome', status: 'active', metric: 'X' },
             linkTargets: ['Outcome 1'],
+            resolvedParents: [],
             resolvedType: 'outcome',
           },
           {
             label: 'outcome2.md',
             schemaData: { title: 'Outcome 2', type: 'outcome', status: 'active', metric: 'Y' },
             linkTargets: ['Outcome 2'],
+            resolvedParents: [],
             resolvedType: 'outcome',
           },
           {
             label: 'solution.md',
             schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
             linkTargets: ['Solution'],
-            resolvedParent: 'Opportunity',
+            resolvedParents: ['Opportunity'],
             resolvedType: 'solution',
           },
           {
             label: 'bad-solution.md',
             schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },
             linkTargets: ['Bad Solution'],
-            resolvedParent: 'Solution',
+            resolvedParents: ['Solution'],
             resolvedType: 'solution',
           },
         ];

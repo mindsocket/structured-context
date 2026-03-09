@@ -7,16 +7,21 @@ See `~/src/ost-tools/schemas/` for full examples (`general.json`, `strict_ost.js
 
 ```json
 "_metadata": {
-  "hierarchy": ["outcome", "opportunity", "solution", "assumption_test"],  // required
+  "hierarchy": [
+    "outcome",
+    { "type": "opportunity" },
+    { "type": "solution", "field": "parent", "selfRef": true },
+    { "type": "assumption_test", "field": "assumptions", "fieldOn": "parent", "multiple": true } // Solutions list assumption_tests as an array of wikilinks under `assumptions:` field
+  ],
   "aliases": { "experiment": "assumption_test" },
-  "allowSelfRef": ["opportunity"],   // types that can parent themselves
   "allowSkipLevels": false,
   "rules": { "validation": [...], "coherence": [...], "workflow": [...], "bestPractice": [...] }
 }
 ```
 
-`hierarchy` is required. Types not in it can still appear in `oneOf` — they just won't
-participate in hierarchy order checks.
+`hierarchy` is required. Plain strings are shorthand — `"outcome"` equals `{ "type": "outcome", "field": "parent", "fieldOn": "child", "multiple": false, "selfRef": false }`. Types not in `hierarchy` can still be defined and related to other types — they just won't participate in hierarchy order checks.
+
+Use object entries to configure non-default edges: `field` changes the frontmatter field name; `fieldOn: "parent"` means the parent node has the field pointing to children (reversed direction); `multiple: true` means the field is an array of wikilinks.
 
 Rule categories are informational labels only; they don't change how rules are evaluated.
 

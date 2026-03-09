@@ -119,7 +119,6 @@ bunx ost-tools template-sync --space <space> --create-missing
 ## Config structure
 
 ```json5
-// ost-tools-config.json
 {
   spaces: [
     {
