@@ -81,13 +81,29 @@ export function extractAnchor(text: string): { cleanText: string; anchor?: strin
  * If the anchor name exactly matches a space node type (optionally followed by digits),
  * return that type. Otherwise return undefined.
  * Examples: "mission" -> "mission", "goal1" -> "goal", "myanchor" -> undefined
+ *
+ * Also checks relationship types (for parent-side relationships where child type may not be in hierarchy).
  */
-export function anchorToNodeType(anchor: string, hierarchy: readonly string[]): string | undefined {
+export function anchorToNodeType(
+  anchor: string,
+  hierarchy: readonly string[],
+  relationships?: MetadataContractRelationship[],
+): string | undefined {
   for (const type of hierarchy) {
     if (anchor === type || new RegExp(`^${type}\\d+$`).test(anchor)) {
       return type;
     }
   }
+
+  // Check relationship types (for parent-side relationships)
+  if (relationships) {
+    for (const rel of relationships) {
+      if (anchor === rel.type || new RegExp(`^${rel.type}\\d+$`).test(anchor)) {
+        return rel.type;
+      }
+    }
+  }
+
   return undefined;
 }
 
@@ -174,11 +190,22 @@ function processListItem(
 
     if (parentFieldAppend) {
       const linkRef = `[[${linkTargets[0] ?? title}]]`;
-      const arr = parentFieldAppend.node.schemaData[parentFieldAppend.field];
-      if (Array.isArray(arr)) {
-        arr.push(linkRef);
+      const fieldName = parentFieldAppend.field;
+      const fieldValue = parentFieldAppend.node.schemaData[fieldName];
+
+      if (fieldValue === undefined) {
+        // Field doesn't exist yet - create new array
+        parentFieldAppend.node.schemaData[fieldName] = [linkRef];
+      } else if (Array.isArray(fieldValue)) {
+        // Field is already an array - append to it
+        fieldValue.push(linkRef);
       } else {
-        parentFieldAppend.node.schemaData[parentFieldAppend.field] = [linkRef];
+        // Field exists but is not an array - this is an error
+        throw new Error(
+          `Cannot append child link to field '${fieldName}' on node '${parentFieldAppend.node.label}': ` +
+            `field exists but is not an array (found ${typeof fieldValue}). ` +
+            `Child link: ${linkRef}`,
+        );
       }
     }
 
@@ -386,7 +413,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       const { cleanText: title, anchor } = extractAnchor(afterBracketed);
 
       const parentContextType = getParentContextType();
-      const anchorType = anchor ? anchorToNodeType(anchor, hierarchy) : undefined;
+      const anchorType = anchor ? anchorToNodeType(anchor, hierarchy, relationships) : undefined;
       const relationshipMatch = matchRelationship(title, parentContextType);
       const hasExplicitType = !!inlineFields.type;
       const hasImpliedType = !!anchorType || !!relationshipMatch;
@@ -587,11 +614,22 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
             if (tableParentFieldAppend) {
               const linkRef = `[[${linkTargets[0] ?? title}]]`;
-              const arr = tableParentFieldAppend.node.schemaData[tableParentFieldAppend.field];
-              if (Array.isArray(arr)) {
-                arr.push(linkRef);
+              const fieldName = tableParentFieldAppend.field;
+              const fieldValue = tableParentFieldAppend.node.schemaData[fieldName];
+
+              if (fieldValue === undefined) {
+                // Field doesn't exist yet - create new array
+                tableParentFieldAppend.node.schemaData[fieldName] = [linkRef];
+              } else if (Array.isArray(fieldValue)) {
+                // Field is already an array - append to it
+                fieldValue.push(linkRef);
               } else {
-                tableParentFieldAppend.node.schemaData[tableParentFieldAppend.field] = [linkRef];
+                // Field exists but is not an array - this is an error
+                throw new Error(
+                  `Cannot append child link to field '${fieldName}' on node '${tableParentFieldAppend.node.label}': ` +
+                    `field exists but is not an array (found ${typeof fieldValue}). ` +
+                    `Child link: ${linkRef}`,
+                );
               }
             }
           }

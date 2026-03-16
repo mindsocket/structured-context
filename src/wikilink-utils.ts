@@ -26,10 +26,14 @@ export function buildTargetIndex(nodes: SpaceNode[]): Map<string, SpaceNode | nu
 
   for (const node of nodes) {
     for (const target of node.linkTargets) {
-      if (index.has(target)) {
-        index.set(target, null); // mark as ambiguous
-      } else {
-        index.set(target, node);
+      const normalized = target.trim();
+      if (!normalized) continue; // Skip empty strings after trimming
+
+      const existing = index.get(normalized);
+      if (existing === undefined) {
+        index.set(normalized, node);
+      } else if (existing !== node) {
+        index.set(normalized, null); // mark as ambiguous
       }
     }
   }

@@ -190,4 +190,175 @@ Our users are sad.
     expect(assumptions).toHaveLength(1);
     expect(assumptions[0]?.schemaData.title).toBe('Implicit Match');
   });
+
+  describe('fieldOn: parent array mutation bug', () => {
+    it('should throw error when parent field is not an array (list format)', () => {
+      const relationships: MetadataContractRelationship[] = [
+        {
+          parent: 'opportunity',
+          type: 'solution',
+          format: 'list',
+          matchers: ['Possible Solutions'],
+          multi: true,
+          field: 'solutions',
+          fieldOn: 'parent',
+        },
+      ];
+
+      const body = `
+# My Opportunity [type:: opportunity] [solutions:: "string value"]
+
+### Possible Solutions
+- Solution A
+- Solution B
+`;
+
+      expect(() =>
+        extractEmbeddedNodes(body, {
+          pageType: 'opportunity',
+          hierarchy,
+          relationships,
+        }),
+      ).toThrow(/Cannot append child link to field 'solutions'.*field exists but is not an array/);
+    });
+
+    it('should throw error when parent field is not an array (table format)', () => {
+      const relationships: MetadataContractRelationship[] = [
+        {
+          parent: 'opportunity',
+          type: 'assumption',
+          format: 'table',
+          matchers: ['Assumptions'],
+          multi: true,
+          field: 'assumptions',
+          fieldOn: 'parent',
+          embeddedTemplateFields: ['assumption', 'status'],
+        },
+      ];
+
+      const body = `
+# My Opportunity [type:: opportunity] [assumptions:: "string value"]
+
+### Assumptions
+
+| assumption | status |
+|---|---|
+| Assumption One | active |
+| Assumption Two | identified |
+`;
+
+      expect(() =>
+        extractEmbeddedNodes(body, {
+          pageType: 'opportunity',
+          hierarchy,
+          relationships,
+        }),
+      ).toThrow(/Cannot append child link to field 'assumptions'.*field exists but is not an array/);
+    });
+
+    it('should throw error when parent field is a number', () => {
+      const relationships: MetadataContractRelationship[] = [
+        {
+          parent: 'opportunity',
+          type: 'solution',
+          format: 'list',
+          matchers: ['Solutions'],
+          multi: true,
+          field: 'count',
+          fieldOn: 'parent',
+        },
+      ];
+
+      const body = `
+# My Opportunity [type:: opportunity] [count:: 42]
+
+### Solutions
+- Solution A
+- Solution B
+`;
+
+      expect(() =>
+        extractEmbeddedNodes(body, {
+          pageType: 'opportunity',
+          hierarchy,
+          relationships,
+        }),
+      ).toThrow(/Cannot append child link to field 'count'.*field exists but is not an array/);
+    });
+
+    it('should append to existing parent array field (list format)', () => {
+      const relationships: MetadataContractRelationship[] = [
+        {
+          parent: 'opportunity',
+          type: 'solution',
+          format: 'list',
+          matchers: ['Solutions'],
+          multi: true,
+          field: 'solutions',
+          fieldOn: 'parent',
+        },
+      ];
+
+      const body = `
+# My Opportunity [type:: opportunity]
+
+### Solutions
+- Solution A
+- Solution B
+- Solution C
+`;
+
+      const { nodes } = extractEmbeddedNodes(body, {
+        pageType: 'opportunity',
+        hierarchy,
+        relationships,
+      });
+
+      const opportunity = nodes.find((n) => n.schemaData.type === 'opportunity');
+      expect(opportunity).toBeDefined();
+
+      // When field doesn't exist, a new array is created
+      const solutionsField = opportunity?.schemaData.solutions;
+      expect(solutionsField).toEqual(['[[Solution A]]', '[[Solution B]]', '[[Solution C]]']);
+    });
+
+    it('should append to existing parent array field (table format)', () => {
+      const relationships: MetadataContractRelationship[] = [
+        {
+          parent: 'opportunity',
+          type: 'assumption',
+          format: 'table',
+          matchers: ['Assumptions'],
+          multi: true,
+          field: 'assumptions',
+          fieldOn: 'parent',
+          embeddedTemplateFields: ['assumption', 'status'],
+        },
+      ];
+
+      const body = `
+# My Opportunity [type:: opportunity]
+
+### Assumptions
+
+| assumption | status |
+|---|---|
+| Assumption One | active |
+| Assumption Two | identified |
+`;
+
+      const { nodes } = extractEmbeddedNodes(body, {
+        pageType: 'opportunity',
+        hierarchy,
+        relationships,
+      });
+
+      const opportunity = nodes.find((n) => n.schemaData.type === 'opportunity');
+      expect(opportunity).toBeDefined();
+
+      // When field doesn't exist, a new array is created
+      const assumptionsField = opportunity?.schemaData.assumptions;
+      expect(assumptionsField).toEqual(['[[Assumption One]]', '[[Assumption Two]]']);
+    });
+  });
 });
