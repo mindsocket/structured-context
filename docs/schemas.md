@@ -97,8 +97,60 @@ Top-level metadata shape:
 | `hierarchy` | object | Optional per provider; at most one provider may define it after composition |
 | `hierarchy.levels` | `(string \| HierarchyLevel)[]` | Ordered root→leaf types |
 | `hierarchy.allowSkipLevels` | `boolean` | Optional; allows parent to be any ancestor level |
+| `relationships` | `Relationship[]` | Optional; defines adjacent related node links |
 | `aliases` | `Record<string, string>` | Optional type alias map |
 | `rules` | `Rule[]` | Optional flat rule array |
+
+### Relationships
+
+Adjacent relationships define how related nodes (not part of the hierarchy) are handled during parsing and template generation.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `parent` | `string` | **Required** | The parent's canonical type name |
+| `type` | `string` | **Required** | The child's canonical type name |
+| `field` | `string` | `"parent"` | The frontmatter field that holds the wikilink(s) for this relationship |
+| `fieldOn` | `string` | `"child"` | `"child"` (child holds a link to parent) or `"parent"` (parent holds an array of child links) |
+| `format` | `string` | `"page"` | Hint for `template-sync`: `"table"`, `"list"`, or `"heading"` |
+| `matchers` | `string[]` | `[]` | Heading text to match (strings or `/regex/`). Case-insensitive. |
+| `embeddedTemplateFields` | `string[]` | `[]` | Field names to include in templates when `format` is `"table"` |
+| `multi` | `boolean` | `true` | Whether multiple children are expected |
+
+**`fieldOn: "child"` (default)** — child node has a field pointing to its parent. Embedded parsing sets this field on each child node; validation checks that it resolves to a node of the declared parent type.
+
+**`fieldOn: "parent"` — parent-side array** — the parent node has an array field (`field`) holding wikilinks to child nodes. When `field` is required, it must be specified. Embedded parsing appends `[[Child]]` entries to the parent node's field array; validation checks that each entry resolves to a node of the declared child type.
+
+**Example — child-side (default):**
+
+```json5
+"relationships": [
+  {
+    "parent": "opportunity",
+    "type": "assumption",
+    "format": "table",
+    "matchers": ["Assumptions", "/assum.*/"],
+    "embeddedTemplateFields": ["assumption", "status", "confidence"]
+  }
+]
+```
+
+**Example — parent-side array:**
+
+```json5
+"relationships": [
+  {
+    "parent": "activity",
+    "type": "task",
+    "field": "tasks",
+    "fieldOn": "parent",
+    "format": "list",
+    "matchers": ["Tasks"],
+    "multi": true
+  }
+]
+```
+
+With this configuration, embedded task items under an Activity's "Tasks" heading populate `activity.tasks` as `[[Task Title]]` wikilinks, and validation confirms each entry resolves to a `task` node.
 
 `HierarchyLevel` options:
 

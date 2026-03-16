@@ -13,7 +13,7 @@ flowchart TD
     subgraph dir [Space Directory]
         direction TB
         tp[Typed Page<br>type: goal in frontmatter]
-        en[Embedded Nodes<br>headings with type annotations<br>or anchor-implied types]
+        en[Embedded Nodes<br>headings, bullets, or table rows<br>explicitly typed, relationship-implied,<br>or anchor-implied]
         other[Other files<br>no frontmatter → skipped<br>no type field → nonSpace]
         tp -->|body parsed for| en
     end
@@ -21,10 +21,12 @@ flowchart TD
     subgraph soap [Space on a Page]
         direction TB
         sf[Single .md file<br>type: space_on_a_page]
-        hn[Heading nodes<br>depth → type via hierarchy]
-        bn[Bullet nodes<br>explicit inline type annotation]
+        hn[Heading nodes<br>depth → type via hierarchy<br>or relationship-implied]
+        bn[Bullet nodes<br>explicitly typed or relationship-implied]
+        tn[Table rows<br>typed via relationship heading<br>or first-column name]
         sf -->|headings| hn
         sf -->|typed bullets| bn
+        sf -->|typed tables| tn
     end
 
     pe[parse-embedded<br>extractEmbeddedNodes]
@@ -44,8 +46,10 @@ A **space directory** is a directory of markdown files that backs a `space`. Eac
 Each `.md` file with a `type` frontmatter field is a **typed page** — it represents one node. Its body is also scanned for **embedded nodes**:
 
 - **Heading with `[type:: x]`** or **anchor-implied type** (e.g. `## My Goal ^goal1`) → becomes a child node.
+- **Relationship headings** (e.g. `### Assumptions`) → when matched to a relationship definition in the schema, signals that following content (list items or table rows) should be typed as that relationship's child type, without requiring explicit inline annotations.
 - **Untyped headings** → update the depth stack for parent resolution but do not become nodes.
 - **Typed bullet items** (`- [type:: solution] Title`) → become child nodes at any nesting depth.
+- **Table rows** under a relationship heading → become child nodes of the relationship type.
 - **YAML blocks** and **unbracketed `key:: value` paragraph fields** → merged into the current node's `schemaData`.
 
 Parsing behaviour for a space directory:
@@ -152,10 +156,32 @@ A **hierarchy edge** is a directional link connecting a child node to one or mor
 
 | Option | Default | Meaning |
 |---|---|---|
-| `field` | `"parent"` | The frontmatter field that holds the wikilink(s) |
+| `field` | `"parent"` | The frontmatter field that holds the wikilink(s) for the regular parent-child relationship |
 | `fieldOn` | `"child"` | `"parent"` means the field is on the **parent** node and points to children (reversed direction) |
 | `multiple` | `false` | When `true`, the field holds an **array** of wikilinks rather than a single one |
-| `selfRef` | `false` | When `true`, a node may have a parent of the same resolved type |
+| `selfRef` | `false` | When `true`, a node may have a parent of the same resolved type (uses `field` for same-type relationships) |
+| `selfRefField` | _undefined_ | When set, specifies a different field for same-type parent relationships (always on child-side) |
+
+**Example: Activities listing Capabilities with sub-capabilities**
+
+```
+"levels": [
+  "Activities",
+  {
+    "type": "Capabilities",
+    "field": "capabilities",
+    "fieldOn": "parent",
+    "multiple": true,
+    "selfRefField": "parent"
+  }
+]
+```
+
+This configuration supports two relationship types:
+- **Activities → Capabilities**: Via `capabilities` field on Activity nodes (array of capability wikilinks)
+- **Capability → Capability**: Via `parent` field on Capability nodes (single parent capability wikilink)
+
+Without `selfRefField`, a type can only define one relationship field. The `selfRef` flag enables same-type relationships but uses the same `field` for both regular and same-type parents.
 
 Dangling wikilinks — edge field values that do not resolve to any known node — are reported as reference errors during validation.
 
@@ -173,6 +199,19 @@ Two forms are supported:
 |---|---|---|
 | Plain title | `[[My Goal]]` | The `space node` whose title equals `My Goal` |
 | Anchor ref | `[[vision_page#^goal1]]` | The `embedded node` with `anchor` `goal1` inside `vision_page.md` |
+
+### Relationships (Adjacent)
+
+An **adjacent relationship** (or simply **relationship**) is a link between a parent type and a child type that is not part of the primary structural hierarchy. For example, an `opportunity` might have a relationship with `assumption` (multiple) or `problem_statement` (single).
+
+Relationships are defined in the schema's `$metadata.relationships` and provide tips for both generation (`template-sync`) and parsing (`parse-embedded`). In particular, a heading matching a relationship name in a typed page acts as a signal to the parser: content (single-node), and list items or table rows (multi-node) below it are typed as that relationship's child type without requiring explicit inline annotations.
+
+Relationships support two link directions via `field` and `fieldOn`:
+
+- **`fieldOn: "child"` (default)** — the child node carries the relationship field (e.g. `parent: "[[Opportunity A]]"`). This is the conventional form inherited from hierarchy edges.
+- **`fieldOn: "parent"`** — the parent node carries an array field (e.g. `tasks: ["[[Task A]]", "[[Task B]]"]`). Use this when the content model places the list on the parent rather than on each child. Embedded parsing populates the parent's field array rather than setting `parent` on each child node.
+
+The `field` property names the frontmatter field (defaults to `"parent"` for child-side; must be explicit for parent-side). Validation checks all wikilinks in the field resolve to nodes of the declared type.
 
 ### Anchor
 

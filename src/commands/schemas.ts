@@ -1,11 +1,11 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import type { AnySchemaObject, SchemaObject } from 'ajv';
+import type { AnySchemaObject } from 'ajv';
 import JSON5 from 'json5';
 import { loadConfig, resolveSchema } from '../config';
 import { buildFullRegistry, bundledSchemasDir, loadMetadata, readRawSchema } from '../schema';
 import { mergeVariantProperties } from '../schema-refs';
-import type { SchemaMetadata } from '../types';
+import type { SchemaMetadata, SchemaWithMetadata } from '../types';
 
 function isBundledPath(schemaPath: string): boolean {
   return dirname(schemaPath) === bundledSchemasDir;
@@ -37,7 +37,7 @@ interface EntityInfo {
 function extractEntities(
   oneOf: unknown[],
   registry: Map<string, AnySchemaObject>,
-  schema: SchemaObject,
+  schema: SchemaWithMetadata,
 ): EntityVariant[] {
   return oneOf.map((entry) => {
     const { properties, required } = mergeVariantProperties(entry as AnySchemaObject, schema, registry);
@@ -58,10 +58,10 @@ function extractEntities(
  * Extract entity information for ERD generation.
  * Returns a flat list of all entity types with their properties.
  */
-function extractEntityInfo(
+export function extractEntityInfo(
   oneOf: unknown[],
   registry: Map<string, AnySchemaObject>,
-  schema: SchemaObject,
+  schema: SchemaWithMetadata,
 ): EntityInfo[] {
   const result: EntityInfo[] = [];
   for (const entry of oneOf) {
@@ -86,7 +86,7 @@ function extractEntityInfo(
   return result;
 }
 
-function showEntities(oneOf: unknown[], registry: Map<string, AnySchemaObject>, schema: SchemaObject): void {
+function showEntities(oneOf: unknown[], registry: Map<string, AnySchemaObject>, schema: SchemaWithMetadata): void {
   const entities = extractEntities(oneOf, registry, schema);
   console.log('\nEntities:');
   for (const { types, properties, required } of entities) {
@@ -149,6 +149,15 @@ function showMetadata(metadata: SchemaMetadata): void {
           console.log(`    ${item.id}: ${item.description}`);
         }
       }
+    }
+  }
+
+  if (metadata.relationships && metadata.relationships.length > 0) {
+    console.log('\nRelationships:');
+    for (const rel of metadata.relationships) {
+      const fields = rel.embeddedTemplateFields?.length ? ` [fields: ${rel.embeddedTemplateFields.join(', ')}]` : '';
+      const matchers = rel.matchers?.length ? ` (matches: ${rel.matchers.join(', ')})` : '';
+      console.log(`  ${rel.parent} → ${rel.type} [${rel.format ?? 'page'}]${fields}${matchers}`);
     }
   }
 }
@@ -296,7 +305,7 @@ export function showSchema(
     return;
   }
 
-  const schema = JSON5.parse(content) as SchemaObject;
+  const schema = JSON5.parse(content) as SchemaWithMetadata;
   const registry = buildFullRegistry(schemaPath) as Map<string, AnySchemaObject>;
 
   // Handle --mermaid-erd: generate ERD and exit

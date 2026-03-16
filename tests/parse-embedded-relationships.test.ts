@@ -1,0 +1,193 @@
+import { describe, expect, it } from 'bun:test';
+import type { MetadataContractRelationship } from '../src/metadata-contract';
+import { extractEmbeddedNodes } from '../src/parse-embedded';
+
+describe('extractEmbeddedNodes - relationships', () => {
+  const hierarchy = ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'];
+
+  it('extracts table rows as typed nodes when first col matches relation type', () => {
+    const relationships: MetadataContractRelationship[] = [
+      {
+        parent: 'opportunity',
+        type: 'assumption',
+        format: 'table',
+        matchers: ['Assumptions'],
+        embeddedTemplateFields: ['assumption', 'status'],
+        multi: true,
+      },
+    ];
+
+    const body = `
+# My Big Opportunity [type:: opportunity]
+
+### Assumptions
+
+| assumption | status | confidence |
+|---|---|---|
+| We can build this | active | medium |
+| Users want this | identified | low |
+`;
+
+    const { nodes } = extractEmbeddedNodes(body, {
+      pageType: 'opportunity',
+      hierarchy,
+      relationships,
+    });
+
+    const opp = nodes.find((n) => n.schemaData.type === 'opportunity');
+    expect(opp).toBeDefined();
+
+    const assumptions = nodes.filter((n) => n.schemaData.type === 'assumption');
+    expect(assumptions).toHaveLength(2);
+    expect(assumptions[0]?.schemaData.title).toBe('We can build this');
+    expect(assumptions[0]?.schemaData.status).toBe('active');
+    expect(assumptions[0]?.schemaData.confidence).toBe('medium');
+    expect(assumptions[0]?.schemaData.parent).toBe('[[My Big Opportunity]]');
+  });
+
+  it('infers row types from the first column if no relationship explicitly matches the heading (untyped table)', () => {
+    const body = `
+# My Big Opportunity [type:: opportunity]
+
+| assumption | status |
+|---|---|
+| They will buy it | identified |
+`;
+    const { nodes } = extractEmbeddedNodes(body, {
+      pageType: 'opportunity',
+      hierarchy: [...hierarchy, 'assumption'],
+      relationships: [],
+    });
+
+    const assumptions = nodes.filter((n) => n.schemaData.type === 'assumption');
+    expect(assumptions).toHaveLength(1);
+    expect(assumptions[0]?.schemaData.title).toBe('They will buy it');
+  });
+
+  it('translates explicit heading matchers to typed parent context nodes', () => {
+    const relationships: MetadataContractRelationship[] = [
+      {
+        parent: 'opportunity',
+        type: 'problem_statement',
+        format: 'heading',
+        matchers: ['What problem are we solving?'],
+        multi: false,
+      },
+    ];
+
+    const body = `
+# Opportunity 1 [type:: opportunity]
+
+### What problem are we solving?
+Our users are sad.
+`;
+    const { nodes } = extractEmbeddedNodes(body, {
+      pageType: 'opportunity',
+      hierarchy,
+      relationships,
+    });
+
+    const probNodes = nodes.filter((n) => n.schemaData.type === 'problem_statement');
+    expect(probNodes).toHaveLength(1);
+    expect(probNodes[0]?.schemaData.title).toBe('What problem are we solving?');
+    expect(probNodes[0]?.schemaData.content).toContain('Our users are sad.');
+    expect(probNodes[0]?.schemaData.parent).toBe('[[Opportunity 1]]');
+  });
+
+  it('supports list-based sub-entities after relationship heading', () => {
+    const relationships: MetadataContractRelationship[] = [
+      {
+        parent: 'opportunity',
+        type: 'solution',
+        format: 'list',
+        matchers: ['Possible Solutions'],
+        multi: true,
+      },
+    ];
+
+    const body = `
+# Multi Mode [type:: opportunity]
+
+### Possible Solutions
+- Build a web app
+- Build a mobile app
+`;
+    const { nodes } = extractEmbeddedNodes(body, {
+      pageType: 'opportunity',
+      hierarchy,
+      relationships,
+    });
+
+    const solutions = nodes.filter((n) => n.schemaData.type === 'solution');
+    expect(solutions).toHaveLength(2);
+    expect(solutions[0]?.schemaData.title).toBe('Build a web app');
+    expect(solutions[1]?.schemaData.title).toBe('Build a mobile app');
+    expect(solutions[0]?.schemaData.parent).toBe('[[Multi Mode]]');
+  });
+
+  it('supports /regex/ syntax and case-insensitive matching', () => {
+    const relationships: MetadataContractRelationship[] = [
+      {
+        parent: 'opportunity',
+        type: 'assumption',
+        format: 'table',
+        matchers: ['/assum.*/'],
+        embeddedTemplateFields: ['assumption', 'status'],
+        multi: true,
+      },
+    ];
+
+    const body = `
+# Case Sensitivity [type:: opportunity]
+
+### assuMPTIONS
+
+| assumption | status |
+|---|---|
+| Match me | active |
+`;
+
+    const { nodes } = extractEmbeddedNodes(body, {
+      pageType: 'opportunity',
+      hierarchy,
+      relationships,
+    });
+
+    const assumptions = nodes.filter((n) => n.schemaData.type === 'assumption');
+    expect(assumptions).toHaveLength(1);
+    expect(assumptions[0]?.schemaData.title).toBe('Match me');
+  });
+
+  it('supports case-insensitive implicit type match', () => {
+    const relationships: MetadataContractRelationship[] = [
+      {
+        parent: 'opportunity',
+        type: 'assumption',
+        format: 'table',
+        matchers: [],
+        embeddedTemplateFields: ['assumption', 'status'],
+        multi: true,
+      },
+    ];
+
+    const body = `
+# Implicit Match [type:: opportunity]
+
+### ASSUMPTION
+
+| assumption | status |
+|---|---|
+| Implicit Match | active |
+`;
+
+    const { nodes } = extractEmbeddedNodes(body, {
+      pageType: 'opportunity',
+      hierarchy,
+      relationships,
+    });
+
+    const assumptions = nodes.filter((n) => n.schemaData.type === 'assumption');
+    expect(assumptions).toHaveLength(1);
+    expect(assumptions[0]?.schemaData.title).toBe('Implicit Match');
+  });
+});

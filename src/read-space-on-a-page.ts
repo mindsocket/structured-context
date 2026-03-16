@@ -3,7 +3,7 @@ import { basename, resolve } from 'node:path';
 import matter from 'gray-matter';
 import { loadConfig, resolveSchema } from './config';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
-import { resolveLinks } from './resolve-links';
+import { resolveHierarchyEdges } from './resolve-hierarchy-edges';
 import { loadMetadata } from './schema';
 import type { SpaceOnAPageReadResult } from './types';
 
@@ -30,6 +30,7 @@ export function readSpaceOnAPage(filePath: string, schemaPath?: string): SpaceOn
     );
   }
   const hierarchyTypes = hierarchyLevels.map((level) => level.type);
+  const relationships = metadata.relationships ?? [];
   const { typeAliases } = metadata;
 
   const pageTitle = basename(filePath, '.md');
@@ -37,8 +38,9 @@ export function readSpaceOnAPage(filePath: string, schemaPath?: string): SpaceOn
     pageTitle,
     pageType: 'space_on_a_page',
     hierarchy: hierarchyTypes,
+    relationships: relationships,
     typeAliases,
   });
-  resolveLinks(nodes, hierarchyLevels);
+  resolveHierarchyEdges(nodes, hierarchyLevels);
   return { nodes, diagnostics };
 }

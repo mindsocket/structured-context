@@ -16,6 +16,14 @@ See `~/src/ost-tools/schemas/` for examples (`general.json`, `strict_ost.json`, 
     ],
     "allowSkipLevels": false
   },
+  "relationships": [
+    {
+      "parent": "opportunity",
+      "type": "assumption",
+      "format": "table",
+      "matchers": ["Assumptions"]
+    }
+  ],
   "aliases": { "experiment": "assumption_test" },
   "rules": [
     {
@@ -37,6 +45,23 @@ Use object entries to override defaults:
 - `fieldOn: "parent"` when parent points to children
 - `multiple: true` for array wikilinks
 - `selfRef: true` for same-type parent links
+
+### Adjacent Relationships (`$metadata.relationships`)
+
+Adjacent relationships define how sub-entities (nodes inside other files) are parsed and generated.
+
+| Field | Default | Description |
+|---|---|---|
+| `parent` | required | Parent canonical type |
+| `type` | required | Child canonical type |
+| `field` | `"parent"` | Frontmatter field holding the wikilink(s). Must be explicit when `fieldOn: "parent"`. |
+| `fieldOn` | `"child"` | `"child"`: child has the field pointing up. `"parent"`: parent has an array field pointing down to children. |
+| `format` | | Hint for `template-sync`: `"table"`, `"list"`, or `"heading"` |
+| `matchers` | | Heading text to match (strings or `/regex/`). Case-insensitive. |
+| `multi` | `true` | Whether multiple children are expected |
+| `embeddedTemplateFields` | | Field names for table columns |
+
+**`fieldOn: "parent"` pattern** — use when the content model lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`). Embedded parsing appends child wikilinks to the parent's `field` array rather than setting a `parent` field on each child. Validation checks each array entry resolves to a node of `type`.
 
 Rules are a flat array. Categories are labels only (`validation`, `coherence`, `workflow`, `best-practice`).
 

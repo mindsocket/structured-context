@@ -18,7 +18,24 @@
       "outcome": "goal",
       "assumption_test": "experiment",
       "test": "experiment"
-    }
+    },
+    "relationships": [
+      {
+        "parent": "opportunity",
+        "type": "problem_statement",
+        "format": "heading",
+        "matchers": ["Problem statement", "What problem are we solving?"],
+        "multi": false
+      },
+      {
+        "parent": "opportunity",
+        "type": "assumption",
+        "format": "table",
+        "matchers": ["Assumptions", "^Assumptions?$"],
+        "embeddedTemplateFields": ["assumption", "status", "confidence"],
+        "multi": true
+      }
+    ]
   },
   "oneOf": [
     {
@@ -62,11 +79,11 @@
       "type": "object",
       "allOf": [
         { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
-        "type": { "const": "mission" },
-        "parent": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" }
+        "type": { "const": "mission" }
       },
       "required": ["type"],
       "additionalProperties": true,
@@ -82,11 +99,11 @@
       "type": "object",
       "allOf": [
         { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "enum": ["goal", "outcome"] },
-        "parent": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
         "priority": { "$ref": "ost-tools://_ost_tools_base#/$defs/priority" }
       },
       "required": ["type"],
@@ -104,11 +121,11 @@
       "type": "object",
       "allOf": [
         { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "opportunity" },
-        "parent": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
         "priority": { "$ref": "ost-tools://_ost_tools_base#/$defs/priority" },
         "impact": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
         "feasibility": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
@@ -137,14 +154,11 @@
       "type": "object",
       "allOf": [
         { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "solution" },
-        "parent": {
-          "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink",
-          "description": "Parent opportunity or solution (wikilink)"
-        },
         "priority": { "$ref": "ost-tools://_ost_tools_base#/$defs/priority" },
         "impact": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
         "feasibility": { "$ref": "ost-tools://_ost_tools_base#/$defs/assessment" },
@@ -173,14 +187,11 @@
       "type": "object",
       "allOf": [
         { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
-        "type": { "enum": ["experiment", "assumption_test", "test"] },
-        "parent": {
-          "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink",
-          "description": "Parent solution (wikilink)"
-        }
+        "type": { "enum": ["experiment", "assumption_test", "test"] }
       },
       "required": ["type"],
       "additionalProperties": true,
@@ -194,6 +205,51 @@
           "type": "test",
           "status": "active",
           "parent": "[[Mobile App Solution]]"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "allOf": [
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "assumption" },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Confidence level in this assumption"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "assumption",
+          "status": "identified",
+          "parent": "[[Some Opportunity]]",
+          "confidence": "medium"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "allOf": [
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "problem_statement" }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "problem_statement",
+          "status": "identified"
         }
       ]
     }

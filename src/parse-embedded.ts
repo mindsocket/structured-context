@@ -1,10 +1,11 @@
 import { load as yamlLoad } from 'js-yaml';
-import type { Code, Heading, List, ListItem, Paragraph, Root } from 'mdast';
+import type { Code, Heading, List, ListItem, Paragraph, Root, Table, TableRow } from 'mdast';
 import { toString as mdastToString } from 'mdast-util-to-string';
 import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { applyFieldMap } from './config';
+import type { MetadataContractRelationship } from './metadata-contract';
 import { resolveNodeType } from './schema';
 import type { SpaceNode, SpaceOnAPageDiagnostics } from './types';
 
@@ -131,6 +132,8 @@ function processListItem(
   buildLinkTargets: (title: string) => string[],
   typeAliases: Record<string, string>,
   fieldMap?: Record<string, string>,
+  pendingType?: string,
+  parentFieldAppend?: { node: SpaceNode; field: string },
 ): void {
   const firstPara = item.children.find((c) => c.type === 'paragraph') as Paragraph | undefined;
 
@@ -143,18 +146,20 @@ function processListItem(
   const { cleanText, fields: rawFields } = extractBracketedFields(rawText);
   const fields = applyFieldMap(rawFields, fieldMap) as Record<string, string>;
 
-  if (fields.type) {
+  const type = fields.type ?? pendingType;
+
+  if (type) {
     const dashIdx = cleanText.indexOf(' - ');
     const title = (dashIdx >= 0 ? cleanText.slice(0, dashIdx) : cleanText).trim();
     const summary = dashIdx >= 0 ? cleanText.slice(dashIdx + 3).trim() : undefined;
 
     const schemaData: Record<string, unknown> = {
       title,
-      type: fields.type,
+      type,
       status: DEFAULT_STATUS,
       ...fields,
     };
-    if (parentRef) schemaData.parent = parentRef;
+    if (parentRef && !parentFieldAppend) schemaData.parent = parentRef;
     if (summary) schemaData.summary = summary;
 
     const linkTargets = buildLinkTargets(title);
@@ -163,15 +168,35 @@ function processListItem(
       schemaData,
       linkTargets,
       resolvedParents: [],
-      resolvedType: resolveNodeType(fields.type, typeAliases),
+      resolvedType: resolveNodeType(type, typeAliases),
     };
     nodes.push(newNode);
+
+    if (parentFieldAppend) {
+      const linkRef = `[[${linkTargets[0] ?? title}]]`;
+      const arr = parentFieldAppend.node.schemaData[parentFieldAppend.field];
+      if (Array.isArray(arr)) {
+        arr.push(linkRef);
+      } else {
+        parentFieldAppend.node.schemaData[parentFieldAppend.field] = [linkRef];
+      }
+    }
 
     const nestedParentRef = `[[${linkTargets[0] ?? title}]]`;
     for (const child of item.children) {
       if (child.type === 'list') {
         for (const subItem of (child as List).children) {
-          processListItem(subItem, nestedParentRef, newNode, nodes, makeLabel, buildLinkTargets, typeAliases, fieldMap);
+          processListItem(
+            subItem,
+            nestedParentRef,
+            newNode,
+            nodes,
+            makeLabel,
+            buildLinkTargets,
+            typeAliases,
+            fieldMap,
+            pendingType,
+          );
         }
       }
     }
@@ -208,6 +233,10 @@ export interface ExtractEmbeddedOptions {
    * Example: { "record_type": "type" } renames `record_type` to `type` in extracted data.
    */
   fieldMap?: Record<string, string>;
+  /**
+   * Relationship definitions from schema metadata to determine sub-entity types and matcher rules.
+   */
+  relationships?: MetadataContractRelationship[];
 }
 
 export interface ExtractEmbeddedResult {
@@ -222,7 +251,7 @@ export interface ExtractEmbeddedResult {
  * (directory) to find embedded sub-nodes within a page's content.
  */
 export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptions): ExtractEmbeddedResult {
-  const { pageTitle, pageType, hierarchy, typeAliases = {}, fieldMap } = options;
+  const { pageTitle, pageType, hierarchy, typeAliases = {}, fieldMap, relationships = [] } = options;
   const isOnAPageMode = pageType === undefined || ON_A_PAGE_TYPES.includes(pageType);
 
   const nodes: SpaceNode[] = [];
@@ -244,8 +273,6 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       ? [{ depth: 0, title: pageTitle, nodeType: pageType, refTarget: pageTitle }]
       : [];
 
-  let currentContextNode: SpaceNode = rootNode;
-
   type ParseState = 'preamble' | 'active' | 'done';
   let parseState: ParseState = 'preamble';
 
@@ -253,6 +280,36 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     preambleNodeCount: 0,
     terminatedHeadings: [],
   };
+
+  function getParentContextType(): string | undefined {
+    for (let i = stack.length - 1; i >= 0; i--) {
+      if (stack[i]!.nodeType) return stack[i]!.nodeType;
+    }
+    return undefined;
+  }
+
+  function matchRelationship(title: string, parentType: string | undefined): MetadataContractRelationship | undefined {
+    if (!parentType) return undefined;
+    const lowerTitle = title.toLowerCase();
+    for (const rel of relationships) {
+      if (rel.parent === parentType) {
+        for (const matcher of rel.matchers || []) {
+          if (matcher.startsWith('^') && matcher.endsWith('$')) {
+            if (new RegExp(matcher, 'i').test(title)) return rel;
+          } else if (matcher.startsWith('/') && matcher.endsWith('/')) {
+            const pattern = matcher.slice(1, -1);
+            if (new RegExp(pattern, 'i').test(title)) return rel;
+          } else if (lowerTitle === matcher.toLowerCase()) {
+            return rel;
+          }
+        }
+        if (lowerTitle === rel.type.toLowerCase()) {
+          return rel; // fallback implicit match
+        }
+      }
+    }
+    return undefined;
+  }
 
   function makeLabel(title: string): string {
     return title;
@@ -297,6 +354,9 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     return normalized ? [`${pageTitle}#${normalized}`] : [title];
   }
 
+  let pendingRelationship: MetadataContractRelationship | undefined;
+  let currentActiveNode: SpaceNode = rootNode;
+
   for (const child of tree.children) {
     if (parseState === 'done') {
       if (child.type === 'heading') {
@@ -325,20 +385,21 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       const inlineFields = applyFieldMap(rawInlineFields, fieldMap) as Record<string, string>;
       const { cleanText: title, anchor } = extractAnchor(afterBracketed);
 
+      const parentContextType = getParentContextType();
       const anchorType = anchor ? anchorToNodeType(anchor, hierarchy) : undefined;
+      const relationshipMatch = matchRelationship(title, parentContextType);
       const hasExplicitType = !!inlineFields.type;
-      const hasImpliedType = !!anchorType;
+      const hasImpliedType = !!anchorType || !!relationshipMatch;
 
       if (!isOnAPageMode && !hasExplicitType && !hasImpliedType) {
-        // Untyped heading in typed-page mode: update depth stack but don't create a node.
         while (stack.length > 0 && stack[stack.length - 1]!.depth >= depth) {
           stack.pop();
         }
         stack.push({ depth, title, nodeType: '', refTarget: title });
+        pendingRelationship = undefined;
         continue;
       }
 
-      // In space_on_a_page mode, enforce the no-level-skip rule.
       if (isOnAPageMode && stack.length > 0) {
         const topDepth = stack[stack.length - 1]!.depth;
         if (depth > topDepth + 1) {
@@ -350,7 +411,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         stack.pop();
       }
 
-      const type = inlineFields.type ?? anchorType ?? defaultNodeType(stack, hierarchy);
+      const type = inlineFields.type ?? anchorType ?? relationshipMatch?.type ?? defaultNodeType(stack, hierarchy);
       const parentRef = currentParentRef();
 
       const schemaData: Record<string, unknown> = {
@@ -369,8 +430,20 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         resolvedParents: [],
         resolvedType: resolveNodeType(type, typeAliases),
       };
-      nodes.push(headingNode);
-      currentContextNode = headingNode;
+
+      // If this match came from a relationship and no explicit type was given,
+      // delay adding the node until we see the following content (agnostic parsing).
+      if (!hasExplicitType && !anchorType && relationshipMatch) {
+        pendingRelationship = relationshipMatch;
+        // Optimization: if it's multi:false, we might still want the heading node if it has text body.
+        // We set currentActiveNode to headingNode so if text follows, it goes there.
+        // But if a table follows, we'll use the parent's context.
+        currentActiveNode = headingNode;
+      } else {
+        nodes.push(headingNode);
+        currentActiveNode = headingNode;
+        pendingRelationship = undefined;
+      }
 
       const refTarget = linkTargets[0] ?? title;
       stack.push({ depth, title, nodeType: type, refTarget });
@@ -378,57 +451,191 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       diagnostics.preambleNodeCount++;
     } else if (child.type === 'list') {
       const parentRef = currentParentRef();
-      for (const item of (child as List).children) {
-        processListItem(
-          item,
-          parentRef,
-          currentContextNode,
-          nodes,
-          makeLabel,
-          buildListItemLinkTargets,
-          typeAliases,
-          fieldMap,
-        );
+      const list = child as List;
+
+      if (pendingRelationship) {
+        // Grandparent is the true semantic parent for relationship-driven items
+        let semanticParentRef = parentRef;
+        let semanticParentNode: SpaceNode | undefined;
+        for (let i = stack.length - 2; i >= 0; i--) {
+          if (stack[i]!.nodeType !== '') {
+            semanticParentRef = `[[${stack[i]!.refTarget}]]`;
+            const refTarget = stack[i]!.refTarget;
+            semanticParentNode = nodes.find((n) => n.linkTargets.includes(refTarget));
+            break;
+          }
+        }
+
+        const isParentSide = pendingRelationship.fieldOn === 'parent';
+        const parentFieldAppend =
+          isParentSide && semanticParentNode && pendingRelationship.field
+            ? { node: semanticParentNode, field: pendingRelationship.field }
+            : undefined;
+
+        for (const item of list.children) {
+          processListItem(
+            item,
+            isParentSide ? undefined : semanticParentRef,
+            currentActiveNode,
+            nodes,
+            makeLabel,
+            buildListItemLinkTargets,
+            typeAliases,
+            fieldMap,
+            pendingRelationship.type,
+            parentFieldAppend,
+          );
+        }
+        pendingRelationship = undefined;
+      } else {
+        for (const item of list.children) {
+          processListItem(
+            item,
+            parentRef,
+            currentActiveNode,
+            nodes,
+            makeLabel,
+            buildListItemLinkTargets,
+            typeAliases,
+            fieldMap,
+          );
+        }
       }
-    } else if (child.type === 'paragraph') {
-      const rawText = mdastToString(child);
-      const { cleanText: afterBracketed, fields: bracketedFields } = extractBracketedFields(rawText);
-      const { remainingText, fields: unbracketedFields } = extractUnbracketedFields(afterBracketed);
+    } else if (child.type === 'table') {
+      const parentRef = currentParentRef();
+      const parentContextType = getParentContextType();
+      const table = child as Table;
 
-      const allFields = applyFieldMap({ ...unbracketedFields, ...bracketedFields }, fieldMap);
-      if ('type' in allFields) {
-        const title = currentContextNode.schemaData.title as string | undefined;
-        throw new Error(
-          `Type override via paragraph field is not supported at "${title ?? currentContextNode.label}". ` +
-            `Put [type:: ${(allFields as Record<string, string>).type}] directly in the heading text.`,
-        );
+      if (table.children && table.children.length > 0) {
+        const headerRow = table.children[0] as TableRow;
+        const rows = table.children.slice(1);
+        const columnNames = headerRow.children.map((cell) => mdastToString(cell).trim());
+        const firstColName = columnNames[0]?.toLowerCase();
+
+        let rowTypeStr: string | undefined;
+
+        if (pendingRelationship) {
+          rowTypeStr = pendingRelationship.type;
+        } else if (firstColName) {
+          if (hierarchy.includes(firstColName) || typeAliases[firstColName]) {
+            rowTypeStr = firstColName;
+          } else {
+            const rootRel = matchRelationship(firstColName, parentContextType);
+            if (rootRel) rowTypeStr = rootRel.type;
+          }
+        }
+
+        if (!rowTypeStr && currentActiveNode !== rootNode && currentActiveNode.schemaData.type) {
+          const contextAsParentRel = matchRelationship(firstColName || '', currentActiveNode.schemaData.type as string);
+          if (contextAsParentRel) rowTypeStr = contextAsParentRel.type;
+        }
+
+        if (rowTypeStr) {
+          let semanticParentRef = parentRef;
+          let semanticParentNode: SpaceNode | undefined;
+          if (pendingRelationship || rowTypeStr === parentContextType) {
+            for (let i = stack.length - 2; i >= 0; i--) {
+              if (stack[i]!.nodeType !== '') {
+                semanticParentRef = `[[${stack[i]!.refTarget}]]`;
+                const refTarget = stack[i]!.refTarget;
+                semanticParentNode = nodes.find((n) => n.linkTargets.includes(refTarget));
+                break;
+              }
+            }
+          }
+
+          const isParentSide = pendingRelationship?.fieldOn === 'parent';
+          const tableParentFieldAppend =
+            isParentSide && semanticParentNode && pendingRelationship?.field
+              ? { node: semanticParentNode, field: pendingRelationship.field }
+              : undefined;
+
+          for (const row of rows) {
+            const cells = row.children;
+            if (!cells || cells.length === 0) continue;
+
+            const titleRaw = mdastToString(cells[0]).trim();
+            const { cleanText: title, fields: rawInlineFields } = extractBracketedFields(titleRaw);
+            const inlineFields = applyFieldMap(rawInlineFields, fieldMap) as Record<string, string>;
+
+            const schemaData: Record<string, unknown> = {
+              title,
+              type: rowTypeStr,
+              status: DEFAULT_STATUS,
+              ...inlineFields,
+            };
+            if (semanticParentRef && !tableParentFieldAppend) schemaData.parent = semanticParentRef;
+
+            for (let i = 1; i < columnNames.length; i++) {
+              const colName = columnNames[i]!;
+              const cellContent = i < cells.length ? mdastToString(cells[i]).trim() : '';
+              if (colName && cellContent) {
+                const mappedColName = fieldMap?.[colName] ?? colName;
+                schemaData[mappedColName] = cellContent;
+              }
+            }
+
+            const linkTargets = buildListItemLinkTargets(title);
+            const rowNode: SpaceNode = {
+              label: makeLabel(title),
+              schemaData,
+              linkTargets,
+              resolvedParents: [],
+              resolvedType: resolveNodeType(rowTypeStr, typeAliases),
+            };
+            nodes.push(rowNode);
+
+            if (tableParentFieldAppend) {
+              const linkRef = `[[${linkTargets[0] ?? title}]]`;
+              const arr = tableParentFieldAppend.node.schemaData[tableParentFieldAppend.field];
+              if (Array.isArray(arr)) {
+                arr.push(linkRef);
+              } else {
+                tableParentFieldAppend.node.schemaData[tableParentFieldAppend.field] = [linkRef];
+              }
+            }
+          }
+          pendingRelationship = undefined;
+        } else {
+          appendContent(currentActiveNode, mdastToString(child));
+        }
+      }
+    } else {
+      // For any other content (paragraph, code, etc), if we had a pending relationship,
+      // it means the heading itself is the node. Add it now.
+      if (pendingRelationship) {
+        nodes.push(currentActiveNode);
+        pendingRelationship = undefined;
       }
 
-      Object.assign(currentContextNode.schemaData, allFields);
-      if (remainingText) appendContent(currentContextNode, remainingText);
-    } else if (child.type === 'code') {
-      const code = child as Code;
-      if (code.lang?.trim() === 'yaml') {
-        const parsed = yamlLoad(code.value);
+      if (child.type === 'paragraph') {
+        const rawText = mdastToString(child);
+        const { cleanText: afterBracketed, fields: bracketedFields } = extractBracketedFields(rawText);
+        const { remainingText, fields: unbracketedFields } = extractUnbracketedFields(afterBracketed);
+        const allFields = applyFieldMap({ ...unbracketedFields, ...bracketedFields }, fieldMap);
 
-        if (Array.isArray(parsed)) {
+        if ('type' in allFields) {
           throw new Error(
-            `YAML block must be an object (key-value properties for the current node), not an array. ` +
-              `Use typed bullets - e.g. "- [type:: solution] Title" - to define child nodes inline.`,
+            `Type override via paragraph field is not supported at "${currentActiveNode.schemaData.title ?? currentActiveNode.label}". ` +
+              `Put [type:: ${(allFields as Record<string, string>).type}] directly in the heading text.`,
           );
         }
 
-        if (parsed && typeof parsed === 'object') {
-          Object.assign(currentContextNode.schemaData, applyFieldMap(parsed as Record<string, unknown>, fieldMap));
+        Object.assign(currentActiveNode.schemaData, allFields);
+        if (remainingText) appendContent(currentActiveNode, remainingText);
+      } else if (child.type === 'code' && (child as Code).lang?.trim() === 'yaml') {
+        const code = child as Code;
+        const parsed = yamlLoad(code.value);
+        if (parsed && !Array.isArray(parsed) && typeof parsed === 'object') {
+          Object.assign(currentActiveNode.schemaData, applyFieldMap(parsed as Record<string, unknown>, fieldMap));
+        } else if (Array.isArray(parsed)) {
+          throw new Error(`YAML block must be an object at "${currentActiveNode.label}".`);
         } else {
-          appendContent(currentContextNode, code.value);
+          appendContent(currentActiveNode, code.value);
         }
       } else {
-        appendContent(currentContextNode, code.value);
+        appendContent(currentActiveNode, mdastToString(child));
       }
-    } else {
-      const text = mdastToString(child);
-      appendContent(currentContextNode, text);
     }
   }
 

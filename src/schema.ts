@@ -6,6 +6,7 @@ import Ajv, { type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
 import {
   type MetadataContract,
+  type MetadataContractRelationship,
   type MetadataContractRule,
   type MetadataContractRuleEntry,
   OST_TOOLS_DIALECT_META_SCHEMA,
@@ -336,6 +337,7 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
   let mergedHierarchy: MetadataContract['hierarchy'] | undefined;
   const mergedAliases: Record<string, string> = {};
   const mergedRules = new Map<string, { providerId: string; rule: MetadataContractRule }>();
+  const mergedRelationships: MetadataContractRelationship[] = [];
 
   for (const provider of metadataProviders) {
     if (provider.metadata.hierarchy) {
@@ -350,6 +352,10 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
 
     if (provider.metadata.aliases) {
       Object.assign(mergedAliases, provider.metadata.aliases);
+    }
+
+    if (provider.metadata.relationships) {
+      mergedRelationships.push(...provider.metadata.relationships);
     }
 
     if (provider.metadata.rules) {
@@ -381,12 +387,15 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
     if (typeof entry === 'string') {
       return { type: entry, field: 'parent', fieldOn: 'child', multiple: false, selfRef: false };
     }
+    // If selfRefField is set, imply selfRef: true
+    const selfRef = entry.selfRefField !== undefined ? true : (entry.selfRef ?? false);
     return {
       type: entry.type,
       field: entry.field ?? 'parent',
       fieldOn: entry.fieldOn === 'parent' ? 'parent' : 'child',
       multiple: entry.multiple ?? false,
-      selfRef: entry.selfRef ?? false,
+      selfRef,
+      selfRefField: entry.selfRefField,
     };
   });
 
@@ -400,5 +409,6 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
         : undefined,
     typeAliases: Object.keys(mergedAliases).length > 0 ? mergedAliases : undefined,
     rules: mergedRules.size > 0 ? [...mergedRules.values()].map(({ rule }) => normalizeRule(rule)) : undefined,
+    relationships: mergedRelationships.length > 0 ? mergedRelationships : undefined,
   };
 }

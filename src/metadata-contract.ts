@@ -11,6 +11,7 @@ const HIERARCHY_LEVEL_SCHEMA = {
     fieldOn: { enum: ['child', 'parent'] },
     multiple: { type: 'boolean' },
     selfRef: { type: 'boolean' },
+    selfRefField: { type: 'string', minLength: 1 },
   },
   required: ['type'],
   additionalProperties: false,
@@ -40,6 +41,29 @@ const RULE_REF_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+const RELATIONSHIP_SCHEMA = {
+  type: 'object',
+  properties: {
+    parent: { type: 'string', minLength: 1 },
+    type: { type: 'string', minLength: 1 },
+    field: { type: 'string', minLength: 1 },
+    fieldOn: { enum: ['child', 'parent'] },
+    format: { enum: ['heading', 'list', 'table', 'page'] },
+    multi: { type: 'boolean' },
+    matchers: {
+      type: 'array',
+      items: { type: 'string', minLength: 1 },
+      minItems: 1,
+    },
+    embeddedTemplateFields: {
+      type: 'array',
+      items: { type: 'string', minLength: 1 },
+    },
+  },
+  required: ['parent', 'type'],
+  additionalProperties: false,
+} as const;
+
 export const OST_TOOLS_METADATA_SCHEMA = {
   type: 'object',
   properties: {
@@ -57,6 +81,10 @@ export const OST_TOOLS_METADATA_SCHEMA = {
       },
       required: ['levels'],
       additionalProperties: false,
+    },
+    relationships: {
+      type: 'array',
+      items: RELATIONSHIP_SCHEMA,
     },
     aliases: {
       type: 'object',
@@ -91,3 +119,4 @@ export type MetadataContractRuleRef = FromSchema<typeof RULE_REF_SCHEMA>;
 export type MetadataContractRules = Exclude<MetadataContract['rules'], undefined>;
 export type MetadataContractRuleEntry = MetadataContractRules[number];
 export type MetadataContractResolvedRules = MetadataContractRule[];
+export type MetadataContractRelationship = FromSchema<typeof RELATIONSHIP_SCHEMA>;

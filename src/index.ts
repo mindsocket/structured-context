@@ -68,7 +68,16 @@ program
       // Save cursor position after header (for clearing later)
       process.stdout.write('\x1b[s');
 
-      let exitCode = await validate(spacePath, { schema: schemaPath, templateDir });
+      let exitCode = 0;
+      const innerValidate = async () => {
+        try {
+          exitCode = await validate(spacePath, { schema: schemaPath, templateDir });
+        } catch (error) {
+          console.error(`❌ Error during validation: ${error instanceof Error ? error.message : String(error)}`);
+          exitCode = 1;
+        }
+      };
+      await innerValidate();
 
       // Collect paths to watch (all config files, schema dirs, and space path)
       const watchPaths = [...configFiles, ...schemaDirs, spacePath];
@@ -82,12 +91,16 @@ program
         },
       });
 
-      watcher.on('change', async (changedPath) => {
+      const handleFileChange = async (filePath: string, action: string) => {
         // Restore cursor to header position and clear everything below
         process.stdout.write('\x1b[u\x1b[0J');
-        console.log(`🔄 ${changedPath} changed, re-validating...\n`);
-        exitCode = await validate(spacePath, { schema: schemaPath, templateDir });
-      });
+        console.log(`🔄 ${filePath} ${action}, re-validating...\n`);
+        await innerValidate();
+      };
+
+      watcher.on('add', (path) => handleFileChange(path, 'added'));
+      watcher.on('change', (path) => handleFileChange(path, 'changed'));
+      watcher.on('unlink', (path) => handleFileChange(path, 'removed'));
 
       watcher.on('error', (error) => {
         console.error(`Watcher error: ${error}`);
@@ -172,7 +185,7 @@ spacesCmd
   .action(listSpaces);
 program.addCommand(spacesCmd);
 
-const schemasCmd = new Command('schemas').description('List and inspect schemas');
+const schemasCmd = new Command('schemas').alias('schema').description('List and inspect schemas');
 schemasCmd
   .command('list', { isDefault: true })
   .description('List available schemas')

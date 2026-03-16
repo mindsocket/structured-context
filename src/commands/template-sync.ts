@@ -5,15 +5,18 @@ import { glob } from 'glob';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
 import { invertFieldMap } from '../config';
+import type { MetadataContractRelationship } from '../metadata-contract';
 import { buildFullRegistry, readRawSchema } from '../schema';
 import { mergeVariantProperties, resolveRef } from '../schema-refs';
+import type { SchemaWithMetadata } from '../types';
 
-interface TypeVariant {
+export interface TypeVariant {
   required: string[];
   optional: string[];
   properties: Record<string, AnySchemaObject>;
   example: Record<string, string | number | boolean>;
   description: string | undefined;
+  relationships: MetadataContractRelationship[];
 }
 
 // Fields derived from the filesystem — present at validation time but not written to frontmatter
@@ -26,7 +29,7 @@ function enumPlaceholder(def: AnySchemaObject): string {
 function withEnumPlaceholders(
   example: Record<string, string | number | boolean>,
   properties: Record<string, AnySchemaObject>,
-  schema: SchemaObject,
+  schema: SchemaWithMetadata,
   registry: Map<string, AnySchemaObject>,
 ): Record<string, string | number | boolean> {
   return Object.fromEntries(
@@ -40,7 +43,7 @@ function withEnumPlaceholders(
 function commentedHint(
   fieldName: string,
   propDef: AnySchemaObject | undefined,
-  schema: SchemaObject,
+  schema: SchemaWithMetadata,
   registry: Map<string, AnySchemaObject>,
 ): string {
   const def = resolveRef(propDef, schema, registry);
@@ -67,7 +70,10 @@ function commentedHint(
   return `# ${fieldName}: ${value}${description ? `  # ${description}` : ''}`;
 }
 
-function getTypeVariants(schema: SchemaObject, registry: Map<string, AnySchemaObject>): Map<string, TypeVariant> {
+export function getTypeVariants(
+  schema: SchemaWithMetadata,
+  registry: Map<string, AnySchemaObject>,
+): Map<string, TypeVariant> {
   const map = new Map<string, TypeVariant>();
   for (const variant of schema.oneOf) {
     const typeName = variant.properties?.type?.const as string;
@@ -84,22 +90,27 @@ function getTypeVariants(schema: SchemaObject, registry: Map<string, AnySchemaOb
     const example = variant.examples[0] as Record<string, string | number | boolean>;
     const description = (variant as { description?: string }).description;
 
+    const allRelationships = schema.$metadata?.relationships || [];
+    const typeRelationships = allRelationships.filter((rel) => rel.parent === typeName);
+
     map.set(typeName, {
       required,
       optional,
       properties: allProperties,
       example,
       description,
+      relationships: typeRelationships,
     });
   }
   return map;
 }
 
-function generateNewContent(
+export function generateNewContent(
   nodeType: string,
   variant: TypeVariant,
-  schema: SchemaObject,
+  schema: SchemaWithMetadata,
   registry: Map<string, AnySchemaObject>,
+  allVariants: Map<string, TypeVariant>,
   body = '\nTODO\n',
   fieldMap: Record<string, string> = {},
 ): string {
@@ -143,7 +154,56 @@ function generateNewContent(
 
   const newFrontmatter = hints.length > 0 ? `${frontmatterYaml}\n${hints.join('\n')}` : frontmatterYaml;
 
-  return `---\n${newFrontmatter}\n---${body}`;
+  let relationshipStubs = '';
+  for (const rel of variant.relationships) {
+    const matcher = rel.matchers?.[0] || rel.type;
+    if (body.includes(`### ${matcher}`)) {
+      continue;
+    }
+
+    const childVariant = allVariants.get(rel.type);
+    const childExample = childVariant?.example || {};
+
+    if (rel.format === 'table' && rel.embeddedTemplateFields) {
+      const header = `| ${rel.embeddedTemplateFields.join(' | ')} |`;
+      const sep = `| ${rel.embeddedTemplateFields.map(() => '---|').join('')}`;
+      const exampleValues = rel.embeddedTemplateFields.map((field) => {
+        const val = childExample[field];
+        return val !== undefined ? String(val) : ' ';
+      });
+      const exampleRow = `| ${exampleValues.join(' | ')} |`;
+      relationshipStubs += `\n### ${matcher}\n\n${header}\n${sep}\n${exampleRow}\n`;
+    } else if (rel.format === 'heading') {
+      let stub = `\n### ${matcher}\n\n`;
+      if (childVariant) {
+        // Include inline fields from example if it's a heading
+        const fields = Object.entries(childExample)
+          .filter(([k]) => k !== 'type' && k !== 'title' && k !== 'parent')
+          .map(([k, v]) => `[${k}:: ${v}]`)
+          .join(' ');
+        stub += `${fields}${fields ? ' ' : ''}TODO: Describe ${rel.type}\n`;
+      } else {
+        stub += `TODO: Describe ${rel.type}\n`;
+      }
+      relationshipStubs += stub;
+    } else if (rel.format === 'list') {
+      let stub = `\n### ${matcher}\n\n- [type:: ${rel.type}] `;
+      if (childVariant) {
+        const fields = Object.entries(childExample)
+          .filter(([k]) => k !== 'type' && k !== 'title' && k !== 'parent')
+          .map(([k, v]) => `[${k}:: ${v}]`)
+          .join(' ');
+        stub += `${fields}${fields ? ' ' : ''}TODO`;
+      } else {
+        stub += 'TODO';
+      }
+      relationshipStubs += `${stub}\n`;
+    }
+  }
+
+  const finalBody = relationshipStubs ? `\n${relationshipStubs}${body.trimStart()}` : body;
+
+  return `---\n${newFrontmatter}\n---${finalBody}`;
 }
 
 export async function templateSync(
@@ -204,7 +264,7 @@ export async function templateSync(
       console.log(`⚠  ${filename}: type "${nodeType}" should be named "${expectedFilename}"`);
     }
 
-    const newContent = generateNewContent(nodeType, variant, schema, registry, body, fieldMap);
+    const newContent = generateNewContent(nodeType, variant, schema, registry, typeVariants, body, fieldMap);
 
     if (newContent === content) {
       console.log(`✓  ${filename}`);
@@ -251,7 +311,7 @@ export async function templateSync(
     if (options.createMissing) {
       for (const type of missingTypes) {
         const variant = typeVariants.get(type)!;
-        const newContent = generateNewContent(type, variant, schema, registry, undefined, fieldMap);
+        const newContent = generateNewContent(type, variant, schema, registry, typeVariants, undefined, fieldMap);
         const newFilename = `${templatePrefix}${type}.md`;
         const newFilePath = join(templateDir, newFilename);
 

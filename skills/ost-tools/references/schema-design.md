@@ -40,6 +40,21 @@ level object in `$metadata.hierarchy.levels`.
 For a mixed graph (some hierarchical, some lateral entities), put the main chain in `hierarchy.levels`
 and include lateral types in `oneOf` without hierarchy constraints.
 
+### 2a. Adjacent Relationships vs Primary Hierarchy
+
+Use **Primary Hierarchy** (`$metadata.hierarchy`) for the main structural backbone of your tree. These links:
+- Drive the tree rendering in `show`.
+- Are typically expressed as separate files or major sections.
+- Are strictly parented.
+
+Use **Adjacent Relationships** (`$metadata.relationships`) for fine-grained sub-entities (e.g., Assumptions, Requirements). These links:
+- Enable **Sub-entities**: multiple nodes that live physically inside their parent's file.
+- Support **Agnostic Parsing**: headings automatically type the following tables or lists.
+- Reduce file sprawl.
+- Are "flattened" in most views, acting more like properties with identity.
+
+**Design Rule:** If a child type has its own detailed properties and lives naturally inside a table or nested list of the parent, model it as an **Adjacent Relationship**.
+
 ## 3. Handle naming conflicts
 
 **Common problem:** content uses `type` as a sub-classification field AND `record_type` (or similar)

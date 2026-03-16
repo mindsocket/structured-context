@@ -62,6 +62,14 @@ ost-tools schemas use a Draft-07-based metaschema that adds a top-level `$metada
     "levels": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"],
     "allowSkipLevels": false
   },
+  "relationships": [
+    {
+      "parent": "opportunity",
+      "type": "assumption",
+      "format": "table",
+      "matchers": ["Assumptions"]
+    }
+  ],
   "aliases": { "experiment": "assumption_test" },
   "rules": [
     {
@@ -83,6 +91,7 @@ Schema hierarchy levels support DAG (multi-parent) relationships via configurabl
 { "type": "opportunity", "selfRef": true }
 { "type": "solution", "field": "fulfills", "multiple": true }
 { "type": "requirement", "field": "generates", "fieldOn": "parent", "multiple": true }
+{ "type": "solution", "field": "solutions", "fieldOn": "parent", "multiple": true, "selfRefField": "parent" }
 ```
 
 | Property | Default | Description |
@@ -92,6 +101,24 @@ Schema hierarchy levels support DAG (multi-parent) relationships via configurabl
 | `fieldOn` | `"child"` | Which side holds the field: `"child"` (child points up) or `"parent"` (parent points down) |
 | `multiple` | `false` | Whether the field is an array of wikilinks (enables multi-parent DAG) |
 | `selfRef` | `false` | Whether a node of this type may reference a same-type parent |
+| `selfRefField` | _undefined_ | Optional field for same-type parent relationships (always on child-side and singular) |
+
+The `selfRefField` property enables different fields for regular vs same-type relationships. For example, requirements can list solutions via `solutions` on the requirement node, while solutions can reference parent solutions via `parent` on the solution node.
+
+**Adjacent Relationships** (`$metadata.relationships`) define connections between types outside the primary hierarchy — such as an `activity` having many `task` nodes. They drive embedded parsing (typed headings, lists, tables) and template generation.
+
+| Property | Default | Description |
+|---|---|---|
+| `parent` | required | Parent canonical type |
+| `type` | required | Child canonical type |
+| `field` | `"parent"` | Frontmatter field holding the wikilink(s). Required when `fieldOn: "parent"`. |
+| `fieldOn` | `"child"` | `"child"`: child holds a link pointing up. `"parent"`: parent holds an array of child links. |
+| `format` | `"page"` | Hint for `template-sync`: `"table"`, `"list"`, or `"heading"` |
+| `matchers` | `[]` | Heading text to match for embedded parsing (strings or `/regex/`). Case-insensitive. |
+| `multi` | `true` | Whether multiple children are expected |
+| `embeddedTemplateFields` | `[]` | Field names to include as table columns in templates |
+
+With `fieldOn: "parent"`, embedded child nodes (parsed from a matching heading's list or table) are appended as wikilinks to the parent's `field` array, rather than receiving a `parent` field. This matches schemas where the content model naturally lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`).
 
 Metadata is composable across `$ref` graphs:
 - zero or one metadata provider may define `hierarchy`

@@ -32,15 +32,12 @@
       "type": "object",
       "allOf": [
         { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" },
         { "$ref": "ost-tools://_ost_strict#/$defs/opportunityProps" }
       ],
       "properties": {
-        "type": { "const": "opportunity" },
-        "parent": {
-          "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink",
-          "description": "Parent outcome or opportunity (wikilink). The OST methodology allows nested opportunity hierarchies."
-        }
+        "type": { "const": "opportunity" }
       },
       "required": ["type"],
       "additionalProperties": true,
@@ -57,14 +54,11 @@
       "type": "object",
       "allOf": [
         { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
-        "type": { "const": "solution" },
-        "parent": {
-          "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink",
-          "description": "Parent opportunity (wikilink). The OST methodology requires solutions connect directly to opportunities."
-        }
+        "type": { "const": "solution" }
       },
       "required": ["type"],
       "additionalProperties": true,
@@ -80,15 +74,12 @@
       "type": "object",
       "allOf": [
         { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" },
         { "$ref": "ost-tools://_ost_strict#/$defs/assumptionTestProps" }
       ],
       "properties": {
-        "type": { "const": "assumption_test" },
-        "parent": {
-          "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink",
-          "description": "Parent solution (wikilink)"
-        }
+        "type": { "const": "assumption_test" }
       },
       "required": ["type"],
       "additionalProperties": true,

@@ -1,23 +1,133 @@
 import { statSync } from 'node:fs';
 import type { ErrorObject } from 'ajv';
+import { classifyNodes } from '../graph-helpers';
 import { readSpaceDirectory } from '../read-space-directory';
 import { readSpaceOnAPage } from '../read-space-on-a-page';
-import { buildTargetIndex, wikilinkToTarget } from '../resolve-links';
-import { createValidator, loadMetadata } from '../schema';
+import { buildFullRegistry, createValidator, loadMetadata, readRawSchema } from '../schema';
 import type { HierarchyViolation, RuleViolation, SpaceNode } from '../types';
-import { validateHierarchy } from '../validate-hierarchy';
+import { validateHierarchyWithFields, validateRelationships } from '../validate-hierarchy';
 import { validateRules } from '../validate-rules';
+import { buildTargetIndex } from '../wikilink-utils';
+import { extractEntityInfo } from './schemas';
+
+interface FormattedError {
+  message: string;
+  dedupeKey: string;
+}
 
 interface ValidationResult {
   validCount: number;
   nodeErrorCount: number;
-  nodeErrors: Array<{ file: string; errors: ErrorObject[] }>;
+  nodeErrors: Array<{ file: string; errors: ErrorObject[]; nodeData: Record<string, unknown> }>;
   refErrors: Array<{ file: string; parent: string; error: string }>;
   duplicateErrors: Array<{ title: string; files: string[] }>;
   ruleViolations: RuleViolation[];
   hierarchyViolations: HierarchyViolation[];
+  orphanCount: number;
   skipped: string[];
   nonSpace: string[];
+}
+
+/**
+ * Format AJV errors for better readability.
+ * Groups related errors and extracts helpful context like allowed values.
+ */
+function formatErrors(errors: ErrorObject[], schemaPath: string, nodeData: Record<string, unknown>): FormattedError[] {
+  const formatted: FormattedError[] = [];
+  const seen = new Set<string>();
+
+  // Group errors by instancePath
+  const byPath = new Map<string, ErrorObject[]>();
+  for (const err of errors) {
+    const path = err.instancePath || 'root';
+    if (!byPath.has(path)) {
+      byPath.set(path, []);
+    }
+    byPath.get(path)!.push(err);
+  }
+
+  for (const [path, pathErrors] of byPath) {
+    // Check if this is a oneOf failure at root - extract valid types from schema
+    const isRootOneOf = path === 'root' || path === '/type';
+    let hasOneOfContext = false;
+    if (isRootOneOf && pathErrors.length > 1) {
+      const schema = readRawSchema(schemaPath);
+      hasOneOfContext = Array.isArray(schema.oneOf);
+
+      if (hasOneOfContext) {
+        const registry = buildFullRegistry(schemaPath);
+        const entities = extractEntityInfo(schema.oneOf as unknown[], registry, schema);
+        const validTypes = entities.map((e) => e.type).sort();
+
+        if (validTypes.length > 0) {
+          const actualValue = nodeData.type;
+          // Only show type error if the actual type is NOT in the valid types list
+          if (actualValue !== undefined && !validTypes.includes(String(actualValue))) {
+            const message = `Invalid type "${actualValue}". Valid types are: ${validTypes.join(', ')}`;
+            const key = `type:${validTypes.join(',')}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              formatted.push({ message, dedupeKey: key });
+            }
+          }
+        }
+      }
+    }
+
+    // Handle individual errors
+    for (const err of pathErrors) {
+      // Skip individual type const/enum errors when in oneOf context (we handle it above)
+      if (
+        hasOneOfContext &&
+        (err.keyword === 'const' || err.keyword === 'enum') &&
+        (err.instancePath === '' || err.instancePath === '/type')
+      ) {
+        continue;
+      }
+
+      const parts = err.instancePath.split('/').filter(Boolean);
+      const fieldName = parts.length > 0 ? parts[parts.length - 1]! : 'root';
+
+      let message = err.message;
+      let key = `${err.instancePath}:${err.keyword}`;
+
+      // Enhance const errors
+      if (err.keyword === 'const' && err.params?.allowedValue !== undefined) {
+        const actual = err.data !== undefined ? `"${err.data}"` : 'missing value';
+        const expected = `"${err.params.allowedValue}"`;
+        message = `${fieldName}: expected ${expected}, got ${actual}`;
+        key = `${err.instancePath}:const:${err.params.allowedValue}`;
+      }
+      // Enhance enum errors
+      else if (err.keyword === 'enum' && err.params?.allowedValues && Array.isArray(err.params.allowedValues)) {
+        let actual = err.data !== undefined ? `"${err.data}"` : null;
+        // If err.data is undefined, try to get the value from nodeData using the field name
+        if (actual === null && fieldName !== 'root') {
+          const actualValue = nodeData[fieldName];
+          if (actualValue !== undefined) {
+            actual = `"${actualValue}"`;
+          }
+        }
+        if (actual === null) {
+          actual = 'missing value';
+        }
+        const allowed = err.params.allowedValues.map((v: unknown) => `"${v}"`).join(', ');
+        message = `${fieldName}: ${actual} is not valid. Allowed: ${allowed}`;
+        key = `${err.instancePath}:enum:${err.params.allowedValues.join(',')}`;
+      }
+      // Generic message with path
+      else {
+        message = `${fieldName}: ${err.message}`;
+      }
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        formatted.push({ message, dedupeKey: key });
+      }
+    }
+  }
+
+  return formatted;
 }
 
 export async function validate(path: string, options: { schema: string; templateDir?: string }): Promise<number> {
@@ -48,6 +158,7 @@ export async function validate(path: string, options: { schema: string; template
     duplicateErrors: [],
     ruleViolations: [],
     hierarchyViolations: [],
+    orphanCount: 0,
     skipped,
     nonSpace: nonSpace,
   };
@@ -65,6 +176,7 @@ export async function validate(path: string, options: { schema: string; template
       result.nodeErrors.push({
         file: node.label,
         errors: validateFunc.errors || [],
+        nodeData: node.schemaData as Record<string, unknown>,
       });
     }
   }
@@ -85,81 +197,19 @@ export async function validate(path: string, options: { schema: string; template
     }
   }
 
-  // Build targetIndex for link validation
+  // Validate all hierarchy constraints (field references and structure)
   const linkTargetIndex = buildTargetIndex(nodes);
-  const levels = metadata.hierarchy?.levels ?? [];
+  const hierarchyValidation = validateHierarchyWithFields(nodes, metadata);
+  const relValidation = validateRelationships(nodes, metadata, linkTargetIndex);
 
-  // Validate edge field references for each hierarchy level
-  for (let i = 1; i < levels.length; i++) {
-    const level = levels[i]!;
-    const parentLevel = levels[i - 1]!;
+  result.refErrors.push(...hierarchyValidation.refErrors, ...relValidation.refErrors);
+  result.hierarchyViolations = [...hierarchyValidation.violations, ...relValidation.violations];
 
-    // Determine which nodes to check based on who has the field
-    const nodesToCheck =
-      level.fieldOn === 'parent'
-        ? nodes.filter((n) => n.resolvedType === parentLevel.type)
-        : nodes.filter((n) => n.resolvedType === level.type);
-
-    for (const node of nodesToCheck) {
-      const rawField = node.schemaData[level.field];
-      if (rawField === undefined || rawField === null) continue;
-
-      if (level.multiple) {
-        if (!Array.isArray(rawField)) {
-          result.refErrors.push({
-            file: node.label,
-            parent: String(rawField),
-            error: `Field "${level.field}" must be an array of wikilinks, got ${typeof rawField}`,
-          });
-          continue;
-        }
-        for (const ref of rawField) {
-          if (typeof ref !== 'string') continue;
-          const target = wikilinkToTarget(ref);
-          const resolved = linkTargetIndex.get(target);
-          if (resolved === undefined) {
-            result.refErrors.push({
-              file: node.label,
-              parent: ref,
-              error: `Link target "${target}" in field "${level.field}" not found`,
-            });
-          } else if (resolved === null) {
-            result.refErrors.push({
-              file: node.label,
-              parent: ref,
-              error: `Link target "${target}" in field "${level.field}" is ambiguous (matches multiple nodes)`,
-            });
-          }
-        }
-      } else {
-        if (typeof rawField !== 'string') {
-          result.refErrors.push({
-            file: node.label,
-            parent: String(rawField),
-            error: `Field "${level.field}" must be a wikilink string, got ${typeof rawField}`,
-          });
-          continue;
-        }
-        const target = wikilinkToTarget(rawField);
-        const resolved = linkTargetIndex.get(target);
-        if (resolved === undefined) {
-          result.refErrors.push({
-            file: node.label,
-            parent: rawField,
-            error: `Link target "${target}" in field "${level.field}" not found`,
-          });
-        } else if (resolved === null) {
-          result.refErrors.push({
-            file: node.label,
-            parent: rawField,
-            error: `Link target "${target}" in field "${level.field}" is ambiguous (matches multiple nodes)`,
-          });
-        }
-      }
-    }
+  // Calculate orphan count (informational, not a validation error)
+  if (metadata.hierarchy) {
+    const classification = classifyNodes(nodes, metadata.hierarchy.levels);
+    result.orphanCount = classification.orphans.length;
   }
-
-  result.hierarchyViolations = validateHierarchy(nodes, metadata);
 
   // Load and execute rules validation if schema defines rules
   if (metadata.rules) {
@@ -167,46 +217,72 @@ export async function validate(path: string, options: { schema: string; template
   }
 
   // Report
-  console.log(`\n🔍 Space Validation Results`);
-  console.log(`━`.repeat(50));
-  console.log(`✅ Valid: ${result.validCount}`);
-  console.log(`❌ Node Errors: ${result.nodeErrorCount}`);
-  console.log(`🔗 Reference Errors: ${result.refErrors.length}`);
-  console.log(`🔁 Duplicate Keys: ${result.duplicateErrors.length}`);
-  console.log(`📋 Rule Violations: ${result.ruleViolations.length}`);
-  console.log(`🏗️ Hierarchy Violations: ${result.hierarchyViolations.length}`);
-  console.log(`⏭ Skipped (no frontmatter): ${result.skipped.length}`);
-  console.log(`📄 Non-space (no type field): ${result.nonSpace.length}`);
+  const reset = '\x1b[0m';
+  const green = '\x1b[32m';
+  const red = '\x1b[31m';
+  const yellow = '\x1b[33m';
+
+  const colorFor = (count: number, isWarning: boolean): string => {
+    if (count === 0) return green;
+    return isWarning ? yellow : red;
+  };
+
+  const fmt = (label: string, count: number, isError = false, isWarning = false): string => {
+    let color: string;
+    if (isError) {
+      color = colorFor(count, isWarning);
+    } else {
+      // For non-error items (like "Valid"), green if count > 0, red if 0
+      color = count > 0 ? green : red;
+    }
+    const countStr = String(count).padStart(3);
+    return `${label.padEnd(40)} ${color}${countStr}${reset}`;
+  };
+
+  console.log(`\nSpace Validation Results`);
+  console.log(`━`.repeat(45));
+  console.log('Content and structure');
+  console.log(fmt('  Valid', result.validCount));
+  console.log(fmt('  Schema validation errors', result.nodeErrorCount, true));
+  console.log(fmt('  Broken links', result.refErrors.length, true));
+  console.log(fmt('  Duplicate keys', result.duplicateErrors.length, true));
+  console.log(fmt('  Rule violations', result.ruleViolations.length, true));
+  console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
+  console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphanCount, true, true));
+  console.log('Skipped');
+  console.log(fmt('  No frontmatter', result.skipped.length, true, true));
+  console.log(fmt('  No type field', result.nonSpace.length, true, true));
 
   if (result.skipped.length > 0) {
-    console.log(`\n⏭ Skipped files (no frontmatter):`);
+    console.log(`\nSkipped files (no frontmatter):`);
     for (const f of result.skipped) console.log(`   ${f}`);
   }
 
   if (result.nonSpace.length > 0) {
-    console.log(`\n📄 Non-space files (no type field):`);
+    console.log(`\nNon-space files (no type field):`);
     for (const f of result.nonSpace) console.log(`   ${f}`);
   }
 
   if (result.nodeErrors.length > 0) {
-    console.log(`\n❌ Node errors:`);
-    result.nodeErrors.forEach(({ file, errors }) => {
+    console.log(`\nSchema validation errors:`);
+    result.nodeErrors.forEach(({ file, errors, nodeData }) => {
       console.log(`\n   ${file}:`);
-      errors.forEach((err: ErrorObject) => {
-        console.log(`      ${err.instancePath || 'root'}: ${err.message}`);
+      const formatted = formatErrors(errors, options.schema, nodeData);
+      formatted.forEach(({ message }) => {
+        console.log(`      ${message}`);
       });
     });
   }
 
   if (result.refErrors.length > 0) {
-    console.log(`\n🔗 Reference errors (dangling links):`);
+    console.log(`\nBroken links:`);
     result.refErrors.forEach(({ file, parent, error }) => {
       console.log(`   ${file}: ${parent} → ${error}`);
     });
   }
 
   if (result.duplicateErrors.length > 0) {
-    console.log(`\n🔁 Duplicate node keys (same title in multiple files):`);
+    console.log(`\nDuplicate keys (same title in multiple files):`);
     result.duplicateErrors.forEach(({ title, files }) => {
       console.log(`   "${title}":`);
       for (const f of files) {
@@ -216,7 +292,7 @@ export async function validate(path: string, options: { schema: string; template
   }
 
   if (result.ruleViolations.length > 0) {
-    console.log(`\n📋 Rule violations:`);
+    console.log(`\nRule violations:`);
 
     // Group by category
     const byCategory = new Map<string, RuleViolation[]>();
@@ -237,7 +313,7 @@ export async function validate(path: string, options: { schema: string; template
   }
 
   if (result.hierarchyViolations.length > 0) {
-    console.log(`\n🏗️  Hierarchy violations:`);
+    console.log(`\nHierarchy violations:`);
     for (const v of result.hierarchyViolations) {
       console.log(`   ${v.file}: ${v.description}`);
     }

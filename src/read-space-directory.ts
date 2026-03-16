@@ -4,7 +4,7 @@ import { glob } from 'glob';
 import matter from 'gray-matter';
 import { applyFieldMap, loadConfig, resolveSchema } from './config';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
-import { resolveLinks } from './resolve-links';
+import { resolveHierarchyEdges } from './resolve-hierarchy-edges';
 import { loadMetadata, resolveNodeType } from './schema';
 import type { SpaceDirectoryReadResult, SpaceNode } from './types';
 
@@ -20,13 +20,14 @@ export async function readSpaceDirectory(
   const metadata = loadMetadata(resolvedSchemaPath);
   const hierarchyLevels = metadata.hierarchy?.levels ?? [];
   const hierarchyTypes = hierarchyLevels.map((level) => level.type);
+  const relationships = metadata.relationships ?? [];
   const { typeAliases } = metadata;
   const fieldMap = space?.fieldMap;
 
   const templateDir = options?.templateDir ?? space?.templateDir ?? config.templateDir;
   const absoluteTemplateDir = templateDir ? resolve(templateDir) : undefined;
 
-  const files = await glob('**/*.md', { cwd: directory, absolute: false });
+  const files = await glob('**/*.md', { cwd: directory, absolute: false, follow: true });
   const nodes: SpaceNode[] = [];
   const skipped: string[] = [];
   const nonSpace: string[] = [];
@@ -75,6 +76,7 @@ export async function readSpaceDirectory(
         pageTitle: fileBase,
         pageType,
         hierarchy: hierarchyTypes,
+        relationships: relationships,
         typeAliases: typeAliases,
         fieldMap,
       });
@@ -82,6 +84,6 @@ export async function readSpaceDirectory(
     }
   }
 
-  resolveLinks(nodes, hierarchyLevels);
+  resolveHierarchyEdges(nodes, hierarchyLevels);
   return { nodes, skipped, nonSpace };
 }

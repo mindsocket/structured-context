@@ -44,6 +44,10 @@
                       },
                       "selfRef": {
                         "type": "boolean"
+                      },
+                      "selfRefField": {
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
                     "required": ["type"],
@@ -58,6 +62,52 @@
           },
           "required": ["levels"],
           "additionalProperties": false
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "parent": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fieldOn": {
+                "enum": ["child", "parent"]
+              },
+              "format": {
+                "enum": ["heading", "list", "table", "page"]
+              },
+              "multi": {
+                "type": "boolean"
+              },
+              "matchers": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              },
+              "embeddedTemplateFields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "required": ["parent", "type"],
+            "additionalProperties": false
+          }
         },
         "aliases": {
           "type": "object",

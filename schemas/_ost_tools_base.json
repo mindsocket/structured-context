@@ -58,6 +58,15 @@
         }
       },
       "required": ["status"]
+    },
+    "parentNodeProps": {
+      "type": "object",
+      "properties": {
+        "parent": {
+          "$ref": "#/$defs/wikilink",
+          "description": "Parent node"
+        }
+      }
     }
   }
 }

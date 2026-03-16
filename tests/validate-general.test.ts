@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 import { readSpaceDirectory } from '../src/read-space-directory';
 import { readSpaceOnAPage } from '../src/read-space-on-a-page';
-import { resolveLinks } from '../src/resolve-links';
+import { resolveHierarchyEdges } from '../src/resolve-hierarchy-edges';
 import { bundledSchemasDir, createValidator } from '../src/schema';
 import type { SpaceNode } from '../src/types';
 import { makeLevel } from './test-helpers';
@@ -142,7 +142,12 @@ describe('Schema validation', () => {
         },
       ];
 
-      resolveLinks(nodes, [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]);
+      resolveHierarchyEdges(nodes, [
+        makeLevel('vision'),
+        makeLevel('mission'),
+        makeLevel('goal'),
+        makeLevel('solution'),
+      ]);
 
       expect(nodes.find((n) => n.label === 'Another Goal')?.schemaData.parent).toBe('[[anchor_vision#^mission]]');
       expect(nodes.find((n) => n.label === 'Another Goal')?.resolvedParents[0]).toBe('Our Mission');
@@ -174,7 +179,12 @@ describe('Schema validation', () => {
         },
       ];
 
-      resolveLinks(nodes, [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]);
+      resolveHierarchyEdges(nodes, [
+        makeLevel('vision'),
+        makeLevel('mission'),
+        makeLevel('goal'),
+        makeLevel('solution'),
+      ]);
 
       const errors = checkRefErrors(nodes);
       expect(errors).toHaveLength(1);
@@ -216,7 +226,12 @@ describe('Schema validation', () => {
         },
       ];
 
-      resolveLinks(nodes, [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]);
+      resolveHierarchyEdges(nodes, [
+        makeLevel('vision'),
+        makeLevel('mission'),
+        makeLevel('goal'),
+        makeLevel('solution'),
+      ]);
 
       expect(nodes.find((n) => n.label === 'solution_page.md')?.resolvedParents).toHaveLength(0);
       const errors = checkRefErrors(nodes);

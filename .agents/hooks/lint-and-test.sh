@@ -3,6 +3,10 @@
 # Exit code 0: all checks passed (allow)
 # Exit code 2: checks failed (deny/block for both Claude Code and Gemini CLI)
 
+if [ "$(echo "$INPUT" | jq -r '.stop_hook_active')" = "true" ]; then
+    exit 0 # Let Claude stop
+fi
+
 STATUS=0
 echo "🔍 Running pre-stop checks..." >&2
 

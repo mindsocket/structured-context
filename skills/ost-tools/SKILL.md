@@ -39,9 +39,7 @@ bunx ost-tools readme                                       # full documentation
 `spaces` is the starting point — it shows each space as a block with its schema name, `fieldMap`
 mappings (if any), template config, and whether Miro is configured.
 
-`schemas show --space` is the primary schema tool — it lists entity types and their properties (required
-marked with `*`), the hierarchy, all rules with descriptions, definitions with enum values, and the
-loaded schema registry. **Run this before authoring content or writing rules** to ensure you use the correct field names and types. The registry section
+`schemas show --space` is the primary schema tool — it lists entity types and their properties (required marked with `*`), the hierarchy, **adjacent relationships**, all rules with descriptions, definitions with enum values, and the loaded schema registry. **Run this before authoring content or writing rules** to ensure you use the correct field names and types. The registry section
 at the bottom shows which bundled and local partials are in scope for `$ref` targets.
 
 `schemas show <filename>` (e.g. `_ost_tools_base.json`) reveals available definitions in bundled
@@ -62,6 +60,20 @@ Run `bunx ost-tools --help` or `bunx ost-tools <command> --help` for flags.
 
 **`dump` is the key debugging tool.** Use it to verify `fieldMap` remapping is working or to
 inspect exactly what JSONata rules see when a rule fires unexpectedly.
+
+## Embedded nodes and Relationships
+
+Embedded nodes are nodes that live physically inside another node's file (via tables or lists) rather than as separate files.
+
+**Adjacent Relationships** determine how these are parsed:
+- **Heading matching:** When a heading matches a relationship `matcher` (case-insensitive or `/regex/`), following tables/lists are parsed as that child type.
+- **Agnostic parsing:** The parser uses the semantic grandparent as the parent for items matched via a relationship heading.
+- **`fieldOn` direction:** Relationships support two link directions. `fieldOn: "child"` (default) sets the relationship field on each child node. `fieldOn: "parent"` instead populates the parent node's array field with `[[Child]]` wikilinks — use this when the content model lists children on the parent (e.g. `activity.tasks`). When `fieldOn: "parent"`, child nodes do not get a `parent` field from the relationship.
+
+**When to use sub-entities:**
+- For fine-grained items like `Assumption`, `Risk`, or `Requirement` that would clutter the filesystem if separate.
+- When you want to group related child nodes under a stable heading in a parent's body.
+- For developing a template page with structured headings and lists or tables to fill in.
 
 ## Non-obvious issues
 

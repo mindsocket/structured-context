@@ -1,4 +1,9 @@
-import type { MetadataContractResolvedRules, MetadataContractRule } from './metadata-contract';
+import type { SchemaObject } from 'ajv';
+import type {
+  MetadataContractRelationship,
+  MetadataContractResolvedRules,
+  MetadataContractRule,
+} from './metadata-contract';
 
 export interface HierarchyLevel {
   type: string;
@@ -6,6 +11,7 @@ export interface HierarchyLevel {
   fieldOn: 'child' | 'parent'; // default "child" - "parent" means the parent node has the field pointing to children
   multiple: boolean; // default false - when true, field is an array of wikilinks
   selfRef: boolean; // default false - when true, a node of this type may have a parent of the same type
+  selfRefField?: string; // optional field for same-type parent relationships (implies selfRef: true)
 }
 
 export interface SpaceNode {
@@ -69,4 +75,9 @@ export interface SchemaMetadata {
   };
   typeAliases?: Record<string, string>;
   rules?: RulesMetadata;
+  relationships?: MetadataContractRelationship[];
+}
+
+export interface SchemaWithMetadata extends SchemaObject {
+  $metadata?: SchemaMetadata;
 }
