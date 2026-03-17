@@ -43,7 +43,10 @@ export function classifyNodes(nodes: SpaceNode[], hierarchyLevels: HierarchyLeve
       continue; // non-hierarchy nodes don't participate in the DAG
     }
 
-    if (node.resolvedParents.length === 0) {
+    // Only hierarchy-sourced parents determine structural position in the DAG
+    const hierarchyParents = node.resolvedParents.filter((r) => r.source === 'hierarchy');
+
+    if (hierarchyParents.length === 0) {
       if (nodeType === rootType) {
         hierarchyRoots.push(node);
       } else {
@@ -51,10 +54,9 @@ export function classifyNodes(nodes: SpaceNode[], hierarchyLevels: HierarchyLeve
       }
     } else {
       let addedToAParent = false;
-      for (const parent of node.resolvedParents) {
-        // Only add to children map if parent exists in the node set
-        if (nodeTitles.has(parent)) {
-          const siblings = children.get(parent);
+      for (const parentRef of hierarchyParents) {
+        if (nodeTitles.has(parentRef.title)) {
+          const siblings = children.get(parentRef.title);
           if (siblings) {
             siblings.push(node);
             addedToAParent = true;
@@ -62,7 +64,7 @@ export function classifyNodes(nodes: SpaceNode[], hierarchyLevels: HierarchyLeve
         }
       }
       if (!addedToAParent) {
-        // All parents dangling — treat as orphan
+        // All hierarchy parents dangling — treat as orphan
         orphans.push(node);
       }
     }

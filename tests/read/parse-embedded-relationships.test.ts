@@ -18,7 +18,7 @@ describe('extractEmbeddedNodes - relationships', () => {
         format: 'table',
         matchers: ['Assumptions'],
         embeddedTemplateFields: ['assumption', 'status'],
-        multi: true,
+        multiple: true,
       },
     ];
 
@@ -74,7 +74,7 @@ describe('extractEmbeddedNodes - relationships', () => {
         type: 'problem_statement',
         format: 'heading',
         matchers: ['What problem are we solving?'],
-        multi: false,
+        multiple: false,
       },
     ];
 
@@ -103,7 +103,7 @@ Our users are sad.
         type: 'solution',
         format: 'list',
         matchers: ['Possible Solutions'],
-        multi: true,
+        multiple: true,
       },
     ];
 
@@ -134,7 +134,7 @@ Our users are sad.
         format: 'table',
         matchers: ['/assum.*/'],
         embeddedTemplateFields: ['assumption', 'status'],
-        multi: true,
+        multiple: true,
       },
     ];
 
@@ -166,7 +166,7 @@ Our users are sad.
         format: 'table',
         matchers: [],
         embeddedTemplateFields: ['assumption', 'status'],
-        multi: true,
+        multiple: true,
       },
     ];
 
@@ -198,7 +198,7 @@ Our users are sad.
           type: 'solution',
           format: 'list',
           matchers: ['Possible Solutions'],
-          multi: true,
+          multiple: true,
           field: 'solutions',
           fieldOn: 'parent',
         },
@@ -227,7 +227,7 @@ Our users are sad.
           type: 'assumption',
           format: 'table',
           matchers: ['Assumptions'],
-          multi: true,
+          multiple: true,
           field: 'assumptions',
           fieldOn: 'parent',
           embeddedTemplateFields: ['assumption', 'status'],
@@ -260,7 +260,7 @@ Our users are sad.
           type: 'solution',
           format: 'list',
           matchers: ['Solutions'],
-          multi: true,
+          multiple: true,
           field: 'count',
           fieldOn: 'parent',
         },
@@ -289,7 +289,7 @@ Our users are sad.
           type: 'solution',
           format: 'list',
           matchers: ['Solutions'],
-          multi: true,
+          multiple: true,
           field: 'solutions',
           fieldOn: 'parent',
         },
@@ -324,7 +324,7 @@ Our users are sad.
           type: 'assumption',
           format: 'table',
           matchers: ['Assumptions'],
-          multi: true,
+          multiple: true,
           field: 'assumptions',
           fieldOn: 'parent',
           embeddedTemplateFields: ['assumption', 'status'],

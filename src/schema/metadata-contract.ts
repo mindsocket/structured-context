@@ -49,7 +49,7 @@ const RELATIONSHIP_SCHEMA = {
     field: { type: 'string', minLength: 1 },
     fieldOn: { enum: ['child', 'parent'] },
     format: { enum: ['heading', 'list', 'table', 'page'] },
-    multi: { type: 'boolean' },
+    multiple: { type: 'boolean' },
     matchers: {
       type: 'array',
       items: { type: 'string', minLength: 1 },

@@ -68,8 +68,8 @@ function flattenNode(node: SpaceNode): Record<string, unknown> {
   return {
     ...node.schemaData,
     resolvedType: node.resolvedType,
-    resolvedParentTitle: node.resolvedParents[0], // first parent or undefined, provided for convenience
-    resolvedParentTitles: node.resolvedParents, // full array
+    resolvedParentTitle: node.resolvedParents[0]?.title, // first parent or undefined, provided for convenience
+    resolvedParentTitles: node.resolvedParents.map((r) => r.title), // full array of parent titles
   };
 }
 
@@ -91,7 +91,7 @@ export function buildEvalContext(
 
   // Build all parent objects from resolvedParents array
   const flattenedParents: Record<string, unknown>[] = [];
-  for (const parentTitle of node.resolvedParents) {
+  for (const { title: parentTitle } of node.resolvedParents) {
     const parentNode = nodeIndex.get(parentTitle);
     if (parentNode) {
       flattenedParents.push(flattenNode(parentNode));

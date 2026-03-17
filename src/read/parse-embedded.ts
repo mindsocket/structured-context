@@ -23,6 +23,11 @@ export interface StackEntry {
   refTarget: string;
 }
 
+/** Internal unified match result for both hierarchy and relationships. */
+interface UnifiedMatch extends MetadataContractRelationship {
+  isHierarchy: boolean;
+}
+
 /** Extract [key:: value] bracketed inline fields, return cleaned text and fields. */
 export function extractBracketedFields(text: string): {
   cleanText: string;
@@ -111,6 +116,7 @@ export function anchorToNodeType(
  * Turn a full heading string into an Obsidian section-target key component.
  * - normalizes observed Obsidian separators (#, ^, :, \) to spaces
  * - compresses whitespace runs to single spaces
+ * - does _NOT_ (and should not) manipulate anchors or inline fields
  */
 export function normalizeHeadingSectionTarget(rawHeadingText: string): string {
   return rawHeadingText
@@ -268,7 +274,8 @@ export interface ExtractEmbeddedResult {
  */
 export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptions): ExtractEmbeddedResult {
   const { pageTitle, pageType, metadata, fieldMap } = options;
-  const hierarchy = metadata.hierarchy?.levels.map((l) => l.type) ?? [];
+  const levels = metadata.hierarchy?.levels ?? [];
+  const hierarchy = levels.map((l) => l.type);
   const relationships = metadata.relationships ?? [];
   const typeAliases = metadata.typeAliases ?? {};
   const isOnAPageMode = pageType === undefined || ON_A_PAGE_TYPES.includes(pageType);
@@ -307,26 +314,47 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     return undefined;
   }
 
-  function matchRelationship(title: string, parentType: string | undefined): MetadataContractRelationship | undefined {
+  function matchUnified(title: string, parentType: string | undefined): UnifiedMatch | undefined {
     if (!parentType) return undefined;
     const lowerTitle = title.toLowerCase();
+
+    // 1. Check relationships first (explicit matches)
     for (const rel of relationships) {
       if (rel.parent === parentType) {
         for (const matcher of rel.matchers || []) {
           if (matcher.startsWith('^') && matcher.endsWith('$')) {
-            if (new RegExp(matcher, 'i').test(title)) return rel;
+            if (new RegExp(matcher, 'i').test(title)) return { ...rel, isHierarchy: false };
           } else if (matcher.startsWith('/') && matcher.endsWith('/')) {
             const pattern = matcher.slice(1, -1);
-            if (new RegExp(pattern, 'i').test(title)) return rel;
+            if (new RegExp(pattern, 'i').test(title)) return { ...rel, isHierarchy: false };
           } else if (lowerTitle === matcher.toLowerCase()) {
-            return rel;
+            return { ...rel, isHierarchy: false };
           }
         }
         if (lowerTitle === rel.type.toLowerCase()) {
-          return rel; // fallback implicit match
+          return { ...rel, isHierarchy: false }; // fallback implicit match
         }
       }
     }
+
+    // 2. Check hierarchy (implicit matches)
+    const parentIdx = hierarchy.indexOf(parentType);
+    if (parentIdx !== -1 && parentIdx < hierarchy.length - 1) {
+      const nextType = hierarchy[parentIdx + 1]!;
+      const level = levels[parentIdx + 1]!;
+      if (lowerTitle === nextType.toLowerCase()) {
+        return {
+          parent: parentType,
+          type: nextType,
+          field: level.field,
+          fieldOn: level.fieldOn,
+          multiple: level.multiple,
+          format: 'heading', // Default for hierarchy
+          isHierarchy: true,
+        };
+      }
+    }
+
     return undefined;
   }
 
@@ -373,7 +401,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     return normalized ? [`${pageTitle}#${normalized}`] : [title];
   }
 
-  let pendingRelationship: MetadataContractRelationship | undefined;
+  let pendingMatch: UnifiedMatch | undefined;
   let currentActiveNode: SpaceNode = rootNode;
 
   for (const child of tree.children) {
@@ -406,16 +434,16 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
       const parentContextType = getParentContextType();
       const anchorType = anchor ? anchorToNodeType(anchor, hierarchy, relationships) : undefined;
-      const relationshipMatch = matchRelationship(title, parentContextType);
+      const unifiedMatch = matchUnified(title, parentContextType);
       const hasExplicitType = !!inlineFields.type;
-      const hasImpliedType = !!anchorType || !!relationshipMatch;
+      const hasImpliedType = !!anchorType || !!unifiedMatch;
 
       if (!isOnAPageMode && !hasExplicitType && !hasImpliedType) {
         while (stack.length > 0 && stack[stack.length - 1]!.depth >= depth) {
           stack.pop();
         }
         stack.push({ depth, title, nodeType: '', refTarget: title });
-        pendingRelationship = undefined;
+        pendingMatch = undefined;
         continue;
       }
 
@@ -430,7 +458,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         stack.pop();
       }
 
-      const type = inlineFields.type ?? anchorType ?? relationshipMatch?.type ?? defaultNodeType(stack, hierarchy);
+      const type = inlineFields.type ?? anchorType ?? unifiedMatch?.type ?? defaultNodeType(stack, hierarchy);
       const parentRef = currentParentRef();
 
       const schemaData: Record<string, unknown> = {
@@ -450,18 +478,15 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         resolvedType: resolveNodeType(type, typeAliases),
       };
 
-      // If this match came from a relationship and no explicit type was given,
+      // If this match came from a relationship/hierarchy and no explicit type was given,
       // delay adding the node until we see the following content (agnostic parsing).
-      if (!hasExplicitType && !anchorType && relationshipMatch) {
-        pendingRelationship = relationshipMatch;
-        // Optimization: if it's multi:false, we might still want the heading node if it has text body.
-        // We set currentActiveNode to headingNode so if text follows, it goes there.
-        // But if a table follows, we'll use the parent's context.
+      if (!hasExplicitType && !anchorType && unifiedMatch) {
+        pendingMatch = unifiedMatch;
         currentActiveNode = headingNode;
       } else {
         nodes.push(headingNode);
         currentActiveNode = headingNode;
-        pendingRelationship = undefined;
+        pendingMatch = undefined;
       }
 
       const refTarget = linkTargets[0] ?? title;
@@ -472,7 +497,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       const parentRef = currentParentRef();
       const list = child as List;
 
-      if (pendingRelationship) {
+      if (pendingMatch) {
         // Grandparent is the true semantic parent for relationship-driven items
         let semanticParentRef = parentRef;
         let semanticParentNode: SpaceNode | undefined;
@@ -485,10 +510,10 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
           }
         }
 
-        const isParentSide = pendingRelationship.fieldOn === 'parent';
+        const isParentSide = pendingMatch.fieldOn === 'parent';
         const parentFieldAppend =
-          isParentSide && semanticParentNode && pendingRelationship.field
-            ? { node: semanticParentNode, field: pendingRelationship.field }
+          isParentSide && semanticParentNode && pendingMatch.field
+            ? { node: semanticParentNode, field: pendingMatch.field }
             : undefined;
 
         for (const item of list.children) {
@@ -501,11 +526,11 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             buildListItemLinkTargets,
             typeAliases,
             fieldMap,
-            pendingRelationship.type,
+            pendingMatch.type,
             parentFieldAppend,
           );
         }
-        pendingRelationship = undefined;
+        pendingMatch = undefined;
       } else {
         for (const item of list.children) {
           processListItem(
@@ -532,27 +557,34 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         const firstColName = columnNames[0]?.toLowerCase();
 
         let rowTypeStr: string | undefined;
+        let activeMatch = pendingMatch;
 
-        if (pendingRelationship) {
-          rowTypeStr = pendingRelationship.type;
+        if (activeMatch) {
+          rowTypeStr = activeMatch.type;
         } else if (firstColName) {
           if (hierarchy.includes(firstColName) || typeAliases[firstColName]) {
             rowTypeStr = firstColName;
           } else {
-            const rootRel = matchRelationship(firstColName, parentContextType);
-            if (rootRel) rowTypeStr = rootRel.type;
+            const rootRel = matchUnified(firstColName, parentContextType);
+            if (rootRel) {
+              rowTypeStr = rootRel.type;
+              activeMatch = rootRel;
+            }
           }
         }
 
         if (!rowTypeStr && currentActiveNode !== rootNode && currentActiveNode.schemaData.type) {
-          const contextAsParentRel = matchRelationship(firstColName || '', currentActiveNode.schemaData.type as string);
-          if (contextAsParentRel) rowTypeStr = contextAsParentRel.type;
+          const contextAsParentRel = matchUnified(firstColName || '', currentActiveNode.schemaData.type as string);
+          if (contextAsParentRel) {
+            rowTypeStr = contextAsParentRel.type;
+            activeMatch = contextAsParentRel;
+          }
         }
 
         if (rowTypeStr) {
           let semanticParentRef = parentRef;
           let semanticParentNode: SpaceNode | undefined;
-          if (pendingRelationship || rowTypeStr === parentContextType) {
+          if (activeMatch || rowTypeStr === parentContextType) {
             for (let i = stack.length - 2; i >= 0; i--) {
               if (stack[i]!.nodeType !== '') {
                 semanticParentRef = `[[${stack[i]!.refTarget}]]`;
@@ -563,10 +595,10 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             }
           }
 
-          const isParentSide = pendingRelationship?.fieldOn === 'parent';
+          const isParentSide = activeMatch?.fieldOn === 'parent';
           const tableParentFieldAppend =
-            isParentSide && semanticParentNode && pendingRelationship?.field
-              ? { node: semanticParentNode, field: pendingRelationship.field }
+            isParentSide && semanticParentNode && activeMatch?.field
+              ? { node: semanticParentNode, field: activeMatch.field }
               : undefined;
 
           for (const row of rows) {
@@ -625,17 +657,17 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
               }
             }
           }
-          pendingRelationship = undefined;
+          pendingMatch = undefined;
         } else {
           appendContent(currentActiveNode, mdastToString(child));
         }
       }
     } else {
-      // For any other content (paragraph, code, etc), if we had a pending relationship,
+      // For any other content (paragraph, code, etc), if we had a pending match,
       // it means the heading itself is the node. Add it now.
-      if (pendingRelationship) {
+      if (pendingMatch) {
         nodes.push(currentActiveNode);
-        pendingRelationship = undefined;
+        pendingMatch = undefined;
       }
 
       if (child.type === 'paragraph') {

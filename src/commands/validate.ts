@@ -1,10 +1,9 @@
 import type { ErrorObject } from 'ajv';
 import { readSpace } from '../read/read-space';
-import { buildTargetIndex } from '../read/wikilink-utils';
 import { buildFullRegistry, createValidator, loadMetadata, readRawSchema } from '../schema/schema';
-import { validateHierarchyWithFields, validateRelationships } from '../schema/validate-hierarchy';
+import { validateGraph } from '../schema/validate-graph';
 import { validateRules } from '../schema/validate-rules';
-import type { HierarchyViolation, RuleViolation } from '../types';
+import type { GraphViolation, RuleViolation } from '../types';
 import { classifyNodes } from '../util/graph-helpers';
 import { extractEntityInfo } from './schemas';
 
@@ -20,7 +19,7 @@ interface ValidationResult {
   refErrors: Array<{ file: string; parent: string; error: string }>;
   duplicateErrors: Array<{ title: string; files: string[] }>;
   ruleViolations: RuleViolation[];
-  hierarchyViolations: HierarchyViolation[];
+  hierarchyViolations: GraphViolation[];
   orphanCount: number;
   skipped: string[];
   nonSpace: string[];
@@ -187,12 +186,10 @@ export async function validate(path: string, options: { schema: string; template
   }
 
   // Validate all hierarchy constraints (field references and structure)
-  const linkTargetIndex = buildTargetIndex(nodes);
-  const hierarchyValidation = validateHierarchyWithFields(nodes, metadata);
-  const relValidation = validateRelationships(nodes, metadata, linkTargetIndex);
+  const hierarchyValidation = validateGraph(nodes, metadata);
 
-  result.refErrors.push(...hierarchyValidation.refErrors, ...relValidation.refErrors);
-  result.hierarchyViolations = [...hierarchyValidation.violations, ...relValidation.violations];
+  result.refErrors.push(...hierarchyValidation.refErrors);
+  result.hierarchyViolations = [...hierarchyValidation.violations];
 
   // Calculate orphan count (informational, not a validation error)
   if (metadata.hierarchy) {

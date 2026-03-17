@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { buildTargetIndex } from '../src/read/wikilink-utils';
-import { validateRelationships } from '../src/schema/validate-hierarchy';
+import { resolveGraphEdges } from '../src/read/resolve-graph-edges';
+import { validateGraph } from '../src/schema/validate-graph';
 import type { SchemaMetadata, SpaceNode } from '../src/types';
 
 function makeNode(title: string, type: string, extra: Record<string, unknown> = {}, linkTargets?: string[]): SpaceNode {
@@ -13,7 +13,7 @@ function makeNode(title: string, type: string, extra: Record<string, unknown> = 
   };
 }
 
-describe('validateRelationships', () => {
+describe('validateGraph - Relationships', () => {
   const metadata = {
     hierarchy: { levels: [{ type: 'opportunity' }] },
     relationships: [
@@ -30,9 +30,8 @@ describe('validateRelationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { parent: '[[Opp 1]]' });
 
     const nodes = [opp, assumption];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metadata, index);
+    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
+    const { violations, refErrors } = validateGraph(nodes, metadata);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -42,9 +41,8 @@ describe('validateRelationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { parent: '[[Missing Opp]]' });
 
     const nodes = [assumption];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metadata, index);
+    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
+    const { violations, refErrors } = validateGraph(nodes, metadata);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toHaveLength(1);
@@ -56,10 +54,11 @@ describe('validateRelationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { parent: '[[Wrong Type Node]]' });
 
     const nodes = [someOtherNode, assumption];
-    const index = buildTargetIndex(nodes);
+    // resolveGraphEdges resolves permissively; validateFieldReferences catches the type mismatch
+    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
+    const { violations, refErrors } = validateGraph(nodes, metadata);
 
-    const { violations, refErrors } = validateRelationships(nodes, metadata, index);
-
+    // Field validation catches it now
     expect(refErrors).toBeEmpty();
     expect(violations).toHaveLength(1);
     expect(violations[0]?.description).toContain('expected opportunity');
@@ -69,9 +68,8 @@ describe('validateRelationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption');
 
     const nodes = [assumption];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metadata, index);
+    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
+    const { violations, refErrors } = validateGraph(nodes, metadata);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -94,9 +92,13 @@ describe('validateRelationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { linked_opportunity: '[[Opp 1]]' });
 
     const nodes = [opp, assumption];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metaWithCustomField, index);
+    resolveGraphEdges(
+      nodes,
+      metaWithCustomField.hierarchy!.levels,
+      metaWithCustomField.relationships,
+      metaWithCustomField.typeAliases,
+    );
+    const { violations, refErrors } = validateGraph(nodes, metaWithCustomField);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -119,9 +121,13 @@ describe('validateRelationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { linked_opportunity: '[[Solution 1]]' });
 
     const nodes = [solution, assumption];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metaWithCustomField, index);
+    resolveGraphEdges(
+      nodes,
+      metaWithCustomField.hierarchy!.levels,
+      metaWithCustomField.relationships,
+      metaWithCustomField.typeAliases,
+    );
+    const { violations, refErrors } = validateGraph(nodes, metaWithCustomField);
 
     expect(refErrors).toBeEmpty();
     expect(violations).toHaveLength(1);
@@ -129,7 +135,7 @@ describe('validateRelationships', () => {
   });
 });
 
-describe('validateRelationships — fieldOn: parent', () => {
+describe('validateGraph — fieldOn: parent', () => {
   const metadata = {
     hierarchy: { levels: [{ type: 'activity' }] },
     relationships: [
@@ -138,7 +144,7 @@ describe('validateRelationships — fieldOn: parent', () => {
         type: 'task',
         field: 'tasks',
         fieldOn: 'parent',
-        multi: true,
+        multiple: true,
       },
     ],
   } as SchemaMetadata;
@@ -149,9 +155,8 @@ describe('validateRelationships — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: ['[[Task 1]]', '[[Task 2]]'] });
 
     const nodes = [activity, task1, task2];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metadata, index);
+    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
+    const { violations, refErrors } = validateGraph(nodes, metadata);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -161,9 +166,8 @@ describe('validateRelationships — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: ['[[Missing Task]]'] });
 
     const nodes = [activity];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metadata, index);
+    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
+    const { violations, refErrors } = validateGraph(nodes, metadata);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toHaveLength(1);
@@ -175,9 +179,8 @@ describe('validateRelationships — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: ['[[Some Solution]]'] });
 
     const nodes = [activity, wrong];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metadata, index);
+    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
+    const { violations, refErrors } = validateGraph(nodes, metadata);
 
     expect(refErrors).toBeEmpty();
     expect(violations).toHaveLength(1);
@@ -188,9 +191,8 @@ describe('validateRelationships — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity');
 
     const nodes = [activity];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metadata, index);
+    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
+    const { violations, refErrors } = validateGraph(nodes, metadata);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -200,9 +202,8 @@ describe('validateRelationships — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: '[[Task 1]]' });
 
     const nodes = [activity];
-    const index = buildTargetIndex(nodes);
-
-    const { violations, refErrors } = validateRelationships(nodes, metadata, index);
+    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
+    const { violations, refErrors } = validateGraph(nodes, metadata);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toHaveLength(1);

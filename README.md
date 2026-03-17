@@ -115,7 +115,7 @@ The `selfRefField` property enables different fields for regular vs same-type re
 | `fieldOn` | `"child"` | `"child"`: child holds a link pointing up. `"parent"`: parent holds an array of child links. |
 | `format` | `"page"` | Hint for `template-sync`: `"table"`, `"list"`, or `"heading"` |
 | `matchers` | `[]` | Heading text to match for embedded parsing (strings or `/regex/`). Case-insensitive. |
-| `multi` | `true` | Whether multiple children are expected |
+| `multiple` | `true` | Whether multiple children are expected |
 | `embeddedTemplateFields` | `[]` | Field names to include as table columns in templates |
 
 With `fieldOn: "parent"`, embedded child nodes (parsed from a matching heading's list or table) are appended as wikilinks to the parent's `field` array, rather than receiving a `parent` field. This matches schemas where the content model naturally lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`).

@@ -146,25 +146,20 @@ See [docs/rules.md](rules.md) for the rules reference, including JSONata express
 
 ## Hierarchy
 
-The **hierarchy** is the ordered list of node types in a space, from root to leaf. It is defined in the schema's `$metadata.hierarchy.levels` array and drives depth-based type inference (for `space on a page`), tree rendering, and hierarchy validation. The root type has no parent; every other type has parents in the level immediately above (unless `$metadata.hierarchy.allowSkipLevels` is set).
+The **hierarchy** is the ordered list of node types in a space, from root to leaf. It is defined in the schema's `$metadata.hierarchy.levels` array and drives depth-based type inference (for `space on a page`), tree rendering, and structural validation. The root type has no parent; every other type has parents in the level immediately above (unless `$metadata.hierarchy.allowSkipLevels` is set).
 
-Relationships between levels are modelled as a layered DAG: a non-root node may have zero parents (orphaned), one parent, or multiple parents. The `show` command renders this as an indented tree, marking repeated nodes with `(*)` where the subtree is already shown elsewhere.
+The hierarchy is modelled as a layered DAG: a non-root node may have zero parents (orphaned), one parent, or multiple parents. The `show` command renders this as an indented tree, marking repeated nodes with `(*)` where the subtree is already shown elsewhere.
 
-### Edge configuration
-
-A **hierarchy edge** is a directional link connecting a child node to one or more parent nodes. Each non-root level in the hierarchy defines how its edges are expressed in frontmatter. The default is a single `parent` wikilink on the child node, but any field name, direction, and cardinality can be configured.
+Each non-root level uses the shared `field`, `fieldOn`, and `multiple` edge options (see [Graph edges](#graph-edges)). Two additional options are hierarchy-specific:
 
 | Option | Default | Meaning |
 |---|---|---|
-| `field` | `"parent"` | The frontmatter field that holds the wikilink(s) for the regular parent-child relationship |
-| `fieldOn` | `"child"` | `"parent"` means the field is on the **parent** node and points to children (reversed direction) |
-| `multiple` | `false` | When `true`, the field holds an **array** of wikilinks rather than a single one |
-| `selfRef` | `false` | When `true`, a node may have a parent of the same resolved type (uses `field` for same-type relationships) |
-| `selfRefField` | _undefined_ | When set, specifies a different field for same-type parent relationships (always on child-side) |
+| `selfRef` | `false` | When `true`, a node may have a parent of the same resolved type, using `field` for both regular and same-type parents |
+| `selfRefField` | _undefined_ | When set, specifies a separate field for same-type parent relationships (always on the child). Requires `selfRef: true`. |
 
 **Example: Activities listing Capabilities with sub-capabilities**
 
-```
+```json
 "levels": [
   "Activities",
   {
@@ -177,41 +172,63 @@ A **hierarchy edge** is a directional link connecting a child node to one or mor
 ]
 ```
 
-This configuration supports two relationship types:
-- **Activities → Capabilities**: Via `capabilities` field on Activity nodes (array of capability wikilinks)
-- **Capability → Capability**: Via `parent` field on Capability nodes (single parent capability wikilink)
+This defines two edge types for Capabilities:
+- **Activities → Capabilities**: Via `capabilities` array field on Activity nodes
+- **Capability → Capability**: Via `parent` field on Capability nodes (same-type, child-side)
 
-Without `selfRefField`, a type can only define one relationship field. The `selfRef` flag enables same-type relationships but uses the same `field` for both regular and same-type parents.
+---
+
+## Relationships
+
+A **relationship** is a link between a parent type and a child type that is not part of the primary structural hierarchy. For example, an `opportunity` might have a relationship with `assumption` (multiple) or `problem_statement` (single).
+
+Relationships are defined in `$metadata.relationships`. Like hierarchy levels, they use the shared `field`, `fieldOn`, and `multiple` edge options (see [Graph edges](#graph-edges)), but carry additional metadata used for parsing and template generation:
+
+- **`parent`** / **`type`** — the parent and child canonical types (required)
+- **`format`** — parsing/generation hint: `"heading"`, `"list"`, `"table"`, or `"page"`
+- **`matchers`** — heading text patterns (strings or `/regex/`) used to detect relationship sections during embedded parsing
+
+A heading in a typed page that matches a relationship's `matchers` signals to the parser that following content (single nodes, list items, or table rows) should be typed as that relationship's child type — without requiring explicit inline `[type:: x]` annotations.
+
+---
+
+## Graph edges
+
+Both `hierarchy.levels` and `relationships` define **edges** in a directed graph over the node set. All edges use the same three configuration options:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `field` | `"parent"` | The frontmatter field holding the wikilink(s) |
+| `fieldOn` | `"child"` | `"parent"` means the field is on the **parent** node and points to children (reversed direction) |
+| `multiple` | `false` | When `true`, the field holds an **array** of wikilinks rather than a single one |
+
+The `fieldOn: "parent"` pattern is used when the content model lists children on the parent node (e.g. `tasks: ["[[Task A]]", "[[Task B]]"]`). Embedded parsing then appends child wikilinks to the parent's field array rather than setting a `parent` field on each child.
 
 Dangling wikilinks — edge field values that do not resolve to any known node — are reported as reference errors during validation.
 
-### Resolved parents
-
-**Resolved parents** (`resolvedParents`) is the set of parent node titles derived from a node's edge field(s) at *parse* time. It is always an array (empty if unresolved or root-level). Tooling uses `resolvedParents` for tree rendering, hierarchy validation, rule evaluation, and diagram/Miro sync.
-
 ### Wikilink
 
-A **wikilink** is the `[[Title]]` linking syntax (compatible with Obsidian) used to express hierarchy edges between `space nodes`. Any edge field — whether named `parent` or a custom name — holds wikilinks to linked nodes.
-
-Two forms are supported:
+A **wikilink** is the `[[Title]]` linking syntax (compatible with Obsidian) used in edge fields to reference other `space nodes`. Two forms are supported:
 
 | Form | Example | Resolves to |
 |---|---|---|
 | Plain title | `[[My Goal]]` | The `space node` whose title equals `My Goal` |
 | Anchor ref | `[[vision_page#^goal1]]` | The `embedded node` with `anchor` `goal1` inside `vision_page.md` |
 
-### Relationships (Adjacent)
+### Resolved parents
 
-An **adjacent relationship** (or simply **relationship**) is a link between a parent type and a child type that is not part of the primary structural hierarchy. For example, an `opportunity` might have a relationship with `assumption` (multiple) or `problem_statement` (single).
+**Resolved parents** (`resolvedParents`) is the set of parent references derived from a node's edge fields at *parse* time. It is always an array (empty if unresolved or root-level). Both `hierarchy.levels` and `relationships` edges resolve into this single array — forming a unified labelled directed graph over the node set.
 
-Relationships are defined in the schema's `$metadata.relationships` and provide tips for both generation (`template-sync`) and parsing (`parse-embedded`). In particular, a heading matching a relationship name in a typed page acts as a signal to the parser: content (single-node), and list items or table rows (multi-node) below it are typed as that relationship's child type without requiring explicit inline annotations.
+Each entry is a `ResolvedParentRef` object:
 
-Relationships support two link directions via `field` and `fieldOn`:
+| Field | Type | Description |
+|---|---|---|
+| `title` | `string` | The parent node's title |
+| `field` | `string` | The frontmatter field that held the wikilink |
+| `source` | `'hierarchy' \| 'relationship'` | Whether the edge came from a hierarchy level or a relationship |
+| `selfRef` | `boolean` | Whether the edge is a same-type (self-referential) parent link |
 
-- **`fieldOn: "child"` (default)** — the child node carries the relationship field (e.g. `parent: "[[Opportunity A]]"`). This is the conventional form inherited from hierarchy edges.
-- **`fieldOn: "parent"`** — the parent node carries an array field (e.g. `tasks: ["[[Task A]]", "[[Task B]]"]`). Use this when the content model places the list on the parent rather than on each child. Embedded parsing populates the parent's field array rather than setting `parent` on each child node.
-
-The `field` property names the frontmatter field (defaults to `"parent"` for child-side; must be explicit for parent-side). Validation checks all wikilinks in the field resolve to nodes of the declared type.
+The `source` label lets downstream consumers distinguish edge types without re-inspecting the schema. Validation routes `hierarchy` edges to structural checks (parent-type rules, skip-level detection) and `relationship` edges to field reference checks (type-match, missing-target). Tree rendering and rule evaluation use the full set.
 
 ### Anchor
 

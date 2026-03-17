@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { buildEvalContext, evaluateExpression } from '../../src/schema/evaluate-rule';
 import type { SpaceNode } from '../../src/types';
+import { makeParentRef } from '../test-helpers';
 
 describe('evaluate-rule', () => {
   describe('evaluateExpression', () => {
@@ -13,7 +14,7 @@ describe('evaluate-rule', () => {
         parent: '[[Parent Opportunity]]',
       },
       linkTargets: ['Test Node'],
-      resolvedParents: ['Parent Opportunity'],
+      resolvedParents: [makeParentRef('Parent Opportunity')],
       resolvedType: 'solution',
     };
 
@@ -121,7 +122,7 @@ describe('evaluate-rule', () => {
       label: 'child.md',
       schemaData: { title: 'Child', type: 'solution', parent: '[[Parent]]' },
       linkTargets: ['Child'],
-      resolvedParents: ['Parent'],
+      resolvedParents: [makeParentRef('Parent')],
       resolvedType: 'solution',
     };
 

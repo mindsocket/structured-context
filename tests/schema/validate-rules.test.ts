@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { validateRules } from '../../src/schema/validate-rules';
 import type { RulesMetadata, SpaceNode } from '../../src/types';
+import { makeParentRef } from '../test-helpers';
 
 describe('validate-rules', () => {
   describe('validateRules', () => {
@@ -22,21 +23,21 @@ describe('validate-rules', () => {
           source: 'Interview',
         },
         linkTargets: ['Opportunity'],
-        resolvedParents: ['Outcome'],
+        resolvedParents: [makeParentRef('Outcome')],
         resolvedType: 'opportunity',
       },
       {
         label: 'solution.md',
         schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
         linkTargets: ['Solution'],
-        resolvedParents: ['Opportunity'],
+        resolvedParents: [makeParentRef('Opportunity')],
         resolvedType: 'solution',
       },
       {
         label: 'bad-solution.md',
         schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },
         linkTargets: ['Bad Solution'],
-        resolvedParents: ['Solution'],
+        resolvedParents: [makeParentRef('Solution')],
         resolvedType: 'solution',
       },
       {
@@ -49,7 +50,7 @@ describe('validate-rules', () => {
           assumption: 'Test',
         },
         linkTargets: ['Experiment'],
-        resolvedParents: ['Solution'],
+        resolvedParents: [makeParentRef('Solution')],
         resolvedType: 'experiment',
       },
       {
@@ -62,7 +63,7 @@ describe('validate-rules', () => {
           assumption: 'Test',
         },
         linkTargets: ['Bad Experiment'],
-        resolvedParents: ['Opportunity'],
+        resolvedParents: [makeParentRef('Opportunity')],
         resolvedType: 'experiment',
       },
     ];
@@ -124,7 +125,7 @@ describe('validate-rules', () => {
           label: 'bad-outcome.md',
           schemaData: { title: 'Bad Outcome', type: 'outcome', status: 'active', parent: '[[Vision]]' },
           linkTargets: ['Bad Outcome'],
-          resolvedParents: ['Vision'],
+          resolvedParents: [makeParentRef('Vision')],
           resolvedType: 'outcome',
         };
         const visionNode: SpaceNode = {
@@ -163,7 +164,7 @@ describe('validate-rules', () => {
             source: 'Interview',
           },
           linkTargets: ['Opportunity'],
-          resolvedParents: ['Outcome'],
+          resolvedParents: [makeParentRef('Outcome')],
           resolvedType: 'opportunity',
         };
 
@@ -176,7 +177,7 @@ describe('validate-rules', () => {
             parent: '[[Opportunity]]',
           },
           linkTargets: [`Solution ${i}`],
-          resolvedParents: ['Opportunity'],
+          resolvedParents: [makeParentRef('Opportunity')],
           resolvedType: 'solution',
         }));
 
@@ -196,7 +197,7 @@ describe('validate-rules', () => {
             source: 'Interview',
           },
           linkTargets: ['Opportunity'],
-          resolvedParents: ['Outcome'],
+          resolvedParents: [makeParentRef('Outcome')],
           resolvedType: 'opportunity',
         };
 
@@ -204,7 +205,7 @@ describe('validate-rules', () => {
           label: 'solution.md',
           schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
           linkTargets: ['Solution'],
-          resolvedParents: ['Opportunity'],
+          resolvedParents: [makeParentRef('Opportunity')],
           resolvedType: 'solution',
         };
 
@@ -288,7 +289,7 @@ describe('validate-rules', () => {
             source: 'Interview',
           },
           linkTargets: ['Opportunity'],
-          resolvedParents: ['Outcome'],
+          resolvedParents: [makeParentRef('Outcome')],
           resolvedType: 'opportunity',
         };
         const violations = await validateRules([parentNode, childNode], [workflowRules[1]!]);
@@ -316,7 +317,7 @@ describe('validate-rules', () => {
             source: 'Interview',
           },
           linkTargets: ['Opportunity'],
-          resolvedParents: ['Outcome'],
+          resolvedParents: [makeParentRef('Outcome')],
           resolvedType: 'opportunity',
         };
         const violations = await validateRules([parentNode, childNode], [workflowRules[1]!]);
@@ -362,14 +363,14 @@ describe('validate-rules', () => {
             label: 'solution.md',
             schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
             linkTargets: ['Solution'],
-            resolvedParents: ['Opportunity'],
+            resolvedParents: [makeParentRef('Opportunity')],
             resolvedType: 'solution',
           },
           {
             label: 'bad-solution.md',
             schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },
             linkTargets: ['Bad Solution'],
-            resolvedParents: ['Solution'],
+            resolvedParents: [makeParentRef('Solution')],
             resolvedType: 'solution',
           },
         ];

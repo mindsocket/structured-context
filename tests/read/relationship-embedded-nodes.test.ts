@@ -27,7 +27,7 @@ describe('Embedded nodes with parent-side relationships', () => {
             field: 'applications',
             fieldOn: 'parent',
             matchers: ['Applications'],
-            multi: true,
+            multiple: true,
           },
         ],
       },

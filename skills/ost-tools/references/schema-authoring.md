@@ -46,9 +46,9 @@ Use object entries to override defaults:
 - `multiple: true` for array wikilinks
 - `selfRef: true` for same-type parent links
 
-### Adjacent Relationships (`$metadata.relationships`)
+### Relationships (`$metadata.relationships`)
 
-Adjacent relationships define how sub-entities (nodes inside other files) are parsed and generated.
+Relationships define how sub-entities (nodes inside other files) are parsed and generated.
 
 | Field | Default | Description |
 |---|---|---|
@@ -58,7 +58,7 @@ Adjacent relationships define how sub-entities (nodes inside other files) are pa
 | `fieldOn` | `"child"` | `"child"`: child has the field pointing up. `"parent"`: parent has an array field pointing down to children. |
 | `format` | | Hint for `template-sync`: `"table"`, `"list"`, or `"heading"` |
 | `matchers` | | Heading text to match (strings or `/regex/`). Case-insensitive. |
-| `multi` | `true` | Whether multiple children are expected |
+| `multiple` | `true` | Whether multiple children are expected |
 | `embeddedTemplateFields` | | Field names for table columns |
 
 **`fieldOn: "parent"` pattern** — use when the content model lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`). Embedded parsing appends child wikilinks to the parent's `field` array rather than setting a `parent` field on each child. Validation checks each array entry resolves to a node of `type`.
@@ -145,6 +145,12 @@ Convention:
 Each rule evaluation receives: `nodes`, `current`, `parent`, `parents`.
 
 Use `resolvedType` in comparisons (not raw `type`) so aliases are respected.
+
+Each node also carries convenience fields for common queries:
+- `resolvedParentTitle` — title of the first resolved parent (or `undefined`)
+- `resolvedParentTitles` — array of all resolved parent titles
+
+`resolvedParents` on the raw node is an array of `ResolvedParentRef` objects (`{ title, field, source, selfRef }`); use the convenience fields for simple title-matching.
 
 ```jsonata
 $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])

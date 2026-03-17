@@ -325,7 +325,8 @@ export async function miroSync(spaceOrPath: string, options: SyncOptions): Promi
   const desiredEdges = new Map<string, { parentTitle: string; childTitle: string }>();
   for (const node of nodes) {
     const childTitle = node.schemaData.title as string;
-    for (const parentTitle of node.resolvedParents) {
+    for (const { title: parentTitle, source } of node.resolvedParents) {
+      if (source !== 'hierarchy') continue;
       // Both endpoints must have verified cards on the board
       if (verifiedCardIds.has(parentTitle) && verifiedCardIds.has(childTitle)) {
         const key = `${parentTitle}\u2192${childTitle}`;

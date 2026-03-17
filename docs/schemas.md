@@ -97,13 +97,13 @@ Top-level metadata shape:
 | `hierarchy` | object | Optional per provider; at most one provider may define it after composition |
 | `hierarchy.levels` | `(string \| HierarchyLevel)[]` | Ordered root→leaf types |
 | `hierarchy.allowSkipLevels` | `boolean` | Optional; allows parent to be any ancestor level |
-| `relationships` | `Relationship[]` | Optional; defines adjacent related node links |
+| `relationships` | `Relationship[]` | Optional; defines related node links outside the primary hierarchy |
 | `aliases` | `Record<string, string>` | Optional type alias map |
 | `rules` | `Rule[]` | Optional flat rule array |
 
 ### Relationships
 
-Adjacent relationships define how related nodes (not part of the hierarchy) are handled during parsing and template generation.
+Relationships define links between node types that are not part of the primary structural hierarchy. They are handled during parsing and template generation.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -114,7 +114,7 @@ Adjacent relationships define how related nodes (not part of the hierarchy) are 
 | `format` | `string` | `"page"` | Hint for `template-sync`: `"table"`, `"list"`, or `"heading"` |
 | `matchers` | `string[]` | `[]` | Heading text to match (strings or `/regex/`). Case-insensitive. |
 | `embeddedTemplateFields` | `string[]` | `[]` | Field names to include in templates when `format` is `"table"` |
-| `multi` | `boolean` | `true` | Whether multiple children are expected |
+| `multiple` | `boolean` | `true` | Whether multiple children are expected |
 
 **`fieldOn: "child"` (default)** — child node has a field pointing to its parent. Embedded parsing sets this field on each child node; validation checks that it resolves to a node of the declared parent type.
 
@@ -145,7 +145,7 @@ Adjacent relationships define how related nodes (not part of the hierarchy) are 
     "fieldOn": "parent",
     "format": "list",
     "matchers": ["Tasks"],
-    "multi": true
+    "multiple": true
   }
 ]
 ```

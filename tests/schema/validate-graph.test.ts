@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'bun:test';
-import { validateHierarchyStructure } from '../../src/schema/validate-hierarchy';
+import { resolveNodeType } from '../../src/schema/schema';
+import { validateHierarchyStructure } from '../../src/schema/validate-graph';
 import type { SchemaMetadata, SpaceNode } from '../../src/types';
-import { makeLevel } from '../test-helpers';
+import { makeLevel, makeParentRef } from '../test-helpers';
 
-describe('validate-hierarchy', () => {
+describe('validate-graph', () => {
+  const typeAliases = { outcome: 'goal' };
+
   const buildNode = (title: string, type: string, parentTitle?: string): SpaceNode => ({
     label: `${title}.md`,
     schemaData: { title, type, status: 'active' },
     linkTargets: [title],
-    resolvedParents: parentTitle ? [parentTitle] : [],
-    resolvedType: type, // In tests, no alias resolution needed
+    resolvedParents: parentTitle ? [makeParentRef(parentTitle)] : [],
+    resolvedType: resolveNodeType(type, typeAliases),
   });
 
   describe('hierarchy with selfRef', () => {
@@ -19,7 +22,7 @@ describe('validate-hierarchy', () => {
         levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
         allowSkipLevels: false,
       },
-      typeAliases: {},
+      typeAliases,
     };
 
     it('passes when node has immediate parent in hierarchy', () => {

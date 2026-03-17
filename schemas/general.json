@@ -25,7 +25,7 @@
         "type": "problem_statement",
         "format": "heading",
         "matchers": ["Problem statement", "What problem are we solving?"],
-        "multi": false
+        "multiple": false
       },
       {
         "parent": "opportunity",
@@ -33,7 +33,7 @@
         "format": "table",
         "matchers": ["Assumptions", "^Assumptions?$"],
         "embeddedTemplateFields": ["assumption", "status", "confidence"],
-        "multi": true
+        "multiple": true
       }
     ]
   },

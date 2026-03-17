@@ -86,7 +86,7 @@
               "format": {
                 "enum": ["heading", "list", "table", "page"]
               },
-              "multi": {
+              "multiple": {
                 "type": "boolean"
               },
               "matchers": {

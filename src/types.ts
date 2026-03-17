@@ -5,6 +5,14 @@ import type {
   MetadataContractRule,
 } from './schema/metadata-contract';
 
+export interface EdgeDefinition {
+  type: string;
+  parent: string;
+  field: string; // default "parent"
+  fieldOn: 'child' | 'parent'; // default "child"
+  multiple: boolean; // default false
+}
+
 export interface HierarchyLevel {
   type: string;
   field: string; // default "parent"
@@ -14,6 +22,22 @@ export interface HierarchyLevel {
   selfRefField?: string; // optional field for same-type parent relationships (implies selfRef: true)
 }
 
+/**
+ * A resolved parent reference, capturing not just the parent title but the edge context
+ * from which it was resolved. All hierarchy levels and relationships produce entries of
+ * this type, forming a single labelled graph rather than separate structures.
+ */
+export interface ResolvedParentRef {
+  /** Canonical title of the parent node. */
+  title: string;
+  /** The frontmatter field name that contained the wikilink (e.g. 'parent', 'key_activities', 'produces_data'). */
+  field: string;
+  /** Whether this edge originates from a hierarchy level or a relationship definition. */
+  source: 'hierarchy' | 'relationship';
+  /** Whether the parent and child are the same node type (self-referential edge). */
+  selfRef: boolean;
+}
+
 export interface SpaceNode {
   /** Source identifier for error messages (filename or heading title) */
   label: string;
@@ -21,8 +45,12 @@ export interface SpaceNode {
   schemaData: Record<string, unknown>;
   /** Valid navigation targets this node can be linked to (wikilink key without [[ ]]). */
   linkTargets: string[];
-  /** Resolved canonical parent titles (derived from edge fields + linkTargets). Always present, empty if no parents. */
-  resolvedParents: string[];
+  /**
+   * Resolved parent references derived from all edge fields (hierarchy levels + relationships).
+   * Each entry carries the parent title, the field it came from, and its edge context.
+   * Always present, empty if no parents resolved.
+   */
+  resolvedParents: ResolvedParentRef[];
   /** Resolved canonical type (after applying type aliases from schema metadata). */
   resolvedType: string;
 }
@@ -59,7 +87,7 @@ export interface RuleViolation {
   description: string;
 }
 
-export interface HierarchyViolation {
+export interface GraphViolation {
   file: string;
   nodeType: string;
   nodeTitle: string;

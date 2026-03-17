@@ -55,8 +55,8 @@ flowchart LR
 | Boundary | Data |
 |---|---|
 | Space → Read | Raw markdown files / `space_on_a_page` file |
-| Read → Nodes | `SpaceNode[]` — schemaData (canonical fields), resolvedType, resolvedParents, linkTargets |
-| Schema → Read | Hierarchy levels (type names, edge fields, direction, cardinality), type aliases |
+| Read → Nodes | `SpaceNode[]` — schemaData (canonical fields), resolvedType, resolvedParents (`ResolvedParentRef[]`), linkTargets |
+| Schema → Read | Hierarchy levels + relationships (type names, edge fields, direction, cardinality), type aliases |
 | Schema → Validate | AJV validator, hierarchy rules, JSONata rule expressions |
 | Nodes → Output | Validated node set; output commands interpret as needed |
 | Config → Output | `fieldMap` (reverse) applied by template-sync for file field names |

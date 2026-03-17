@@ -6,7 +6,7 @@ import { applyFieldMap, loadConfig, resolveSchema } from '../config';
 import { loadMetadata, resolveNodeType } from '../schema/schema';
 import type { SchemaMetadata, SpaceDirectoryReadResult, SpaceNode, SpaceOnAPageReadResult } from '../types';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
-import { resolveHierarchyEdges } from './resolve-hierarchy-edges';
+import { resolveGraphEdges } from './resolve-graph-edges';
 
 export interface ReadSpaceDirectoryOptions {
   includeOnAPageFiles?: boolean;
@@ -59,7 +59,8 @@ export function readSpaceOnAPage(filePath: string, schemaPath?: string): SpaceOn
     pageType: 'space_on_a_page',
     metadata,
   });
-  resolveHierarchyEdges(nodes, hierarchyLevels);
+
+  resolveGraphEdges(nodes, hierarchyLevels, metadata.relationships, metadata.typeAliases);
   return { nodes, diagnostics };
 }
 
@@ -109,11 +110,12 @@ export async function readSpaceDirectory(
 
     const pageType = data.type as string;
     const fileBase = basename(file, '.md');
+    const title = (data.title as string) ?? fileBase;
 
     nodes.push({
       label: file,
-      schemaData: { title: fileBase, ...data },
-      linkTargets: [fileBase],
+      schemaData: { title, ...data },
+      linkTargets: [title, fileBase],
       resolvedParents: [],
       resolvedType: resolveNodeType(pageType, metadata.typeAliases),
     });
@@ -129,7 +131,7 @@ export async function readSpaceDirectory(
     }
   }
 
-  resolveHierarchyEdges(nodes, hierarchyLevels);
+  resolveGraphEdges(nodes, hierarchyLevels, metadata.relationships, metadata.typeAliases);
   return { nodes, skipped, nonSpace };
 }
 
@@ -139,3 +141,4 @@ export async function readSpace(path: string, options: ReadSpaceDirectoryOptions
   }
   return { kind: 'directory', ...(await readSpaceDirectory(path, options)) };
 }
+resolveGraphEdges;
