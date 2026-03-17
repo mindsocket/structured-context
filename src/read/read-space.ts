@@ -141,4 +141,3 @@ export async function readSpace(path: string, options: ReadSpaceDirectoryOptions
   }
   return { kind: 'directory', ...(await readSpaceDirectory(path, options)) };
 }
-resolveGraphEdges;
