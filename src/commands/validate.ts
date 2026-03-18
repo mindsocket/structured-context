@@ -1,9 +1,9 @@
 import type { ErrorObject } from 'ajv';
 import { readSpace } from '../read/read-space';
-import { buildFullRegistry, createValidator, loadMetadata, readRawSchema } from '../schema/schema';
+import { loadSchema } from '../schema/schema';
 import { validateGraph } from '../schema/validate-graph';
 import { validateRules } from '../schema/validate-rules';
-import type { GraphViolation, RuleViolation } from '../types';
+import type { GraphViolation, RuleViolation, SchemaWithMetadata } from '../types';
 import { classifyNodes } from '../util/graph-helpers';
 import { extractEntityInfo } from './schemas';
 
@@ -29,7 +29,12 @@ interface ValidationResult {
  * Format AJV errors for better readability.
  * Groups related errors and extracts helpful context like allowed values.
  */
-function formatErrors(errors: ErrorObject[], schemaPath: string, nodeData: Record<string, unknown>): FormattedError[] {
+function formatErrors(
+  errors: ErrorObject[],
+  schema: SchemaWithMetadata,
+  registry: Parameters<typeof extractEntityInfo>[1],
+  nodeData: Record<string, unknown>,
+): FormattedError[] {
   const formatted: FormattedError[] = [];
   const seen = new Set<string>();
 
@@ -48,11 +53,9 @@ function formatErrors(errors: ErrorObject[], schemaPath: string, nodeData: Recor
     const isRootOneOf = path === 'root' || path === '/type';
     let hasOneOfContext = false;
     if (isRootOneOf && pathErrors.length > 1) {
-      const schema = readRawSchema(schemaPath);
       hasOneOfContext = Array.isArray(schema.oneOf);
 
       if (hasOneOfContext) {
-        const registry = buildFullRegistry(schemaPath);
         const entities = extractEntityInfo(schema.oneOf as unknown[], registry, schema);
         const validTypes = entities.map((e) => e.type).sort();
 
@@ -128,7 +131,8 @@ function formatErrors(errors: ErrorObject[], schemaPath: string, nodeData: Recor
 }
 
 export async function validate(path: string, options: { schema: string; templateDir?: string }): Promise<number> {
-  const validateFunc = createValidator(options.schema);
+  const { schema, registry, validator } = loadSchema(options.schema);
+  const metadata = schema.metadata;
 
   const readResult = await readSpace(path, {
     schemaPath: options.schema,
@@ -151,11 +155,8 @@ export async function validate(path: string, options: { schema: string; template
     nonSpace: nonSpace,
   };
 
-  // Load metadata early — needed for levels-based ref validation
-  const metadata = loadMetadata(options.schema);
-
   for (const node of nodes) {
-    const valid = validateFunc(node.schemaData);
+    const valid = validator(node.schemaData);
 
     if (valid) {
       result.validCount++;
@@ -163,7 +164,7 @@ export async function validate(path: string, options: { schema: string; template
       result.nodeErrorCount++;
       result.nodeErrors.push({
         file: node.label,
-        errors: validateFunc.errors || [],
+        errors: validator.errors || [],
         nodeData: node.schemaData as Record<string, unknown>,
       });
     }
@@ -253,7 +254,7 @@ export async function validate(path: string, options: { schema: string; template
     console.log(`\nSchema validation errors:`);
     result.nodeErrors.forEach(({ file, errors, nodeData }) => {
       console.log(`\n   ${file}:`);
-      const formatted = formatErrors(errors, options.schema, nodeData);
+      const formatted = formatErrors(errors, schema, registry, nodeData);
       formatted.forEach(({ message }) => {
         console.log(`      ${message}`);
       });

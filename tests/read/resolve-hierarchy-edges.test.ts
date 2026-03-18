@@ -1,18 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
-import type { SpaceNode } from '../../src/types';
-import { makeLevel } from '../test-helpers';
-
-// Helper to build a test node
-function makeNode(title: string, type: string, extra: Record<string, unknown> = {}, linkTargets?: string[]): SpaceNode {
-  return {
-    label: `${title}.md`,
-    schemaData: { title, type, ...extra },
-    linkTargets: linkTargets ?? [title],
-    resolvedParents: [],
-    resolvedType: type,
-  };
-}
+import type { Relationship } from '../../src/types';
+import { makeLevel, makeNode } from '../test-helpers';
 
 describe('resolveGraphEdges', () => {
   describe("default behavior (fieldOn: 'child', multiple: false)", () => {
@@ -180,13 +169,12 @@ describe('resolveGraphEdges', () => {
   describe('relationship edges', () => {
     it('assigns source: hierarchy when type appears in both hierarchy and a relationship', () => {
       const levels = [makeLevel('project'), makeLevel('task')];
-      const relationships = [
+      const relationships: Relationship[] = [
         {
           parent: 'project',
           type: 'task',
           field: 'project',
-          fieldOn: 'child' as const,
-          format: 'heading' as const,
+          fieldOn: 'child',
           multiple: false,
           matchers: ['Tasks'],
         },
@@ -204,13 +192,12 @@ describe('resolveGraphEdges', () => {
 
     it('assigns source: relationship when type appears only in relationships', () => {
       const levels = [makeLevel('project')];
-      const relationships = [
+      const relationships: Relationship[] = [
         {
           parent: 'project',
           type: 'resource',
           field: 'parent',
-          fieldOn: 'child' as const,
-          format: 'heading' as const,
+          fieldOn: 'child',
           multiple: false,
           matchers: ['Resources'],
         },

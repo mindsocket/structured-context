@@ -1,32 +1,14 @@
 import { describe, expect, it } from 'bun:test';
 import { resolveGraphEdges } from '../src/read/resolve-graph-edges';
 import { validateGraph } from '../src/schema/validate-graph';
-import type { SchemaMetadata, SpaceNode } from '../src/types';
-
-function makeNode(title: string, type: string, extra: Record<string, unknown> = {}, linkTargets?: string[]): SpaceNode {
-  return {
-    label: `${title}.md`,
-    schemaData: { title, type, ...extra },
-    linkTargets: linkTargets ?? [title],
-    resolvedParents: [],
-    resolvedType: type,
-  };
-}
+import type { SchemaMetadata } from '../src/types';
+import { makeLevel, makeNode, makeRelationship } from './test-helpers';
 
 describe('validateGraph - Relationships', () => {
-  const metadata = {
-    hierarchy: { levels: [{ type: 'opportunity' }] },
-    relationships: [
-      {
-        parent: 'opportunity',
-        type: 'assumption',
-        field: 'parent',
-        fieldOn: 'child',
-        multiple: false,
-        templateFormat: 'table',
-      },
-    ],
-  } as SchemaMetadata;
+  const metadata: SchemaMetadata = {
+    hierarchy: { levels: [makeLevel('opportunity')] },
+    relationships: [makeRelationship('opportunity', 'assumption', { templateFormat: 'table' })],
+  };
 
   it('passes when child linked to correct parent type', () => {
     const opp = makeNode('Opp 1', 'opportunity');
@@ -79,18 +61,10 @@ describe('validateGraph - Relationships', () => {
   });
 
   it('uses custom field name when fieldOn is child', () => {
-    const metaWithCustomField = {
-      hierarchy: { levels: [{ type: 'opportunity' }] },
-      relationships: [
-        {
-          parent: 'opportunity',
-          type: 'assumption',
-          field: 'linked_opportunity',
-          fieldOn: 'child',
-          multiple: false,
-        },
-      ],
-    } as SchemaMetadata;
+    const metaWithCustomField: SchemaMetadata = {
+      hierarchy: { levels: [makeLevel('opportunity')] },
+      relationships: [makeRelationship('opportunity', 'assumption', { field: 'linked_opportunity' })],
+    };
 
     const opp = makeNode('Opp 1', 'opportunity');
     const assumption = makeNode('Assumption 1', 'assumption', { linked_opportunity: '[[Opp 1]]' });
@@ -109,18 +83,10 @@ describe('validateGraph - Relationships', () => {
   });
 
   it('reports error for custom field pointing to wrong type', () => {
-    const metaWithCustomField = {
-      hierarchy: { levels: [{ type: 'opportunity' }] },
-      relationships: [
-        {
-          parent: 'opportunity',
-          type: 'assumption',
-          field: 'linked_opportunity',
-          fieldOn: 'child',
-          multiple: false,
-        },
-      ],
-    } as SchemaMetadata;
+    const metaWithCustomField: SchemaMetadata = {
+      hierarchy: { levels: [makeLevel('opportunity')] },
+      relationships: [makeRelationship('opportunity', 'assumption', { field: 'linked_opportunity' })],
+    };
 
     const solution = makeNode('Solution 1', 'solution');
     const assumption = makeNode('Assumption 1', 'assumption', { linked_opportunity: '[[Solution 1]]' });
@@ -141,18 +107,10 @@ describe('validateGraph - Relationships', () => {
 });
 
 describe('validateGraph — fieldOn: parent', () => {
-  const metadata = {
-    hierarchy: { levels: [{ type: 'activity' }] },
-    relationships: [
-      {
-        parent: 'activity',
-        type: 'task',
-        field: 'tasks',
-        fieldOn: 'parent',
-        multiple: true,
-      },
-    ],
-  } as SchemaMetadata;
+  const metadata: SchemaMetadata = {
+    hierarchy: { levels: [makeLevel('activity')] },
+    relationships: [makeRelationship('activity', 'task', { field: 'tasks', fieldOn: 'parent', multiple: true })],
+  };
 
   it('passes when parent field array contains correct child types', () => {
     const task1 = makeNode('Task 1', 'task');

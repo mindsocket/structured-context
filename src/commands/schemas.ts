@@ -1,9 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
-import JSON5 from 'json5';
 import { loadConfig, resolveSchema } from '../config';
-import { buildFullRegistry, bundledSchemasDir, loadMetadata, readRawSchema } from '../schema/schema';
+import { bundledSchemasDir, loadSchema, readRawSchema } from '../schema/schema';
 import { mergeVariantProperties } from '../schema/schema-refs';
 import type { SchemaMetadata, SchemaWithMetadata } from '../types';
 
@@ -305,14 +304,12 @@ export function showSchema(
     return;
   }
 
-  const schema = JSON5.parse(content) as SchemaWithMetadata;
-  const registry = buildFullRegistry(schemaPath) as Map<string, AnySchemaObject>;
+  const { schema, registry } = loadSchema(schemaPath);
 
   // Handle --mermaid-erd: generate ERD and exit
   if (options.mermaidErd) {
-    const metadata = loadMetadata(schemaPath);
     const entityInfo = Array.isArray(schema.oneOf) ? extractEntityInfo(schema.oneOf, registry, schema) : [];
-    const mermaid = generateMermaidErd(metadata, entityInfo);
+    const mermaid = generateMermaidErd(schema.metadata, entityInfo);
     process.stdout.write(mermaid);
     return;
   }
@@ -321,7 +318,7 @@ export function showSchema(
   if (schema.title) console.log(`title: ${schema.title}`);
   if (schema.description) console.log(`description: ${schema.description}`);
 
-  showMetadata(loadMetadata(schemaPath));
+  showMetadata(schema.metadata);
 
   if (Array.isArray(schema.oneOf)) {
     showEntities(schema.oneOf, registry, schema);

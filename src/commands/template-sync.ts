@@ -1,13 +1,13 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { AnySchemaObject, SchemaObject } from 'ajv';
+import type { AnySchemaObject } from 'ajv';
 import { glob } from 'glob';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
 import { invertFieldMap } from '../config';
-import { buildFullRegistry, loadMetadata, readRawSchema } from '../schema/schema';
+import { loadSchema } from '../schema/schema';
 import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
-import type { HierarchyLevel, Relationship, SchemaMetadata, SchemaWithMetadata } from '../types';
+import type { HierarchyLevel, Relationship, SchemaWithMetadata } from '../types';
 
 export interface TypeVariant {
   required: string[];
@@ -74,7 +74,6 @@ function commentedHint(
 export function getTypeVariants(
   schema: SchemaWithMetadata,
   registry: Map<string, AnySchemaObject>,
-  metadata: SchemaMetadata,
 ): Map<string, TypeVariant> {
   const map = new Map<string, TypeVariant>();
   for (const variant of schema.oneOf) {
@@ -92,10 +91,10 @@ export function getTypeVariants(
     const example = variant.examples[0] as Record<string, string | number | boolean>;
     const description = (variant as { description?: string }).description;
 
-    const allRelationships = metadata.relationships ?? [];
+    const allRelationships = schema.metadata.relationships ?? [];
     const typeRelationships = allRelationships.filter((rel) => rel.parent === typeName);
 
-    const allLevels = metadata.hierarchy?.levels ?? [];
+    const allLevels = schema.metadata.hierarchy?.levels ?? [];
     const typeIdx = allLevels.findIndex((l) => l.type === typeName);
     const hierarchyChildren: HierarchyLevel[] =
       typeIdx !== -1 && typeIdx < allLevels.length - 1
@@ -259,15 +258,11 @@ export async function templateSync(
     fieldMap?: Record<string, string>;
   },
 ) {
-  const schema = readRawSchema(options.schema) as SchemaObject;
+  const { schema, registry } = loadSchema(options.schema);
   const templatePrefix = options.templatePrefix;
   const fieldMap = options.fieldMap ?? {};
 
-  // Build schema registry for cross-file $ref resolution
-  const registry = buildFullRegistry(options.schema);
-  const metadata = loadMetadata(options.schema);
-
-  const typeVariants = getTypeVariants(schema, registry, metadata);
+  const typeVariants = getTypeVariants(schema, registry);
   const matchedTypes = new Set<string>();
 
   const files = await glob('*.md', { cwd: templateDir, absolute: true });

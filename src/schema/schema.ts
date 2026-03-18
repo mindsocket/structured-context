@@ -2,9 +2,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
-import Ajv, { type ValidateFunction } from 'ajv';
+import Ajv, { type AnySchemaObject, type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
-import type { HierarchyLevel, RuleCategory, SchemaMetadata } from '../types';
+import type { HierarchyLevel, RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
 import {
   type MetadataContract,
   type MetadataContractRelationship,
@@ -79,14 +79,7 @@ export function buildFullRegistry(schemaPath: string): Map<string, JsonSchemaObj
   return registry;
 }
 
-/**
- * Compile a schema into an AJV ValidateFunction using the registry approach.
- * All peer schemas in the same directory are registered so AJV can resolve
- * cross-file $refs transitively.
- * Also registers schemas from the default schemas/ directory as a fallback.
- */
-export function createValidator(schemaPath: string): ValidateFunction {
-  const targetSchema = readRawSchema(schemaPath);
+function compileValidator(targetSchema: JsonSchemaObject, registry: Map<string, JsonSchemaObject>): ValidateFunction {
   const ajv = new Ajv();
   ajv.addKeyword({
     keyword: '$metadata',
@@ -98,8 +91,6 @@ export function createValidator(schemaPath: string): ValidateFunction {
   const metaSchema = OST_TOOLS_DIALECT_META_SCHEMA as unknown as JsonSchemaObject;
   ajv.addSchema(metaSchema, OST_TOOLS_SCHEMA_META_ID);
 
-  const registry = buildFullRegistry(schemaPath);
-
   // Register all except target schema (AJV compiles targetSchema explicitly)
   for (const [id, schema] of registry) {
     if (id === targetSchema.$id || id === OST_TOOLS_SCHEMA_META_ID) continue;
@@ -107,6 +98,10 @@ export function createValidator(schemaPath: string): ValidateFunction {
   }
 
   return ajv.compile(targetSchema);
+}
+
+export function createValidator(schemaPath: string): ValidateFunction {
+  return compileValidator(readRawSchema(schemaPath), buildFullRegistry(schemaPath));
 }
 
 export function resolveNodeType(type: string, typeAliases: Record<string, string> | undefined): string {
@@ -318,9 +313,7 @@ function areRulesEquivalent(left: Rule, right: Rule): boolean {
   return isDeepStrictEqual(normalizeRule(left), normalizeRule(right));
 }
 
-export function loadMetadata(schemaPath: string): SchemaMetadata {
-  const schema = readRawSchema(schemaPath);
-  const registry = buildFullRegistry(schemaPath);
+function extractMetadata(schema: JsonSchemaObject, registry: Map<string, JsonSchemaObject>): SchemaMetadata {
   const metadataProviders = collectMetadataProviders(schema, registry);
 
   let hierarchyProvider: string | undefined;
@@ -411,5 +404,26 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
             multiple: rel.multiple ?? false,
           }))
         : undefined,
+  };
+}
+
+export function loadMetadata(schemaPath: string): SchemaMetadata {
+  return extractMetadata(readRawSchema(schemaPath), buildFullRegistry(schemaPath));
+}
+
+export interface LoadedSchema {
+  schema: SchemaWithMetadata;
+  registry: Map<string, AnySchemaObject>;
+  validator: ValidateFunction;
+}
+
+export function loadSchema(schemaPath: string): LoadedSchema {
+  const rawSchema = readRawSchema(schemaPath);
+  const registry = buildFullRegistry(schemaPath);
+  const schema: SchemaWithMetadata = { ...rawSchema, metadata: extractMetadata(rawSchema, registry) };
+  return {
+    schema,
+    registry: registry as Map<string, AnySchemaObject>,
+    validator: compileValidator(rawSchema, registry),
   };
 }

@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { extractEmbeddedNodes } from '../../src/read/parse-embedded';
-import type { HierarchyLevel } from '../../src/types';
-
-function toHierarchyLevels(types: string[]): HierarchyLevel[] {
-  return types.map((type) => ({ type, field: 'parent', fieldOn: 'child', multiple: false, selfRef: false }));
-}
+import { makeLevel, makeRelationship } from '../test-helpers';
 
 describe('Embedded nodes with parent-side relationships', () => {
   it('should create child nodes when heading anchor matches relationship type', () => {
@@ -19,16 +15,14 @@ describe('Embedded nodes with parent-side relationships', () => {
       pageTitle: 'Test Solution',
       pageType: 'Solutions',
       metadata: {
-        hierarchy: { levels: toHierarchyLevels(['Phases', 'Activities', 'Capabilities', 'Tools']) },
+        hierarchy: { levels: ['Phases', 'Activities', 'Capabilities', 'Tools'].map((t) => makeLevel(t)) },
         relationships: [
-          {
-            parent: 'Solutions',
-            type: 'Applications',
+          makeRelationship('Solutions', 'Applications', {
             field: 'applications',
             fieldOn: 'parent',
-            matchers: ['Applications'],
             multiple: true,
-          },
+            matchers: ['Applications'],
+          }),
         ],
       },
     });

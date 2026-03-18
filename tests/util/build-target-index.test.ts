@@ -1,19 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { buildTargetIndex } from '../../src/read/wikilink-utils';
-import type { SpaceNode } from '../../src/types';
-
-/**
- * Helper to build a test node
- */
-function makeNode(title: string, type: string, extra: Record<string, unknown> = {}, linkTargets?: string[]): SpaceNode {
-  return {
-    label: `${title}.md`,
-    schemaData: { title, type, ...extra },
-    linkTargets: linkTargets ?? [title],
-    resolvedParents: [],
-    resolvedType: type,
-  };
-}
+import { makeNode } from '../test-helpers';
 
 describe('buildTargetIndex', () => {
   describe('normalization bug - targets should be trimmed', () => {

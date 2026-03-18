@@ -119,5 +119,5 @@ export interface SchemaMetadata {
 }
 
 export interface SchemaWithMetadata extends SchemaObject {
-  $metadata?: SchemaMetadata;
+  metadata: SchemaMetadata;
 }

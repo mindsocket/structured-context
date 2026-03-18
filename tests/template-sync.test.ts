@@ -8,6 +8,7 @@ describe('template-sync - generateNewContent', () => {
   const schema: SchemaWithMetadata = {
     title: 'Test Schema',
     oneOf: [],
+    metadata: {},
   };
 
   const opportunityRelationships: Relationship[] = [

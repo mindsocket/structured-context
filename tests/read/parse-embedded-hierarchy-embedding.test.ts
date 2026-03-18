@@ -1,25 +1,14 @@
 import { describe, expect, it } from 'bun:test';
 import { extractEmbeddedNodes } from '../../src/read/parse-embedded';
 import type { HierarchyLevel } from '../../src/types';
+import { makeLevel, makeRelationship } from '../test-helpers';
 
 const HIERARCHY: HierarchyLevel[] = [
-  { type: 'phase', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-  { type: 'activity', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-  { type: 'capability', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-  {
-    type: 'application',
-    field: 'capabilities',
-    fieldOn: 'child',
-    multiple: true,
-    selfRef: false,
-  },
-  {
-    type: 'tool',
-    field: 'tools',
-    fieldOn: 'parent',
-    multiple: true,
-    selfRef: false,
-  },
+  makeLevel('phase'),
+  makeLevel('activity'),
+  makeLevel('capability'),
+  makeLevel('application', { field: 'capabilities', multiple: true }),
+  makeLevel('tool', { field: 'tools', fieldOn: 'parent', multiple: true }),
 ];
 
 describe('extractEmbeddedNodes - hierarchy embedding', () => {
@@ -46,16 +35,8 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 
   it('hierarchy child level matching with matchers creates new nodes', () => {
     const hierarchy: HierarchyLevel[] = [
-      { type: 'goal', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-      {
-        type: 'opportunity',
-        field: 'parent',
-        fieldOn: 'child',
-        multiple: false,
-        selfRef: false,
-        templateFormat: 'list',
-        matchers: ['Opportunities', 'User Opportunities'],
-      },
+      makeLevel('goal'),
+      makeLevel('opportunity', { templateFormat: 'list', matchers: ['Opportunities', 'User Opportunities'] }),
     ];
 
     const body = `
@@ -88,16 +69,7 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
       pageType: 'activity',
       metadata: {
         hierarchy: {
-          levels: [
-            { type: 'activity', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-            {
-              type: 'tool',
-              field: 'tools',
-              fieldOn: 'parent',
-              multiple: true,
-              selfRef: false,
-            },
-          ],
+          levels: [makeLevel('activity'), makeLevel('tool', { field: 'tools', fieldOn: 'parent', multiple: true })],
         },
       },
     });
@@ -135,21 +107,8 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 
   it('parent-level matching with matchers', () => {
     const capLevelWithMatchers: HierarchyLevel[] = [
-      {
-        type: 'capability',
-        field: 'parent',
-        fieldOn: 'child',
-        multiple: false,
-        selfRef: false,
-        matchers: ['Capabilities', 'Skills'],
-      },
-      {
-        type: 'application',
-        field: 'capabilities',
-        fieldOn: 'child',
-        multiple: true,
-        selfRef: false,
-      },
+      makeLevel('capability', { matchers: ['Capabilities', 'Skills'] }),
+      makeLevel('application', { field: 'capabilities', multiple: true }),
     ];
 
     const body = `
@@ -169,14 +128,8 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 
   it('mixed wikilink and text items: wikilinks populate field, text creates nodes', () => {
     const hierarchy: HierarchyLevel[] = [
-      { type: 'activity', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-      {
-        type: 'tool',
-        field: 'tools',
-        fieldOn: 'parent',
-        multiple: true,
-        selfRef: false,
-      },
+      makeLevel('activity'),
+      makeLevel('tool', { field: 'tools', fieldOn: 'parent', multiple: true }),
     ];
 
     const body = `
@@ -201,23 +154,11 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 
   it('Campaign in a Box pattern: both child and parent level sections work together', () => {
     const hierarchy: HierarchyLevel[] = [
-      { type: 'phase', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-      { type: 'activity', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-      { type: 'capability', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-      {
-        type: 'application',
-        field: 'capabilities',
-        fieldOn: 'child',
-        multiple: true,
-        selfRef: false,
-      },
-      {
-        type: 'tool',
-        field: 'tools',
-        fieldOn: 'parent',
-        multiple: true,
-        selfRef: false,
-      },
+      makeLevel('phase'),
+      makeLevel('activity'),
+      makeLevel('capability'),
+      makeLevel('application', { field: 'capabilities', multiple: true }),
+      makeLevel('tool', { field: 'tools', fieldOn: 'parent', multiple: true }),
     ];
 
     const body = `
@@ -251,10 +192,7 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
   });
 
   it('grouping flush on next heading: grouping heading emitted when non-list content follows', () => {
-    const hierarchy: HierarchyLevel[] = [
-      { type: 'goal', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-      { type: 'opportunity', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-    ];
+    const hierarchy: HierarchyLevel[] = [makeLevel('goal'), makeLevel('opportunity')];
 
     const body = `
 # My Goal [type:: goal]
@@ -283,14 +221,7 @@ Some paragraph content here.
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'goal',
-      metadata: {
-        hierarchy: {
-          levels: [
-            { type: 'goal', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-            { type: 'opportunity', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-          ],
-        },
-      },
+      metadata: { hierarchy: { levels: [makeLevel('goal'), makeLevel('opportunity')] } },
     });
 
     const opps = nodes.filter((n) => n.schemaData.type === 'opportunity');
@@ -299,18 +230,9 @@ Some paragraph content here.
   });
 
   it('hierarchy sibling section + relationship table work together', () => {
-    const hierarchy: HierarchyLevel[] = [
-      { type: 'goal', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-      { type: 'opportunity', field: 'parent', fieldOn: 'child', multiple: false, selfRef: false },
-    ];
+    const hierarchy: HierarchyLevel[] = [makeLevel('goal'), makeLevel('opportunity')];
     const relationships = [
-      {
-        parent: 'goal',
-        type: 'assumption',
-        templateFormat: 'table' as const,
-        matchers: ['Assumptions'],
-        multiple: true,
-      },
+      makeRelationship('goal', 'assumption', { templateFormat: 'table', matchers: ['Assumptions'], multiple: true }),
     ];
 
     const body = `
