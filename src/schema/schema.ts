@@ -18,19 +18,19 @@ import { isObject, resolveJsonPointer } from './schema-refs';
 
 const packageDir = dirname(fileURLToPath(import.meta.url));
 export const bundledSchemasDir = join(packageDir, '..', '..', 'schemas');
-/** Parsed JSON schema object — always a plain object (never a boolean schema). */
-type JsonSchemaObject = Record<string, unknown>;
 
-export function readRawSchema(schemaPath: string): JsonSchemaObject {
-  return JSON5.parse(readFileSync(resolve(schemaPath), 'utf-8')) as JsonSchemaObject;
+const validateMetadataContract = new Ajv().compile(OST_TOOLS_METADATA_SCHEMA);
+
+export function readRawSchema(schemaPath: string): AnySchemaObject {
+  return JSON5.parse(readFileSync(resolve(schemaPath), 'utf-8')) as AnySchemaObject;
 }
 
 /**
  * Build a registry of all schemas in the given directory, keyed by $id.
  * Only loads "partial" schemas (starting with _) and an optional target file.
  */
-function buildSchemaRegistry(dir: string, targetFile?: string): Map<string, JsonSchemaObject> {
-  const registry = new Map<string, JsonSchemaObject>();
+function buildSchemaRegistry(dir: string, targetFile?: string): Map<string, AnySchemaObject> {
+  const registry = new Map<string, AnySchemaObject>();
   if (!existsSync(dir)) return registry;
   for (const file of readdirSync(dir)) {
     if (!file.endsWith('.json')) continue;
@@ -50,12 +50,12 @@ function buildSchemaRegistry(dir: string, targetFile?: string): Map<string, Json
  * - Layer 2: schema's own dir (partials + target file) — overrides layer 1
  * Does not throw on $id collision; layer 2 silently wins.
  */
-export function buildFullRegistry(schemaPath: string): Map<string, JsonSchemaObject> {
+export function buildFullRegistry(schemaPath: string): Map<string, AnySchemaObject> {
   const absPath = resolve(schemaPath);
   const targetFile = basename(absPath);
   const targetDir = dirname(absPath);
 
-  const registry = new Map<string, JsonSchemaObject>();
+  const registry = new Map<string, AnySchemaObject>();
 
   // Layer 1: bundled schemas/ dir (partials only)
   for (const [id, schema] of buildSchemaRegistry(bundledSchemasDir)) {
@@ -79,16 +79,16 @@ export function buildFullRegistry(schemaPath: string): Map<string, JsonSchemaObj
   return registry;
 }
 
-function compileValidator(targetSchema: JsonSchemaObject, registry: Map<string, JsonSchemaObject>): ValidateFunction {
+function compileValidator(targetSchema: AnySchemaObject, registry: Map<string, AnySchemaObject>): ValidateFunction {
   const ajv = new Ajv();
   ajv.addKeyword({
     keyword: '$metadata',
     schemaType: 'object',
-    metaSchema: OST_TOOLS_METADATA_SCHEMA as unknown as JsonSchemaObject,
+    metaSchema: OST_TOOLS_METADATA_SCHEMA as unknown as AnySchemaObject,
     valid: true,
     errors: false,
   });
-  const metaSchema = OST_TOOLS_DIALECT_META_SCHEMA as unknown as JsonSchemaObject;
+  const metaSchema = OST_TOOLS_DIALECT_META_SCHEMA as unknown as AnySchemaObject;
   ajv.addSchema(metaSchema, OST_TOOLS_SCHEMA_META_ID);
 
   // Register all except target schema (AJV compiles targetSchema explicitly)
@@ -110,23 +110,31 @@ export function resolveNodeType(type: string, typeAliases: Record<string, string
 
 interface MetadataProvider {
   schemaId: string;
-  schema: JsonSchemaObject;
+  schema: AnySchemaObject;
   metadata: MetadataContract;
 }
 
 const RULE_CATEGORIES = new Set<RuleCategory>(['validation', 'coherence', 'workflow', 'best-practice']);
 const RULE_ALLOWED_KEYS = new Set(['id', 'category', 'description', 'check', 'type', 'scope', 'override']);
 
-function readTopLevelMetadata(schema: JsonSchemaObject): MetadataContract | undefined {
+function readTopLevelMetadata(schema: AnySchemaObject): MetadataContract | undefined {
   const metadata = schema.$metadata;
-  return isObject(metadata) ? (metadata as MetadataContract) : undefined;
+  if (!isObject(metadata)) return undefined;
+  if (!validateMetadataContract(metadata)) {
+    const schemaId = typeof schema.$id === 'string' ? schema.$id : '(unknown schema)';
+    const errors =
+      validateMetadataContract.errors?.map((e) => `${e.instancePath || '(root)'} ${e.message}`).join('; ') ??
+      'unknown error';
+    throw new Error(`Invalid $metadata in schema "${schemaId}": ${errors}`);
+  }
+  return metadata as MetadataContract;
 }
 
 function resolveRefTargetForRule(
   ref: string,
-  currentRootSchema: JsonSchemaObject,
-  registry: Map<string, JsonSchemaObject>,
-): { value: unknown; rootSchema: JsonSchemaObject; refKey: string } {
+  currentRootSchema: AnySchemaObject,
+  registry: Map<string, AnySchemaObject>,
+): { value: unknown; rootSchema: AnySchemaObject; refKey: string } {
   if (ref.startsWith('#')) {
     const pointer = ref.slice(1);
     const rootId = typeof currentRootSchema.$id === 'string' ? currentRootSchema.$id : '(root schema)';
@@ -176,13 +184,13 @@ function collectExternalRefIdsInOrder(schema: unknown): string[] {
 }
 
 function collectMetadataProviders(
-  rootSchema: JsonSchemaObject,
-  registry: Map<string, JsonSchemaObject>,
+  rootSchema: AnySchemaObject,
+  registry: Map<string, AnySchemaObject>,
 ): MetadataProvider[] {
   const providers: MetadataProvider[] = [];
   const visitedSchemaIds = new Set<string>();
 
-  const walk = (schema: JsonSchemaObject): void => {
+  const walk = (schema: AnySchemaObject): void => {
     const refs = collectExternalRefIdsInOrder(schema);
     for (const schemaId of refs) {
       if (visitedSchemaIds.has(schemaId)) continue;
@@ -239,7 +247,7 @@ function isMetadataRule(value: unknown): value is Rule {
 function resolveRuleEntries(
   ruleEntry: RuleEntry,
   provider: MetadataProvider,
-  registry: Map<string, JsonSchemaObject>,
+  registry: Map<string, AnySchemaObject>,
   stack: Set<string>,
 ): Rule[] {
   if (isMetadataRule(ruleEntry)) {
@@ -313,7 +321,7 @@ function areRulesEquivalent(left: Rule, right: Rule): boolean {
   return isDeepStrictEqual(normalizeRule(left), normalizeRule(right));
 }
 
-function extractMetadata(schema: JsonSchemaObject, registry: Map<string, JsonSchemaObject>): SchemaMetadata {
+function extractMetadata(schema: AnySchemaObject, registry: Map<string, AnySchemaObject>): SchemaMetadata {
   const metadataProviders = collectMetadataProviders(schema, registry);
 
   let hierarchyProvider: string | undefined;
@@ -420,10 +428,10 @@ export interface LoadedSchema {
 export function loadSchema(schemaPath: string): LoadedSchema {
   const rawSchema = readRawSchema(schemaPath);
   const registry = buildFullRegistry(schemaPath);
-  const schema: SchemaWithMetadata = { ...rawSchema, metadata: extractMetadata(rawSchema, registry) };
+  const schema = { ...rawSchema, metadata: extractMetadata(rawSchema, registry) } as unknown as SchemaWithMetadata;
   return {
     schema,
-    registry: registry as Map<string, AnySchemaObject>,
+    registry,
     validator: compileValidator(rawSchema, registry),
   };
 }
