@@ -7,10 +7,10 @@ import JSON5 from 'json5';
 import type { HierarchyLevel, RuleCategory, SchemaMetadata } from '../types';
 import {
   type MetadataContract,
+  type MetadataContractRelationship,
   OST_TOOLS_DIALECT_META_SCHEMA,
   OST_TOOLS_METADATA_SCHEMA,
   OST_TOOLS_SCHEMA_META_ID,
-  type Relationship,
   type Rule,
   type RuleEntry,
 } from './metadata-contract';
@@ -327,7 +327,7 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
   let mergedHierarchy: MetadataContract['hierarchy'] | undefined;
   const mergedAliases: Record<string, string> = {};
   const mergedRules = new Map<string, { providerId: string; rule: Rule }>();
-  const mergedRelationships: Relationship[] = [];
+  const mergedRelationships: MetadataContractRelationship[] = [];
 
   for (const provider of metadataProviders) {
     if (provider.metadata.hierarchy) {
@@ -402,6 +402,14 @@ export function loadMetadata(schemaPath: string): SchemaMetadata {
         : undefined,
     typeAliases: Object.keys(mergedAliases).length > 0 ? mergedAliases : undefined,
     rules: mergedRules.size > 0 ? [...mergedRules.values()].map(({ rule }) => normalizeRule(rule)) : undefined,
-    relationships: mergedRelationships.length > 0 ? mergedRelationships : undefined,
+    relationships:
+      mergedRelationships.length > 0
+        ? mergedRelationships.map((rel) => ({
+            ...rel,
+            field: rel.field ?? 'parent',
+            fieldOn: rel.fieldOn === 'parent' ? 'parent' : ('child' as const),
+            multiple: rel.multiple ?? false,
+          }))
+        : undefined,
   };
 }

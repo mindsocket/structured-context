@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { extractEmbeddedNodes } from '../../src/read/parse-embedded';
-import type { Relationship } from '../../src/schema/metadata-contract';
-import type { HierarchyLevel } from '../../src/types';
+import type { HierarchyLevel, Relationship } from '../../src/types';
 
 function toHierarchyLevels(types: string[]): HierarchyLevel[] {
   return types.map((type) => ({ type, field: 'parent', fieldOn: 'child', multiple: false, selfRef: false }));
@@ -15,6 +14,8 @@ describe('extractEmbeddedNodes - relationships', () => {
       {
         parent: 'opportunity',
         type: 'assumption',
+        field: 'parent',
+        fieldOn: 'child',
         templateFormat: 'table',
         matchers: ['Assumptions'],
         embeddedTemplateFields: ['assumption', 'status'],
@@ -72,6 +73,8 @@ describe('extractEmbeddedNodes - relationships', () => {
       {
         parent: 'opportunity',
         type: 'problem_statement',
+        field: 'parent',
+        fieldOn: 'child',
         templateFormat: 'heading',
         matchers: ['What problem are we solving?'],
         multiple: false,
@@ -101,6 +104,8 @@ Our users are sad.
       {
         parent: 'opportunity',
         type: 'solution',
+        field: 'parent',
+        fieldOn: 'child',
         templateFormat: 'list',
         matchers: ['Possible Solutions'],
         multiple: true,
@@ -131,6 +136,8 @@ Our users are sad.
       {
         parent: 'opportunity',
         type: 'assumption',
+        field: 'parent',
+        fieldOn: 'child',
         templateFormat: 'table',
         matchers: ['/assum.*/'],
         embeddedTemplateFields: ['assumption', 'status'],
@@ -163,6 +170,8 @@ Our users are sad.
       {
         parent: 'opportunity',
         type: 'assumption',
+        field: 'parent',
+        fieldOn: 'child',
         templateFormat: 'table',
         matchers: [],
         embeddedTemplateFields: ['assumption', 'status'],

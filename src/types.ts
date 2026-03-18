@@ -1,5 +1,10 @@
 import type { SchemaObject } from 'ajv';
-import type { MetadataContractHierarchyLevel, Relationship, Rule, SharedEdgeFields } from './schema/metadata-contract';
+import type {
+  MetadataContractHierarchyLevel,
+  MetadataContractRelationship,
+  Rule,
+  SharedEdgeFields,
+} from './schema/metadata-contract';
 
 /**
  * Minimal normalized edge for graph resolution.
@@ -19,6 +24,16 @@ export type HierarchyLevel = Omit<MetadataContractHierarchyLevel, 'field' | 'fie
   fieldOn: 'child' | 'parent';
   multiple: boolean;
   selfRef: boolean;
+};
+
+/**
+ * Normalized relationship — edge routing fields are required after schema.ts normalization.
+ * The raw schema input type is MetadataContractRelationship (optional edge fields).
+ */
+export type Relationship = Omit<MetadataContractRelationship, 'field' | 'fieldOn' | 'multiple'> & {
+  field: string;
+  fieldOn: 'child' | 'parent';
+  multiple: boolean;
 };
 
 /**

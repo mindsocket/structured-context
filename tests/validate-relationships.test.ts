@@ -20,6 +20,9 @@ describe('validateGraph - Relationships', () => {
       {
         parent: 'opportunity',
         type: 'assumption',
+        field: 'parent',
+        fieldOn: 'child',
+        multiple: false,
         templateFormat: 'table',
       },
     ],
@@ -84,6 +87,7 @@ describe('validateGraph - Relationships', () => {
           type: 'assumption',
           field: 'linked_opportunity',
           fieldOn: 'child',
+          multiple: false,
         },
       ],
     } as SchemaMetadata;
@@ -113,6 +117,7 @@ describe('validateGraph - Relationships', () => {
           type: 'assumption',
           field: 'linked_opportunity',
           fieldOn: 'child',
+          multiple: false,
         },
       ],
     } as SchemaMetadata;

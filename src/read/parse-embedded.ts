@@ -5,9 +5,16 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { applyFieldMap } from '../config';
-import type { Relationship, SharedEmbeddingFields } from '../schema/metadata-contract';
+import type { SharedEmbeddingFields } from '../schema/metadata-contract';
 import { resolveNodeType } from '../schema/schema';
-import type { EdgeDefinition, HierarchyLevel, SchemaMetadata, SpaceNode, SpaceOnAPageDiagnostics } from '../types';
+import type {
+  EdgeDefinition,
+  HierarchyLevel,
+  Relationship,
+  SchemaMetadata,
+  SpaceNode,
+  SpaceOnAPageDiagnostics,
+} from '../types';
 
 /** Type values that identify a space_on_a_page container (not themselves space nodes). */
 export const ON_A_PAGE_TYPES = ['ost_on_a_page', 'space_on_a_page'];
@@ -378,9 +385,9 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     return {
       parent: rel.parent,
       type: rel.type,
-      field: rel.field ?? 'parent',
-      fieldOn: rel.fieldOn === 'parent' ? 'parent' : 'child',
-      multiple: rel.multiple ?? false,
+      field: rel.field,
+      fieldOn: rel.fieldOn,
+      multiple: rel.multiple,
       templateFormat: (rel.templateFormat as EmbeddingDefinition['templateFormat']) ?? 'heading',
       source: 'relationship',
       matchers: rel.matchers,

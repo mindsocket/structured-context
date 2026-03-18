@@ -5,10 +5,9 @@ import { glob } from 'glob';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
 import { invertFieldMap } from '../config';
-import type { Relationship } from '../schema/metadata-contract';
-import { buildFullRegistry, readRawSchema } from '../schema/schema';
+import { buildFullRegistry, loadMetadata, readRawSchema } from '../schema/schema';
 import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
-import type { HierarchyLevel, SchemaWithMetadata } from '../types';
+import type { HierarchyLevel, Relationship, SchemaMetadata, SchemaWithMetadata } from '../types';
 
 export interface TypeVariant {
   required: string[];
@@ -75,6 +74,7 @@ function commentedHint(
 export function getTypeVariants(
   schema: SchemaWithMetadata,
   registry: Map<string, AnySchemaObject>,
+  metadata: SchemaMetadata,
 ): Map<string, TypeVariant> {
   const map = new Map<string, TypeVariant>();
   for (const variant of schema.oneOf) {
@@ -92,10 +92,10 @@ export function getTypeVariants(
     const example = variant.examples[0] as Record<string, string | number | boolean>;
     const description = (variant as { description?: string }).description;
 
-    const allRelationships = schema.$metadata?.relationships || [];
+    const allRelationships = metadata.relationships ?? [];
     const typeRelationships = allRelationships.filter((rel) => rel.parent === typeName);
 
-    const allLevels = schema.$metadata?.hierarchy?.levels ?? [];
+    const allLevels = metadata.hierarchy?.levels ?? [];
     const typeIdx = allLevels.findIndex((l) => l.type === typeName);
     const hierarchyChildren: HierarchyLevel[] =
       typeIdx !== -1 && typeIdx < allLevels.length - 1
@@ -265,8 +265,9 @@ export async function templateSync(
 
   // Build schema registry for cross-file $ref resolution
   const registry = buildFullRegistry(options.schema);
+  const metadata = loadMetadata(options.schema);
 
-  const typeVariants = getTypeVariants(schema, registry);
+  const typeVariants = getTypeVariants(schema, registry, metadata);
   const matchedTypes = new Set<string>();
 
   const files = await glob('*.md', { cwd: templateDir, absolute: true });

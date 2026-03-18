@@ -129,7 +129,7 @@ export const OST_TOOLS_DIALECT_META_SCHEMA = {
 
 export type MetadataContract = FromSchema<typeof OST_TOOLS_METADATA_SCHEMA>;
 export type MetadataContractHierarchyLevel = FromSchema<typeof HIERARCHY_LEVEL_SCHEMA>;
-export type Relationship = FromSchema<typeof RELATIONSHIP_SCHEMA>;
+export type MetadataContractRelationship = FromSchema<typeof RELATIONSHIP_SCHEMA>;
 export type SharedEdgeFields = FromSchema<typeof EDGE_SCHEMA>;
 export type SharedEmbeddingFields = FromSchema<typeof EMBEDDING_SCHEMA>;
 export type Rule = FromSchema<typeof RULE_SCHEMA>;

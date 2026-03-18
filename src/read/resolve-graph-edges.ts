@@ -1,6 +1,5 @@
-import type { Relationship } from '../schema/metadata-contract';
 import { resolveNodeType } from '../schema/schema';
-import type { EdgeDefinition, HierarchyLevel, ResolvedParentRef, SpaceNode } from '../types';
+import type { EdgeDefinition, HierarchyLevel, Relationship, ResolvedParentRef, SpaceNode } from '../types';
 import { buildTargetIndex, wikilinkToTarget } from './wikilink-utils';
 
 /**
@@ -163,9 +162,9 @@ export function resolveGraphEdges(
     const edge: EdgeDefinition = {
       type: rel.type,
       parent: rel.parent,
-      field: rel.field ?? 'parent',
-      fieldOn: rel.fieldOn ?? 'child',
-      multiple: rel.multiple ?? false,
+      field: rel.field,
+      fieldOn: rel.fieldOn,
+      multiple: rel.multiple,
     };
     resolveEdge(nodesByType, targetIndex, edge, 'relationship', rel.type === rel.parent, typeAliases);
   }

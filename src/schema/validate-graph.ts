@@ -79,8 +79,7 @@ export function validateGraph(nodes: SpaceNode[], metadata: SchemaMetadata): Gra
   for (const rel of relationships) {
     const nodeTypeWithField = rel.fieldOn === 'parent' ? rel.parent : rel.type;
     const expectedTargetType = rel.fieldOn === 'parent' ? rel.type : rel.parent;
-    const field = rel.field ?? 'parent';
-    const multiple = rel.multiple ?? rel.fieldOn === 'parent';
+    const { field, multiple } = rel;
 
     validateFieldReferences(
       nodes,

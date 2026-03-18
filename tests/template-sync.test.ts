@@ -2,39 +2,44 @@ import { describe, expect, it } from 'bun:test';
 import type { AnySchemaObject } from 'ajv';
 import type { TypeVariant } from '../src/commands/template-sync';
 import { generateNewContent } from '../src/commands/template-sync';
-import type { SchemaWithMetadata } from '../src/types';
+import type { Relationship, SchemaWithMetadata } from '../src/types';
 
 describe('template-sync - generateNewContent', () => {
   const schema: SchemaWithMetadata = {
     title: 'Test Schema',
     oneOf: [],
-    $metadata: {
-      relationships: [
-        {
-          parent: 'opportunity',
-          type: 'assumption',
-          templateFormat: 'table',
-          matchers: ['Assumptions'],
-          embeddedTemplateFields: ['assumption', 'status'],
-          multiple: true,
-        },
-        {
-          parent: 'opportunity',
-          type: 'problem_statement',
-          templateFormat: 'heading',
-          matchers: ['What problem are we solving?'],
-          multiple: false,
-        },
-        {
-          parent: 'opportunity',
-          type: 'solution',
-          templateFormat: 'list',
-          matchers: ['Solutions'],
-          multiple: true,
-        },
-      ],
-    },
   };
+
+  const opportunityRelationships: Relationship[] = [
+    {
+      parent: 'opportunity',
+      type: 'assumption',
+      field: 'parent',
+      fieldOn: 'child',
+      multiple: true,
+      templateFormat: 'table',
+      matchers: ['Assumptions'],
+      embeddedTemplateFields: ['assumption', 'status'],
+    },
+    {
+      parent: 'opportunity',
+      type: 'problem_statement',
+      field: 'parent',
+      fieldOn: 'child',
+      multiple: false,
+      templateFormat: 'heading',
+      matchers: ['What problem are we solving?'],
+    },
+    {
+      parent: 'opportunity',
+      type: 'solution',
+      field: 'parent',
+      fieldOn: 'child',
+      multiple: true,
+      templateFormat: 'list',
+      matchers: ['Solutions'],
+    },
+  ];
 
   const variant: TypeVariant = {
     required: [],
@@ -44,7 +49,7 @@ describe('template-sync - generateNewContent', () => {
     },
     example: { type: 'opportunity' },
     description: 'An opportunity',
-    relationships: schema.$metadata!.relationships!.filter((r) => r.parent === 'opportunity'),
+    relationships: opportunityRelationships,
     hierarchyChildren: [],
   };
 
