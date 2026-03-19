@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
-import { glob } from 'glob';
+import { Glob } from 'bun';
 import matter from 'gray-matter';
 import { applyFieldMap, loadConfig, resolveSchema } from '../config';
 import { loadMetadata, resolveNodeType } from '../schema/schema';
@@ -77,7 +77,7 @@ export async function readSpaceDirectory(
   const templateDir = options?.templateDir ?? space?.templateDir ?? config.templateDir;
   const absoluteTemplateDir = templateDir ? resolve(templateDir) : undefined;
 
-  const files = await glob('**/*.md', { cwd: directory, absolute: false, follow: true });
+  const files = await Array.fromAsync(new Glob('**/*.md').scan({ cwd: directory, followSymlinks: true }));
   const nodes: SpaceNode[] = [];
   const skipped: string[] = [];
   const nonSpace: string[] = [];

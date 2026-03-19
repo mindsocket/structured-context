@@ -1,4 +1,4 @@
-import JSON5 from 'json5';
+import { JSON5 } from 'bun';
 import { readSpace } from '../read/read-space';
 
 export async function dump(path: string) {

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
-import { glob } from 'glob';
+import { Glob } from 'bun';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
 import { invertFieldMap } from '../config';
@@ -265,7 +265,7 @@ export async function templateSync(
   const typeVariants = getTypeVariants(schema, registry);
   const matchedTypes = new Set<string>();
 
-  const files = await glob('*.md', { cwd: templateDir, absolute: true });
+  const files = await Array.fromAsync(new Glob('*.md').scan({ cwd: templateDir, absolute: true }));
   const dryRun = options.dryRun ?? false;
   let filesModified = 0;
   let filesCreated = 0;

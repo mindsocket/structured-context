@@ -3,7 +3,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import Ajv, { type AnySchemaObject, type ValidateFunction } from 'ajv';
-import JSON5 from 'json5';
+import { JSON5 } from 'bun';
 import type { HierarchyLevel, RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
 import {
   type MetadataContract,

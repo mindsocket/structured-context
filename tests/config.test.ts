@@ -1,8 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import JSON5 from 'json5';
-import { loadConfig, setConfigPath, updateSpaceField } from '../src/config';
+import { JSON5 } from 'bun';
+import { type Config, loadConfig, setConfigPath, updateSpaceField } from '../src/config';
 
 const testDir = join(process.cwd(), 'tmp-config-test');
 const mainConfigPath = join(testDir, 'main-config.json');
@@ -300,11 +300,11 @@ describe('loadConfig with includeSpacesFrom', () => {
     updateSpaceField('included-space', 'miroFrameId', 'new-frame-id');
 
     // Verify the included config file was updated
-    const updatedConfig = JSON5.parse(readFileSync(otherConfigPath, 'utf-8'));
+    const updatedConfig = JSON5.parse(readFileSync(otherConfigPath, 'utf-8')) as Config;
     expect(updatedConfig.spaces[0].miroFrameId).toBe('new-frame-id');
 
     // Verify the main config was not modified
-    const mainConfig = JSON5.parse(readFileSync(mainConfigPath, 'utf-8'));
+    const mainConfig = JSON5.parse(readFileSync(mainConfigPath, 'utf-8')) as Config;
     expect(mainConfig.spaces[0].name).toBe('main-space');
   });
 });
