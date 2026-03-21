@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
-import { resolveGraphEdges } from '../src/read/resolve-graph-edges';
-import { validateGraph } from '../src/schema/validate-graph';
-import type { SchemaMetadata } from '../src/types';
-import { makeLevel, makeNode, makeRelationship } from './test-helpers';
+import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
+import { validateGraph } from '../../src/schema/validate-graph';
+import type { SchemaMetadata } from '../../src/types';
+import { makeLevel, makeNode, makeRelationship } from '../test-helpers';
 
 describe('validateGraph - Relationships', () => {
   const metadata: SchemaMetadata = {

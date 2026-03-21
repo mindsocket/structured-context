@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv from 'ajv';
 import { JSON5 } from 'bun';
+import { normalizePluginName } from './plugins/util';
 import { bundledSchemasDir } from './schema/schema';
 
 const CONFIG_SCHEMA = {
@@ -16,48 +17,36 @@ const CONFIG_SCHEMA = {
           name: { type: 'string', pattern: '^[a-z0-9_-]+$' },
           path: { type: 'string' },
           schema: { type: 'string' },
-          templateDir: { type: 'string' },
-          templatePrefix: { type: 'string' },
           miroBoardId: { type: 'string' },
           miroFrameId: { type: 'string' },
-          fieldMap: { type: 'object', additionalProperties: { type: 'string' } },
+          plugins: { type: 'object', additionalProperties: { type: 'object' } },
         },
         required: ['name', 'path'],
         additionalProperties: false,
       },
     },
     schema: { type: 'string' },
-    templateDir: { type: 'string' },
-    templatePrefix: { type: 'string' },
     includeSpacesFrom: { type: 'array', items: { type: 'string' } },
   },
   required: ['spaces'],
   additionalProperties: false,
 };
 
-export interface SpaceConfig {
+export type SpaceConfig = {
   name: string;
   path: string;
   schema?: string;
-  templateDir?: string;
-  templatePrefix?: string;
   miroBoardId?: string;
   miroFrameId?: string;
-  /**
-   * Maps file/frontmatter field names to canonical field names expected by the schema.
-   * Applied on read (frontmatter → schemaData) and reversed on write (template-sync).
-   * Example: { "record_type": "type" } renames `record_type` in files to `type` internally.
-   */
-  fieldMap?: Record<string, string>;
-}
+  /** Plugin name → plugin config map. Overrides top-level plugins when set. */
+  plugins?: Record<string, Record<string, unknown>>;
+};
 
-export interface Config {
+export type Config = {
   spaces: SpaceConfig[];
   schema?: string;
-  templateDir?: string;
-  templatePrefix?: string;
   includeSpacesFrom?: string[];
-}
+};
 
 let _configPathOverride: string | undefined;
 const _spaceSourceFiles = new Map<string, string>();
@@ -92,6 +81,13 @@ export function configPath(): string {
   return xdgPath;
 }
 
+function normalizePlugins(
+  plugins: Record<string, Record<string, unknown>> | undefined,
+): Record<string, Record<string, unknown>> | undefined {
+  if (!plugins) return undefined;
+  return Object.fromEntries(Object.entries(plugins).map(([name, cfg]) => [normalizePluginName(name), cfg]));
+}
+
 function resolveRelativePaths(config: Config, configDir: string): Config {
   const rel = (p: string | undefined): string | undefined => {
     if (!p || isAbsolute(p)) return p;
@@ -100,12 +96,11 @@ function resolveRelativePaths(config: Config, configDir: string): Config {
   return {
     ...config,
     schema: rel(config.schema),
-    templateDir: rel(config.templateDir),
     spaces: config.spaces.map((s) => ({
       ...s,
       path: rel(s.path)!,
       schema: rel(s.schema),
-      templateDir: rel(s.templateDir),
+      plugins: normalizePlugins(s.plugins),
     })),
   };
 }
@@ -174,46 +169,6 @@ export function getSpaceConfig(name: string, config: Config): SpaceConfig {
 /** Resolve schema path: CLI arg > space-level config > global config > hardcoded default. */
 export function resolveSchema(cliArg: string | undefined, config: Config, space?: SpaceConfig): string {
   return cliArg ?? space?.schema ?? config.schema ?? join(bundledSchemasDir, 'general.json');
-}
-
-export interface TemplateSettings {
-  templateDir: string;
-  templatePrefix: string;
-}
-
-/** Resolve template settings: space-level config > global config. */
-export function resolveTemplateSettings(config: Config, space?: SpaceConfig): TemplateSettings {
-  const templateDir = space?.templateDir ?? config.templateDir;
-  if (!templateDir) {
-    throw new Error('templateDir not found in config (global or per-space)');
-  }
-  const templatePrefix = space?.templatePrefix ?? config.templatePrefix ?? '';
-  return { templateDir, templatePrefix };
-}
-
-/**
- * Apply field remapping to a data object.
- * Renames keys according to fieldMap (file field name → canonical field name).
- * Fields not in the map are passed through unchanged.
- */
-export function applyFieldMap(
-  data: Record<string, unknown>,
-  fieldMap: Record<string, string> | undefined,
-): Record<string, unknown> {
-  if (!fieldMap || Object.keys(fieldMap).length === 0) return data;
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data)) {
-    result[fieldMap[key] ?? key] = value;
-  }
-  return result;
-}
-
-/**
- * Invert a fieldMap (file→canonical) to produce a reverse map (canonical→file).
- * Used for write operations (e.g. template-sync) to translate back to file field names.
- */
-export function invertFieldMap(fieldMap: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(fieldMap).map(([src, canonical]) => [canonical, src]));
 }
 
 type StringFields<T> = { [K in keyof T]: T[K] extends string | undefined ? K : never }[keyof T];

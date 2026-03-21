@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
-import { extractEmbeddedNodes } from '../../src/read/parse-embedded';
-import type { HierarchyLevel } from '../../src/types';
-import { makeLevel, makeRelationship } from '../test-helpers';
+import { extractEmbeddedNodes } from '../../../src/plugins/markdown/parse-embedded';
+import type { HierarchyLevel } from '../../../src/types';
+import { makeLevel, makeRelationship } from '../../test-helpers';
 
 const HIERARCHY: HierarchyLevel[] = [
   makeLevel('phase'),

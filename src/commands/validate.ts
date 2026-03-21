@@ -21,8 +21,7 @@ interface ValidationResult {
   ruleViolations: RuleViolation[];
   hierarchyViolations: GraphViolation[];
   orphanCount: number;
-  skipped: string[];
-  nonSpace: string[];
+  parseIgnored: string[];
 }
 
 /**
@@ -130,17 +129,12 @@ function formatErrors(
   return formatted;
 }
 
-export async function validate(path: string, options: { schema: string; templateDir?: string }): Promise<number> {
+export async function validate(path: string, options: { schema: string }): Promise<number> {
   const { schema, registry, validator } = loadSchema(options.schema);
   const metadata = schema.metadata;
 
-  const readResult = await readSpace(path, {
-    schemaPath: options.schema,
-    templateDir: options.templateDir,
-  });
-  const { nodes } = readResult;
-  const skipped = readResult.kind === 'directory' ? readResult.skipped : [];
-  const nonSpace = readResult.kind === 'directory' ? readResult.nonSpace : [];
+  const readResult = await readSpace(path, { schemaPath: options.schema });
+  const { nodes, parseIgnored } = readResult;
 
   const result: ValidationResult = {
     validCount: 0,
@@ -151,8 +145,7 @@ export async function validate(path: string, options: { schema: string; template
     ruleViolations: [],
     hierarchyViolations: [],
     orphanCount: 0,
-    skipped,
-    nonSpace: nonSpace,
+    parseIgnored: parseIgnored || [],
   };
 
   for (const node of nodes) {
@@ -236,18 +229,11 @@ export async function validate(path: string, options: { schema: string; template
   console.log(fmt('  Rule violations', result.ruleViolations.length, true));
   console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
   console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphanCount, true, true));
-  console.log('Skipped');
-  console.log(fmt('  No frontmatter', result.skipped.length, true, true));
-  console.log(fmt('  No type field', result.nonSpace.length, true, true));
+  console.log(fmt('  Ignored during parsing', result.parseIgnored.length, true, true));
 
-  if (result.skipped.length > 0) {
-    console.log(`\nSkipped files (no frontmatter):`);
-    for (const f of result.skipped) console.log(`   ${f}`);
-  }
-
-  if (result.nonSpace.length > 0) {
-    console.log(`\nNon-space files (no type field):`);
-    for (const f of result.nonSpace) console.log(`   ${f}`);
+  if (result.parseIgnored.length > 0) {
+    console.log(`\nIgnored during parsing:`);
+    for (const f of result.parseIgnored) console.log(`   ${f}`);
   }
 
   if (result.nodeErrors.length > 0) {

@@ -54,6 +54,7 @@ dump          Output parsed node data as JSON
 diagram       Generate Mermaid diagram
 miro-sync     Sync to Miro board (requires MIRO_TOKEN env var + miroBoardId in config)
 template-sync Sync Obsidian templates from schema examples
+plugins       List available plugins
 ```
 
 Run `bunx ost-tools --help` or `bunx ost-tools <command> --help` for flags.
@@ -93,6 +94,33 @@ what the rule actually sees in the `current` object, then adjust the rule in the
 | `must have property 'X'` | Required schema property missing | Check `schemas show --space` to see required properties |
 | `could not find node '[[Title]]'` | Broken wikilink | Fix the title in the link or ensure the target file exists and has that title |
 | `JSONata error: ...` | Syntax error in schema `$metadata.rules` | Verify the expression with `dump` and a JSONata tester |
+
+## Plugins
+
+ost-tools supports **plugins** for extending capabilities. Currently, parse plugins allow reading spaces from sources other than markdown (which is a built-in plugin).
+
+Declare plugins in config as a of plugin name → config object:
+
+```json
+{
+  "spaces": [
+    {
+      "name": "PDFSpace",
+      "path": "https://...",
+      "plugins": {
+        "ost-tools-pdf": { "baseUrl": "https://example.pdfstore.net" }
+      }
+    }
+  ]
+}
+```
+
+All plugin names must start with `ost-tools-` (the prefix is optional in config and normalised on load). External plugins are resolved in order: config-adjacent (`{configDir}/plugins/{name}`), then npm.
+
+**Markdown plugin config** (under `plugins.markdown` in a space entry):
+- `templateDir` — directory for template files used by `template-sync`, and to exclude templates when parsing and validating
+- `templatePrefix` — filename prefix for templates (default blank)
+- `fieldMap` — maps file field names to canonical schema field names (e.g. `{ "record_type": "type" }`)
 
 ## References
 

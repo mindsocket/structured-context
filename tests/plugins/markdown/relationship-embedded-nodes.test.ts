@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { extractEmbeddedNodes } from '../../src/read/parse-embedded';
-import { makeLevel, makeRelationship } from '../test-helpers';
+import { extractEmbeddedNodes } from '../../../src/plugins/markdown/parse-embedded';
+import { makeLevel, makeRelationship } from '../../test-helpers';
 
 describe('Embedded nodes with parent-side relationships', () => {
   it('should create child nodes when heading anchor matches relationship type', () => {

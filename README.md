@@ -40,6 +40,32 @@ See `config.example.json` for the full structure. The config maps space names to
 
 **Including spaces from other configs:** Use `includeSpacesFrom` to import space definitions from other config files. This is useful for aggregating spaces from multiple projects into a central config, reducing the need to specify `--config` on CLI commands. Duplicate space names are not allowed.
 
+**Plugins:** Use `plugins` to load parse plugins that read spaces from non-markdown sources. The built-in markdown plugin is always available without any declaration. Plugins are tried in order; the first to return a result wins. The `plugins` field is a map of plugin name to plugin config, and can be declared at the top level (applies to all spaces) or per-space (overrides the top level):
+
+```json
+{
+  "spaces": [
+    {
+      "name": "ProductX",
+      "path": "/path/to/space",
+      "plugins": {
+        "markdown": { "fieldMap": { "record_type": "type" } }
+      }
+    }
+  ],
+  "plugins": {
+    "ost-tools-confluence": { "baseUrl": "https://example.atlassian.net" }
+  }
+}
+```
+
+All plugin names must start with `ost-tools-` (the prefix is optional in config and normalised on load). The special name `markdown` refers to the built-in markdown plugin. External plugins are resolved in order: config-adjacent (`{configDir}/plugins/{name}`), then npm. Each plugin must export a `configSchema` JSON Schema; config is validated against it on load. Fields annotated `format: 'path'` in a plugin's `configSchema` are resolved relative to the config file directory.
+
+**Markdown plugin config** fields (set under `plugins.markdown` per space):
+- `templateDir` — directory containing template files (used by `template-sync`)
+- `templatePrefix` — filename prefix for templates (default blank)
+- `fieldMap` — maps file/frontmatter field names to canonical schema field names (e.g. `{ "record_type": "type" }`)
+
 ### Spaces
 
 A space is a named directory or single file registered in the config. Spaces let you reference content by name instead of path:
@@ -228,7 +254,7 @@ ost-tools template-sync [--space name] [--schema path/to/my-schema.json] [--crea
 Keeps Obsidian template files in sync with schema examples:
 - Matches markdown files in the template directory (defined in config) by `type` field
 - Rewrites frontmatter using description fields and property `examples`
-- `templatePrefix` in config (default blank) sets a naming convention for templates (`{templatePrefix}{type}.md`). This will be used to check existing filenames, and create new templates with `--create-missing`.
+- `templatePrefix` in `plugins.markdown` config (default blank) sets a naming convention for templates (`{templatePrefix}{type}.md`). This will be used to check existing filenames, and create new templates with `--create-missing`.
 - `--dry-run` previews changes without writing files
 
 ## Development

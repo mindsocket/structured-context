@@ -1,16 +1,17 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
-import { readSpaceOnAPage } from '../../src/read/read-space';
-import type { SpaceOnAPageReadResult } from '../../src/types';
+import { readSpaceOnAPage } from '../../../src/plugins/markdown/read-space';
+import type { ParseResult } from '../../../src/plugins/util';
+import { loadSpaceContext } from '../../../src/read/context';
 
-const VALID_PAGE = join(import.meta.dir, '..', 'fixtures/general/on-a-page-valid.md');
-const SKIP_PAGE = join(import.meta.dir, '..', 'fixtures/general/on-a-page-heading-skip.md');
+const VALID_PAGE = join(import.meta.dir, '../../fixtures/general/on-a-page-valid.md');
+const SKIP_PAGE = join(import.meta.dir, '../../fixtures/general/on-a-page-heading-skip.md');
 
 describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
-  let result: SpaceOnAPageReadResult;
+  let result: ParseResult;
 
   beforeAll(() => {
-    result = readSpaceOnAPage(VALID_PAGE);
+    result = readSpaceOnAPage(loadSpaceContext(VALID_PAGE));
   });
 
   describe('heading type inference', () => {
@@ -101,11 +102,11 @@ describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
 
   describe('preamble and terminator', () => {
     it('counts at least one preamble node', () => {
-      expect(result.diagnostics.preambleNodeCount).toBeGreaterThanOrEqual(1);
+      expect(result.diagnostics?.preambleNodeCount).toBeGreaterThanOrEqual(1);
     });
 
     it('records Archived Vision in terminatedHeadings', () => {
-      expect(result.diagnostics.terminatedHeadings).toContain('Archived Vision');
+      expect(result.diagnostics?.terminatedHeadings).toContain('Archived Vision');
     });
 
     it('does not include Archived Vision in nodes', () => {
@@ -116,14 +117,14 @@ describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
 
   describe('heading level skip error', () => {
     it('throws when heading level is skipped (H1 to H3)', () => {
-      expect(() => readSpaceOnAPage(SKIP_PAGE)).toThrow(/Heading level skipped/);
+      expect(() => readSpaceOnAPage(loadSpaceContext(SKIP_PAGE))).toThrow(/Heading level skipped/);
     });
   });
 
   describe('typed file rejection', () => {
     it('throws when given a typed node file instead of space_on_a_page', () => {
-      const typedFile = join(import.meta.dir, '..', 'fixtures/general/valid-ost/Personal Vision.md');
-      expect(() => readSpaceOnAPage(typedFile)).toThrow(/Expected a space_on_a_page file/);
+      const typedFile = join(import.meta.dir, '../../fixtures/general/valid-ost/Personal Vision.md');
+      expect(() => readSpaceOnAPage(loadSpaceContext(typedFile))).toThrow(/Expected a space_on_a_page file/);
     });
   });
 });
