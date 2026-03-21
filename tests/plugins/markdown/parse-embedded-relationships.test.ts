@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
-import { extractEmbeddedNodes } from '../../src/read/parse-embedded';
-import type { Relationship } from '../../src/types';
-import { makeLevel } from '../test-helpers';
+import { extractEmbeddedNodes } from '../../../src/plugins/markdown/parse-embedded';
+import type { Relationship } from '../../../src/types';
+import { makeLevel } from '../../test-helpers';
 
 describe('extractEmbeddedNodes - relationships', () => {
   const hierarchy = ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'];

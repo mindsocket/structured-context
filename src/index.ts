@@ -6,20 +6,15 @@ import chokidar from 'chokidar';
 import { Command } from 'commander';
 import { diagram } from './commands/diagram';
 import { dump } from './commands/dump';
+import { listPlugins } from './commands/plugins';
 import { listSchemas, showSchema } from './commands/schemas';
 import { show } from './commands/show';
 import { listSpaces } from './commands/spaces';
 import { templateSync } from './commands/template-sync';
 import { validate } from './commands/validate';
-import {
-  getConfigSourceFiles,
-  loadConfig,
-  resolveSchema,
-  resolveSpacePath,
-  resolveTemplateSettings,
-  setConfigPath,
-} from './config';
+import { getConfigSourceFiles, loadConfig, resolveSchema, resolveSpacePath, setConfigPath } from './config';
 import { miroSync } from './integrations/miro/sync';
+import type { MarkdownPluginConfig } from './plugins/markdown';
 import { bundledSchemasDir } from './schema/schema';
 
 const require = createRequire(import.meta.url);
@@ -48,7 +43,6 @@ program
     const space = config.spaces.find((s) => s.name === spaceOrDir);
     const spacePath = space?.path ?? resolveSpacePath(spaceOrDir, config);
     const schemaPath = resolveSchema(options.schema, config, space);
-    const templateDir = space?.templateDir ?? config.templateDir;
 
     if (options.watch) {
       // Watch mode - set up watchers and re-run on changes
@@ -71,7 +65,7 @@ program
       let exitCode = 0;
       const innerValidate = async () => {
         try {
-          exitCode = await validate(spacePath, { schema: schemaPath, templateDir });
+          exitCode = await validate(spacePath, { schema: schemaPath });
         } catch (error) {
           console.error(`❌ Error during validation: ${error instanceof Error ? error.message : String(error)}`);
           exitCode = 1;
@@ -113,7 +107,7 @@ program
         process.exit(exitCode);
       });
     } else {
-      const exitCode = await validate(spacePath, { schema: schemaPath, templateDir });
+      const exitCode = await validate(spacePath, { schema: schemaPath });
       process.exit(exitCode);
     }
   });
@@ -130,7 +124,6 @@ program
     diagram(space?.path ?? resolveSpacePath(spaceOrDir, config), {
       ...options,
       schema: resolveSchema(options.schema, config, space),
-      templateDir: space?.templateDir ?? config.templateDir,
     });
   });
 
@@ -169,14 +162,21 @@ program
       console.error(`Error: Unknown space "${options.space}"`);
       process.exit(1);
     }
-    const { templateDir, templatePrefix } = resolveTemplateSettings(config, space);
+    const mdCfg = (space?.plugins?.['ost-tools-markdown'] ?? {}) as MarkdownPluginConfig;
+    const { templateDir, templatePrefix = '', fieldMap } = mdCfg;
+    if (!templateDir) {
+      console.error('Error: templateDir not set in plugins.markdown config for this space');
+      process.exit(1);
+    }
     templateSync(templateDir, {
       ...options,
       schema: resolveSchema(options.schema, config, space),
       templatePrefix,
-      fieldMap: space?.fieldMap,
+      fieldMap,
     });
   });
+
+program.command('plugins').description('List available plugins').action(listPlugins);
 
 const spacesCmd = new Command('spaces').description('List configured spaces');
 spacesCmd

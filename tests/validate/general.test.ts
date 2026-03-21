@@ -1,16 +1,17 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
-import { readSpaceDirectory, readSpaceOnAPage } from '../src/read/read-space';
-import { resolveGraphEdges } from '../src/read/resolve-graph-edges';
-import { bundledSchemasDir, createValidator, loadMetadata } from '../src/schema/schema';
-import { validateGraph } from '../src/schema/validate-graph';
-import type { SpaceNode } from '../src/types';
-import { makeLevel } from './test-helpers';
+import { readSpaceDirectory, readSpaceOnAPage } from '../../src/plugins/markdown/read-space';
+import { loadSpaceContext } from '../../src/read/context';
+import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
+import { bundledSchemasDir, createValidator, loadMetadata } from '../../src/schema/schema';
+import { validateGraph } from '../../src/schema/validate-graph';
+import type { SpaceNode } from '../../src/types';
+import { makeLevel } from '../test-helpers';
 
 const DEFAULT_SCHEMA_PATH = join(bundledSchemasDir, 'general.json');
-const VALID_DIR = join(import.meta.dir, 'fixtures/general/valid-ost');
-const INVALID_DIR = join(import.meta.dir, 'fixtures/general/invalid-ost');
-const VALID_PAGE = join(import.meta.dir, 'fixtures/general/on-a-page-valid.md');
+const VALID_DIR = join(import.meta.dir, '../fixtures/general/valid-ost');
+const INVALID_DIR = join(import.meta.dir, '../fixtures/general/invalid-ost');
+const VALID_PAGE = join(import.meta.dir, '../fixtures/general/on-a-page-valid.md');
 
 const validateNode = createValidator(DEFAULT_SCHEMA_PATH);
 const metadata = loadMetadata(DEFAULT_SCHEMA_PATH);
@@ -20,7 +21,7 @@ describe('Schema validation', () => {
     let nodes: SpaceNode[];
 
     beforeAll(async () => {
-      ({ nodes } = await readSpaceDirectory(VALID_DIR));
+      ({ nodes } = await readSpaceDirectory(loadSpaceContext(VALID_DIR)));
     });
 
     it('all 12 nodes pass schema validation', () => {
@@ -40,7 +41,7 @@ describe('Schema validation', () => {
     let nodes: SpaceNode[];
 
     beforeAll(() => {
-      ({ nodes } = readSpaceOnAPage(VALID_PAGE));
+      ({ nodes } = readSpaceOnAPage(loadSpaceContext(VALID_PAGE)));
     });
 
     it('all nodes pass schema validation', () => {
@@ -55,7 +56,7 @@ describe('Schema validation', () => {
     let nodes: SpaceNode[];
 
     beforeAll(async () => {
-      ({ nodes } = await readSpaceDirectory(INVALID_DIR));
+      ({ nodes } = await readSpaceDirectory(loadSpaceContext(INVALID_DIR)));
     });
 
     it('missing-status.md fails schema validation (no status field)', () => {
@@ -293,7 +294,9 @@ describe('Schema validation', () => {
 
   describe('duplicate title detection', () => {
     it('detects duplicate titles from same filename in different directories', async () => {
-      const { nodes } = await readSpaceDirectory(join(import.meta.dir, 'fixtures/general/duplicate-titles'));
+      const { nodes } = await readSpaceDirectory(
+        loadSpaceContext(join(import.meta.dir, '../fixtures/general/duplicate-titles')),
+      );
       const titleCounts = new Map<string, SpaceNode[]>();
       for (const node of nodes) {
         const title = node.schemaData.title as string;
@@ -309,7 +312,9 @@ describe('Schema validation', () => {
     });
 
     it('detects duplicate titles from embedded nodes', () => {
-      const { nodes } = readSpaceOnAPage(join(import.meta.dir, 'fixtures/general/duplicate-embedded.md'));
+      const { nodes } = readSpaceOnAPage(
+        loadSpaceContext(join(import.meta.dir, '../fixtures/general/duplicate-embedded.md')),
+      );
       const titleCounts = new Map<string, SpaceNode[]>();
       for (const node of nodes) {
         const title = node.schemaData.title as string;

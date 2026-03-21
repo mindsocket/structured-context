@@ -260,3 +260,19 @@ An **anchor** is a block anchor (e.g. `^goal1`) appended to a heading in a `type
 `identified` → `wondering` → `exploring` → `active` → `paused` → `completed` → `archived`
 
 Status is required on all node types at _validation_ time. Note however that currently the `space on a page` parser chooses to apply a default.
+
+
+---
+
+## Plugin
+
+A **plugin** is a module that extends the tool's capabilities.
+
+Plugins that support parsing produce raw `SpaceNode[]` results given a suitable configuration. Graph edge resolution (`resolveGraphEdges`) is called by the core afterwards.
+
+The `plugins` field in config is a **map** from plugin name to plugin config object. All plugin names must start with `ost-tools-`, but the prefix is optional in config and normalised on load. Built-in plugins take precedence and all are loaded by default. External plugin names specified in config are then resolved in order:
+
+1. Config-adjacent: `{configDir}/plugins/{ost-tools-name}`
+2. npm: a package matching `ost-tools-*`
+
+Each plugin declares a `configSchema` JSON Schema; the loader validates the config block against it before invoking the plugin. Config fields annotated with `format: 'path'` are resolved relative to `configDir` by the loader.

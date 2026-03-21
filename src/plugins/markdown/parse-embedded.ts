@@ -4,31 +4,24 @@ import { toString as mdastToString } from 'mdast-util-to-string';
 import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
-import { applyFieldMap } from '../config';
-import type { SharedEmbeddingFields } from '../schema/metadata-contract';
-import { resolveNodeType } from '../schema/schema';
-import type {
-  EdgeDefinition,
-  HierarchyLevel,
-  Relationship,
-  SchemaMetadata,
-  SpaceNode,
-  SpaceOnAPageDiagnostics,
-} from '../types';
+import type { SharedEmbeddingFields } from '../../schema/metadata-contract';
+import { resolveNodeType } from '../../schema/schema';
+import type { EdgeDefinition, HierarchyLevel, Relationship, SchemaMetadata, SpaceNode } from '../../types';
+import { applyFieldMap } from './util';
 
 /** Type values that identify a space_on_a_page container (not themselves space nodes). */
 export const ON_A_PAGE_TYPES = ['ost_on_a_page', 'space_on_a_page'];
 
-export const DEFAULT_STATUS = 'identified';
+const DEFAULT_STATUS = 'identified';
 
-export interface StackEntry {
+type StackEntry = {
   depth: number;
   title: string;
   /** Empty string marks an untyped heading placeholder (typed-page mode, i.e. not space_on_a_page). */
   nodeType: string;
   /** Preferred wikilink key used when this heading acts as a parent. */
   refTarget: string;
-}
+};
 
 /**
  * Normalized embedding definition — works for both hierarchy levels and relationships.
@@ -42,12 +35,12 @@ interface EmbeddingDefinition extends EdgeDefinition, SharedEmbeddingFields {
 }
 
 /** Active grouping context — replaces ad-hoc pendingMatch. */
-interface GroupingState {
+type GroupingState = {
   definition: EmbeddingDefinition;
   semanticParent: { ref: string | undefined; node: SpaceNode | undefined };
   headingNode: SpaceNode;
   emitted: boolean;
-}
+};
 
 /** Detect a bare wikilink `[[...]]` and return the inner target, or undefined. */
 export function isWikilink(text: string): string | undefined {
@@ -323,7 +316,8 @@ export interface ExtractEmbeddedOptions {
 
 export interface ExtractEmbeddedResult {
   nodes: SpaceNode[];
-  diagnostics: SpaceOnAPageDiagnostics;
+  preambleNodeCount: number;
+  terminatedHeadings: string[];
 }
 
 /**
@@ -362,10 +356,8 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   type ParseState = 'preamble' | 'active' | 'done';
   let parseState: ParseState = 'preamble';
 
-  const diagnostics: SpaceOnAPageDiagnostics = {
-    preambleNodeCount: 0,
-    terminatedHeadings: [],
-  };
+  let preambleNodeCount = 0;
+  const terminatedHeadings: string[] = [];
 
   /**
    * Returns the nearest typed parent context, skipping stack entries at depth >= headingDepth
@@ -554,7 +546,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         const rawTitle = mdastToString(child);
         const { cleanText: afterBracketed } = extractBracketedFields(rawTitle);
         const { cleanText: title } = extractAnchor(afterBracketed);
-        diagnostics.terminatedHeadings.push(title);
+        terminatedHeadings.push(title);
       }
       continue;
     }
@@ -645,7 +637,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         activeNode = headingNode;
       }
     } else if (parseState !== 'active') {
-      diagnostics.preambleNodeCount++;
+      preambleNodeCount++;
     } else if (child.type === 'list') {
       const parentRef = currentParentRef();
       const list = child as List;
@@ -846,5 +838,5 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     }
   }
 
-  return { nodes, diagnostics };
+  return { nodes, preambleNodeCount, terminatedHeadings };
 }

@@ -6,11 +6,14 @@
       "path": "/path/to/ProductX/Opportunity Solution Tree",
       "schema": "/path/to/custom/schemas/my-projectx-schema.json",
       "miroBoardId": "iAmAB04rdId",
-      "miroFrameId": "1234567789"
-      //       "templateDir": "../templates",
-      //       "templatePrefix": "prodx-"
+      "miroFrameId": "1234567789",
+      "plugins": {
+        "markdown": {
+          "templateDir": "../templates",
+          "templatePrefix": "prodx-"
+        }
+      }
     }
   ],
-  "schema": "/path/to/custom/schemas/my-general-schema.json",
-  "templateDir": "/path/to/ProductX/Templates"
+  "schema": "/path/to/custom/schemas/my-general-schema.json"
 }

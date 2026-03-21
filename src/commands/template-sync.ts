@@ -4,7 +4,7 @@ import type { AnySchemaObject } from 'ajv';
 import { Glob } from 'bun';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
-import { invertFieldMap } from '../config';
+import { invertFieldMap } from '../plugins/markdown/util';
 import { loadSchema } from '../schema/schema';
 import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
 import type { HierarchyLevel, Relationship, SchemaWithMetadata } from '../types';
