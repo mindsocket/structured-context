@@ -4,6 +4,7 @@ import type { AnySchemaObject } from 'ajv';
 import { Glob } from 'bun';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
+import { getMarkdownConfig } from '../plugins/markdown';
 import { invertFieldMap } from '../plugins/markdown/util';
 import { loadSchema } from '../schema/schema';
 import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
@@ -249,18 +250,19 @@ export function generateNewContent(
 }
 
 export async function templateSync(
-  templateDir: string,
+  plugins: Record<string, Record<string, unknown>> | undefined,
   options: {
     schema: string;
-    templatePrefix: string;
     dryRun?: boolean;
     createMissing?: boolean;
-    fieldMap?: Record<string, string>;
   },
 ) {
+  const { templateDir, templatePrefix = '', fieldMap = {} } = getMarkdownConfig(plugins);
+  if (!templateDir) {
+    console.error('Error: templateDir not set in plugins.ost-tools-markdown config for this space');
+    process.exit(1);
+  }
   const { schema, registry } = loadSchema(options.schema);
-  const templatePrefix = options.templatePrefix;
-  const fieldMap = options.fieldMap ?? {};
 
   const typeVariants = getTypeVariants(schema, registry);
   const matchedTypes = new Set<string>();

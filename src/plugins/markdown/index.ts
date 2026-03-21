@@ -19,6 +19,10 @@ export const MARKDOWN_CONFIG_SCHEMA = {
   additionalProperties: false,
 };
 
+export function getMarkdownConfig(plugins?: Record<string, Record<string, unknown>>): MarkdownPluginConfig {
+  return (plugins?.[`${PLUGIN_PREFIX}markdown`] ?? {}) as MarkdownPluginConfig;
+}
+
 async function parse(context: PluginContext): Promise<ParseResult | null> {
   if (statSync(context.spacePath).isFile()) {
     return readSpaceOnAPage(context);

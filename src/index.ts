@@ -14,7 +14,6 @@ import { templateSync } from './commands/template-sync';
 import { validate } from './commands/validate';
 import { getConfigSourceFiles, loadConfig, resolveSchema, resolveSpacePath, setConfigPath } from './config';
 import { miroSync } from './integrations/miro/sync';
-import type { MarkdownPluginConfig } from './plugins/markdown';
 import { bundledSchemasDir } from './schema/schema';
 
 const require = createRequire(import.meta.url);
@@ -162,17 +161,9 @@ program
       console.error(`Error: Unknown space "${options.space}"`);
       process.exit(1);
     }
-    const mdCfg = (space?.plugins?.['ost-tools-markdown'] ?? {}) as MarkdownPluginConfig;
-    const { templateDir, templatePrefix = '', fieldMap } = mdCfg;
-    if (!templateDir) {
-      console.error('Error: templateDir not set in plugins.markdown config for this space');
-      process.exit(1);
-    }
-    templateSync(templateDir, {
+    templateSync(space?.plugins, {
       ...options,
       schema: resolveSchema(options.schema, config, space),
-      templatePrefix,
-      fieldMap,
     });
   });
 
