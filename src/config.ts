@@ -166,12 +166,6 @@ export function loadConfig(): Config {
   return resolveRelativePaths(config, dirname(resolve(path)));
 }
 
-/** Resolve spaceNameOrPath to a filesystem path. Falls through if not a space name. */
-export function resolveSpacePath(spaceNameOrPath: string, config: Config): string {
-  const space = config.spaces.find((s) => s.name === spaceNameOrPath);
-  return space ? space.path : spaceNameOrPath;
-}
-
 /** Get the full space config entry by name. Throws if not found. */
 export function getSpaceConfig(name: string, config: Config): SpaceConfig {
   const space = config.spaces.find((s) => s.name === name);
@@ -182,8 +176,8 @@ export function getSpaceConfig(name: string, config: Config): SpaceConfig {
 }
 
 /** Resolve schema path: CLI arg > space-level config > global config > hardcoded default. */
-export function resolveSchema(cliArg: string | undefined, config: Config, space?: SpaceConfig): string {
-  return cliArg ?? space?.schema ?? config.schema ?? join(bundledSchemasDir, 'general.json');
+export function resolveSchema(config: Config, space?: SpaceConfig): string {
+  return space?.schema ?? config.schema ?? join(bundledSchemasDir, 'general.json');
 }
 
 type StringFields<T> = { [K in keyof T]: T[K] extends string | undefined ? K : never }[keyof T];

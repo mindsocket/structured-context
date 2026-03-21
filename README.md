@@ -13,7 +13,7 @@ bun install -g ost-tools
 Or use directly via `bunx`:
 
 ```bash
-bunx ost-tools validate <path>
+bunx ost-tools validate <space>
 ```
 
 ## Setup for AI Agents
@@ -172,7 +172,7 @@ If no provider defines `hierarchy`, hierarchy-specific checks are skipped. Readi
 - **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).
 - **Unique IDs**: To encourage clean namespacing, local partial schemas **must** have unique `$id`s that do not collide with the default schemas. If a collision is detected, validation will fail with an error.
 
-Schema resolution order: CLI `--schema` > space config `schema` > global config `schema` > bundled `schemas/general.json`
+Schema resolution order: space config `schema` > global config `schema` > bundled `schemas/general.json`
 
 **⚠️ Security Notice: Only use schemas and configuration files from trusted sources.**
 
@@ -183,7 +183,7 @@ The tool executes JSONata expressions defined in schema files for rule validatio
 ### Validate nodes
 
 ```bash
-ost-tools validate <space-or-dir> [--schema path/to/my-schema.json]
+ost-tools validate <space> [--watch]
 ```
 
 Validates markdown files against the JSON schema:
@@ -194,7 +194,7 @@ Validates markdown files against the JSON schema:
 ### Show space tree
 
 ```bash
-ost-tools show <space-or-dir>
+ost-tools show <space>
 ```
 
 Prints the space as an indented hierarchy tree. Hierarchy roots are listed first, followed by orphans (nodes in the hierarchy but with no resolved parent) and non-hierarchy nodes.
@@ -204,7 +204,7 @@ When a node appears under multiple parents (DAG hierarchy), it is printed in ful
 ### Generate Mermaid diagram
 
 ```bash
-ost-tools diagram <space-or-dir> [--output path/to/output.mmd] [--schema path/to/my-schema.json]
+ost-tools diagram <space> [--output path/to/output.mmd]
 ```
 
 Generates a Mermaid `graph TD` diagram from validated space nodes:
@@ -248,7 +248,7 @@ Sync is one-way (OST → Miro) and scoped to a single frame. Only cards and conn
 ### Sync templates with schema
 
 ```bash
-ost-tools template-sync [--space name] [--schema path/to/my-schema.json] [--create-missing] [--dry-run]
+ost-tools template-sync <space> [--create-missing] [--dry-run]
 ```
 
 Keeps Obsidian template files in sync with schema examples:

@@ -36,7 +36,7 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 
 ## Debugging
 
-- `bun run src/index.ts dump <path>` — Output parsed node data with resolved parents, useful for debugging rule violations
+- `bun run src/index.ts dump <space>` — Output parsed node data with resolved parents, useful for debugging rule violations
 
 ## Hooks
 A Stop hook runs linting, autoformatting and unit tests. If it reports issues related to change you made, address them.

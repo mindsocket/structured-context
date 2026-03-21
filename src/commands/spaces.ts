@@ -13,7 +13,7 @@ export function listSpaces(): void {
   for (const space of config.spaces) {
     console.log(`${space.name}`);
     console.log(`  path:    ${space.path}`);
-    console.log(`  schema:  ${basename(resolveSchema(undefined, config, space))}`);
+    console.log(`  schema:  ${basename(resolveSchema(config, space))}`);
     if (space.miroBoardId) console.log(`  miro:    configured`);
     const plugins = space.plugins ?? {};
     if (Object.keys(plugins).length > 0) {

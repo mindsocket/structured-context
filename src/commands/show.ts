@@ -1,19 +1,11 @@
-import { resolve } from 'node:path';
-import { loadConfig, resolveSchema } from '../config';
 import { readSpace } from '../read/read-space';
-import { loadMetadata } from '../schema/schema';
-import type { SpaceNode } from '../types';
+import type { SpaceContext, SpaceNode } from '../types';
 import { classifyNodes } from '../util/graph-helpers';
 
-export async function show(path: string) {
-  const absolutePath = resolve(path);
-  const config = loadConfig();
-  const space = config.spaces.find((s) => resolve(s.path) === absolutePath);
-  const resolvedSchemaPath = resolveSchema(undefined, config, space);
-  const metadata = loadMetadata(resolvedSchemaPath);
-  const levels = metadata.hierarchy?.levels ?? [];
+export async function show(context: SpaceContext) {
+  const levels = context.metadata.hierarchy?.levels ?? [];
 
-  const { nodes } = await readSpace(absolutePath);
+  const { nodes } = await readSpace(context);
 
   const { hierarchyRoots, orphans, nonHierarchy, children } = classifyNodes(nodes, levels);
 

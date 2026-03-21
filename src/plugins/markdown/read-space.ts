@@ -15,7 +15,8 @@ type ReadSpaceDirectoryOptions = {
 };
 
 export function readSpaceOnAPage(context: PluginContext): ParseResult {
-  const { spacePath: filePath, resolvedSchemaPath, metadata } = context;
+  const { space, resolvedSchemaPath, metadata } = context;
+  const filePath = resolve(space.path);
   const raw = readFileSync(filePath, 'utf-8');
   const { data: frontmatter, content: body } = matter(raw);
 
@@ -49,7 +50,8 @@ export async function readSpaceDirectory(
   context: PluginContext,
   options?: ReadSpaceDirectoryOptions,
 ): Promise<ParseResult> {
-  const { spacePath: directory, metadata } = context;
+  const { space, metadata } = context;
+  const directory = resolve(space.path);
   const mdCfg = context.pluginConfig as MarkdownPluginConfig;
 
   const hierarchyLevels = metadata.hierarchy?.levels ?? [];

@@ -1,7 +1,6 @@
-import { loadConfig, resolveSchema, resolveSpacePath, updateSpaceField } from '../../config';
+import { updateSpaceField } from '../../config';
 import { readSpace } from '../../read/read-space';
-import { loadMetadata } from '../../schema/schema';
-import type { SpaceNode } from '../../types';
+import type { SpaceContext, SpaceNode } from '../../types';
 import { buildHierarchyNodeSet, classifyNodes } from '../../util/graph-helpers';
 import { computeMiroCardHash, computeNodeHash, loadCache, saveCache } from './cache';
 import { MiroClient, MiroNotFoundError } from './client';
@@ -14,24 +13,16 @@ interface SyncOptions {
   verbose?: boolean;
 }
 
-export async function miroSync(spaceOrPath: string, options: SyncOptions): Promise<void> {
+export async function miroSync(context: SpaceContext, options: SyncOptions): Promise<void> {
   const token = process.env.MIRO_TOKEN;
   if (!token) {
     console.error('MIRO_TOKEN environment variable is required');
     process.exit(1);
   }
 
-  // 1. Resolve space and board
-  const config = loadConfig();
-  const space = config.spaces.find((s) => s.name === spaceOrPath);
+  const { space, metadata } = context;
 
-  if (!space) {
-    console.error(
-      `"${spaceOrPath}" is not a known space name. miro-sync requires a configured space with miroBoardId.`,
-    );
-    process.exit(1);
-  }
-
+  // 1. Resolve board
   if (!space.miroBoardId) {
     console.error(`No miroBoardId configured for space "${space.name}".`);
     console.error('Add miroBoardId to the space entry in config.');
@@ -47,19 +38,16 @@ export async function miroSync(spaceOrPath: string, options: SyncOptions): Promi
   }
 
   // 3. Load space nodes (load before creating frame so we can calculate size)
-  const resolvedPath = resolveSpacePath(spaceOrPath, config);
   let nodes: SpaceNode[];
 
-  ({ nodes } = await readSpace(resolvedPath));
+  ({ nodes } = await readSpace(context));
 
   if (nodes.length === 0) {
     console.log('No space nodes found.');
     return;
   }
 
-  // Load metadata and filter to hierarchy nodes only
-  const resolvedSchemaPath = resolveSchema(undefined, config, space);
-  const metadata = loadMetadata(resolvedSchemaPath);
+  // Filter to hierarchy nodes only
   const levels = metadata.hierarchy?.levels ?? [];
 
   const { hierarchyRoots, orphans, nonHierarchy, children } = classifyNodes(nodes, levels);

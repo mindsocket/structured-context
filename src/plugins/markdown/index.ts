@@ -24,7 +24,7 @@ export function getMarkdownConfig(plugins?: Record<string, Record<string, unknow
 }
 
 async function parse(context: PluginContext): Promise<ParseResult | null> {
-  if (statSync(context.spacePath).isFile()) {
+  if (statSync(context.space.path).isFile()) {
     return readSpaceOnAPage(context);
   }
   return await readSpaceDirectory(context);

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 import { readSpaceOnAPage } from '../../src/plugins/markdown/read-space';
-import { buildPluginContext } from '../../src/read/read-space';
 import { bundledSchemasDir, createValidator, loadMetadata } from '../../src/schema/schema';
+import { makePluginContext } from '../helpers/context';
 
 const FIXTURES_DIR = join(import.meta.dir, '..', 'fixtures/schema-metadata');
 const GENERAL_SCHEMA_PATH = join(bundledSchemasDir, 'general.json');
@@ -38,7 +38,7 @@ describe('schema metadata', () => {
   });
 
   it('fails to read space_on_a_page when hierarchy metadata is absent', () => {
-    expect(() => readSpaceOnAPage(buildPluginContext(ON_A_PAGE_FIXTURE_PATH, ALIAS_ONLY_SCHEMA_PATH))).toThrow(
+    expect(() => readSpaceOnAPage(makePluginContext(ON_A_PAGE_FIXTURE_PATH, ALIAS_ONLY_SCHEMA_PATH))).toThrow(
       'must define "$metadata.hierarchy.levels"',
     );
   });

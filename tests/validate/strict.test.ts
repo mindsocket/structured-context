@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 import { readSpaceDirectory, readSpaceOnAPage } from '../../src/plugins/markdown/read-space';
-import { buildPluginContext } from '../../src/read/read-space';
 import { bundledSchemasDir, createValidator } from '../../src/schema/schema';
 import type { SpaceNode } from '../../src/types';
+import { makePluginContext } from '../helpers/context';
 
 const STRICT_SCHEMA_PATH = join(bundledSchemasDir, 'strict_ost.json');
 const VALID_DIR = join(import.meta.dir, '../fixtures/strict_ost/valid-directory');
@@ -195,7 +195,7 @@ describe('Strict OST schema validation', () => {
     let nodes: SpaceNode[];
 
     beforeAll(async () => {
-      ({ nodes } = await readSpaceDirectory(buildPluginContext(VALID_DIR, STRICT_SCHEMA_PATH)));
+      ({ nodes } = await readSpaceDirectory(makePluginContext(VALID_DIR, STRICT_SCHEMA_PATH)));
     });
 
     it('reads all 4 nodes from valid-directory', () => {
@@ -213,7 +213,7 @@ describe('Strict OST schema validation', () => {
     let nodes: SpaceNode[];
 
     beforeAll(() => {
-      ({ nodes } = readSpaceOnAPage(buildPluginContext(VALID_ON_A_PAGE, STRICT_SCHEMA_PATH)));
+      ({ nodes } = readSpaceOnAPage(makePluginContext(VALID_ON_A_PAGE, STRICT_SCHEMA_PATH)));
     });
 
     it('extracts nodes from ost-on-a-page.md', () => {
@@ -231,7 +231,7 @@ describe('Strict OST schema validation', () => {
     let nodes: SpaceNode[];
 
     beforeAll(() => {
-      ({ nodes } = readSpaceOnAPage(buildPluginContext(VALID_TREE, STRICT_SCHEMA_PATH)));
+      ({ nodes } = readSpaceOnAPage(makePluginContext(VALID_TREE, STRICT_SCHEMA_PATH)));
     });
 
     it('extracts nodes from valid-tree.md', () => {
@@ -250,7 +250,7 @@ describe('Strict OST schema validation', () => {
 
     beforeAll(async () => {
       // Read from invalid directory - note that readSpaceDirectory doesn't validate
-      ({ nodes } = await readSpaceDirectory(buildPluginContext(INVALID_DIR)));
+      ({ nodes } = await readSpaceDirectory(makePluginContext(INVALID_DIR)));
     });
 
     it('rejects vision type (not allowed in strict_ost)', () => {

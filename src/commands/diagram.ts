@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { readSpace } from '../read/read-space';
 import { loadSchema } from '../schema/schema';
-import type { SpaceNode } from '../types';
+import type { SpaceContext, SpaceNode } from '../types';
 import { buildHierarchyNodeSet, classifyNodes } from '../util/graph-helpers';
 
 /**
@@ -20,11 +20,11 @@ function safeNodeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
-export async function diagram(path: string, options: { schema: string; output?: string }): Promise<void> {
-  const { schema, validator } = loadSchema(options.schema);
+export async function diagram(context: SpaceContext, options: { output?: string }): Promise<void> {
+  const { schema, validator } = loadSchema(context.resolvedSchemaPath);
   const hierarchyLevels = schema.metadata.hierarchy?.levels ?? [];
 
-  const readResult = await readSpace(path, { schemaPath: options.schema });
+  const readResult = await readSpace(context);
   const spaceNodes: SpaceNode[] = readResult.nodes;
   const skipped = (readResult.diagnostics?.skipped as string[]) ?? [];
   const nonSpace = (readResult.diagnostics?.nonSpace as string[]) ?? [];

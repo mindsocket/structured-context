@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 import { readSpaceOnAPage } from '../../../src/plugins/markdown/read-space';
 import type { ParseResult } from '../../../src/plugins/util';
-import { buildPluginContext } from '../../../src/read/read-space';
+import { makePluginContext } from '../../helpers/context';
 
 const VALID_PAGE = join(import.meta.dir, '../../fixtures/general/on-a-page-valid.md');
 const SKIP_PAGE = join(import.meta.dir, '../../fixtures/general/on-a-page-heading-skip.md');
@@ -11,7 +11,7 @@ describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
   let result: ParseResult;
 
   beforeAll(() => {
-    result = readSpaceOnAPage(buildPluginContext(VALID_PAGE));
+    result = readSpaceOnAPage(makePluginContext(VALID_PAGE));
   });
 
   describe('heading type inference', () => {
@@ -117,14 +117,14 @@ describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
 
   describe('heading level skip error', () => {
     it('throws when heading level is skipped (H1 to H3)', () => {
-      expect(() => readSpaceOnAPage(buildPluginContext(SKIP_PAGE))).toThrow(/Heading level skipped/);
+      expect(() => readSpaceOnAPage(makePluginContext(SKIP_PAGE))).toThrow(/Heading level skipped/);
     });
   });
 
   describe('typed file rejection', () => {
     it('throws when given a typed node file instead of space_on_a_page', () => {
       const typedFile = join(import.meta.dir, '../../fixtures/general/valid-ost/Personal Vision.md');
-      expect(() => readSpaceOnAPage(buildPluginContext(typedFile))).toThrow(/Expected a space_on_a_page file/);
+      expect(() => readSpaceOnAPage(makePluginContext(typedFile))).toThrow(/Expected a space_on_a_page file/);
     });
   });
 });

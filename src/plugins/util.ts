@@ -1,6 +1,5 @@
 import type { AnySchemaObject } from 'ajv';
-import type { Config, SpaceConfig } from '../config';
-import type { SchemaMetadata, SpaceNode } from '../types';
+import type { SpaceContext, SpaceNode } from '../types';
 
 export const PLUGIN_PREFIX = 'ost-tools-';
 export const CONFIG_PLUGINS_DIR = 'plugins';
@@ -10,21 +9,9 @@ export function normalizePluginName(name: string): string {
   return name.startsWith(PLUGIN_PREFIX) ? name : `${PLUGIN_PREFIX}${name}`;
 }
 
-export type PluginContext = {
-  /** Absolute path to the space (file or directory). */
-  spacePath: string;
-  /** Matching space config entry, if the path is a registered space. */
-  space: SpaceConfig | undefined;
-  /** Full loaded config. */
-  config: Config;
-  /** Absolute path to the resolved schema. */
-  resolvedSchemaPath: string;
-  /** Parsed schema metadata. */
-  metadata: SchemaMetadata;
+export type PluginContext = SpaceContext & {
   /** Validated config for this plugin invocation. */
   pluginConfig: Record<string, unknown>;
-  /** Directory of the config file that defines this space. Used for resolving relative paths in plugin configs. */
-  configDir: string;
 };
 
 export type ParseResult = {

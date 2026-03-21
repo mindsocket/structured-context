@@ -276,7 +276,7 @@ export function showSchema(
       console.error(`Error: Unknown space "${options.space}"`);
       process.exit(1);
     }
-    schemaPath = resolveSchema(undefined, config, space);
+    schemaPath = resolveSchema(config, space);
   } else if (!file) {
     console.error('Error: specify a file argument or use --space');
     process.exit(1);

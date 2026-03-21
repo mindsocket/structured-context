@@ -1,7 +1,8 @@
 import { JSON5 } from 'bun';
 import { readSpace } from '../read/read-space';
+import type { SpaceContext } from '../types';
 
-export async function dump(path: string) {
-  const { nodes, source, diagnostics } = await readSpace(path);
+export async function dump(context: SpaceContext) {
+  const { nodes, source, diagnostics } = await readSpace(context);
   console.log(JSON5.stringify({ nodes, source, diagnostics }, null, 2));
 }

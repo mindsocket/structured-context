@@ -10,7 +10,7 @@ A **schema** defines the valid structure for nodes in a `space`: entity types, f
 
 ## Selecting a schema
 
-Set `schema` in config:
+Set `schema` in the space config entry:
 
 ```json
 {
@@ -20,13 +20,7 @@ Set `schema` in config:
 }
 ```
 
-Or pass it per command:
-
-```bash
-bun run src/index.ts validate my-space --schema schemas/strict_ost.json
-```
-
-Resolution order: `--schema` CLI flag > space `schema` > global `schema` > bundled `schemas/general.json`.
+Resolution order: space `schema` > global `schema` > bundled `schemas/general.json`.
 
 ## Bundled schemas
 

@@ -1,9 +1,12 @@
+import { dirname } from 'node:path';
 import type { ErrorObject } from 'ajv';
+import chokidar from 'chokidar';
+import { getConfigSourceFiles } from '../config';
 import { readSpace } from '../read/read-space';
-import { loadSchema } from '../schema/schema';
+import { bundledSchemasDir, loadSchema } from '../schema/schema';
 import { validateGraph } from '../schema/validate-graph';
 import { validateRules } from '../schema/validate-rules';
-import type { GraphViolation, RuleViolation, SchemaWithMetadata } from '../types';
+import type { GraphViolation, RuleViolation, SchemaWithMetadata, SpaceContext } from '../types';
 import { classifyNodes } from '../util/graph-helpers';
 import { extractEntityInfo } from './schemas';
 
@@ -129,11 +132,13 @@ function formatErrors(
   return formatted;
 }
 
-export async function validate(path: string, options: { schema: string }): Promise<number> {
-  const { schema, registry, validator } = loadSchema(options.schema);
+export async function validate(context: SpaceContext): Promise<number> {
+  const schemaPath = context.resolvedSchemaPath;
+
+  const { schema, registry, validator } = loadSchema(schemaPath);
   const metadata = schema.metadata;
 
-  const readResult = await readSpace(path, { schemaPath: options.schema });
+  const readResult = await readSpace(context);
   const { nodes, parseIgnored } = readResult;
 
   const result: ValidationResult = {
@@ -294,11 +299,81 @@ export async function validate(path: string, options: { schema: string }): Promi
 
   console.log(`\n`);
 
-  // Return exit code (0 for success, 1 for validation failures, 2 for warnings)
-  if (result.nodeErrorCount > 0 || result.duplicateErrors.length > 0 || result.hierarchyViolations.length > 0) {
-    return 2;
-  } else if (result.refErrors.length > 0 || result.ruleViolations.length > 0) {
+  // Return exit code (0 for success, 1 for validation failures)
+  if (
+    result.nodeErrorCount > 0 ||
+    result.refErrors.length > 0 ||
+    result.duplicateErrors.length > 0 ||
+    result.ruleViolations.length > 0 ||
+    result.hierarchyViolations.length > 0
+  ) {
     return 1;
   }
   return 0;
+}
+
+export async function watchValidate(context: SpaceContext): Promise<never> {
+  const spacePath = context.space.path;
+  const schemaPath = context.resolvedSchemaPath;
+  const configFiles = Array.from(getConfigSourceFiles());
+  const schemaDir = dirname(schemaPath);
+  const schemaDirs = [bundledSchemasDir];
+  if (schemaDir !== bundledSchemasDir) {
+    schemaDirs.push(schemaDir);
+  }
+
+  console.log(`👀 Watching for changes...`);
+  console.log(`   Config files: ${configFiles.join(', ')}`);
+  console.log(`   Schema dirs: ${schemaDirs.join(', ')}`);
+  console.log(`   Space:  ${spacePath}`);
+  console.log(`   Press Ctrl+C to stop\n`);
+
+  // Save cursor position after header (for clearing later)
+  process.stdout.write('\x1b[s');
+
+  let exitCode = 0;
+  const innerValidate = async () => {
+    try {
+      exitCode = await validate(context);
+    } catch (error) {
+      console.error(`❌ Error during validation: ${error instanceof Error ? error.message : String(error)}`);
+      exitCode = 2;
+    }
+  };
+  await innerValidate();
+
+  const watchPaths = [...configFiles, ...schemaDirs, spacePath];
+
+  const watcher = chokidar.watch(watchPaths, {
+    ignoreInitial: true,
+    awaitWriteFinish: {
+      stabilityThreshold: 100,
+      pollInterval: 50,
+    },
+  });
+
+  const handleFileChange = async (filePath: string, action: string) => {
+    // Restore cursor to header position and clear everything below
+    process.stdout.write('\x1b[u\x1b[0J');
+    console.log(`🔄 ${filePath} ${action}, re-validating...\n`);
+    await innerValidate();
+  };
+
+  watcher.on('add', (path) => handleFileChange(path, 'added'));
+  watcher.on('change', (path) => handleFileChange(path, 'changed'));
+  watcher.on('unlink', (path) => handleFileChange(path, 'removed'));
+
+  watcher.on('error', (error) => {
+    console.error(`Watcher error: ${error}`);
+  });
+
+  // Keep process alive
+  return new Promise((_, reject) => {
+    process.on('SIGINT', () => {
+      console.log('\n\n👋 Stopping watch mode...');
+      watcher.close();
+      process.exit(exitCode);
+    });
+    process.on('uncaughtException', reject);
+  });
 }

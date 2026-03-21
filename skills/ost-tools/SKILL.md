@@ -48,16 +48,16 @@ partials.
 ## Commands for working with spaces
 
 ```
-validate      Validate space content against schema
-show          Output the node hierarchy
-dump          Output parsed node data as JSON
-diagram       Generate Mermaid diagram
-miro-sync     Sync to Miro board (requires MIRO_TOKEN env var + miroBoardId in config)
-template-sync Sync Obsidian templates from schema examples
-plugins       List available plugins
+validate <space>       Validate space content against schema (--watch for live)
+show <space>           Output the node hierarchy
+dump <space>           Output parsed node data as JSON
+diagram <space>        Generate Mermaid diagram (--output <file>)
+miro-sync <space>      Sync to Miro board (requires MIRO_TOKEN env var + miroBoardId in config)
+template-sync <space>  Sync Obsidian templates from schema examples
+plugins                List available plugins
 ```
 
-Run `bunx ost-tools --help` or `bunx ost-tools <command> --help` for flags.
+All commands require a registered space name. Run `bunx ost-tools --help` or `bunx ost-tools <command> --help` for flags.
 
 **`dump` is the key debugging tool.** Use it to verify `fieldMap` remapping is working or to
 inspect exactly what JSONata rules see when a rule fires unexpectedly.

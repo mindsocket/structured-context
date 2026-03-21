@@ -1,23 +1,7 @@
-import { dirname, resolve } from 'node:path';
-import { configPath, getSpaceConfigDir, loadConfig, resolveSchema } from '../config';
 import { loadPlugins } from '../plugins/loader';
-import type { PluginContext } from '../plugins/util';
-import { loadMetadata } from '../schema/schema';
-import type { ReadSpaceResult } from '../types';
+import type { ReadSpaceResult, SpaceContext } from '../types';
 
-export function buildPluginContext(path: string, schemaPath?: string): PluginContext {
-  const absolutePath = resolve(path);
-  const config = loadConfig();
-  const space = config.spaces.find((s) => resolve(s.path) === absolutePath);
-  const resolvedSchemaPath = resolveSchema(schemaPath, config, space);
-  const metadata = loadMetadata(resolvedSchemaPath);
-  const configDir = space ? getSpaceConfigDir(space.name) : dirname(resolve(configPath()));
-  return { spacePath: absolutePath, space, config, resolvedSchemaPath, metadata, pluginConfig: {}, configDir };
-}
-
-export async function readSpace(path: string, options?: { schemaPath?: string }): Promise<ReadSpaceResult> {
-  const context = buildPluginContext(path, options?.schemaPath);
-
+export async function readSpace(context: SpaceContext): Promise<ReadSpaceResult> {
   const pluginMap: Record<string, Record<string, unknown>> = context.space?.plugins ?? {};
   const loaded = await loadPlugins(pluginMap, context.configDir);
 
@@ -29,5 +13,5 @@ export async function readSpace(path: string, options?: { schemaPath?: string })
     }
   }
 
-  throw new Error(`No plugin handled space at: ${path}`);
+  throw new Error(`No plugin handled space at: ${context.space.path}`);
 }

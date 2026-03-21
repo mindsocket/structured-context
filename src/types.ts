@@ -1,4 +1,5 @@
 import type { SchemaObject } from 'ajv';
+import type { Config, SpaceConfig } from './config';
 import type {
   MetadataContractHierarchyLevel,
   MetadataContractRelationship,
@@ -112,4 +113,17 @@ export type ReadSpaceResult = {
   parseIgnored?: string[];
   /** Plugin diagnostics: keyed scalar or list values. */
   diagnostics?: Record<string, number | string | string[]>;
+};
+
+export type SpaceContext = {
+  /** Matching space config entry. */
+  space: SpaceConfig;
+  /** Full loaded config. */
+  config: Config;
+  /** Absolute path to the resolved schema. */
+  resolvedSchemaPath: string;
+  /** Parsed schema metadata. */
+  metadata: SchemaMetadata;
+  /** Directory of the config file that defines this space. Used for resolving relative paths in plugin configs. */
+  configDir: string;
 };

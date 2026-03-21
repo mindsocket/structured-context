@@ -6,7 +6,7 @@ All commands use `bunx ost-tools` (or `bun run src/index.ts` in development). Al
 ## validate
 
 ```bash
-bunx ost-tools validate <space-or-dir> [--schema <path>] [--config <path>]
+bunx ost-tools validate <space> [--watch] [--config <path>]
 ```
 
 Validates all `.md` files in the space against the JSON schema. For each file:
@@ -17,14 +17,16 @@ Validates all `.md` files in the space against the JSON schema. For each file:
 - Runs executable rules (JSONata expressions in `$metadata.rules`)
 - Checks hierarchy ordering
 
+Exit codes: `0` = clean, `1` = validation issues found.
+
 **Scenarios:**
 
 ```bash
 # Validate after editing content
 bunx ost-tools validate <space>
 
-# Validate against a different schema (for testing)
-bunx ost-tools validate <space> --schema /tmp/experimental-schema.json
+# Watch mode — re-validates on file changes
+bunx ost-tools validate <space> --watch
 ```
 
 ## show
@@ -60,7 +62,7 @@ bunx ost-tools dump <space> | jq '.[] | select(.title == "My Node Title")'
 ## diagram
 
 ```bash
-bunx ost-tools diagram <space> [--output <file.mmd>] [--schema <path>]
+bunx ost-tools diagram <space> [--output <file.mmd>]
 ```
 
 Generates a Mermaid `graph TD` diagram from space nodes. Nodes are colour-coded by type;
@@ -97,7 +99,7 @@ MIRO_TOKEN=xxx bunx ost-tools miro-sync <space> --dry-run
 ## template-sync
 
 ```bash
-bunx ost-tools template-sync [--space <name>] [--schema <path>] [--create-missing] [--dry-run] [--config <path>]
+bunx ost-tools template-sync <space> [--create-missing] [--dry-run] [--config <path>]
 ```
 
 Keeps Obsidian template files in sync with schema `examples`. For each node type:
@@ -106,14 +108,14 @@ Keeps Obsidian template files in sync with schema `examples`. For each node type
 - `--create-missing` creates template files for types that don't have one yet
 - `--dry-run` previews changes without writing
 
-Requires `templateDir` (and optionally `templatePrefix`) set in the space config.
+Requires `templateDir` (and optionally `templatePrefix`) set in the space's `plugins.markdown` config.
 
 ```bash
 # Preview template updates
-bunx ost-tools template-sync --space <space> --dry-run
+bunx ost-tools template-sync <space> --dry-run
 
 # Create missing templates
-bunx ost-tools template-sync --space <space> --create-missing
+bunx ost-tools template-sync <space> --create-missing
 ```
 
 ## Config structure
@@ -125,12 +127,15 @@ bunx ost-tools template-sync --space <space> --create-missing
       name: 'my-space',         // used in all CLI commands
       path: '../content',        // relative to config file, or absolute
       schema: 'my-schema.json',  // relative to config file, or absolute
-      fieldMap: {                // optional: remap frontmatter field names
-        record_type: 'type',     //   read record_type as type (entity discriminator)
-        type: 'entity_type'      //   read type as entity_type (avoid collision)
+      plugins: {
+        markdown: {
+          fieldMap: {              // optional: remap frontmatter field names
+            record_type: 'type',   //   read record_type as type (entity discriminator)
+          },
+          templateDir: '../templates',
+          templatePrefix: '',
+        }
       },
-      templateDir: '../templates',
-      templatePrefix: '',
       miroBoardId: 'xxx',
       miroFrameId: 'xxx',  // auto-populated by --new-frame
     }
@@ -138,4 +143,6 @@ bunx ost-tools template-sync --space <space> --create-missing
 }
 ```
 
-Schema resolution order: `--schema` CLI flag > space `schema` > global `schema` > bundled `general.json`.
+All commands require a registered space name (not an arbitrary path).
+
+Schema resolution order: space `schema` > global `schema` > bundled `general.json`.
