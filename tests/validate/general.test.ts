@@ -4,7 +4,7 @@ import { readSpaceDirectory, readSpaceOnAPage } from '../../src/plugins/markdown
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { bundledSchemasDir, createValidator, loadMetadata } from '../../src/schema/schema';
 import { validateGraph } from '../../src/schema/validate-graph';
-import type { SpaceNode } from '../../src/types';
+import type { SpaceNode, UnresolvedRef } from '../../src/types';
 import { makePluginContext } from '../helpers/context';
 import { makeLevel } from '../test-helpers';
 
@@ -19,9 +19,12 @@ const metadata = loadMetadata(DEFAULT_SCHEMA_PATH);
 describe('Schema validation', () => {
   describe('valid-ost nodes (readSpaceDirectory)', () => {
     let nodes: SpaceNode[];
+    let unresolvedRefs: UnresolvedRef[];
 
     beforeAll(async () => {
-      ({ nodes } = await readSpaceDirectory(makePluginContext(VALID_DIR)));
+      const result = await readSpaceDirectory(makePluginContext(VALID_DIR));
+      nodes = result.nodes;
+      unresolvedRefs = result.unresolvedRefs ?? [];
     });
 
     it('all 12 nodes pass schema validation', () => {
@@ -32,7 +35,7 @@ describe('Schema validation', () => {
     });
 
     it('has zero ref errors', () => {
-      const { refErrors } = validateGraph(nodes, metadata);
+      const { refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
       expect(refErrors).toHaveLength(0);
     });
   });
@@ -54,9 +57,12 @@ describe('Schema validation', () => {
 
   describe('invalid-ost nodes (readSpaceDirectory)', () => {
     let nodes: SpaceNode[];
+    let unresolvedRefs: UnresolvedRef[];
 
     beforeAll(async () => {
-      ({ nodes } = await readSpaceDirectory(makePluginContext(INVALID_DIR)));
+      const result = await readSpaceDirectory(makePluginContext(INVALID_DIR));
+      nodes = result.nodes;
+      unresolvedRefs = result.unresolvedRefs ?? [];
     });
 
     it('missing-status.md fails schema validation (no status field)', () => {
@@ -78,7 +84,7 @@ describe('Schema validation', () => {
     });
 
     it('detects dangling parent ref error for Nonexistent Node', () => {
-      const { refErrors } = validateGraph(nodes, metadata);
+      const { refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
       expect(refErrors.some((e) => e.parent === '[[Nonexistent Node]]')).toBe(true);
     });
   });
@@ -131,14 +137,16 @@ describe('Schema validation', () => {
         },
       ];
 
-      resolveGraphEdges(nodes, [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]);
+      const refs1 = resolveGraphEdges(nodes, {
+        hierarchy: { levels: [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')] },
+      });
 
       expect(nodes.find((n) => n.label === 'Another Goal')?.schemaData.parent).toBe('[[anchor_vision#^mission]]');
       expect(nodes.find((n) => n.label === 'Another Goal')?.resolvedParents[0]?.title).toBe('Our Mission');
       expect(nodes.find((n) => n.label === 'solution_page.md')?.schemaData.parent).toBe('[[anchor_vision#^goal1]]');
       expect(nodes.find((n) => n.label === 'solution_page.md')?.resolvedParents[0]?.title).toBe('Another Goal');
 
-      const { refErrors } = validateGraph(nodes, metadata);
+      const { refErrors } = validateGraph(nodes, metadata, refs1);
       expect(refErrors).toHaveLength(0);
     });
 
@@ -165,9 +173,11 @@ describe('Schema validation', () => {
         },
       ];
 
-      resolveGraphEdges(nodes, [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]);
+      const refs2 = resolveGraphEdges(nodes, {
+        hierarchy: { levels: [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')] },
+      });
 
-      const { refErrors } = validateGraph(nodes, metadata);
+      const { refErrors } = validateGraph(nodes, metadata, refs2);
       expect(refErrors).toHaveLength(1);
       expect(refErrors[0]?.parent).toBe('[[anchor_vision#^noanchor]]');
     });
@@ -207,10 +217,12 @@ describe('Schema validation', () => {
         },
       ];
 
-      resolveGraphEdges(nodes, [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]);
+      const refs3 = resolveGraphEdges(nodes, {
+        hierarchy: { levels: [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')] },
+      });
 
       expect(nodes.find((n) => n.label === 'solution_page.md')?.resolvedParents).toHaveLength(0);
-      const { refErrors } = validateGraph(nodes, metadata);
+      const { refErrors } = validateGraph(nodes, metadata, refs3);
       expect(refErrors).toHaveLength(1);
       expect(refErrors[0]?.parent).toBe('[[Embedded Goal]]');
     });

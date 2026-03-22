@@ -1,5 +1,5 @@
 import type { AnySchemaObject } from 'ajv';
-import type { SpaceContext, SpaceNode } from '../types';
+import type { SpaceContext, SpaceNode, UnresolvedRef } from '../types';
 
 export const PLUGIN_PREFIX = 'ost-tools-';
 export const CONFIG_PLUGINS_DIR = 'plugins';
@@ -20,6 +20,8 @@ export type ParseResult = {
   parseIgnored?: string[];
   /** Plugin diagnostics: keyed scalar or list values. */
   diagnostics?: Record<string, number | string | string[]>;
+  /** Broken/invalid wikilink refs collected during graph edge resolution. */
+  unresolvedRefs?: UnresolvedRef[];
 };
 
 export type ParseHook = (context: PluginContext) => Promise<ParseResult | null>;

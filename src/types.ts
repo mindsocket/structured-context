@@ -51,6 +51,20 @@ export type ResolvedParentRef = {
   source: 'hierarchy' | 'relationship';
   /** Whether the parent and child are the same node type (self-referential edge). */
   selfRef: boolean;
+  /** Whether the edge field is on the child node (default) or on the parent node (fieldOn:'parent' edges). */
+  fieldOn: 'child' | 'parent';
+};
+
+export type UnresolvedRef = {
+  /** Source identifier of the node containing the broken link. */
+  label: string;
+  /** Raw wikilink value (or String(rawField) for invalid_shape). */
+  ref: string;
+  /** Frontmatter field name that contained the link. */
+  field: string;
+  reason: 'not_found' | 'ambiguous' | 'invalid_shape';
+  /** Human-readable message matching validate-graph output format. */
+  message: string;
 };
 
 export type SpaceNode = {
@@ -113,6 +127,8 @@ export type ReadSpaceResult = {
   parseIgnored?: string[];
   /** Plugin diagnostics: keyed scalar or list values. */
   diagnostics?: Record<string, number | string | string[]>;
+  /** Broken/invalid wikilink refs collected during graph edge resolution. */
+  unresolvedRefs?: UnresolvedRef[];
 };
 
 export type SpaceContext = {

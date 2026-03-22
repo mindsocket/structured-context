@@ -9,6 +9,7 @@ export const makeParentRef = (title: string, overrides: Partial<ResolvedParentRe
   field: 'parent',
   source: 'hierarchy',
   selfRef: false,
+  fieldOn: 'child',
   ...overrides,
 });
 

@@ -15,8 +15,8 @@ describe('validateGraph - Relationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { parent: '[[Opp 1]]' });
 
     const nodes = [opp, assumption];
-    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
-    const { violations, refErrors } = validateGraph(nodes, metadata);
+    const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -26,8 +26,8 @@ describe('validateGraph - Relationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { parent: '[[Missing Opp]]' });
 
     const nodes = [assumption];
-    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
-    const { violations, refErrors } = validateGraph(nodes, metadata);
+    const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toHaveLength(1);
@@ -40,8 +40,8 @@ describe('validateGraph - Relationships', () => {
 
     const nodes = [someOtherNode, assumption];
     // resolveGraphEdges resolves permissively; validateFieldReferences catches the type mismatch
-    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
-    const { violations, refErrors } = validateGraph(nodes, metadata);
+    const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
 
     // Field validation catches it now
     expect(refErrors).toBeEmpty();
@@ -53,8 +53,8 @@ describe('validateGraph - Relationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption');
 
     const nodes = [assumption];
-    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
-    const { violations, refErrors } = validateGraph(nodes, metadata);
+    const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -70,13 +70,8 @@ describe('validateGraph - Relationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { linked_opportunity: '[[Opp 1]]' });
 
     const nodes = [opp, assumption];
-    resolveGraphEdges(
-      nodes,
-      metaWithCustomField.hierarchy!.levels,
-      metaWithCustomField.relationships,
-      metaWithCustomField.typeAliases,
-    );
-    const { violations, refErrors } = validateGraph(nodes, metaWithCustomField);
+    const unresolvedRefs = resolveGraphEdges(nodes, metaWithCustomField);
+    const { violations, refErrors } = validateGraph(nodes, metaWithCustomField, unresolvedRefs);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -92,13 +87,8 @@ describe('validateGraph - Relationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { linked_opportunity: '[[Solution 1]]' });
 
     const nodes = [solution, assumption];
-    resolveGraphEdges(
-      nodes,
-      metaWithCustomField.hierarchy!.levels,
-      metaWithCustomField.relationships,
-      metaWithCustomField.typeAliases,
-    );
-    const { violations, refErrors } = validateGraph(nodes, metaWithCustomField);
+    const unresolvedRefs = resolveGraphEdges(nodes, metaWithCustomField);
+    const { violations, refErrors } = validateGraph(nodes, metaWithCustomField, unresolvedRefs);
 
     expect(refErrors).toBeEmpty();
     expect(violations).toHaveLength(1);
@@ -118,8 +108,8 @@ describe('validateGraph — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: ['[[Task 1]]', '[[Task 2]]'] });
 
     const nodes = [activity, task1, task2];
-    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
-    const { violations, refErrors } = validateGraph(nodes, metadata);
+    const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -129,8 +119,8 @@ describe('validateGraph — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: ['[[Missing Task]]'] });
 
     const nodes = [activity];
-    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
-    const { violations, refErrors } = validateGraph(nodes, metadata);
+    const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toHaveLength(1);
@@ -142,8 +132,8 @@ describe('validateGraph — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: ['[[Some Solution]]'] });
 
     const nodes = [activity, wrong];
-    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
-    const { violations, refErrors } = validateGraph(nodes, metadata);
+    const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
 
     expect(refErrors).toBeEmpty();
     expect(violations).toHaveLength(1);
@@ -154,8 +144,8 @@ describe('validateGraph — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity');
 
     const nodes = [activity];
-    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
-    const { violations, refErrors } = validateGraph(nodes, metadata);
+    const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toBeEmpty();
@@ -165,8 +155,8 @@ describe('validateGraph — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: '[[Task 1]]' });
 
     const nodes = [activity];
-    resolveGraphEdges(nodes, metadata.hierarchy!.levels, metadata.relationships, metadata.typeAliases);
-    const { violations, refErrors } = validateGraph(nodes, metadata);
+    const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
 
     expect(violations).toBeEmpty();
     expect(refErrors).toHaveLength(1);

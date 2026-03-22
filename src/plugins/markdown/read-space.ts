@@ -42,8 +42,8 @@ export function readSpaceOnAPage(context: PluginContext): ParseResult {
     metadata,
   });
 
-  resolveGraphEdges(nodes, hierarchyLevels, metadata.relationships, metadata.typeAliases);
-  return { nodes, diagnostics: { kind: 'page', preambleNodeCount, terminatedHeadings } };
+  const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+  return { nodes, unresolvedRefs, diagnostics: { kind: 'page', preambleNodeCount, terminatedHeadings } };
 }
 
 export async function readSpaceDirectory(
@@ -54,7 +54,6 @@ export async function readSpaceDirectory(
   const directory = resolve(space.path);
   const mdCfg = context.pluginConfig as MarkdownPluginConfig;
 
-  const hierarchyLevels = metadata.hierarchy?.levels ?? [];
   const fieldMap = mdCfg.fieldMap;
 
   const templateDir = mdCfg.templateDir;
@@ -114,6 +113,6 @@ export async function readSpaceDirectory(
     }
   }
 
-  resolveGraphEdges(nodes, hierarchyLevels, metadata.relationships, metadata.typeAliases);
-  return { nodes, parseIgnored: [...skipped, ...nonSpace], diagnostics: { kind: 'directory' } };
+  const unresolvedRefs = resolveGraphEdges(nodes, metadata);
+  return { nodes, unresolvedRefs, parseIgnored: [...skipped, ...nonSpace], diagnostics: { kind: 'directory' } };
 }

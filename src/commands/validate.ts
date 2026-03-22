@@ -185,7 +185,7 @@ export async function validate(context: SpaceContext): Promise<number> {
   }
 
   // Validate all hierarchy constraints (field references and structure)
-  const hierarchyValidation = validateGraph(nodes, metadata);
+  const hierarchyValidation = validateGraph(nodes, metadata, readResult.unresolvedRefs);
 
   result.refErrors.push(...hierarchyValidation.refErrors);
   result.hierarchyViolations = [...hierarchyValidation.violations];

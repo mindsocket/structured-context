@@ -1,6 +1,5 @@
-import { buildTargetIndex, wikilinkToTarget } from '../read/wikilink-utils';
 import { resolveNodeType } from '../schema/schema';
-import type { GraphViolation, SchemaMetadata, SpaceNode } from '../types';
+import type { GraphViolation, SchemaMetadata, SpaceNode, UnresolvedRef } from '../types';
 
 export interface GraphValidationResult {
   violations: GraphViolation[];
@@ -8,250 +7,75 @@ export interface GraphValidationResult {
 }
 
 /**
- * Validate all hierarchy and relationship constraints including field references.
- * Use this when you have a linkTargetIndex available.
- *
- * @param nodes The nodes to validate
- * @param metadata Schema metadata containing hierarchy and relationships configuration
- * @returns Object containing hierarchy violations and reference errors
+ * Validate graph structure using pre-collected unresolved refs from resolveGraphEdges.
+ * Assumes resolveGraphEdges has already been called to populate node.resolvedParents.
  */
-export function validateGraph(nodes: SpaceNode[], metadata: SchemaMetadata): GraphValidationResult {
-  const refErrors: Array<{ file: string; parent: string; error: string }> = [];
-  const violations: GraphViolation[] = [];
-  const levels = metadata.hierarchy?.levels ?? [];
-  const relationships = metadata.relationships ?? [];
-  const linkTargetIndex = buildTargetIndex(nodes);
-
-  // 1. Validate field references for each hierarchy level
-  for (let i = 1; i < levels.length; i++) {
-    const level = levels[i]!;
-    const parentLevel = levels[i - 1]!;
-
-    // Case 1: Child has field pointing to parent
-    if (level.fieldOn !== 'parent') {
-      validateFieldReferences(
-        nodes,
-        linkTargetIndex,
-        level.type,
-        parentLevel.type,
-        level.field,
-        level.multiple,
-        refErrors,
-        violations,
-        metadata.typeAliases,
-        level.selfRef,
-      );
-    }
-    // Case 2: Parent has field pointing to child
-    else {
-      validateFieldReferences(
-        nodes,
-        linkTargetIndex,
-        parentLevel.type,
-        level.type,
-        level.field,
-        level.multiple,
-        refErrors,
-        violations,
-        metadata.typeAliases,
-      );
-      // For selfRef with fieldOn:'parent', level.type nodes also use the same field to point
-      // to same-type children; validate those references separately.
-      if (level.selfRef) {
-        validateFieldReferences(
-          nodes,
-          linkTargetIndex,
-          level.type,
-          level.type,
-          level.field,
-          level.multiple,
-          refErrors,
-          violations,
-          metadata.typeAliases,
-        );
-      }
-    }
-  }
-
-  // 2. Validate selfRefField references for each hierarchy level that has it
-  for (const level of levels) {
-    if (!level.selfRefField) continue;
-
-    // selfRefField is always on child-side and its multiplicity is strictly false
-    validateFieldReferences(
-      nodes,
-      linkTargetIndex,
-      level.type,
-      level.type,
-      level.selfRefField,
-      false,
-      refErrors,
-      violations,
-      metadata.typeAliases,
-    );
-  }
-
-  // 3. Validate field references for each relationship
-  for (const rel of relationships) {
-    const nodeTypeWithField = rel.fieldOn === 'parent' ? rel.parent : rel.type;
-    const expectedTargetType = rel.fieldOn === 'parent' ? rel.type : rel.parent;
-    const { field, multiple } = rel;
-
-    validateFieldReferences(
-      nodes,
-      linkTargetIndex,
-      nodeTypeWithField,
-      expectedTargetType,
-      field,
-      multiple,
-      refErrors,
-      violations,
-      metadata.typeAliases,
-    );
-  }
-
-  // 4. Validate resolved parent structure rules
-  const structureViolations = validateHierarchyStructure(nodes, metadata);
-  violations.push(...structureViolations);
-
+export function validateGraph(
+  nodes: SpaceNode[],
+  metadata: SchemaMetadata,
+  unresolvedRefs: UnresolvedRef[] = [],
+): GraphValidationResult {
+  const refErrors = unresolvedRefs.map((u) => ({ file: u.label, parent: u.ref, error: u.message }));
+  const violations = validateHierarchyStructure(nodes, metadata);
   return { violations, refErrors };
 }
 
 /**
- * Validate that link references in a field point to valid nodes of the expected type.
- * @param nodes The nodes to check
- * @param linkTargetIndex Map of link targets to nodes
- * @param nodeTypeWithField The type of nodes that have the field
- * @param expectedTargetType The expected type of the resolved node
- * @param field The field name to validate
- * @param multiple Whether the field contains an array of refs
- * @param refErrors Array to collect reference errors (not found, ambiguous)
- * @param violations Array to collect hierarchy/type violations
- * @param typeAliases Optional type aliases for resolution
- * @param selfRefAllowed When true, same-type refs are also valid (for selfRef hierarchy levels)
- */
-function validateFieldReferences(
-  nodes: SpaceNode[],
-  linkTargetIndex: Map<string, SpaceNode | null>,
-  nodeTypeWithField: string,
-  expectedTargetType: string,
-  field: string,
-  multiple: boolean,
-  refErrors: Array<{ file: string; parent: string; error: string }>,
-  violations: GraphViolation[],
-  typeAliases?: Record<string, string>,
-  selfRefAllowed?: boolean,
-): void {
-  const resolvedNodeTypeWithField = resolveNodeType(nodeTypeWithField, typeAliases);
-  const resolvedExpectedTargetType = resolveNodeType(expectedTargetType, typeAliases);
-  const nodesToCheck = nodes.filter((n) => n.resolvedType === resolvedNodeTypeWithField);
-
-  for (const node of nodesToCheck) {
-    const rawField = node.schemaData[field];
-    if (rawField === undefined || rawField === null) continue;
-
-    if (multiple) {
-      if (!Array.isArray(rawField)) {
-        refErrors.push({
-          file: node.label,
-          parent: String(rawField),
-          error: `Field "${field}" must be an array of wikilinks, got ${typeof rawField}`,
-        });
-        continue;
-      }
-      for (const ref of rawField) {
-        if (typeof ref !== 'string') continue;
-        const target = wikilinkToTarget(ref);
-        const resolved = linkTargetIndex.get(target);
-        if (resolved === undefined) {
-          refErrors.push({
-            file: node.label,
-            parent: ref,
-            error: `Link target "${target}" in field "${field}" not found`,
-          });
-        } else if (resolved === null) {
-          refErrors.push({
-            file: node.label,
-            parent: ref,
-            error: `Link target "${target}" in field "${field}" is ambiguous (matches multiple nodes)`,
-          });
-        } else if (
-          resolved.resolvedType !== resolvedExpectedTargetType &&
-          !(selfRefAllowed && resolved.resolvedType === resolvedNodeTypeWithField)
-        ) {
-          violations.push({
-            file: node.label,
-            nodeType: resolvedNodeTypeWithField,
-            nodeTitle: node.schemaData.title as string,
-            parentType: resolved.resolvedType,
-            parentTitle: resolved.schemaData.title as string,
-            description: `Invalid relationship field: ${nodeTypeWithField} "${node.schemaData.title}" has "${resolved.schemaData.title}" in field "${field}" which is of type ${resolved.resolvedType}, expected ${expectedTargetType}`,
-          });
-        }
-      }
-    } else {
-      if (typeof rawField !== 'string') {
-        refErrors.push({
-          file: node.label,
-          parent: String(rawField),
-          error: `Field "${field}" must be a wikilink string, got ${typeof rawField}`,
-        });
-        continue;
-      }
-      const target = wikilinkToTarget(rawField);
-      const resolved = linkTargetIndex.get(target);
-      if (resolved === undefined) {
-        refErrors.push({
-          file: node.label,
-          parent: rawField,
-          error: `Link target "${target}" in field "${field}" not found`,
-        });
-      } else if (resolved === null) {
-        refErrors.push({
-          file: node.label,
-          parent: rawField,
-          error: `Link target "${target}" in field "${field}" is ambiguous (matches multiple nodes)`,
-        });
-      } else if (
-        resolved.resolvedType !== resolvedExpectedTargetType &&
-        !(selfRefAllowed && resolved.resolvedType === resolvedNodeTypeWithField)
-      ) {
-        // Different description for child-side parent field for backward compatibility with test expectations
-        const isParentField = field === 'parent' && node.resolvedType === resolvedNodeTypeWithField;
-        const description = isParentField
-          ? `Invalid relationship parent: ${nodeTypeWithField} "${node.schemaData.title}" points to "${resolved.schemaData.title}" which is of type ${resolved.resolvedType}, expected ${expectedTargetType}`
-          : `Invalid relationship field: ${nodeTypeWithField} "${node.schemaData.title}" has "${resolved.schemaData.title}" in field "${field}" which is of type ${resolved.resolvedType}, expected ${expectedTargetType}`;
-
-        violations.push({
-          file: node.label,
-          nodeType: resolvedNodeTypeWithField,
-          nodeTitle: node.schemaData.title as string,
-          parentType: resolved.resolvedType,
-          parentTitle: resolved.schemaData.title as string,
-          description,
-        });
-      }
-    }
-  }
-}
-
-/**
- * Validate that resolved parents follow hierarchy level rules or relationship definitions.
+ * Validate that resolved parents follow hierarchy level rules and relationship type constraints.
+ *
+ * For hierarchy edges (fieldOn:'child', source:'hierarchy'): validates level ordering.
+ * For relationship edges (fieldOn:'child', source:'relationship'): validates parent type.
+ * For fieldOn:'parent' edges: validates child type, violation attributed to the field-owner node.
+ *
+ * Assumes resolveGraphEdges has already been called to populate node.resolvedParents.
  */
 export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaMetadata): GraphViolation[] {
   const violations: GraphViolation[] = [];
   const levels = metadata.hierarchy?.levels ?? [];
+  const relationships = metadata.relationships ?? [];
   const allowSkipLevels = metadata.hierarchy?.allowSkipLevels ?? false;
   const typeAliases = metadata.typeAliases;
 
   const hierarchy = levels.map((level) => resolveNodeType(level.type, typeAliases));
 
+  // Build type rules: (ownerType, field) → set of valid target types.
+  // For fieldOn:'child': owner=childType, target=parentType.
+  // For fieldOn:'parent': owner=parentType (field owner), target=childType.
+  const typeRules = new Map<string, Map<string, Set<string>>>();
+
+  function addTypeRule(ownerType: string, field: string, targetType: string): void {
+    const owner = resolveNodeType(ownerType, typeAliases);
+    const target = resolveNodeType(targetType, typeAliases);
+    if (!typeRules.has(owner)) typeRules.set(owner, new Map());
+    const fieldMap = typeRules.get(owner)!;
+    if (!fieldMap.has(field)) fieldMap.set(field, new Set());
+    fieldMap.get(field)!.add(target);
+  }
+
+  for (let i = 1; i < levels.length; i++) {
+    const level = levels[i]!;
+    const parentLevel = levels[i - 1]!;
+    if (level.fieldOn === 'parent') {
+      addTypeRule(parentLevel.type, level.field, level.type);
+      if (level.selfRef) addTypeRule(level.type, level.field, level.type);
+    } else {
+      addTypeRule(level.type, level.field, parentLevel.type);
+      if (level.selfRef) addTypeRule(level.type, level.field, level.type);
+    }
+  }
+
+  for (const rel of relationships) {
+    if (rel.fieldOn === 'parent') {
+      addTypeRule(rel.parent, rel.field, rel.type);
+    } else {
+      addTypeRule(rel.type, rel.field, rel.parent);
+    }
+  }
+
   const nodeIndex = new Map<string, SpaceNode>();
   for (const node of nodes) {
     const title = node.schemaData.title as string;
-    if (title) {
-      nodeIndex.set(title, node);
-    }
+    if (title) nodeIndex.set(title, node);
   }
 
   for (const node of nodes) {
@@ -259,23 +83,52 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
     const nodeTitle = node.schemaData.title as string;
 
     for (const parentRef of node.resolvedParents) {
-      // Relationship-sourced parents are type-validated by validateFieldReferences; skip here
-      if (parentRef.source === 'relationship') continue;
-
       const parentNode = nodeIndex.get(parentRef.title);
       if (!parentNode) continue;
 
       const parentType = parentNode.resolvedType;
       const parentTitle = parentRef.title;
 
-      const typeIndex = hierarchy.indexOf(nodeType);
-      const parentIndex = hierarchy.indexOf(parentType);
+      if (parentRef.fieldOn === 'parent') {
+        // Field is on the parent node; validate that this node's type matches the expected child type.
+        // Violation is attributed to the field-owner (parent) node.
+        const allowedChildTypes = typeRules.get(parentType)?.get(parentRef.field);
+        if (allowedChildTypes && !allowedChildTypes.has(nodeType)) {
+          const expected = [...allowedChildTypes].join(' or ');
+          violations.push({
+            file: parentNode.label,
+            nodeType: parentType,
+            nodeTitle: parentTitle,
+            parentType: nodeType,
+            parentTitle: nodeTitle,
+            description: `Invalid relationship: ${parentType} "${parentTitle}" has "${nodeTitle}" in field "${parentRef.field}" which is of type ${nodeType}, expected ${expected}`,
+          });
+        }
+      } else if (parentRef.source === 'relationship') {
+        // Relationship edge (fieldOn:'child'): validate parent type matches relationship definition.
+        const allowedTypes = typeRules.get(nodeType)?.get(parentRef.field);
+        if (allowedTypes && !allowedTypes.has(parentType)) {
+          const expected = [...allowedTypes].join(' or ');
+          violations.push({
+            file: node.label,
+            nodeType,
+            nodeTitle,
+            parentType,
+            parentTitle,
+            description: `Invalid relationship: ${nodeType} "${nodeTitle}" has "${parentTitle}" in field "${parentRef.field}" which is of type ${parentType}, expected ${expected}`,
+          });
+        }
+      } else {
+        // Hierarchy edge (fieldOn:'child', source:'hierarchy'): validate level ordering.
+        const typeIndex = hierarchy.indexOf(nodeType);
+        const parentIndex = hierarchy.indexOf(parentType);
 
-      let isValidHierarchy = false;
-      if (typeIndex !== -1 && parentIndex !== -1) {
+        if (typeIndex === -1 || parentIndex === -1) continue;
+
         const level = levels[typeIndex]!;
         const canSelfRef = level.selfRef || level.selfRefField !== undefined;
 
+        let isValidHierarchy = false;
         if (parentIndex === typeIndex - 1) {
           isValidHierarchy = true;
         } else if (canSelfRef && parentIndex === typeIndex) {
@@ -283,17 +136,17 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
         } else if (allowSkipLevels && parentIndex < typeIndex) {
           isValidHierarchy = true;
         }
-      }
 
-      if (!isValidHierarchy) {
-        violations.push({
-          file: node.label,
-          nodeType,
-          nodeTitle,
-          parentType,
-          parentTitle,
-          description: `Invalid parent: ${nodeType} "${nodeTitle}" cannot have ${parentType} "${parentTitle}" as parent`,
-        });
+        if (!isValidHierarchy) {
+          violations.push({
+            file: node.label,
+            nodeType,
+            nodeTitle,
+            parentType,
+            parentTitle,
+            description: `Invalid parent: ${nodeType} "${nodeTitle}" cannot have ${parentType} "${parentTitle}" as parent`,
+          });
+        }
       }
     }
   }

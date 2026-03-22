@@ -9,7 +9,12 @@ export async function readSpace(context: SpaceContext): Promise<ReadSpaceResult>
     if (!plugin.parse) continue;
     const result = await plugin.parse({ ...context, pluginConfig });
     if (result !== null) {
-      return { nodes: result.nodes, source: plugin.name, diagnostics: result.diagnostics };
+      return {
+        nodes: result.nodes,
+        source: plugin.name,
+        diagnostics: result.diagnostics,
+        unresolvedRefs: result.unresolvedRefs,
+      };
     }
   }
 
