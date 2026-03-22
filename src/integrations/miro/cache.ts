@@ -71,7 +71,7 @@ function normalizeHtmlEntities(text: string): string {
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
 
-/** Compute hash from Miro card data (title + description) to compare against markdown hash */
+/** Compute hash from Miro card data (title + description) to compare against node hash */
 export function computeMiroCardHash(title: string, description: string): string {
   const normalized = {
     title: normalizeHtmlEntities(title),

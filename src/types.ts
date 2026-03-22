@@ -45,7 +45,7 @@ export type Relationship = Omit<MetadataContractRelationship, 'field' | 'fieldOn
 export type ResolvedParentRef = {
   /** Canonical title of the parent node. */
   title: string;
-  /** The frontmatter field name that contained the wikilink (e.g. 'parent', 'key_activities', 'produces_data'). */
+  /** The field name that contained the wikilink (e.g. 'parent', 'key_activities', 'produces_data'). */
   field: string;
   /** Whether this edge originates from a hierarchy level or a relationship definition. */
   source: 'hierarchy' | 'relationship';
@@ -60,7 +60,7 @@ export type UnresolvedRef = {
   label: string;
   /** Raw wikilink value (or String(rawField) for invalid_shape). */
   ref: string;
-  /** Frontmatter field name that contained the link. */
+  /** Field name that contained the link. */
   field: string;
   reason: 'not_found' | 'ambiguous' | 'invalid_shape';
   /** Human-readable message matching validate-graph output format. */

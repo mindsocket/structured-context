@@ -26,13 +26,24 @@ export type ParseResult = {
 
 export type ParseHook = (context: PluginContext) => Promise<ParseResult | null>;
 
+export type TemplateSyncOptions = {
+  dryRun?: boolean;
+  createMissing?: boolean;
+};
+
+export type TemplateSyncHook = (context: PluginContext, options: TemplateSyncOptions) => Promise<true | null>;
+
+/**
+ * Plugin contract:
+ * - A hook not implemented on the plugin → that plugin is skipped for that operation.
+ * - A hook returns `T | null` → null means "didn't handle, try next plugin".
+ * - The orchestrator accepts the first non-null result; if no plugin handles, it throws.
+ */
 export type OstToolsPlugin = {
   name: string;
   /** JSON Schema used to validate the plugin's config block. Fields with `format: 'path'`
    * are resolved relative to the config directory by `resolveConfigPaths` in the loader. */
   configSchema: AnySchemaObject;
   parse?: ParseHook;
-  // Future: canHandle?(context) → boolean | Promise<boolean> for deterministic routing.
-  //   Intent: replace null-return fallthrough with explicit match/no-match. Orchestrator would
-  //   require exactly one plugin to claim the space; ambiguity or no match is an error.
+  templateSync?: TemplateSyncHook;
 };

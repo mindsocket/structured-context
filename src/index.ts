@@ -88,16 +88,13 @@ program
 
 program
   .command('template-sync')
-  .description('Sync template frontmatter with schema examples')
+  .description('Sync schema examples to templates')
   .argument('<space-name>', 'Space name')
   .option('--create-missing', 'Create missing template files for schema types')
   .option('--dry-run', 'Preview changes without writing files')
   .action((spaceName, options) => {
     const context = buildSpaceContext(spaceName);
-    templateSync(context.space.plugins, {
-      ...options,
-      schema: context.resolvedSchemaPath,
-    });
+    templateSync(context, options);
   });
 
 program

@@ -276,3 +276,12 @@ The `plugins` field in config is a **map** from plugin name to plugin config obj
 2. npm: a package matching `ost-tools-*`
 
 Each plugin declares a `configSchema` JSON Schema; the loader validates the config block against it before invoking the plugin. Config fields annotated with `format: 'path'` are resolved relative to `configDir` by the loader.
+
+### Dispatch contract
+
+Plugins are called in order (external plugins first, then built-ins). For each operation:
+- A plugin that does not implement the hook is skipped.
+- A plugin that implements the hook returns `T | null`: non-null means "I handled it"; null means "not me, try the next plugin."
+- The first non-null result wins. If no plugin handles the operation, the command throws an error.
+
+A plugin that can handle a space should do so and return a result. Conversely, a plugin should return null if it inspects the context and determines the operation is not meant for it (for example, a plugin that only handles a specific file format or URL).

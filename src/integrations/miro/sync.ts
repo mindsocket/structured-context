@@ -161,7 +161,7 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
   }
 
   // 6. Determine which nodes are new vs updated vs unchanged
-  // Compare actual Miro card content against markdown (not cached hash)
+  // Compare actual Miro card content against node (not cached hash)
   const newNodes: SpaceNode[] = [];
   const updatedNodes: { node: SpaceNode; cardId: string }[] = [];
   let skippedCount = 0;
@@ -180,12 +180,12 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
       // No card on board - needs to be created
       newNodes.push(node);
     } else {
-      // Card exists - compare actual Miro content against expected markdown content
+      // Card exists - compare actual Miro content against expected node content
       const miroData = miroCardData.get(verifiedCardId);
       if (miroData) {
         const miroHash = computeMiroCardHash(miroData.title, miroData.description);
         if (miroHash !== expectedHash) {
-          // Miro content differs from markdown - needs update
+          // Miro content differs from node - needs update
           if (options.verbose) {
             console.log(`"${title}" differs from Miro:`);
             console.log(`  Expected: "${JSON.stringify(expectedTitle)}"`);

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import type { AnySchemaObject } from 'ajv';
-import type { TypeVariant } from '../../src/commands/template-sync';
-import { generateNewContent } from '../../src/commands/template-sync';
-import type { Relationship, SchemaWithMetadata } from '../../src/types';
+import type { TypeVariant } from '../../../src/plugins/markdown/template-sync';
+import { generateNewContent } from '../../../src/plugins/markdown/template-sync';
+import type { Relationship, SchemaWithMetadata } from '../../../src/types';
 
 describe('template-sync - generateNewContent', () => {
   const schema: SchemaWithMetadata = {
