@@ -103,9 +103,13 @@ function normalizePlugins(
   return Object.fromEntries(Object.entries(plugins).map(([name, cfg]) => [normalizePluginName(name), cfg]));
 }
 
+function isUrl(p: string): boolean {
+  return /^https?:\/\//i.test(p);
+}
+
 function resolveRelativePaths(config: Config, configDir: string): Config {
   const rel = (p: string | undefined): string | undefined => {
-    if (!p || isAbsolute(p)) return p;
+    if (!p || isAbsolute(p) || isUrl(p)) return p;
     return resolve(configDir, p);
   };
   return {
