@@ -110,8 +110,8 @@ describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
       expect(result.diagnostics?.preambleNodeCount).toBeGreaterThanOrEqual(1);
     });
 
-    it('records Archived Vision in terminatedHeadings', () => {
-      expect(result.diagnostics?.terminatedHeadings).toContain('Archived Vision');
+    it('records Archived Vision in parseIgnored', () => {
+      expect(result.parseIgnored).toContain('Archived Vision');
     });
 
     it('does not include Archived Vision in nodes', () => {

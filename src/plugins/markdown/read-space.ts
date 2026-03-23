@@ -41,7 +41,7 @@ export function readSpaceOnAPage(context: PluginContext): ParseResult {
     metadata,
   });
 
-  return { nodes, diagnostics: { kind: 'page', preambleNodeCount, terminatedHeadings } };
+  return { nodes, parseIgnored: terminatedHeadings, diagnostics: { kind: 'page', preambleNodeCount } };
 }
 
 export async function readSpaceDirectory(
@@ -101,13 +101,16 @@ export async function readSpaceDirectory(
     });
 
     if (!ON_A_PAGE_TYPES.includes(pageType)) {
-      const { nodes: embedded } = extractEmbeddedNodes(parsed.content, {
+      const { nodes: embedded, terminatedHeadings } = extractEmbeddedNodes(parsed.content, {
         pageTitle: fileBase,
         pageType,
         metadata,
         fieldMap,
       });
       nodes.push(...embedded);
+      for (const heading of terminatedHeadings) {
+        nonSpace.push(`${file} > ${heading}`);
+      }
     }
   }
 

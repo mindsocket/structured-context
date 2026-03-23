@@ -17,9 +17,9 @@ export type PluginContext = SpaceContext & {
 export type ParseResult = {
   nodes: SpaceNode[];
   /** Paths/items the plugin skipped during parsing, for any reason. */
-  parseIgnored?: string[];
+  parseIgnored: string[];
   /** Plugin diagnostics: keyed scalar or list values. */
-  diagnostics?: Record<string, number | string | string[]>;
+  diagnostics: Record<string, number | string | string[]>;
 };
 
 export type ParseHook = (context: PluginContext) => Promise<ParseResult | null>;
