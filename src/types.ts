@@ -1,6 +1,5 @@
-import type { SchemaObject } from 'ajv';
+import type { AnySchemaObject, SchemaObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
-import type { ParseResult } from './plugins/util';
 import type {
   MetadataContractHierarchyLevel,
   MetadataContractRelationship,
@@ -68,21 +67,34 @@ export type UnresolvedRef = {
   message: string;
 };
 
-export type SpaceNode = {
+/**
+ * A node as produced by a parse plugin — raw type from content, no graph resolution applied.
+ * Core enriches this into a SpaceNode after parsing.
+ */
+export type BaseNode = {
   /** Source identifier for error messages (filename or heading title) */
   label: string;
   /** Fields validated against the active schema. */
   schemaData: Record<string, unknown>;
   /** Valid navigation targets this node can be linked to (wikilink key without [[ ]]). */
   linkTargets: string[];
+  /** Raw type string from content, as written by the user. */
+  type: string;
+};
+
+/**
+ * A fully resolved node — enriched by core after plugin parsing.
+ * Adds canonical type (after alias resolution) and resolved parent graph edges.
+ */
+export type SpaceNode = BaseNode & {
+  /** Resolved canonical type (after applying type aliases from schema metadata). */
+  resolvedType: string;
   /**
    * Resolved parent references derived from all edge fields (hierarchy levels + relationships).
    * Each entry carries the parent title, the field it came from, and its edge context.
    * Always present, empty if no parents resolved.
    */
   resolvedParents: ResolvedParentRef[];
-  /** Resolved canonical type (after applying type aliases from schema metadata). */
-  resolvedType: string;
 };
 
 /** Rule categories for organizing executable validation rules */
@@ -120,7 +132,13 @@ export type SchemaWithMetadata = SchemaObject & {
   metadata: SchemaMetadata;
 };
 
-export type ReadSpaceResult = ParseResult & {
+export type ReadSpaceResult = {
+  /** Fully resolved nodes produced by the plugin and enriched by core. */
+  nodes: SpaceNode[];
+  /** Paths/items the plugin skipped during parsing, for any reason. */
+  parseIgnored: string[];
+  /** Plugin diagnostics: keyed scalar or list values. */
+  diagnostics: Record<string, number | string | string[]>;
   /** Name of the plugin that produced the nodes. */
   source: string;
   /** Broken/invalid wikilink refs collected during graph edge resolution. */
@@ -136,6 +154,10 @@ export type SpaceContext = {
   resolvedSchemaPath: string;
   /** Parsed schema metadata. */
   metadata: SchemaMetadata;
+  /** Full loaded schema with metadata embedded. */
+  schema: SchemaWithMetadata;
+  /** Registry for $ref resolution in schema. */
+  registry: Map<string, AnySchemaObject>;
   /** Directory of the config file that defines this space. Used for resolving relative paths in plugin configs. */
   configDir: string;
 };

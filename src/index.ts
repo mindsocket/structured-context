@@ -12,7 +12,7 @@ import { templateSync } from './commands/template-sync';
 import { validate, watchValidate } from './commands/validate';
 import { getSpaceConfigDir, loadConfig, resolveSchema, setConfigPath } from './config';
 import { miroSync } from './integrations/miro/sync';
-import { loadMetadata } from './schema/schema';
+import { loadSchema } from './schema/schema';
 import type { SpaceContext } from './types';
 
 export function buildSpaceContext(spaceName: string): SpaceContext {
@@ -23,9 +23,10 @@ export function buildSpaceContext(spaceName: string): SpaceContext {
     process.exit(1);
   }
   const resolvedSchemaPath = resolveSchema(config, space);
-  const metadata = loadMetadata(resolvedSchemaPath);
+  const { schema, registry } = loadSchema(resolvedSchemaPath);
+  const metadata = schema.metadata;
   const configDir = getSpaceConfigDir(space.name);
-  return { space, config, resolvedSchemaPath, metadata, configDir };
+  return { space, config, resolvedSchemaPath, metadata, schema, registry, configDir };
 }
 
 const require = createRequire(import.meta.url);

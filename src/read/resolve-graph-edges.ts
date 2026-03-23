@@ -1,5 +1,5 @@
 import { resolveNodeType } from '../schema/schema';
-import type { EdgeDefinition, ResolvedParentRef, SchemaMetadata, SpaceNode, UnresolvedRef } from '../types';
+import type { BaseNode, EdgeDefinition, ResolvedParentRef, SchemaMetadata, SpaceNode, UnresolvedRef } from '../types';
 import { buildTargetIndex, wikilinkToTarget } from './wikilink-utils';
 
 /**
@@ -137,27 +137,31 @@ function resolveEdge(
 }
 
 /**
- * Resolve parent links using the hierarchy levels and relationships configuration from schema metadata.
- * Supports DAG relationships via configurable edge fields.
+ * Enrich parsed nodes into SpaceNodes by applying type alias resolution and resolving
+ * parent links using the hierarchy levels and relationships from schema metadata.
  *
- * Returns unresolved refs (broken/invalid wikilinks) encountered during resolution.
+ * Returns the enriched nodes and any unresolved refs (broken/invalid wikilinks).
  */
-export function resolveGraphEdges(nodes: SpaceNode[], metadata: SchemaMetadata): UnresolvedRef[] {
+export function resolveGraphEdges(
+  nodes: BaseNode[],
+  metadata: SchemaMetadata,
+): { nodes: SpaceNode[]; unresolvedRefs: UnresolvedRef[] } {
   const levels = metadata.hierarchy?.levels ?? [];
   const relationships = metadata.relationships ?? [];
   const typeAliases = metadata.typeAliases;
   const unresolvedRefs: UnresolvedRef[] = [];
 
-  // Initialize all nodes' resolvedParents to empty array
-  for (const node of nodes) {
-    node.resolvedParents = [];
-  }
+  const spaceNodes: SpaceNode[] = nodes.map((n) => ({
+    ...n,
+    resolvedType: resolveNodeType(n.type, typeAliases),
+    resolvedParents: [],
+  }));
 
-  const targetIndex = buildTargetIndex(nodes);
+  const targetIndex = buildTargetIndex(spaceNodes);
 
   // Build nodesByType map
   const nodesByType = new Map<string, SpaceNode[]>();
-  for (const node of nodes) {
+  for (const node of spaceNodes) {
     const type = node.resolvedType;
     if (!nodesByType.has(type)) {
       nodesByType.set(type, []);
@@ -239,5 +243,5 @@ export function resolveGraphEdges(nodes: SpaceNode[], metadata: SchemaMetadata):
       deduped.push(u);
     }
   }
-  return deduped;
+  return { nodes: spaceNodes, unresolvedRefs: deduped };
 }

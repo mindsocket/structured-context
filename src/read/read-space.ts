@@ -10,12 +10,13 @@ export async function readSpace(context: SpaceContext): Promise<ReadSpaceResult>
     if (!plugin.parse) continue;
     const result = await plugin.parse({ ...context, pluginConfig });
     if (result !== null) {
+      const { nodes, unresolvedRefs } = resolveGraphEdges(result.nodes, context.metadata);
       return {
-        nodes: result.nodes,
+        nodes,
         source: plugin.name,
         parseIgnored: result.parseIgnored,
         diagnostics: result.diagnostics,
-        unresolvedRefs: resolveGraphEdges(result.nodes, context.metadata),
+        unresolvedRefs,
       };
     }
   }

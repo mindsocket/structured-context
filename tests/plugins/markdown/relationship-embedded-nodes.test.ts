@@ -28,7 +28,7 @@ describe('Embedded nodes with parent-side relationships', () => {
     });
 
     // Should have 1 Applications node
-    const appNode = result.nodes.find((n) => n.resolvedType === 'Applications');
+    const appNode = result.nodes.find((n) => n.type === 'Applications');
 
     expect(appNode).toBeDefined();
     expect(appNode?.schemaData.title).toBe('Project management using Zephyr');

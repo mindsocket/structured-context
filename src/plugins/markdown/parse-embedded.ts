@@ -4,9 +4,14 @@ import { toString as mdastToString } from 'mdast-util-to-string';
 import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
-import type { SharedEmbeddingFields } from '../../schema/metadata-contract';
-import { resolveNodeType } from '../../schema/schema';
-import type { EdgeDefinition, HierarchyLevel, Relationship, SchemaMetadata, SpaceNode } from '../../types';
+import type {
+  BaseNode,
+  EdgeDefinition,
+  HierarchyLevel,
+  Relationship,
+  SchemaMetadata,
+  SharedEmbeddingFields,
+} from '../../plugin-api';
 import { applyFieldMap } from './util';
 
 /** Type values that identify a space_on_a_page container (not themselves space nodes). */
@@ -37,8 +42,8 @@ interface EmbeddingDefinition extends EdgeDefinition, SharedEmbeddingFields {
 /** Active grouping context — replaces ad-hoc pendingMatch. */
 type GroupingState = {
   definition: EmbeddingDefinition;
-  semanticParent: { ref: string | undefined; node: SpaceNode | undefined };
-  headingNode: SpaceNode;
+  semanticParent: { ref: string | undefined; node: BaseNode | undefined };
+  headingNode: BaseNode;
   emitted: boolean;
 };
 
@@ -66,7 +71,7 @@ function matchesPattern(title: string, lowerTitle: string, matchers: string[]): 
  * Append a wikilink reference to a field array on a node.
  * Creates the array if missing; throws if the field exists but is not an array.
  */
-function appendParentField(parentNode: SpaceNode, field: string, linkRef: string): void {
+function appendParentField(parentNode: BaseNode, field: string, linkRef: string): void {
   const fieldValue = parentNode.schemaData[field];
   if (fieldValue === undefined) {
     parentNode.schemaData[field] = [linkRef];
@@ -192,7 +197,7 @@ export function defaultNodeType(stack: StackEntry[], hierarchy: readonly string[
   return hierarchy[idx + 1]!;
 }
 
-function appendContent(node: SpaceNode, text: string): void {
+function appendContent(node: BaseNode, text: string): void {
   if (!text) return;
   const existing = node.schemaData.content as string | undefined;
   node.schemaData.content = existing ? `${existing}\n${text}` : text;
@@ -201,15 +206,15 @@ function appendContent(node: SpaceNode, text: string): void {
 function processListItem(
   item: ListItem,
   parentRef: string | undefined,
-  contentTarget: SpaceNode,
-  nodes: SpaceNode[],
+  contentTarget: BaseNode,
+  nodes: BaseNode[],
   makeLabel: (title: string) => string,
   buildLinkTargets: (title: string) => string[],
   typeAliases: Record<string, string>,
   fieldMap?: Record<string, string>,
   pendingType?: string,
-  parentFieldAppend?: { node: SpaceNode; field: string },
-  activeNodeFieldAppend?: { node: SpaceNode; field: string },
+  parentFieldAppend?: { node: BaseNode; field: string },
+  activeNodeFieldAppend?: { node: BaseNode; field: string },
 ): void {
   const firstPara = item.children.find((c) => c.type === 'paragraph') as Paragraph | undefined;
 
@@ -255,12 +260,11 @@ function processListItem(
     if (summary) schemaData.summary = summary;
 
     const linkTargets = buildLinkTargets(title);
-    const newNode: SpaceNode = {
+    const newNode: BaseNode = {
       label: makeLabel(title),
       schemaData,
       linkTargets,
-      resolvedParents: [],
-      resolvedType: resolveNodeType(type, typeAliases),
+      type,
     };
     nodes.push(newNode);
 
@@ -315,7 +319,7 @@ export interface ExtractEmbeddedOptions {
 }
 
 export interface ExtractEmbeddedResult {
-  nodes: SpaceNode[];
+  nodes: BaseNode[];
   preambleNodeCount: number;
   terminatedHeadings: string[];
 }
@@ -334,14 +338,13 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   const typeAliases = metadata.typeAliases ?? {};
   const isOnAPageMode = pageType === undefined || ON_A_PAGE_TYPES.includes(pageType);
 
-  const nodes: SpaceNode[] = [];
+  const nodes: BaseNode[] = [];
   // Preamble/root content sink - never added to nodes
-  const rootNode: SpaceNode = {
+  const rootNode: BaseNode = {
     label: '_root_',
     schemaData: { type: 'space_on_a_page' },
     linkTargets: [],
-    resolvedParents: [],
-    resolvedType: 'space_on_a_page',
+    type: 'space_on_a_page',
   };
 
   const tree = unified().use(remarkParse).use(remarkGfm).parse(body) as Root;
@@ -488,7 +491,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
    * Walk the stack from the second-to-last entry backwards to find the deepest typed node.
    * Must be called AFTER the new heading is pushed to the stack so stack[-2] is its parent.
    */
-  function resolveSemanticParent(): { ref: string | undefined; node: SpaceNode | undefined } {
+  function resolveSemanticParent(): { ref: string | undefined; node: BaseNode | undefined } {
     for (let i = stack.length - 2; i >= 0; i--) {
       if (stack[i]!.nodeType !== '') {
         const refTarget = stack[i]!.refTarget;
@@ -504,7 +507,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   /**
    * Emit the grouping heading node if not already emitted.
    */
-  function flushGrouping(g: GroupingState): SpaceNode {
+  function flushGrouping(g: GroupingState): BaseNode {
     if (!g.emitted) {
       nodes.push(g.headingNode);
       g.emitted = true;
@@ -538,7 +541,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   }
 
   let grouping: GroupingState | null = null;
-  let activeNode: SpaceNode = rootNode;
+  let activeNode: BaseNode = rootNode;
 
   for (const child of tree.children) {
     if (parseState === 'done') {
@@ -607,12 +610,11 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       if (parentRef) schemaData.parent = parentRef;
 
       const linkTargets = buildHeadingLinkTargets(rawText, title, anchor);
-      const headingNode: SpaceNode = {
+      const headingNode: BaseNode = {
         label: makeLabel(title),
         schemaData,
         linkTargets,
-        resolvedParents: [],
-        resolvedType: resolveNodeType(type, typeAliases),
+        type,
       };
 
       // Push to stack BEFORE resolving semantic parent — stack[-2] is the correct parent.
@@ -729,7 +731,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
         if (rowTypeStr) {
           let semanticParentRef = parentRef;
-          let semanticParentNode: SpaceNode | undefined;
+          let semanticParentNode: BaseNode | undefined;
           if (grouping) {
             // Use already-resolved semantic parent from grouping
             semanticParentRef = grouping.semanticParent.ref;
@@ -777,12 +779,11 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             }
 
             const linkTargets = buildListItemLinkTargets(title);
-            const rowNode: SpaceNode = {
+            const rowNode: BaseNode = {
               label: makeLabel(title),
               schemaData,
               linkTargets,
-              resolvedParents: [],
-              resolvedType: resolveNodeType(rowTypeStr, typeAliases),
+              type: rowTypeStr,
             };
             nodes.push(rowNode);
 

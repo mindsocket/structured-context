@@ -4,7 +4,7 @@ import { readSpaceDirectory, readSpaceOnAPage } from '../../src/plugins/markdown
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { bundledSchemasDir, createValidator, loadMetadata } from '../../src/schema/schema';
 import { validateGraph } from '../../src/schema/validate-graph';
-import type { SpaceNode, UnresolvedRef } from '../../src/types';
+import type { BaseNode, SpaceNode, UnresolvedRef } from '../../src/types';
 import { makePluginContext } from '../helpers/context';
 import { makeLevel } from '../test-helpers';
 
@@ -23,8 +23,7 @@ describe('Schema validation', () => {
 
     beforeAll(async () => {
       const result = await readSpaceDirectory(makePluginContext(VALID_DIR));
-      nodes = result.nodes;
-      unresolvedRefs = resolveGraphEdges(nodes, metadata);
+      ({ nodes, unresolvedRefs } = resolveGraphEdges(result.nodes, metadata));
     });
 
     it('all 12 nodes pass schema validation', () => {
@@ -44,7 +43,7 @@ describe('Schema validation', () => {
     let nodes: SpaceNode[];
 
     beforeAll(() => {
-      ({ nodes } = readSpaceOnAPage(makePluginContext(VALID_PAGE)));
+      ({ nodes } = resolveGraphEdges(readSpaceOnAPage(makePluginContext(VALID_PAGE)).nodes, metadata));
     });
 
     it('all nodes pass schema validation', () => {
@@ -61,8 +60,7 @@ describe('Schema validation', () => {
 
     beforeAll(async () => {
       const result = await readSpaceDirectory(makePluginContext(INVALID_DIR));
-      nodes = result.nodes;
-      unresolvedRefs = resolveGraphEdges(nodes, metadata);
+      ({ nodes, unresolvedRefs } = resolveGraphEdges(result.nodes, metadata));
     });
 
     it('missing-status.md fails schema validation (no status field)', () => {
@@ -91,13 +89,12 @@ describe('Schema validation', () => {
 
   describe('link-target parent resolution', () => {
     it('resolves anchor/section wikilinks to canonical parent titles', () => {
-      const nodes: SpaceNode[] = [
+      const baseNodes: BaseNode[] = [
         {
           label: 'anchor_vision.md',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
-          resolvedParents: [],
-          resolvedType: 'vision',
+          type: 'vision',
         },
         {
           label: 'Our Mission',
@@ -108,8 +105,7 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision]]',
           },
           linkTargets: ['anchor_vision#Our Mission mission', 'anchor_vision#^mission'],
-          resolvedParents: [],
-          resolvedType: 'mission',
+          type: 'mission',
         },
         {
           label: 'Another Goal',
@@ -120,8 +116,7 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision#^mission]]',
           },
           linkTargets: ['anchor_vision#Another Goal goal1', 'anchor_vision#^goal1'],
-          resolvedParents: [],
-          resolvedType: 'goal',
+          type: 'goal',
         },
         {
           label: 'solution_page.md',
@@ -132,32 +127,30 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision#^goal1]]',
           },
           linkTargets: ['solution_page'],
-          resolvedParents: [],
-          resolvedType: 'solution',
+          type: 'solution',
         },
       ];
 
-      const refs1 = resolveGraphEdges(nodes, {
+      const { nodes: nodes1, unresolvedRefs: refs1 } = resolveGraphEdges(baseNodes, {
         hierarchy: { levels: [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')] },
       });
 
-      expect(nodes.find((n) => n.label === 'Another Goal')?.schemaData.parent).toBe('[[anchor_vision#^mission]]');
-      expect(nodes.find((n) => n.label === 'Another Goal')?.resolvedParents[0]?.title).toBe('Our Mission');
-      expect(nodes.find((n) => n.label === 'solution_page.md')?.schemaData.parent).toBe('[[anchor_vision#^goal1]]');
-      expect(nodes.find((n) => n.label === 'solution_page.md')?.resolvedParents[0]?.title).toBe('Another Goal');
+      expect(nodes1.find((n) => n.label === 'Another Goal')?.schemaData.parent).toBe('[[anchor_vision#^mission]]');
+      expect(nodes1.find((n) => n.label === 'Another Goal')?.resolvedParents[0]?.title).toBe('Our Mission');
+      expect(nodes1.find((n) => n.label === 'solution_page.md')?.schemaData.parent).toBe('[[anchor_vision#^goal1]]');
+      expect(nodes1.find((n) => n.label === 'solution_page.md')?.resolvedParents[0]?.title).toBe('Another Goal');
 
-      const { refErrors } = validateGraph(nodes, metadata, refs1);
+      const { refErrors } = validateGraph(nodes1, metadata, refs1);
       expect(refErrors).toHaveLength(0);
     });
 
     it('keeps unresolved parent links untouched when no link target matches', () => {
-      const nodes: SpaceNode[] = [
+      const baseNodes: BaseNode[] = [
         {
           label: 'anchor_vision.md',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
-          resolvedParents: [],
-          resolvedType: 'vision',
+          type: 'vision',
         },
         {
           label: 'some-solution.md',
@@ -168,28 +161,26 @@ describe('Schema validation', () => {
             parent: '[[anchor_vision#^noanchor]]',
           },
           linkTargets: ['some-solution'],
-          resolvedParents: [],
-          resolvedType: 'solution',
+          type: 'solution',
         },
       ];
 
-      const refs2 = resolveGraphEdges(nodes, {
+      const { nodes: nodes2, unresolvedRefs: refs2 } = resolveGraphEdges(baseNodes, {
         hierarchy: { levels: [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')] },
       });
 
-      const { refErrors } = validateGraph(nodes, metadata, refs2);
+      const { refErrors } = validateGraph(nodes2, metadata, refs2);
       expect(refErrors).toHaveLength(1);
       expect(refErrors[0]?.parent).toBe('[[anchor_vision#^noanchor]]');
     });
 
     it('does not resolve bare embedded-node title links when no page exists', () => {
-      const nodes: SpaceNode[] = [
+      const baseNodes: BaseNode[] = [
         {
           label: 'vision_page.md',
           schemaData: { title: 'vision_page', type: 'vision', status: 'active' },
           linkTargets: ['vision_page'],
-          resolvedParents: [],
-          resolvedType: 'vision',
+          type: 'vision',
         },
         {
           label: 'Embedded Goal',
@@ -200,8 +191,7 @@ describe('Schema validation', () => {
             parent: '[[vision_page]]',
           },
           linkTargets: ['vision_page#Embedded Goal'],
-          resolvedParents: [],
-          resolvedType: 'goal',
+          type: 'goal',
         },
         {
           label: 'solution_page.md',
@@ -212,17 +202,16 @@ describe('Schema validation', () => {
             parent: '[[Embedded Goal]]',
           },
           linkTargets: ['solution_page'],
-          resolvedParents: [],
-          resolvedType: 'solution',
+          type: 'solution',
         },
       ];
 
-      const refs3 = resolveGraphEdges(nodes, {
+      const { nodes: nodes3, unresolvedRefs: refs3 } = resolveGraphEdges(baseNodes, {
         hierarchy: { levels: [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')] },
       });
 
-      expect(nodes.find((n) => n.label === 'solution_page.md')?.resolvedParents).toHaveLength(0);
-      const { refErrors } = validateGraph(nodes, metadata, refs3);
+      expect(nodes3.find((n) => n.label === 'solution_page.md')?.resolvedParents).toHaveLength(0);
+      const { refErrors } = validateGraph(nodes3, metadata, refs3);
       expect(refErrors).toHaveLength(1);
       expect(refErrors[0]?.parent).toBe('[[Embedded Goal]]');
     });
@@ -306,8 +295,10 @@ describe('Schema validation', () => {
 
   describe('duplicate title detection', () => {
     it('detects duplicate titles from same filename in different directories', async () => {
-      const { nodes } = await readSpaceDirectory(
-        makePluginContext(join(import.meta.dir, '../fixtures/general/duplicate-titles')),
+      const { nodes } = resolveGraphEdges(
+        (await readSpaceDirectory(makePluginContext(join(import.meta.dir, '../fixtures/general/duplicate-titles'))))
+          .nodes,
+        metadata,
       );
       const titleCounts = new Map<string, SpaceNode[]>();
       for (const node of nodes) {
@@ -324,8 +315,9 @@ describe('Schema validation', () => {
     });
 
     it('detects duplicate titles from embedded nodes', () => {
-      const { nodes } = readSpaceOnAPage(
-        makePluginContext(join(import.meta.dir, '../fixtures/general/duplicate-embedded.md')),
+      const { nodes } = resolveGraphEdges(
+        readSpaceOnAPage(makePluginContext(join(import.meta.dir, '../fixtures/general/duplicate-embedded.md'))).nodes,
+        metadata,
       );
       const titleCounts = new Map<string, SpaceNode[]>();
       for (const node of nodes) {

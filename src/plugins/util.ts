@@ -1,5 +1,5 @@
 import type { AnySchemaObject } from 'ajv';
-import type { SpaceContext, SpaceNode } from '../types';
+import type { BaseNode, SpaceContext } from '../types';
 
 export const PLUGIN_PREFIX = 'ost-tools-';
 export const CONFIG_PLUGINS_DIR = 'plugins';
@@ -15,7 +15,7 @@ export type PluginContext = SpaceContext & {
 };
 
 export type ParseResult = {
-  nodes: SpaceNode[];
+  nodes: BaseNode[];
   /** Paths/items the plugin skipped during parsing, for any reason. */
   parseIgnored: string[];
   /** Plugin diagnostics: keyed scalar or list values. */

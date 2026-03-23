@@ -1,4 +1,4 @@
-import type { HierarchyLevel, Relationship, ResolvedParentRef, SpaceNode } from '../src/types';
+import type { BaseNode, HierarchyLevel, Relationship, ResolvedParentRef } from '../src/types';
 
 /**
  * Creates a ResolvedParentRef with sensible defaults for use in tests.
@@ -42,17 +42,16 @@ export const makeRelationship = (
 });
 
 /**
- * Creates a SpaceNode with sensible defaults for use in tests.
+ * Creates a BaseNode with sensible defaults for use in tests.
  */
 export const makeNode = (
   title: string,
   type: string,
   extra: Record<string, unknown> = {},
   linkTargets?: string[],
-): SpaceNode => ({
+): BaseNode => ({
   label: `${title}.md`,
   schemaData: { title, type, ...extra },
   linkTargets: linkTargets ?? [title],
-  resolvedParents: [],
-  resolvedType: type,
+  type,
 });

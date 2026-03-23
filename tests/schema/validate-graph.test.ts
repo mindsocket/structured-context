@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { resolveNodeType } from '../../src/schema/schema';
 import { validateGraph, validateHierarchyStructure } from '../../src/schema/validate-graph';
-import type { SchemaMetadata, SpaceNode } from '../../src/types';
+import type { BaseNode, SchemaMetadata, SpaceNode } from '../../src/types';
 import { makeLevel, makeNode, makeParentRef } from '../test-helpers';
 
 describe('validateGraph - selfRef field reference validation', () => {
@@ -15,20 +15,23 @@ describe('validateGraph - selfRef field reference validation', () => {
     };
 
     it('allows goal.parent pointing to a goal when selfRef is true', () => {
-      const nodes: SpaceNode[] = [
+      const baseNodes: BaseNode[] = [
         makeNode('Mission 1', 'mission'),
         makeNode('Goal 1', 'goal', { parent: '[[Mission 1]]' }),
         makeNode('Sub Goal', 'goal', { parent: '[[Goal 1]]' }),
       ];
-      const unresolvedRefs = resolveGraphEdges(nodes, metaSelfRef);
+      const { nodes, unresolvedRefs } = resolveGraphEdges(baseNodes, metaSelfRef);
       const { violations, refErrors } = validateGraph(nodes, metaSelfRef, unresolvedRefs);
       expect(refErrors).toHaveLength(0);
       expect(violations).toHaveLength(0);
     });
 
     it('reports violation for goal.parent pointing to a goal when selfRef is false', () => {
-      const nodes: SpaceNode[] = [makeNode('Goal 1', 'goal'), makeNode('Sub Goal', 'goal', { parent: '[[Goal 1]]' })];
-      const unresolvedRefs = resolveGraphEdges(nodes, metaNoSelfRef);
+      const baseNodes: BaseNode[] = [
+        makeNode('Goal 1', 'goal'),
+        makeNode('Sub Goal', 'goal', { parent: '[[Goal 1]]' }),
+      ];
+      const { nodes, unresolvedRefs } = resolveGraphEdges(baseNodes, metaNoSelfRef);
       const { violations, refErrors } = validateGraph(nodes, metaNoSelfRef, unresolvedRefs);
       expect(refErrors).toHaveLength(0);
       expect(violations).toHaveLength(1);
@@ -48,23 +51,23 @@ describe('validateGraph - selfRef field reference validation', () => {
     };
 
     it('allows goal.subgoals pointing to goals (self-ref)', () => {
-      const nodes: SpaceNode[] = [
+      const baseNodes: BaseNode[] = [
         makeNode('Mission 1', 'mission', { subgoals: ['[[Goal 1]]', '[[Goal 2]]'] }),
         makeNode('Goal 1', 'goal', { subgoals: ['[[Goal 2]]'] }),
         makeNode('Goal 2', 'goal'),
       ];
-      const unresolvedRefs = resolveGraphEdges(nodes, meta);
+      const { nodes, unresolvedRefs } = resolveGraphEdges(baseNodes, meta);
       const { violations, refErrors } = validateGraph(nodes, meta, unresolvedRefs);
       expect(refErrors).toHaveLength(0);
       expect(violations).toHaveLength(0);
     });
 
     it('reports violation for goal.subgoals pointing to a non-goal', () => {
-      const nodes: SpaceNode[] = [
+      const baseNodes: BaseNode[] = [
         makeNode('Mission 1', 'mission'),
         makeNode('Goal 1', 'goal', { subgoals: ['[[Mission 1]]'] }),
       ];
-      const unresolvedRefs = resolveGraphEdges(nodes, meta);
+      const { nodes, unresolvedRefs } = resolveGraphEdges(baseNodes, meta);
       const { violations, refErrors } = validateGraph(nodes, meta, unresolvedRefs);
       expect(refErrors).toHaveLength(0);
       expect(violations).toHaveLength(1);

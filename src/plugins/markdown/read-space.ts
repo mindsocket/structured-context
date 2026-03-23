@@ -2,8 +2,7 @@ import { readFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { Glob } from 'bun';
 import matter from 'gray-matter';
-import { resolveNodeType } from '../../schema/schema';
-import type { SpaceNode } from '../../types';
+import type { BaseNode } from '../../plugin-api';
 import type { ParseResult, PluginContext } from '../util';
 import type { MarkdownPluginConfig } from '.';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
@@ -58,7 +57,7 @@ export async function readSpaceDirectory(
   const absoluteTemplateDir = templateDir ? resolve(templateDir) : undefined;
 
   const files = await Array.fromAsync(new Glob('**/*.md').scan({ cwd: directory, followSymlinks: true }));
-  const nodes: SpaceNode[] = [];
+  const nodes: BaseNode[] = [];
   const skipped: string[] = [];
   const nonSpace: string[] = [];
 
@@ -96,8 +95,7 @@ export async function readSpaceDirectory(
       label: file,
       schemaData: { title, ...data },
       linkTargets: [title, fileBase],
-      resolvedParents: [],
-      resolvedType: resolveNodeType(pageType, metadata.typeAliases),
+      type: pageType,
     });
 
     if (!ON_A_PAGE_TYPES.includes(pageType)) {

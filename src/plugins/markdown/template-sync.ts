@@ -4,9 +4,8 @@ import type { AnySchemaObject } from 'ajv';
 import { Glob } from 'bun';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
-import { loadSchema } from '../../schema/schema';
+import type { HierarchyLevel, Relationship, SchemaWithMetadata } from '../../plugin-api';
 import { mergeVariantProperties, resolveRef } from '../../schema/schema-refs';
-import type { HierarchyLevel, Relationship, SchemaWithMetadata } from '../../types';
 import type { PluginContext, TemplateSyncOptions } from '../util';
 import type { MarkdownPluginConfig } from './index';
 import { invertFieldMap } from './util';
@@ -256,7 +255,7 @@ export async function templateSync(context: PluginContext, options: TemplateSync
     console.error('Error: templateDir not set in markdown config for this space');
     process.exit(1);
   }
-  const { schema, registry } = loadSchema(context.resolvedSchemaPath);
+  const { schema, registry } = context;
 
   const typeVariants = getTypeVariants(schema, registry);
   const matchedTypes = new Set<string>();
