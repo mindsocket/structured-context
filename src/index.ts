@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { diagram } from './commands/diagram';

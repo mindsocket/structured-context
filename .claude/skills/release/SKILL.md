@@ -15,14 +15,9 @@ Cut a **$ARGUMENTS** release (major, minor, or patch).
    ```
    If lint or tests fail, stop and report the errors.
 
-3. Log in to npm:
+3. Tell the user to run these commands in their terminal to complete the release (npm requires browser-based authentication that Claude cannot handle):
    ```
-   npm login
-   ```
-
-4. Publish:
-   ```
-   npm publish
+   npm login && npm publish
    ```
 
-5. Report the new version and confirm it's live.
+4. Once the user confirms publish succeeded, report the new version and confirm it's live.
