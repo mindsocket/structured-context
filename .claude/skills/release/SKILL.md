@@ -20,4 +20,9 @@ Cut a **$ARGUMENTS** release (major, minor, or patch).
    npm login && npm publish
    ```
 
-4. Once the user confirms publish succeeded, report the new version and confirm it's live.
+4. Once the user confirms publish succeeded, verify it's live by running:
+   ```
+   npm view ost-tools version
+   bunx ost-tools@latest --version
+   ```
+   The first confirms the registry has the new version. The second confirms the published package runs correctly. Report both results to the user.
