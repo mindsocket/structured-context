@@ -77,7 +77,8 @@ program
   .command('show')
   .description('Print space tree as an indented list')
   .argument('<space-name>', 'Space name')
-  .action((spaceName) => show(buildSpaceContext(spaceName)));
+  .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
+  .action((spaceName, options) => show(buildSpaceContext(spaceName), options));
 
 program
   .command('dump')

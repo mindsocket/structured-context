@@ -32,7 +32,7 @@ bunx ost-tools validate <space> --watch
 ## show
 
 ```bash
-bunx ost-tools show <space>
+bunx ost-tools show <space> [--filter <view-or-expression>]
 ```
 
 Prints a hierarchical tree of all nodes, indented by parent→child relationships. Useful for
@@ -40,6 +40,35 @@ browsing structure, verifying parent links are correct, and spotting orphaned no
 
 Uses hierarchy edge config from `$metadata.hierarchy.levels` (`field`, `fieldOn`, `multiple`).
 If those are misconfigured for your content, output will appear flatter than expected.
+
+**`--filter`** accepts either a named view from the space config (`views` key) or an inline filter
+expression. Only matching nodes are shown in the tree.
+
+```bash
+# Inline expression
+bunx ost-tools show <space> --filter "WHERE resolvedType='solution' and status='active'"
+
+# Ancestor attribute filter (solutions under an active opportunity)
+bunx ost-tools show <space> --filter "WHERE resolvedType='solution' and \$exists(ancestors[resolvedType='opportunity' and status='active'])"
+
+# Named view from config
+bunx ost-tools show <space> --filter my-view-name
+```
+
+**Filter expression syntax:** `WHERE {jsonata}` | `SELECT {spec} WHERE {jsonata}` | bare JSONata.
+Within the predicate, node fields (e.g. `resolvedType`, `status`) are directly accessible. Two
+traversal arrays are also available per node:
+- `ancestors[]` — ancestor nodes nearest-first, each with `_field`, `_source`, `_selfRef` edge metadata
+- `descendants[]` — descendant nodes, same structure
+
+**Named views** are defined in the space config:
+```json5
+{
+  views: {
+    "active-solutions": { expression: "WHERE resolvedType='solution' and status='active'" }
+  }
+}
+```
 
 ## dump
 
@@ -138,6 +167,9 @@ bunx ost-tools template-sync <space> --create-missing
       },
       miroBoardId: 'xxx',
       miroFrameId: 'xxx',  // auto-populated by --new-frame
+      views: {
+        'active-solutions': { expression: "WHERE resolvedType='solution' and status='active'" },
+      },
     }
   ]
 }

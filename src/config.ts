@@ -20,6 +20,15 @@ const CONFIG_SCHEMA = {
           miroBoardId: { type: 'string' },
           miroFrameId: { type: 'string' },
           plugins: { type: 'object', additionalProperties: { type: 'object' } },
+          views: {
+            type: 'object',
+            additionalProperties: {
+              type: 'object',
+              properties: { expression: { type: 'string', minLength: 1 } },
+              required: ['expression'],
+              additionalProperties: false,
+            },
+          },
         },
         required: ['name', 'path'],
         additionalProperties: false,
@@ -40,6 +49,8 @@ export type SpaceConfig = {
   miroFrameId?: string;
   /** Plugin name → plugin config map. Overrides top-level plugins when set. */
   plugins?: Record<string, Record<string, unknown>>;
+  /** Named filter views for this space. Keys are view names; values contain the filter expression. */
+  views?: Record<string, { expression: string }>;
 };
 
 export type Config = {

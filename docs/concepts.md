@@ -253,6 +253,75 @@ An **anchor** is a block anchor (e.g. `^goal1`) appended to a heading in a `type
 
 ---
 
+## Filter expressions
+
+A **filter expression** is a string that selects a subset of nodes from a space. Filter expressions are used with the `--filter` flag on the `show` command and in named filter views in config.
+
+### Syntax
+
+```
+WHERE {jsonata}                    — return nodes where the JSONata predicate is truthy
+SELECT {spec} WHERE {jsonata}      — predicate + include spec (SELECT expansion is a future feature)
+{jsonata}                          — bare JSONata, treated as a WHERE predicate (convenience shorthand)
+```
+
+Keywords (`WHERE`, `SELECT`) are case-insensitive.
+
+### Predicate context
+
+The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression evaluated per node. Node fields (from `schemaData`) are accessible directly — e.g. `resolvedType`, `status`, `title`. Additionally, two pre-computed traversal arrays are available:
+
+| Field | Description |
+|-------|-------------|
+| `ancestors[]` | Flat array of ancestor nodes, nearest first, deduplicated by title |
+| `descendants[]` | Flat array of descendant nodes, nearest first, deduplicated by title |
+
+Each entry in `ancestors[]` or `descendants[]` includes all schema fields of the target node, plus edge metadata:
+
+| Metadata field | Type | Description |
+|----------------|------|-------------|
+| `_field` | `string` | The edge field name that connects to this ancestor/descendant |
+| `_source` | `'hierarchy' \| 'relationship'` | Whether the edge came from the hierarchy or a relationship |
+| `_selfRef` | `boolean` | Whether the edge is a same-type (self-referential) link |
+
+### Examples
+
+```jsonata
+WHERE resolvedType='solution' and status='active'
+
+WHERE resolvedType='solution' and $exists(ancestors[resolvedType='opportunity' and status='active'])
+
+WHERE $count(descendants[resolvedType='solution']) > 3
+```
+
+---
+
+## Filter views
+
+A **filter view** is a named filter expression defined in the space config. Views allow commonly used filters to be referenced by name rather than repeating the expression inline.
+
+Views are defined in the space config under the `views` key:
+
+```json
+{
+  "spaces": [
+    {
+      "name": "my-space",
+      "path": "/path/to/space",
+      "views": {
+        "active-solutions": {
+          "expression": "WHERE resolvedType='solution' and status='active'"
+        }
+      }
+    }
+  ]
+}
+```
+
+Use a view by name with `ost-tools show <space> --filter <view-name>`. If no matching view name is found in the config, the value is treated as an inline filter expression.
+
+---
+
 ## Status
 
 **Status** is a lifecycle field on nodes indicating a node's current stage. The valid values and their semantics are defined by the schema in use. Examples from the default schema (in rough progression):
