@@ -2,6 +2,8 @@ import { statSync } from 'node:fs';
 import type { OstToolsPlugin, ParseResult, PluginContext } from '../util';
 import { PLUGIN_PREFIX } from '../util';
 import { readSpaceDirectory, readSpaceOnAPage } from './read-space';
+import { renderBullets } from './render-bullets';
+import { renderMermaid } from './render-mermaid';
 import { templateSync } from './template-sync';
 
 export type MarkdownPluginConfig = {
@@ -36,4 +38,15 @@ export const markdownPlugin: OstToolsPlugin = {
   configSchema: MARKDOWN_CONFIG_SCHEMA,
   parse,
   templateSync,
+  render: {
+    formats: [
+      { name: 'bullets', description: 'Indented bullet list' },
+      { name: 'mermaid', description: 'Mermaid graph TD diagram' },
+    ],
+    render(format, input) {
+      if (format === 'bullets') return renderBullets(input);
+      if (format === 'mermaid') return renderMermaid(input);
+      throw new Error(`Unknown markdown render format: "${format}"`);
+    },
+  },
 };

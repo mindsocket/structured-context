@@ -12,9 +12,13 @@ export type {
   ParseHook,
   ParseResult,
   PluginContext,
+  RenderFormat,
+  RenderHook,
+  RenderInput,
   TemplateSyncHook,
   TemplateSyncOptions,
 } from './plugins/util';
+export type { NodeClassification } from './util/graph-helpers';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
 export type {
   BaseNode,
