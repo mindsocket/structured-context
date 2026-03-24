@@ -1,9 +1,8 @@
 import { writeFileSync } from 'node:fs';
-import { loadPlugins } from '../plugins/loader';
-import { discoverPlugins } from '../plugins/loader';
-import type { SpaceContext } from '../types';
+import { discoverPlugins, type LoadedPlugin, loadPlugins } from '../plugins/loader';
 import { buildFormatRegistry } from '../render/registry';
 import { executeRender } from '../render/render';
+import type { SpaceContext } from '../types';
 
 export async function render(
   context: SpaceContext,
@@ -21,7 +20,7 @@ export async function render(
 }
 
 export async function renderList(context?: SpaceContext): Promise<void> {
-  let loaded;
+  let loaded: LoadedPlugin[];
   if (context) {
     const pluginMap: Record<string, Record<string, unknown>> = context.space?.plugins ?? {};
     loaded = await loadPlugins(pluginMap, context.configDir);

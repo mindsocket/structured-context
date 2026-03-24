@@ -1,5 +1,5 @@
-import type { RenderInput } from '../util';
 import type { SpaceNode } from '../../types';
+import type { RenderInput } from '../util';
 
 export function renderBullets({ classification }: RenderInput): string {
   const { hierarchyRoots, orphans, nonHierarchy, children } = classification;

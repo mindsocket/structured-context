@@ -1,6 +1,6 @@
-import type { RenderInput } from '../util';
 import type { SpaceNode } from '../../types';
 import { buildHierarchyNodeSet } from '../../util/graph-helpers';
+import type { RenderInput } from '../util';
 
 function escapeMermaidString(str: string): string {
   return str.replace(/"/g, '&quot;');

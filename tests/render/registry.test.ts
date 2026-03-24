@@ -48,7 +48,7 @@ describe('buildFormatRegistry', () => {
   it('skips plugins without a render hook and includes those with one', () => {
     const loaded: LoadedPlugin[] = [
       { plugin: { name: 'ost-tools-norender', configSchema: { type: 'object' } }, pluginConfig: {} },
-      ...([makePlugin('ost-tools-markdown', [{ name: 'bullets', description: 'Bullets' }])]),
+      ...[makePlugin('ost-tools-markdown', [{ name: 'bullets', description: 'Bullets' }])],
     ];
     const registry = buildFormatRegistry(loaded);
     expect(registry).toHaveLength(1);

@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
-import type { SpaceContext } from '../types';
 import { executeRender } from '../render/render';
+import type { SpaceContext } from '../types';
 
 export async function diagram(context: SpaceContext, options: { output?: string; filter?: string }): Promise<void> {
   const result = await executeRender('markdown.mermaid', context, { filter: options.filter });

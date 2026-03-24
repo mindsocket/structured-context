@@ -1,5 +1,5 @@
-import { loadPlugins } from '../plugins/loader';
 import { filterNodes } from '../filter/filter-nodes';
+import { loadPlugins } from '../plugins/loader';
 import { readSpace } from '../read/read-space';
 import type { SpaceContext, SpaceNode } from '../types';
 import { classifyNodes } from '../util/graph-helpers';

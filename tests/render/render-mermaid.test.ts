@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { renderMermaid } from '../../src/plugins/markdown/render-mermaid';
 import type { RenderInput } from '../../src/plugins/util';
-import type { NodeClassification } from '../../src/util/graph-helpers';
 import type { SpaceContext, SpaceNode } from '../../src/types';
+import type { NodeClassification } from '../../src/util/graph-helpers';
 import { makeParentRef } from '../test-helpers';
 
 function makeNode(title: string, type: string, status = 'active'): SpaceNode {
@@ -17,16 +17,16 @@ function makeNode(title: string, type: string, status = 'active'): SpaceNode {
 }
 
 function makeInput(classification: NodeClassification, nodes?: SpaceNode[]): RenderInput {
-  const allNodes =
-    nodes ??
-    [...new Map(
+  const allNodes = nodes ?? [
+    ...new Map(
       [
         ...classification.hierarchyRoots,
         ...classification.orphans,
         ...classification.nonHierarchy,
         ...[...classification.children.values()].flat(),
       ].map((n) => [n.schemaData.title, n]),
-    ).values()];
+    ).values(),
+  ];
   return {
     nodes: allNodes,
     classification,

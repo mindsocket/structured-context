@@ -99,7 +99,7 @@ describe('filterNodes', () => {
       for (const node of result) {
         // Original SpaceNode has resolvedParents; augmented representation would have ancestors[]
         expect(node.resolvedParents).toBeDefined();
-        expect(((node as Record<string, unknown>).ancestors)).toBeUndefined();
+        expect((node as Record<string, unknown>).ancestors).toBeUndefined();
       }
     });
   });

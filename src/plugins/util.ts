@@ -1,6 +1,6 @@
 import type { AnySchemaObject } from 'ajv';
-import type { NodeClassification } from '../util/graph-helpers';
 import type { BaseNode, SpaceContext, SpaceNode } from '../types';
+import type { NodeClassification } from '../util/graph-helpers';
 
 export const PLUGIN_PREFIX = 'ost-tools-';
 export const CONFIG_PLUGINS_DIR = 'plugins';

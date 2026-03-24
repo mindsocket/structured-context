@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { renderBullets } from '../../src/plugins/markdown/render-bullets';
 import type { RenderInput } from '../../src/plugins/util';
-import type { NodeClassification } from '../../src/util/graph-helpers';
 import type { SpaceContext, SpaceNode } from '../../src/types';
+import type { NodeClassification } from '../../src/util/graph-helpers';
 import { makeParentRef } from '../test-helpers';
 
 function makeNode(title: string, type: string): SpaceNode {
