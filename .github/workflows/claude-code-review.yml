@@ -1,6 +1,7 @@
 name: Claude Code Review
 
 on:
+  workflow_dispatch: {}
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
     # Optional: Only run on specific file changes
@@ -34,8 +35,15 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Ensure setup-bun's bun takes precedence
-        run: echo "$(dirname $(which bun))" >> $GITHUB_PATH
+      - name: Capture bun path and debug info
+        id: bun-info
+        run: |
+          BUN_PATH=$(which bun)
+          echo "path=$BUN_PATH" >> $GITHUB_OUTPUT
+          echo "=== Bun Debug Info ==="
+          echo "Which bun: $BUN_PATH"
+          echo "Bun version: $(bun --version)"
+          echo "PATH: $PATH"
 
       - name: Run Claude Code Review
         id: claude-review
@@ -44,6 +52,7 @@ jobs:
           ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
         with:
           claude_code_oauth_token: ${{ secrets.Z_ANTHROPIC_AUTH_TOKEN }}
+          path_to_bun_executable: ${{ steps.bun-info.outputs.path }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment'
