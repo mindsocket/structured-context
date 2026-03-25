@@ -1,8 +1,8 @@
 import { filterNodes } from '../filter/filter-nodes';
 import { loadPlugins } from '../plugins/loader';
 import { readSpace } from '../read/read-space';
+import { buildSpaceGraph } from '../space-graph';
 import type { SpaceContext, SpaceNode } from '../types';
-import { classifyNodes } from '../util/graph-helpers';
 import { buildFormatRegistry } from './registry';
 
 export async function executeRender(
@@ -28,16 +28,15 @@ export async function executeRender(
   const { schemaValidator } = context;
   const validNodes: SpaceNode[] = allNodes.filter((node) => schemaValidator(node.schemaData));
 
+  const levels = context.schema.metadata.hierarchy?.levels ?? [];
+  let graph = buildSpaceGraph(validNodes, levels);
+
   // Filter: apply filter expression if provided
-  let nodes = validNodes;
   if (options.filter) {
     const expression = context.space.views?.[options.filter]?.expression ?? options.filter;
-    nodes = await filterNodes(expression, nodes);
+    graph = await filterNodes(expression, graph);
   }
 
-  // Classify
-  const levels = context.schema.metadata.hierarchy?.levels ?? [];
-  const classification = classifyNodes(nodes, levels);
-
-  return entry.plugin.plugin.render!.render(entry.format.name, { nodes, classification, context });
+  const pluginContext = { ...context, pluginConfig: entry.plugin.pluginConfig };
+  return entry.plugin.plugin.render!.render(pluginContext, graph, { format: entry.format.name });
 }

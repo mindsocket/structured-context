@@ -7,6 +7,8 @@ describe('evaluate-rule', () => {
   describe('evaluateExpression', () => {
     const mockNode: SpaceNode = {
       label: 'test.md',
+      title: 'Test Node',
+      type: 'solution',
       schemaData: {
         title: 'Test Node',
         type: 'solution',
@@ -20,6 +22,8 @@ describe('evaluate-rule', () => {
 
     const mockParent: SpaceNode = {
       label: 'parent.md',
+      title: 'Parent Opportunity',
+      type: 'opportunity',
       schemaData: {
         title: 'Parent Opportunity',
         type: 'opportunity',
@@ -82,6 +86,8 @@ describe('evaluate-rule', () => {
     it('evaluates expression with $exists check for missing parent', async () => {
       const nodeWithoutParent: SpaceNode = {
         label: 'orphan.md',
+        title: 'Orphan Node',
+        type: 'outcome',
         schemaData: {
           title: 'Orphan Node',
           type: 'outcome',
@@ -120,6 +126,8 @@ describe('evaluate-rule', () => {
   describe('buildEvalContext', () => {
     const childNode: SpaceNode = {
       label: 'child.md',
+      title: 'Child',
+      type: 'solution',
       schemaData: { title: 'Child', type: 'solution', parent: '[[Parent]]' },
       linkTargets: ['Child'],
       resolvedParents: [makeParentRef('Parent')],
@@ -128,6 +136,8 @@ describe('evaluate-rule', () => {
 
     const parentNode: SpaceNode = {
       label: 'parent.md',
+      title: 'Parent',
+      type: 'opportunity',
       schemaData: { title: 'Parent', type: 'opportunity' },
       linkTargets: ['Parent'],
       resolvedParents: [],
@@ -166,6 +176,8 @@ describe('evaluate-rule', () => {
     it('sets parent to undefined when node has no resolved parent', () => {
       const orphanNode: SpaceNode = {
         label: 'orphan.md',
+        title: 'Orphan',
+        type: 'outcome',
         schemaData: { title: 'Orphan', type: 'outcome' },
         linkTargets: ['Orphan'],
         resolvedParents: [],

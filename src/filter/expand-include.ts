@@ -126,13 +126,13 @@ function parseDirective(item: string): IncludeDirective {
 export function expandInclude(
   matchedNodes: SpaceNode[],
   directives: IncludeDirective[],
-  nodeIndex: Map<string, SpaceNode>,
-  childrenIndex: Map<string, SpaceNode[]>,
+  nodeIndex: ReadonlyMap<string, SpaceNode>,
+  childrenIndex: ReadonlyMap<string, readonly SpaceNode[]>,
   augmented: Map<string, AugmentedFlatNode>,
 ): SpaceNode[] {
   if (directives.length === 0) return matchedNodes;
 
-  const seen = new Set<string>(matchedNodes.map((n) => n.schemaData.title as string));
+  const seen = new Set<string>(matchedNodes.map((n) => n.title));
   const result: SpaceNode[] = [...matchedNodes];
 
   function addByTitle(title: string) {
@@ -145,7 +145,7 @@ export function expandInclude(
   }
 
   for (const node of matchedNodes) {
-    const title = node.schemaData.title as string;
+    const title = node.title;
     const aug = augmented.get(title);
     if (!aug) continue;
 
@@ -161,7 +161,7 @@ function applyDirective(
   node: SpaceNode,
   aug: AugmentedFlatNode,
   directive: IncludeDirective,
-  childrenIndex: Map<string, SpaceNode[]>,
+  childrenIndex: ReadonlyMap<string, readonly SpaceNode[]>,
   addByTitle: (title: string) => void,
 ): void {
   switch (directive.kind) {
@@ -186,8 +186,8 @@ function applyDirective(
       for (const parentRef of node.resolvedParents) {
         const siblings = childrenIndex.get(parentRef.title) ?? [];
         for (const sibling of siblings) {
-          const siblingTitle = sibling.schemaData.title as string;
-          if (siblingTitle !== (node.schemaData.title as string)) {
+          const siblingTitle = sibling.title;
+          if (siblingTitle !== node.title) {
             addByTitle(siblingTitle);
           }
         }

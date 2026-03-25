@@ -51,6 +51,7 @@ export const makeNode = (
   linkTargets?: string[],
 ): BaseNode => ({
   label: `${title}.md`,
+  title,
   schemaData: { title, type, ...extra },
   linkTargets: linkTargets ?? [title],
   type,

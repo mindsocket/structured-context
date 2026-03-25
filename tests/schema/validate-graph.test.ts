@@ -81,6 +81,8 @@ describe('validate-graph', () => {
 
   const buildNode = (title: string, type: string, parentTitle?: string): SpaceNode => ({
     label: `${title}.md`,
+    title,
+    type,
     schemaData: { title, type, status: 'active' },
     linkTargets: [title],
     resolvedParents: parentTitle ? [makeParentRef(parentTitle)] : [],

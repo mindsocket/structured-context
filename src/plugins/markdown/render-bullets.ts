@@ -1,15 +1,15 @@
+import type { SpaceGraph } from '../../space-graph';
 import type { SpaceNode } from '../../types';
-import type { RenderInput } from '../util';
 
-export function renderBullets({ classification }: RenderInput): string {
-  const { hierarchyRoots, orphans, nonHierarchy, children } = classification;
+export function renderBullets(graph: SpaceGraph): string {
+  const { hierarchyRoots, orphans, nonHierarchy, hierarchyChildren: children } = graph;
   const lines: string[] = [];
   const seen = new Set<string>();
 
   function renderNode(node: SpaceNode, depth: number) {
     const indent = '  '.repeat(depth);
-    const type = node.schemaData.type as string;
-    const title = node.schemaData.title as string;
+    const type = node.resolvedType;
+    const title = node.title;
     const nodeChildren = children.get(title) ?? [];
 
     if (seen.has(title)) {
@@ -41,8 +41,8 @@ export function renderBullets({ classification }: RenderInput): string {
     lines.push('');
     lines.push('Other (not in hierarchy):');
     for (const node of nonHierarchy) {
-      const type = node.schemaData.type as string;
-      const title = node.schemaData.title as string;
+      const type = node.resolvedType;
+      const title = node.title;
       lines.push(`  - ${type}: ${title}`);
     }
   }

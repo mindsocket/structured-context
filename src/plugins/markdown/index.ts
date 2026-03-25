@@ -43,9 +43,9 @@ export const markdownPlugin: OstToolsPlugin = {
       { name: 'bullets', description: 'Indented bullet list' },
       { name: 'mermaid', description: 'Mermaid graph TD diagram' },
     ],
-    render(format, input) {
-      if (format === 'bullets') return renderBullets(input);
-      if (format === 'mermaid') return renderMermaid(input);
+    render(_context, graph, { format }) {
+      if (format === 'bullets') return renderBullets(graph);
+      if (format === 'mermaid') return renderMermaid(graph);
       throw new Error(`Unknown markdown render format: "${format}"`);
     },
   },

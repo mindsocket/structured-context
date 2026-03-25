@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
-import { augmentNode, buildChildrenIndex } from '../../src/filter/augment-nodes';
+import { augmentNode } from '../../src/filter/augment-nodes';
 import { expandInclude, parseIncludeSpec } from '../../src/filter/expand-include';
+import { buildSpaceGraph } from '../../src/space-graph';
 import type { SpaceNode } from '../../src/types';
 import { makeParentRef } from '../test-helpers';
 
@@ -11,6 +12,7 @@ import { makeParentRef } from '../test-helpers';
 function makeNode(title: string, type: string, extra: Record<string, unknown> = {}): SpaceNode {
   return {
     label: `${title}.md`,
+    title,
     schemaData: { title, type, ...extra },
     linkTargets: [title],
     type,
@@ -20,9 +22,11 @@ function makeNode(title: string, type: string, extra: Record<string, unknown> = 
 }
 
 function buildContext(nodes: SpaceNode[]) {
-  const nodeIndex = new Map(nodes.map((n) => [n.schemaData.title as string, n]));
-  const childrenIndex = buildChildrenIndex(nodes);
-  const augmented = new Map(nodes.map((n) => [n.schemaData.title as string, augmentNode(n, nodeIndex, childrenIndex)]));
+  // Use an empty levels array — expand-include tests don't care about hierarchy classification
+  const graph = buildSpaceGraph(nodes, []);
+  const nodeIndex = graph.nodes;
+  const childrenIndex = graph.children;
+  const augmented = new Map(nodes.map((n) => [n.title, augmentNode(n, nodeIndex, childrenIndex)]));
   return { nodeIndex, childrenIndex, augmented };
 }
 

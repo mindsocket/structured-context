@@ -1,13 +1,14 @@
 import jsonata from 'jsonata';
+import { buildSpaceGraph, type SpaceGraph } from '../space-graph';
 import type { SpaceNode } from '../types';
-import { type AugmentedFlatNode, augmentNode, buildChildrenIndex } from './augment-nodes';
+import { type AugmentedFlatNode, augmentNode } from './augment-nodes';
 import { expandInclude, parseIncludeSpec } from './expand-include';
 import { parseFilterExpression } from './parse-expression';
 
 const expressionCache = new Map<string, ReturnType<typeof jsonata>>();
 
 /**
- * Filter a set of nodes using a filter expression.
+ * Filter a SpaceGraph using a filter expression, returning a new SpaceGraph.
  *
  * The expression follows the SELECT...WHERE DSL:
  *   WHERE {jsonata}                — return nodes where the JSONata predicate is truthy
@@ -22,32 +23,26 @@ const expressionCache = new Map<string, ReturnType<typeof jsonata>>();
  * relationships[(childType | parentType:childType | parentType:field:childType)]
  *
  * @param expression - Filter DSL expression or view expression string
- * @param nodes - All nodes in the space
- * @returns Filtered+expanded SpaceNode[] (original node objects)
+ * @param graph - The full space graph
+ * @returns A new SpaceGraph containing only the filtered+expanded nodes
  */
-export async function filterNodes(expression: string, nodes: SpaceNode[]): Promise<SpaceNode[]> {
+export async function filterNodes(expression: string, graph: SpaceGraph): Promise<SpaceGraph> {
   const { where, include } = parseFilterExpression(expression);
 
-  // Build lookup structures (always needed for SELECT expansion or WHERE evaluation)
-  const nodeIndex = new Map<string, SpaceNode>();
-  for (const node of nodes) {
-    const title = node.schemaData.title as string;
-    if (title) nodeIndex.set(title, node);
-  }
-  const childrenIndex = buildChildrenIndex(nodes);
+  const nodeIndex = graph.nodes;
+  const childrenIndex = graph.children;
 
   // Pre-augment all nodes once (ancestors/descendants needed for WHERE predicates and SELECT expansion)
   const augmented = new Map<string, AugmentedFlatNode>();
-  for (const node of nodes) {
-    const title = node.schemaData.title as string;
-    augmented.set(title, augmentNode(node, nodeIndex, childrenIndex));
+  for (const node of nodeIndex.values()) {
+    augmented.set(node.title, augmentNode(node, nodeIndex, childrenIndex));
   }
 
   // Step 1: apply WHERE clause to get the matched set
   let matched: SpaceNode[];
   if (where === undefined) {
     // SELECT-only: start from all nodes
-    matched = nodes;
+    matched = [...nodeIndex.values()];
   } else {
     const allAugmented = Array.from(augmented.values());
 
@@ -59,9 +54,8 @@ export async function filterNodes(expression: string, nodes: SpaceNode[]): Promi
     }
 
     matched = [];
-    for (const node of nodes) {
-      const title = node.schemaData.title as string;
-      const current = augmented.get(title);
+    for (const node of nodeIndex.values()) {
+      const current = augmented.get(node.title);
       if (!current) continue;
 
       // Spread current node fields at root level so bare field names work in expressions
@@ -74,10 +68,13 @@ export async function filterNodes(expression: string, nodes: SpaceNode[]): Promi
   }
 
   // Step 2: apply SELECT clause to expand the result set
+  let matchedNodes: SpaceNode[];
   if (include !== undefined) {
     const directives = parseIncludeSpec(include);
-    return expandInclude(matched, directives, nodeIndex, childrenIndex, augmented);
+    matchedNodes = expandInclude(matched, directives, nodeIndex, childrenIndex, augmented);
+  } else {
+    matchedNodes = matched;
   }
 
-  return matched;
+  return buildSpaceGraph(matchedNodes, graph.levels);
 }

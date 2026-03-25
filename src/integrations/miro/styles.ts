@@ -45,7 +45,7 @@ export function getCardColor(type: string, hierarchyLevels: HierarchyLevel[]): s
 }
 
 export function buildCardTitle(node: SpaceNode): string {
-  const title = node.schemaData.title as string;
+  const title = node.title;
   const status = node.schemaData.status as string | undefined;
   const priority = node.schemaData.priority as string | undefined;
 

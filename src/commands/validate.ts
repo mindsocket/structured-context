@@ -6,8 +6,8 @@ import { readSpace } from '../read/read-space';
 import { bundledSchemasDir } from '../schema/schema';
 import { validateGraph } from '../schema/validate-graph';
 import { validateRules } from '../schema/validate-rules';
+import { buildSpaceGraph } from '../space-graph';
 import type { GraphViolation, RuleViolation, SchemaWithMetadata, SpaceContext } from '../types';
-import { classifyNodes } from '../util/graph-helpers';
 import { extractEntityInfo } from './schemas';
 
 interface FormattedError {
@@ -169,7 +169,7 @@ export async function validate(context: SpaceContext): Promise<number> {
   // Detect duplicate node keys (titles)
   const titleToFiles = new Map<string, string[]>();
   for (const node of nodes) {
-    const title = node.schemaData.title as string;
+    const title = node.title;
     if (!titleToFiles.has(title)) {
       titleToFiles.set(title, []);
     }
@@ -190,8 +190,7 @@ export async function validate(context: SpaceContext): Promise<number> {
 
   // Calculate orphan count (informational, not a validation error)
   if (metadata.hierarchy) {
-    const classification = classifyNodes(nodes, metadata.hierarchy.levels);
-    result.orphanCount = classification.orphans.length;
+    result.orphanCount = buildSpaceGraph(nodes, metadata.hierarchy.levels).orphans.length;
   }
 
   // Load and execute rules validation if schema defines rules

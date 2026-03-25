@@ -15,24 +15,6 @@ export type AugmentedFlatNode = Record<string, unknown> & {
   descendants: Array<Record<string, unknown> & EdgeMetadata>;
 };
 
-/**
- * Build an index from parent title → direct children, using all edges in resolvedParents.
- * Used by augmentNode for descendant traversal.
- */
-export function buildChildrenIndex(nodes: SpaceNode[]): Map<string, SpaceNode[]> {
-  const index = new Map<string, SpaceNode[]>();
-  for (const node of nodes) {
-    const title = node.schemaData.title as string;
-    if (!index.has(title)) index.set(title, []);
-
-    for (const parentRef of node.resolvedParents) {
-      if (!index.has(parentRef.title)) index.set(parentRef.title, []);
-      index.get(parentRef.title)!.push(node);
-    }
-  }
-  return index;
-}
-
 /** Flatten a SpaceNode's data fields for use in an augmented representation. */
 function flattenData(node: SpaceNode): Record<string, unknown> {
   return {
@@ -51,8 +33,8 @@ function flattenData(node: SpaceNode): Record<string, unknown> {
  */
 export function augmentNode(
   node: SpaceNode,
-  nodeIndex: Map<string, SpaceNode>,
-  childrenIndex: Map<string, SpaceNode[]>,
+  nodeIndex: ReadonlyMap<string, SpaceNode>,
+  childrenIndex: ReadonlyMap<string, readonly SpaceNode[]>,
 ): AugmentedFlatNode {
   const ancestors = buildAncestors(node, nodeIndex);
   const descendants = buildDescendants(node, childrenIndex);
@@ -68,7 +50,7 @@ export function augmentNode(
 
 function buildAncestors(
   node: SpaceNode,
-  nodeIndex: Map<string, SpaceNode>,
+  nodeIndex: ReadonlyMap<string, SpaceNode>,
 ): Array<Record<string, unknown> & EdgeMetadata> {
   const visited = new Set<string>();
   const result: Array<Record<string, unknown> & EdgeMetadata> = [];
@@ -83,7 +65,7 @@ function buildAncestors(
 
   while (queue.length > 0) {
     const item = queue.shift()!;
-    const title = item.node.schemaData.title as string;
+    const title = item.node.title;
     if (visited.has(title)) continue;
     visited.add(title);
 
@@ -108,9 +90,9 @@ function buildAncestors(
 
 function buildDescendants(
   node: SpaceNode,
-  childrenIndex: Map<string, SpaceNode[]>,
+  childrenIndex: ReadonlyMap<string, readonly SpaceNode[]>,
 ): Array<Record<string, unknown> & EdgeMetadata> {
-  const nodeTitle = node.schemaData.title as string;
+  const nodeTitle = node.title;
   const visited = new Set<string>();
   const result: Array<Record<string, unknown> & EdgeMetadata> = [];
 
@@ -125,7 +107,7 @@ function buildDescendants(
 
   while (queue.length > 0) {
     const item = queue.shift()!;
-    const title = item.childNode.schemaData.title as string;
+    const title = item.childNode.title;
     if (visited.has(title)) continue;
     visited.add(title);
 
@@ -138,7 +120,7 @@ function buildDescendants(
 
     const grandchildren = childrenIndex.get(title) ?? [];
     for (const grandchild of grandchildren) {
-      if (!visited.has(grandchild.schemaData.title as string)) {
+      if (!visited.has(grandchild.title)) {
         const ref = grandchild.resolvedParents.find((r) => r.title === title);
         if (ref) queue.push({ childNode: grandchild, ref });
       }

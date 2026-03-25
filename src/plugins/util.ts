@@ -1,6 +1,6 @@
 import type { AnySchemaObject } from 'ajv';
-import type { BaseNode, SpaceContext, SpaceNode } from '../types';
-import type { NodeClassification } from '../util/graph-helpers';
+import type { SpaceGraph } from '../space-graph';
+import type { BaseNode, SpaceContext } from '../types';
 
 export const PLUGIN_PREFIX = 'ost-tools-';
 export const CONFIG_PLUGINS_DIR = 'plugins';
@@ -40,14 +40,10 @@ export type RenderFormat = {
   description: string;
 };
 
-/** Input provided to a render function. */
-export type RenderInput = {
-  /** All valid nodes after filtering (or all valid nodes if no filter applied). */
-  nodes: SpaceNode[];
-  /** Pre-computed classification of the nodes. */
-  classification: NodeClassification;
-  /** The full space context for access to schema, hierarchy levels, etc. */
-  context: SpaceContext;
+/** Options passed to a render function. */
+export type RenderOptions = {
+  /** The format name being rendered (e.g. 'bullets', 'mermaid'). */
+  format: string;
 };
 
 /**
@@ -57,7 +53,7 @@ export type RenderInput = {
  */
 export type RenderHook = {
   formats: RenderFormat[];
-  render: (format: string, input: RenderInput) => Promise<string> | string;
+  render: (context: PluginContext, graph: SpaceGraph, options: RenderOptions) => Promise<string> | string;
 };
 
 /**
