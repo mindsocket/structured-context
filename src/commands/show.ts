@@ -1,11 +1,17 @@
+import { filterNodes } from '../filter/filter-nodes';
 import { readSpace } from '../read/read-space';
 import type { SpaceContext, SpaceNode } from '../types';
 import { classifyNodes } from '../util/graph-helpers';
 
-export async function show(context: SpaceContext) {
+export async function show(context: SpaceContext, options?: { filter?: string }) {
   const levels = context.schema.metadata.hierarchy?.levels ?? [];
 
-  const { nodes } = await readSpace(context);
+  let { nodes } = await readSpace(context);
+
+  if (options?.filter) {
+    const expression = context.space.views?.[options.filter]?.expression ?? options.filter;
+    nodes = await filterNodes(expression, nodes);
+  }
 
   const { hierarchyRoots, orphans, nonHierarchy, children } = classifyNodes(nodes, levels);
 

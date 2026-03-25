@@ -66,6 +66,29 @@ All plugin names must start with `ost-tools-` (the prefix is optional in config 
 - `templatePrefix` — filename prefix for templates (default blank)
 - `fieldMap` — maps file/frontmatter field names to canonical schema field names (e.g. `{ "record_type": "type" }`)
 
+**Filter views:** Named filter expressions can be defined per space under `views`. Each view has an `expression` field using the filter expression syntax:
+
+```json
+{
+  "spaces": [
+    {
+      "name": "my-space",
+      "path": "/path/to/space",
+      "views": {
+        "active-solutions": {
+          "expression": "WHERE resolvedType='solution' and status='active'"
+        },
+        "solutions-under-active-opportunity": {
+          "expression": "WHERE resolvedType='solution' and $exists(ancestors[resolvedType='opportunity' and status='active'])"
+        }
+      }
+    }
+  ]
+}
+```
+
+Use a view name with `ost-tools show <space> --filter <view-name>`.
+
 ### Spaces
 
 A space is a named directory or single file registered in the config. Spaces let you reference content by name instead of path:
@@ -194,12 +217,87 @@ Validates markdown files against the JSON schema:
 ### Show space tree
 
 ```bash
-ost-tools show <space>
+ost-tools show <space> [--filter <view-or-expression>]
 ```
 
 Prints the space as an indented hierarchy tree. Hierarchy roots are listed first, followed by orphans (nodes in the hierarchy but with no resolved parent) and non-hierarchy nodes.
 
 When a node appears under multiple parents (DAG hierarchy), it is printed in full under its first parent. Subsequent appearances with children show a `(*)` marker indicating the subtree is omitted.
+
+**Filtering:** The `--filter` flag accepts either a named view from the space config, or an inline filter expression. Only nodes matching the expression are shown.
+
+```bash
+# Inline expression
+ost-tools show <space> --filter "WHERE resolvedType='solution' and status='active'"
+
+# Named view from config
+ost-tools show <space> --filter active-solutions
+```
+
+See [Filter expressions](#filter-expressions) below for expression syntax.
+
+### Filter expressions
+
+Filter expressions are used with `--filter` and in config `views`. They use a `SELECT ... WHERE ...` pseudo-DSL:
+
+| Form | Meaning |
+|------|---------|
+| `WHERE {jsonata}` | Return nodes where the JSONata predicate is truthy |
+| `SELECT {spec} WHERE {jsonata}` | Filter by WHERE, then expand result via SELECT |
+| `SELECT {spec}` | Expand from all nodes via SELECT (no WHERE filter — returns all nodes, expanded per spec) |
+| `{jsonata}` | Bare JSONata, treated as a WHERE predicate (convenience shorthand) |
+
+The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression evaluated per node. Within the expression, each node's fields are accessible directly (e.g. `resolvedType`, `status`, any schema fields like `title`). Additionally, two pre-computed traversal arrays are available:
+
+- **`ancestors[]`** — flat array of ancestor nodes, nearest first, deduplicated. Each entry includes all schema fields of the ancestor node, plus:
+  - `_field` — the edge field name that connects to the ancestor
+  - `_source` — `'hierarchy'` or `'relationship'`
+  - `_selfRef` — whether the edge is a same-type (self-referential) link
+- **`descendants[]`** — same structure, for descendant nodes
+
+**SELECT spec** expands the result set by walking the graph from matched nodes. The spec is a comma-separated list of directives:
+
+| Directive | Meaning |
+|-----------|---------|
+| `ancestors` | All ancestor nodes |
+| `ancestors(type)` | Ancestors of the given resolved type |
+| `descendants` | All descendant nodes |
+| `descendants(type)` | Descendants of the given resolved type |
+| `siblings` | Nodes sharing at least one parent with matched nodes |
+| `relationships` | All nodes connected via a relationship (non-hierarchy) edge |
+| `relationships(childType)` | Relationship-connected nodes of the given child type |
+| `relationships(parentType:childType)` | As above, also filtering by parent type |
+| `relationships(parentType:field:childType)` | Fully qualified: also filtering by edge field name |
+
+Multiple directives may be combined: `SELECT ancestors(goal), siblings WHERE ...`
+
+**Examples:**
+
+```jsonata
+// All solutions
+WHERE resolvedType='solution'
+
+// Active solutions only
+WHERE resolvedType='solution' and status='active'
+
+// Solutions whose nearest opportunity ancestor is active
+WHERE resolvedType='solution' and $exists(ancestors[resolvedType='opportunity' and status='active'])
+
+// Nodes that have any ancestor goal
+WHERE $exists(ancestors[resolvedType='goal'])
+
+// Bare JSONata shorthand (no WHERE keyword)
+resolvedType='solution' and status='active'
+
+// Solutions + their opportunity ancestors
+SELECT ancestors(opportunity) WHERE resolvedType='solution'
+
+// Solutions + their siblings (other solutions under same opportunity)
+SELECT siblings WHERE resolvedType='solution' and status='active'
+
+// Opportunities + their related assumptions
+SELECT relationships(assumption) WHERE resolvedType='opportunity'
+```
 
 ### Generate Mermaid diagram
 
