@@ -62,8 +62,8 @@ export async function filterNodes(expression: string, graph: SpaceGraph): Promis
       // (e.g. `resolvedType='solution'` rather than `current.resolvedType='solution'`).
       // Also expose `ancestors` and `descendants` directly, and `nodes` for cross-node access.
       const input = { ...current, nodes: allAugmented };
-        const result = await expr.evaluate(input);
-        if (result) matched.push(node);
+      const result = await expr.evaluate(input);
+      if (result) matched.push(node);
     }
   }
 
