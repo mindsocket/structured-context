@@ -92,12 +92,14 @@ describe('Schema validation', () => {
       const baseNodes: BaseNode[] = [
         {
           label: 'anchor_vision.md',
+          title: 'anchor_vision',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
           type: 'vision',
         },
         {
           label: 'Our Mission',
+          title: 'Our Mission',
           schemaData: {
             title: 'Our Mission',
             type: 'mission',
@@ -109,6 +111,7 @@ describe('Schema validation', () => {
         },
         {
           label: 'Another Goal',
+          title: 'Another Goal',
           schemaData: {
             title: 'Another Goal',
             type: 'goal',
@@ -120,6 +123,7 @@ describe('Schema validation', () => {
         },
         {
           label: 'solution_page.md',
+          title: 'solution_page',
           schemaData: {
             title: 'solution_page',
             type: 'solution',
@@ -148,12 +152,14 @@ describe('Schema validation', () => {
       const baseNodes: BaseNode[] = [
         {
           label: 'anchor_vision.md',
+          title: 'anchor_vision',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
           type: 'vision',
         },
         {
           label: 'some-solution.md',
+          title: 'some-solution',
           schemaData: {
             title: 'some-solution',
             type: 'solution',
@@ -178,12 +184,14 @@ describe('Schema validation', () => {
       const baseNodes: BaseNode[] = [
         {
           label: 'vision_page.md',
+          title: 'vision_page',
           schemaData: { title: 'vision_page', type: 'vision', status: 'active' },
           linkTargets: ['vision_page'],
           type: 'vision',
         },
         {
           label: 'Embedded Goal',
+          title: 'Embedded Goal',
           schemaData: {
             title: 'Embedded Goal',
             type: 'goal',
@@ -195,6 +203,7 @@ describe('Schema validation', () => {
         },
         {
           label: 'solution_page.md',
+          title: 'solution_page',
           schemaData: {
             title: 'solution_page',
             type: 'solution',
@@ -302,7 +311,7 @@ describe('Schema validation', () => {
       );
       const titleCounts = new Map<string, SpaceNode[]>();
       for (const node of nodes) {
-        const title = node.schemaData.title as string;
+        const title = node.title;
         if (!titleCounts.has(title)) {
           titleCounts.set(title, []);
         }
@@ -321,7 +330,7 @@ describe('Schema validation', () => {
       );
       const titleCounts = new Map<string, SpaceNode[]>();
       for (const node of nodes) {
-        const title = node.schemaData.title as string;
+        const title = node.title;
         if (!titleCounts.has(title)) {
           titleCounts.set(title, []);
         }

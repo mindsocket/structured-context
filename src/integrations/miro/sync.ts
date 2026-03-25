@@ -1,7 +1,7 @@
 import { updateSpaceField } from '../../config';
 import { readSpace } from '../../read/read-space';
+import { buildSpaceGraph } from '../../space-graph';
 import type { SpaceContext, SpaceNode } from '../../types';
-import { buildHierarchyNodeSet, classifyNodes } from '../../util/graph-helpers';
 import { computeMiroCardHash, computeNodeHash, loadCache, saveCache } from './cache';
 import { MiroClient, MiroNotFoundError } from './client';
 import { CARD_WIDTH, layoutNewCards } from './layout';
@@ -53,13 +53,10 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
   // Filter to hierarchy nodes only
   const levels = metadata.hierarchy?.levels ?? [];
 
-  const { hierarchyRoots, orphans, nonHierarchy, children } = classifyNodes(nodes, levels);
-
-  // Build set of all hierarchy node titles (roots + orphans + all descendants)
-  const hierarchyNodeTitles = buildHierarchyNodeSet({ hierarchyRoots, orphans, nonHierarchy, children });
+  const { nonHierarchy, hierarchyTitles: hierarchyNodeTitles } = buildSpaceGraph(nodes, levels);
 
   // Filter nodes to only hierarchy nodes
-  nodes = nodes.filter((n) => hierarchyNodeTitles.has(n.schemaData.title as string));
+  nodes = nodes.filter((n) => hierarchyNodeTitles.has(n.title));
 
   if (options.verbose && nonHierarchy.length > 0) {
     console.log(`Excluded ${nonHierarchy.length} non-hierarchy nodes from sync`);
@@ -170,7 +167,7 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
   let skippedCount = 0;
 
   for (const node of nodes) {
-    const title = node.schemaData.title as string;
+    const title = node.title;
     // Compute what we expect to be in Miro (using the same build functions)
     const expectedTitle = buildCardTitle(node);
     const expectedDesc = buildCardDescription(node);
@@ -213,7 +210,7 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
   // 7. Create new cards
   let createdCount = 0;
   for (const node of newNodes) {
-    const title = node.schemaData.title as string;
+    const title = node.title;
     const type = node.schemaData.type as string;
     let pos = newPositions.get(title) ?? { x: 0, y: 0 };
 
@@ -258,7 +255,7 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
   // 8. Update changed cards
   let updatedCount = 0;
   for (const { node, cardId } of updatedNodes) {
-    const title = node.schemaData.title as string;
+    const title = node.title;
 
     if (options.dryRun) {
       console.log(`[dry-run] Update card: "${title}"`);
@@ -315,7 +312,7 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
   // Only include edges where both endpoints have verified cards on the board
   const desiredEdges = new Map<string, { parentTitle: string; childTitle: string }>();
   for (const node of nodes) {
-    const childTitle = node.schemaData.title as string;
+    const childTitle = node.title;
     for (const { title: parentTitle, source } of node.resolvedParents) {
       if (source !== 'hierarchy') continue;
       // Both endpoints must have verified cards on the board

@@ -262,6 +262,7 @@ function processListItem(
     const linkTargets = buildLinkTargets(title);
     const newNode: BaseNode = {
       label: makeLabel(title),
+      title,
       schemaData,
       linkTargets,
       type,
@@ -342,6 +343,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   // Preamble/root content sink - never added to nodes
   const rootNode: BaseNode = {
     label: '_root_',
+    title: '_root_',
     schemaData: { type: 'space_on_a_page' },
     linkTargets: [],
     type: 'space_on_a_page',
@@ -612,6 +614,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       const linkTargets = buildHeadingLinkTargets(rawText, title, anchor);
       const headingNode: BaseNode = {
         label: makeLabel(title),
+        title,
         schemaData,
         linkTargets,
         type,
@@ -781,6 +784,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             const linkTargets = buildListItemLinkTargets(title);
             const rowNode: BaseNode = {
               label: makeLabel(title),
+              title,
               schemaData,
               linkTargets,
               type: rowTypeStr,

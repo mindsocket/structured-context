@@ -100,6 +100,7 @@ export async function readSpaceDirectory(
 
     nodes.push({
       label: file,
+      title,
       schemaData: { title, ...data },
       linkTargets: [title, fileBase],
       type: pageType,

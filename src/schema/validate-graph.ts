@@ -74,13 +74,13 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
 
   const nodeIndex = new Map<string, SpaceNode>();
   for (const node of nodes) {
-    const title = node.schemaData.title as string;
+    const title = node.title;
     if (title) nodeIndex.set(title, node);
   }
 
   for (const node of nodes) {
     const nodeType = node.resolvedType;
-    const nodeTitle = node.schemaData.title as string;
+    const nodeTitle = node.title;
 
     for (const parentRef of node.resolvedParents) {
       const parentNode = nodeIndex.get(parentRef.title);

@@ -1,4 +1,5 @@
 import type { AnySchemaObject } from 'ajv';
+import type { SpaceGraph } from '../space-graph';
 import type { BaseNode, SpaceContext } from '../types';
 
 export const PLUGIN_PREFIX = 'ost-tools-';
@@ -31,11 +32,35 @@ export type TemplateSyncOptions = {
 
 export type TemplateSyncHook = (context: PluginContext, options: TemplateSyncOptions) => Promise<true | null>;
 
+/** A single render output format provided by a plugin. */
+export type RenderFormat = {
+  /** Short name, unique within the plugin (e.g. 'bullets', 'mermaid'). */
+  name: string;
+  /** Human-readable description shown in `render list`. */
+  description: string;
+};
+
+/** Options passed to a render function. */
+export type RenderOptions = {
+  /** The format name being rendered (e.g. 'bullets', 'mermaid'). */
+  format: string;
+};
+
+/**
+ * The render hook on a plugin: declares available formats and handles rendering.
+ * Unlike parse/templateSync (first-responder), render hooks are additive —
+ * all formats from all plugins are available simultaneously.
+ */
+export type RenderHook = {
+  formats: RenderFormat[];
+  render: (context: PluginContext, graph: SpaceGraph, options: RenderOptions) => Promise<string> | string;
+};
+
 /**
  * Plugin contract:
  * - A hook not implemented on the plugin → that plugin is skipped for that operation.
- * - A hook returns `T | null` → null means "didn't handle, try next plugin".
- * - The orchestrator accepts the first non-null result; if no plugin handles, it throws.
+ * - parse/templateSync return `T | null` → null means "didn't handle, try next plugin".
+ * - render is additive: all plugins' formats are registered and dispatched by name.
  */
 export type OstToolsPlugin = {
   name: string;
@@ -44,4 +69,5 @@ export type OstToolsPlugin = {
   configSchema: AnySchemaObject;
   parse?: ParseHook;
   templateSync?: TemplateSyncHook;
+  render?: RenderHook;
 };

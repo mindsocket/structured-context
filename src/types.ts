@@ -74,6 +74,8 @@ export type UnresolvedRef = {
 export type BaseNode = {
   /** Source identifier for error messages (filename or heading title) */
   label: string;
+  /** Canonical title of the node (from schemaData.title). First-class accessor. */
+  title: string;
   /** Fields validated against the active schema. */
   schemaData: Record<string, unknown>;
   /** Valid navigation targets this node can be linked to (wikilink key without [[ ]]). */

@@ -15,7 +15,7 @@ export async function validateRules(nodes: SpaceNode[], rules: Rule[]): Promise<
   // Build node index for efficient lookups
   const nodeIndex = new Map<string, SpaceNode>();
   for (const node of nodes) {
-    const title = node.schemaData.title as string;
+    const title = node.title;
     if (title) {
       nodeIndex.set(title, node);
     }

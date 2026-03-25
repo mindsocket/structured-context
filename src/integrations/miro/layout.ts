@@ -1,5 +1,4 @@
 import type { HierarchyLevel, SpaceNode } from '../../types';
-import { buildDepthMap } from '../../util/graph-helpers';
 
 export const CARD_WIDTH = 320;
 const CARD_HEIGHT = 160;
@@ -11,6 +10,19 @@ export interface LayoutResult {
   positions: Map<string, { x: number; y: number }>;
   /** Bounding box of all cards (new + existing) — useful for sizing the containing frame. */
   bounds: { minX: number; minY: number; maxX: number; maxY: number };
+}
+
+/**
+ * DEPRECATED - likely not needed after migration to render plugin and SpaceGraph
+ * Build a depth map from hierarchy levels.
+ * The position in the hierarchy array determines the depth.
+ */
+function buildDepthMap(hierarchyLevels: HierarchyLevel[]): Map<string, number> {
+  const depthMap = new Map<string, number>();
+  for (const [i, level] of hierarchyLevels.entries()) {
+    depthMap.set(level.type, i);
+  }
+  return depthMap;
 }
 
 /**
@@ -58,7 +70,7 @@ export function layoutNewCards(
     let x = -totalWidth / 2 + CARD_WIDTH / 2;
 
     for (const node of nodes) {
-      const title = node.schemaData.title as string;
+      const title = node.title;
       positions.set(title, { x, y: rowY });
       x += CARD_WIDTH + H_GAP;
     }

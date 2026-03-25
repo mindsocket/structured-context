@@ -8,6 +8,8 @@ describe('validate-rules', () => {
     const mockNodes: SpaceNode[] = [
       {
         label: 'outcome.md',
+        title: 'Outcome',
+        type: 'outcome',
         schemaData: { title: 'Outcome', type: 'outcome', status: 'active', metric: 'Increase X' },
         linkTargets: ['Outcome'],
         resolvedParents: [],
@@ -15,6 +17,8 @@ describe('validate-rules', () => {
       },
       {
         label: 'opportunity.md',
+        title: 'Opportunity',
+        type: 'opportunity',
         schemaData: {
           title: 'Opportunity',
           type: 'opportunity',
@@ -28,6 +32,8 @@ describe('validate-rules', () => {
       },
       {
         label: 'solution.md',
+        title: 'Solution',
+        type: 'solution',
         schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
         linkTargets: ['Solution'],
         resolvedParents: [makeParentRef('Opportunity')],
@@ -35,6 +41,8 @@ describe('validate-rules', () => {
       },
       {
         label: 'bad-solution.md',
+        title: 'Bad Solution',
+        type: 'solution',
         schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },
         linkTargets: ['Bad Solution'],
         resolvedParents: [makeParentRef('Solution')],
@@ -42,6 +50,8 @@ describe('validate-rules', () => {
       },
       {
         label: 'experiment.md',
+        title: 'Experiment',
+        type: 'experiment',
         schemaData: {
           title: 'Experiment',
           type: 'experiment',
@@ -55,6 +65,8 @@ describe('validate-rules', () => {
       },
       {
         label: 'bad-experiment.md',
+        title: 'Bad Experiment',
+        type: 'experiment',
         schemaData: {
           title: 'Bad Experiment',
           type: 'experiment',
@@ -123,6 +135,8 @@ describe('validate-rules', () => {
       it('detects outcome with parent', async () => {
         const outcomeWithParent: SpaceNode = {
           label: 'bad-outcome.md',
+          title: 'Bad Outcome',
+          type: 'outcome',
           schemaData: { title: 'Bad Outcome', type: 'outcome', status: 'active', parent: '[[Vision]]' },
           linkTargets: ['Bad Outcome'],
           resolvedParents: [makeParentRef('Vision')],
@@ -130,6 +144,8 @@ describe('validate-rules', () => {
         };
         const visionNode: SpaceNode = {
           label: 'vision.md',
+          title: 'Vision',
+          type: 'vision',
           schemaData: { title: 'Vision', type: 'vision', status: 'active' },
           linkTargets: ['Vision'],
           resolvedParents: [],
@@ -156,6 +172,8 @@ describe('validate-rules', () => {
       it('passes when opportunity has enough solutions', async () => {
         const opportunityNode: SpaceNode = {
           label: 'opportunity.md',
+          title: 'Opportunity',
+          type: 'opportunity',
           schemaData: {
             title: 'Opportunity',
             type: 'opportunity',
@@ -170,6 +188,8 @@ describe('validate-rules', () => {
 
         const solutions: SpaceNode[] = Array.from({ length: 3 }, (_, i) => ({
           label: `solution${i}.md`,
+          title: `Solution ${i}`,
+          type: 'solution',
           schemaData: {
             title: `Solution ${i}`,
             type: 'solution',
@@ -189,6 +209,8 @@ describe('validate-rules', () => {
       it('detects opportunity with too few solutions', async () => {
         const opportunityNode: SpaceNode = {
           label: 'opportunity.md',
+          title: 'Opportunity',
+          type: 'opportunity',
           schemaData: {
             title: 'Opportunity',
             type: 'opportunity',
@@ -203,6 +225,8 @@ describe('validate-rules', () => {
 
         const singleSolution: SpaceNode = {
           label: 'solution.md',
+          title: 'Solution',
+          type: 'solution',
           schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
           linkTargets: ['Solution'],
           resolvedParents: [makeParentRef('Opportunity')],
@@ -244,6 +268,8 @@ describe('validate-rules', () => {
         const multipleActiveOutcomes: SpaceNode[] = [
           {
             label: 'outcome1.md',
+            title: 'Outcome 1',
+            type: 'outcome',
             schemaData: { title: 'Outcome 1', type: 'outcome', status: 'active', metric: 'X' },
             linkTargets: ['Outcome 1'],
             resolvedParents: [],
@@ -251,6 +277,8 @@ describe('validate-rules', () => {
           },
           {
             label: 'outcome2.md',
+            title: 'Outcome 2',
+            type: 'outcome',
             schemaData: { title: 'Outcome 2', type: 'outcome', status: 'active', metric: 'Y' },
             linkTargets: ['Outcome 2'],
             resolvedParents: [],
@@ -258,6 +286,8 @@ describe('validate-rules', () => {
           },
           {
             label: 'unrelated.md',
+            title: 'Unrelated',
+            type: 'solution',
             schemaData: { title: 'Unrelated', type: 'solution', status: 'exploring' },
             linkTargets: ['Unrelated'],
             resolvedParents: [],
@@ -274,6 +304,8 @@ describe('validate-rules', () => {
       it('detects active node with non-active parent', async () => {
         const parentNode: SpaceNode = {
           label: 'outcome.md',
+          title: 'Outcome',
+          type: 'outcome',
           schemaData: { title: 'Outcome', type: 'outcome', status: 'inactive', metric: 'X' },
           linkTargets: ['Outcome'],
           resolvedParents: [],
@@ -281,6 +313,8 @@ describe('validate-rules', () => {
         };
         const childNode: SpaceNode = {
           label: 'opportunity.md',
+          title: 'Opportunity',
+          type: 'opportunity',
           schemaData: {
             title: 'Opportunity',
             type: 'opportunity',
@@ -302,6 +336,8 @@ describe('validate-rules', () => {
       it('passes active node when parent is also active', async () => {
         const parentNode: SpaceNode = {
           label: 'outcome.md',
+          title: 'Outcome',
+          type: 'outcome',
           schemaData: { title: 'Outcome', type: 'outcome', status: 'active', metric: 'X' },
           linkTargets: ['Outcome'],
           resolvedParents: [],
@@ -309,6 +345,8 @@ describe('validate-rules', () => {
         };
         const childNode: SpaceNode = {
           label: 'opportunity.md',
+          title: 'Opportunity',
+          type: 'opportunity',
           schemaData: {
             title: 'Opportunity',
             type: 'opportunity',
@@ -347,6 +385,8 @@ describe('validate-rules', () => {
         const nodes: SpaceNode[] = [
           {
             label: 'outcome1.md',
+            title: 'Outcome 1',
+            type: 'outcome',
             schemaData: { title: 'Outcome 1', type: 'outcome', status: 'active', metric: 'X' },
             linkTargets: ['Outcome 1'],
             resolvedParents: [],
@@ -354,6 +394,8 @@ describe('validate-rules', () => {
           },
           {
             label: 'outcome2.md',
+            title: 'Outcome 2',
+            type: 'outcome',
             schemaData: { title: 'Outcome 2', type: 'outcome', status: 'active', metric: 'Y' },
             linkTargets: ['Outcome 2'],
             resolvedParents: [],
@@ -361,6 +403,8 @@ describe('validate-rules', () => {
           },
           {
             label: 'solution.md',
+            title: 'Solution',
+            type: 'solution',
             schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
             linkTargets: ['Solution'],
             resolvedParents: [makeParentRef('Opportunity')],
@@ -368,6 +412,8 @@ describe('validate-rules', () => {
           },
           {
             label: 'bad-solution.md',
+            title: 'Bad Solution',
+            type: 'solution',
             schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },
             linkTargets: ['Bad Solution'],
             resolvedParents: [makeParentRef('Solution')],

@@ -12,10 +12,14 @@ export type {
   ParseHook,
   ParseResult,
   PluginContext,
+  RenderFormat,
+  RenderHook,
+  RenderOptions,
   TemplateSyncHook,
   TemplateSyncOptions,
 } from './plugins/util';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
+export type { SpaceGraph } from './space-graph';
 export type {
   BaseNode,
   EdgeDefinition,
