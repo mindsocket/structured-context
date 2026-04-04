@@ -10,7 +10,7 @@ import { buildSpaceGraph } from '../space-graph';
 import type { GraphViolation, RuleViolation, SchemaWithMetadata, SpaceContext } from '../types';
 import { extractEntityInfo } from './schemas';
 
-interface FormattedError {
+export interface FormattedError {
   message: string;
   dedupeKey: string;
 }
@@ -31,7 +31,7 @@ interface ValidationResult {
  * Format AJV errors for better readability.
  * Groups related errors and extracts helpful context like allowed values.
  */
-function formatErrors(
+export function formatErrors(
   errors: ErrorObject[],
   schema: SchemaWithMetadata,
   schemaRefRegistry: Parameters<typeof extractEntityInfo>[1],

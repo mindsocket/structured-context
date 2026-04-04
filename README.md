@@ -18,10 +18,16 @@ bunx ost-tools validate <space>
 
 ## Setup for AI Agents
 
-An AI agent skill is included with this project. To install it run:
+A Claude Code plugin is included at `plugin/`. It provides validation hooks, slash commands, and agent skills. Install it with:
 
 ```
-npx skills add mindsocket/ost-tools
+claude plugin install mindsocket/ost-tools
+```
+
+Skills can also be installed standalone without the plugin:
+
+```
+npx skills add https://github.com/mindsocket/ost-tools/tree/main/plugin/skills/ost-tools
 ```
 
 ## Concepts
