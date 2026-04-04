@@ -11,6 +11,8 @@ import { show } from './commands/show';
 import { listSpaces } from './commands/spaces';
 import { templateSync } from './commands/template-sync';
 import { validate, watchValidate } from './commands/validate';
+import { validateFile } from './commands/validate-file';
+
 import { getSpaceConfigDir, loadConfig, resolveSchema, setConfigPath } from './config';
 import { miroSync } from './integrations/miro/sync';
 import { loadSchema } from './schema/schema';
@@ -51,6 +53,16 @@ program
 program.hook('preAction', () => {
   setConfigPath(program.opts().config);
 });
+
+program
+  .command('validate-file')
+  .description('Validate a single file within its space')
+  .argument('<path>', 'Path to the file to validate')
+  .option('--json', 'Output results as JSON (machine-readable, for hooks)')
+  .action(async (filePath, options) => {
+    const exitCode = await validateFile(filePath, { json: options.json });
+    process.exit(exitCode);
+  });
 
 program
   .command('validate')
