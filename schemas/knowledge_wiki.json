@@ -1,0 +1,204 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
+  "$id": "ost-tools://knowledge_wiki",
+  "title": "Knowledge Wiki",
+  "description": "Lightweight schema for LLM-maintained knowledge wikis. Supports source summaries, concept pages, syntheses, and personal notes. Designed for compounding knowledge bases where the LLM creates and maintains wiki pages from raw sources.\n\nFlat entity model — no hierarchy, no required parent links. Wikilinks between any pages are valid for arbitrary cross-referencing. The schema validates structure and provenance; it does not constrain meaning.\n\nBased on the pattern described in Karpathy's LLM Wiki (2026).",
+  "$metadata": {
+    "aliases": {
+      "study": "source_summary",
+      "article": "source_summary",
+      "paper": "source_summary",
+      "research": "source_summary",
+      "note": "personal",
+      "journal": "personal",
+      "framework": "concept",
+      "model": "concept",
+      "chat_transcript": "source_summary",
+      "chat-transcript": "source_summary"
+    },
+    "rules": [
+      {
+        "id": "source-has-origin",
+        "category": "validation",
+        "description": "Source summaries should reference their origin via url, author, or book field",
+        "type": "source_summary",
+        "check": "current.url != null or current.author != null or current.book != null"
+      },
+      {
+        "id": "synthesis-references-sources",
+        "category": "coherence",
+        "description": "Syntheses should reference at least one contributing source in their sources array",
+        "type": "synthesis",
+        "check": "$exists(current.sources) and $length(current.sources) >= 1"
+      },
+      {
+        "id": "concept-has-summary",
+        "category": "best-practice",
+        "description": "Concept pages should have a short summary for index discoverability",
+        "type": "concept",
+        "check": "$exists(current.summary) and $length(current.summary) > 0"
+      }
+    ]
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "description": "A processed summary of a raw source (article, paper, book, video, thread, podcast, etc.). Captures key information from the source in structured form with provenance.",
+      "allOf": [
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "source_summary" },
+        "url": {
+          "type": "string",
+          "description": "URL of the original source"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author or creator of the source"
+        },
+        "book": {
+          "type": "string",
+          "description": "Book title and author if the source is a book"
+        },
+        "published_date": {
+          "type": "string",
+          "description": "Original publication date (ISO 8601 or natural language)"
+        },
+        "source_type": {
+          "type": "string",
+          "description": "Kind of source material. Free-form — common values include article, paper, book, video, podcast, thread, substack, tweet, website, chat_transcript. Not enum-constrained to allow evolving vocabulary."
+        },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Wikilinks to other source pages that this one references or extends"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "source_summary",
+          "title": "Study - Glutamate buildup and cognitive fatigue (Dr Dominic Ng)",
+          "author": "Dr Dominic Ng",
+          "url": "https://www.brainhealthdecoded.com/p/how-to-stop-wasting-your-evenings",
+          "source_type": "substack",
+          "tags": ["adhd", "executive-function", "cognitive-fatigue"],
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "description": "A concept or entity page — defines and frames a specific idea, mechanism, model, or domain term. May draw from multiple sources. The building blocks of the wiki's knowledge graph.",
+      "allOf": [
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "concept" },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Wikilinks to source_summary pages that contributed to this concept"
+        },
+        "related": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Wikilinks to related concept or synthesis pages"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "concept",
+          "title": "Executive function",
+          "summary": "A set of cognitive processes including inhibitory control, working memory, and cognitive flexibility that enable goal-directed behaviour",
+          "tags": ["adhd", "neuroscience", "cognition"],
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "description": "A synthesis page — connects multiple concepts and sources into a coherent model, framework, or thesis. The highest-value pages in a knowledge wiki. Must reference contributing sources.",
+      "allOf": [
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "synthesis" },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Wikilinks to source_summary or concept pages that this synthesis draws from"
+        },
+        "related": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Wikilinks to related pages"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "synthesis",
+          "title": "System 1/System 2 and the AuDHD Operating System",
+          "summary": "How Kahneman's framework explains interview freeze, organizational fatigue, and AI cognitive crush in AuDHD",
+          "sources": ["[[Study - Glutamate buildup and cognitive fatigue]]", "[[ADHD modelling notes]]"],
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "description": "Personal notes, journal entries, appointments, experiential records. Your own data about your journey — not sourced from external material.",
+      "allOf": [
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "personal" },
+        "date": {
+          "type": "string",
+          "description": "Date this entry was created or relates to"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "personal",
+          "title": "ADHD diagnosis",
+          "date": "2023-10-15",
+          "tags": ["adhd", "diagnosis"],
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "description": "The wiki index — a catalog of all pages with links, summaries, and metadata. Updated by the agent on ingest. Used as the primary navigation entry point.",
+      "allOf": [
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
+        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "index" }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "index",
+          "title": "index",
+          "status": "active"
+        }
+      ]
+    }
+  ]
+}
