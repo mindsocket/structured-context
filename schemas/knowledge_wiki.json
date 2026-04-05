@@ -2,28 +2,40 @@
   "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
   "$id": "ost-tools://knowledge_wiki",
   "title": "Knowledge Wiki",
-  "description": "Lightweight schema for LLM-maintained knowledge wikis. Supports source summaries, concept pages, syntheses, and personal notes. Designed for compounding knowledge bases where the LLM creates and maintains wiki pages from raw sources.\n\nFlat entity model — no hierarchy, no required parent links. Wikilinks between any pages are valid for arbitrary cross-referencing. The schema validates structure and provenance; it does not constrain meaning.\n\nBased on the pattern described in Karpathy's LLM Wiki (2026).",
+  "description": "Lightweight schema for LLM-maintained knowledge wikis. Supports source pages, concept pages, syntheses, and notes. Designed for compounding knowledge bases where the LLM creates and maintains wiki pages from raw sources.\n\nFlat entity model — no hierarchy, no required parent links. Wikilinks between any pages are valid for arbitrary cross-referencing. The schema validates structure and provenance; it does not constrain meaning.\n\nBased on the pattern described in Karpathy's LLM Wiki (2026).",
   "$metadata": {
     "aliases": {
-      "study": "source_summary",
-      "article": "source_summary",
-      "paper": "source_summary",
-      "research": "source_summary",
-      "note": "personal",
-      "journal": "personal",
-      "framework": "concept",
-      "model": "concept",
-      "chat_transcript": "source_summary",
-      "chat-transcript": "source_summary"
+      "source_summary": "source",
+      "study": "source",
+      "article": "source",
+      "paper": "source",
+      "research": "source",
+      "journal": "note"
     },
-    "rules": [
+    "relationships": [
       {
-        "id": "source-has-origin",
-        "category": "validation",
-        "description": "Source summaries should reference their origin via url, author, or book field",
-        "type": "source_summary",
-        "check": "current.url != null or current.author != null or current.book != null"
+        "parent": "source",
+        "type": "source",
+        "field": "sources",
+        "fieldOn": "child",
+        "multiple": true
       },
+      {
+        "parent": "source",
+        "type": "synthesis",
+        "field": "sources",
+        "fieldOn": "child",
+        "multiple": true
+      },
+      {
+        "parent": "concept",
+        "type": "synthesis",
+        "field": "concepts",
+        "fieldOn": "child",
+        "multiple": true
+      }
+    ],
+    "rules": [
       {
         "id": "synthesis-references-sources",
         "category": "coherence",
@@ -49,10 +61,14 @@
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
-        "type": { "const": "source_summary" },
+        "type": { "const": "source" },
         "url": {
           "type": "string",
           "description": "URL of the original source"
+        },
+        "local_copy": {
+          "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink",
+          "description": "Wikilink to a local copy of the source (e.g. a saved PDF or clipped note)"
         },
         "author": {
           "type": "string",
@@ -68,31 +84,31 @@
         },
         "source_type": {
           "type": "string",
-          "description": "Kind of source material. Free-form — common values include article, paper, book, video, podcast, thread, substack, tweet, website, chat_transcript. Not enum-constrained to allow evolving vocabulary."
+          "description": "Kind of source material. Free-form — common values include article, paper, book, video, podcast, thread, substack, tweet, website. Not enum-constrained to allow evolving vocabulary."
         },
         "sources": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
           "description": "Wikilinks to other source pages that this one references or extends"
         }
       },
-      "required": ["type"],
+      "required": ["type", "url"],
       "additionalProperties": true,
       "examples": [
         {
-          "type": "source_summary",
-          "title": "Study - Glutamate buildup and cognitive fatigue (Dr Dominic Ng)",
-          "author": "Dr Dominic Ng",
-          "url": "https://www.brainhealthdecoded.com/p/how-to-stop-wasting-your-evenings",
-          "source_type": "substack",
-          "tags": ["adhd", "executive-function", "cognitive-fatigue"],
+          "type": "source",
+          "title": "The Design of Everyday Things - Don Norman",
+          "author": "Don Norman",
+          "url": "https://example.com/design-of-everyday-things",
+          "source_type": "book",
+          "tags": ["design", "ux", "psychology"],
           "status": "active"
         }
       ]
     },
     {
       "type": "object",
-      "description": "A concept or entity page — defines and frames a specific idea, mechanism, model, or domain term. May draw from multiple sources. The building blocks of the wiki's knowledge graph.",
+      "description": "A concept or entity page — defines and frames a specific idea, mechanism, or domain term. May draw from multiple sources. The building blocks of the wiki's knowledge graph.",
       "allOf": [
         { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
@@ -101,12 +117,12 @@
         "type": { "const": "concept" },
         "sources": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "Wikilinks to source_summary pages that contributed to this concept"
+          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+          "description": "Wikilinks to source pages that contributed to this concept"
         },
         "related": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
           "description": "Wikilinks to related concept or synthesis pages"
         }
       },
@@ -115,9 +131,9 @@
       "examples": [
         {
           "type": "concept",
-          "title": "Executive function",
-          "summary": "A set of cognitive processes including inhibitory control, working memory, and cognitive flexibility that enable goal-directed behaviour",
-          "tags": ["adhd", "neuroscience", "cognition"],
+          "title": "Affordance",
+          "summary": "A property of an object that signals how it can be used, first described by Gibson and popularised in design by Norman",
+          "tags": ["design", "ux"],
           "status": "active"
         }
       ]
@@ -133,13 +149,13 @@
         "type": { "const": "synthesis" },
         "sources": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "Wikilinks to source_summary or concept pages that this synthesis draws from"
+          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+          "description": "Wikilinks to source pages this synthesis draws from"
         },
-        "related": {
+        "concepts": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "Wikilinks to related pages"
+          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+          "description": "Wikilinks to concept pages this synthesis connects"
         }
       },
       "required": ["type"],
@@ -147,9 +163,10 @@
       "examples": [
         {
           "type": "synthesis",
-          "title": "System 1/System 2 and the AuDHD Operating System",
-          "summary": "How Kahneman's framework explains interview freeze, organizational fatigue, and AI cognitive crush in AuDHD",
-          "sources": ["[[Study - Glutamate buildup and cognitive fatigue]]", "[[ADHD modelling notes]]"],
+          "title": "Affordances and feedback loops in interface design",
+          "summary": "How Norman's affordance model and feedback principles combine to explain intuitive vs confusing interfaces",
+          "sources": ["[[The Design of Everyday Things - Don Norman]]"],
+          "concepts": ["[[Affordance]]", "[[Feedback loop]]"],
           "status": "active"
         }
       ]
@@ -162,7 +179,7 @@
         { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
       ],
       "properties": {
-        "type": { "const": "personal" },
+        "type": { "const": "note" },
         "date": {
           "type": "string",
           "description": "Date this entry was created or relates to"
@@ -172,10 +189,10 @@
       "additionalProperties": true,
       "examples": [
         {
-          "type": "personal",
-          "title": "ADHD diagnosis",
-          "date": "2023-10-15",
-          "tags": ["adhd", "diagnosis"],
+          "type": "note",
+          "title": "Reflections after reading chapter 3",
+          "date": "2024-03-15",
+          "tags": ["reading-log"],
           "status": "active"
         }
       ]
