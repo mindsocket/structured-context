@@ -40,7 +40,7 @@
         "category": "coherence",
         "description": "Syntheses should reference at least one contributing source in their sources array",
         "type": "synthesis",
-        "check": "$exists(current.sources) and $length(current.sources) >= 1"
+        "check": "$exists(current.sources) and $count(current.sources) >= 1"
       },
       {
         "id": "concept-has-summary",
