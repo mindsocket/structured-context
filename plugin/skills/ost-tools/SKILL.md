@@ -77,6 +77,14 @@ Embedded nodes are nodes that live physically inside another node's file (via ta
 - When you want to group related child nodes under a stable heading in a parent's body.
 - For developing a template page with structured headings and lists or tables to fill in.
 
+## Authoring content frontmatter
+
+When writing or editing Obsidian markdown frontmatter:
+
+- **Do not include `title`** — Obsidian derives the page title from the filename.
+- **Tags use plain strings** — In Obsidian frontmatter, tags are listed as plain strings without a `#` prefix (e.g. `tags: [adhd, reading]`). The `#` prefix is only used for inline tags in the document body.
+- **Check entity descriptions before assigning a type to an existing document** — Run `schemas show --space <name>`. The description for each entity type, as well as any rules, should be carefully considered as part of determining that a type is appropriate for an existing document.
+
 ## Non-obvious issues
 
 **All files appear as "Non-space (no type field)"** — the space uses a different field name for the entity discriminator

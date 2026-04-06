@@ -9,8 +9,7 @@
       "study": "source",
       "article": "source",
       "paper": "source",
-      "research": "source",
-      "journal": "note"
+      "research": "source"
     },
     "relationships": [
       {
@@ -56,12 +55,12 @@
     {
       "type": "object",
       "description": "A processed summary of a raw source (article, paper, book, video, thread, podcast, etc.). Captures key information from the source in structured form with provenance.",
-      "allOf": [
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
-      ],
+      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "source" },
+        "summary": {
+          "$ref": "ost-tools://_ost_tools_base#/$defs/summary"
+        },
         "url": {
           "type": "string",
           "description": "URL of the original source"
@@ -80,7 +79,8 @@
         },
         "published_date": {
           "type": "string",
-          "description": "Original publication date (ISO 8601 or natural language)"
+          "format": "date",
+          "description": "Original publication date"
         },
         "source_type": {
           "type": "string",
@@ -97,24 +97,22 @@
       "examples": [
         {
           "type": "source",
-          "title": "The Design of Everyday Things - Don Norman",
-          "author": "Don Norman",
-          "url": "https://example.com/design-of-everyday-things",
+          "author": "Joe Bloggs",
+          "url": "https://example.com/design-of-yesterday-things",
           "source_type": "book",
-          "tags": ["design", "ux", "psychology"],
-          "status": "active"
+          "tags": ["design", "ux", "psychology"]
         }
       ]
     },
     {
       "type": "object",
       "description": "A concept or entity page — defines and frames a specific idea, mechanism, or domain term. May draw from multiple sources. The building blocks of the wiki's knowledge graph.",
-      "allOf": [
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
-      ],
+      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "concept" },
+        "summary": {
+          "$ref": "ost-tools://_ost_tools_base#/$defs/summary"
+        },
         "sources": {
           "type": "array",
           "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
@@ -131,22 +129,20 @@
       "examples": [
         {
           "type": "concept",
-          "title": "Affordance",
           "summary": "A property of an object that signals how it can be used, first described by Gibson and popularised in design by Norman",
-          "tags": ["design", "ux"],
-          "status": "active"
+          "tags": ["design", "ux"]
         }
       ]
     },
     {
       "type": "object",
       "description": "A synthesis page — connects multiple concepts and sources into a coherent model, framework, or thesis. The highest-value pages in a knowledge wiki. Must reference contributing sources.",
-      "allOf": [
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
-      ],
+      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "synthesis" },
+        "summary": {
+          "$ref": "ost-tools://_ost_tools_base#/$defs/summary"
+        },
         "sources": {
           "type": "array",
           "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
@@ -163,25 +159,21 @@
       "examples": [
         {
           "type": "synthesis",
-          "title": "Affordances and feedback loops in interface design",
           "summary": "How Norman's affordance model and feedback principles combine to explain intuitive vs confusing interfaces",
           "sources": ["[[The Design of Everyday Things - Don Norman]]"],
-          "concepts": ["[[Affordance]]", "[[Feedback loop]]"],
-          "status": "active"
+          "concepts": ["[[Affordance]]", "[[Feedback loop]]"]
         }
       ]
     },
     {
       "type": "object",
       "description": "Personal notes, journal entries, appointments, experiential records. Your own data about your journey — not sourced from external material.",
-      "allOf": [
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
-      ],
+      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "note" },
         "date": {
           "type": "string",
+          "format": "date",
           "description": "Date this entry was created or relates to"
         }
       },
@@ -190,20 +182,15 @@
       "examples": [
         {
           "type": "note",
-          "title": "Reflections after reading chapter 3",
           "date": "2024-03-15",
-          "tags": ["reading-log"],
-          "status": "active"
+          "tags": ["reading-log"]
         }
       ]
     },
     {
       "type": "object",
       "description": "The wiki index — a catalog of all pages with links, summaries, and metadata. Updated by the agent on ingest. Used as the primary navigation entry point.",
-      "allOf": [
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
-      ],
+      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "index" }
       },
@@ -211,9 +198,7 @@
       "additionalProperties": true,
       "examples": [
         {
-          "type": "index",
-          "title": "index",
-          "status": "active"
+          "type": "index"
         }
       ]
     }

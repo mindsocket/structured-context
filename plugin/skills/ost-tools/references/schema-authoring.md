@@ -119,25 +119,47 @@ Schema definitions use the mapped target names.
 
 Use `bunx ost-tools schemas show _ost_tools_base.json` to inspect built-in defs.
 
+**Available partials in `_ost_tools_base`:**
+
+| Def | Purpose | Use when |
+|---|---|---|
+| `baseNodeProps` | `title`, `content`, `tags` — universal node fields | All schemas |
+| `ostEntityProps` | `status` (required, lifecycle enum), `summary`, `status_tweet` | OST-domain schemas only — carries OST lifecycle semantics. Do not use in non-OST schemas (e.g., knowledge wikis, general content). |
+| `parentNodeProps` | `parent` wikilink field | When hierarchy uses default `parent` field |
+| `wikilink` | Wikilink string pattern | Any field referencing another node |
+| `summary` | Short summary string | Any schema that needs a summary property |
+| `status` | OST lifecycle status enum | OST-domain schemas only |
+
 Convention:
 - define reusable concepts in `$defs`
 - reference via `$ref` from `oneOf` entries
+- **always check existing schemas** (`general.json`, `strict_ost.json`, `knowledge_wiki.json`) before authoring — use them as consistency references for property names, patterns, and structure
 
 ## `oneOf` authoring pattern
+
+Each entity type entry should have:
+- a clear `description` explaining the purpose of the type
+- an `allOf` pulling in relevant partials (always `baseNodeProps`; domain-specific partials only when appropriate)
+- `examples` covering required fields at minimum — **exclude `title`**, which is derived from the filename in Obsidian, not written in frontmatter
 
 ```json5
 {
   "type": "object",
+  "description": "A specific, scoped explanation of what this entity type represents and when to use it.",
   "allOf": [
-    { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-    { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+    { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }
+    // add other partials only if appropriate to the domain of this schema
   ],
   "properties": {
-    "type": { "const": "opportunity" }
+    "type": { "const": "opportunity" },
+    "summary": {
+      "$ref": "ost-tools://_ost_tools_base#/$defs/summary"
+    },    // add domain-specific properties here
   },
-  "required": ["type"],
+  "required": ["type", "status"],
   "additionalProperties": true,
-  "examples": [{ "type": "opportunity", "status": "identified" }]
+  "examples": [{ "type": "opportunity", "summary": "Summarise the opportunity at a high level" }]
+  // examples must not include "title" — title = filename, not a frontmatter field
 }
 ```
 
