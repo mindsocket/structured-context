@@ -23,6 +23,7 @@ function extractRefs(obj: unknown, refs: Set<string>): void {
 
 interface EntityVariant {
   types: string[];
+  description?: string;
   properties: string[];
   required: string[];
 }
@@ -39,7 +40,8 @@ function extractEntities(
   schema: SchemaWithMetadata,
 ): EntityVariant[] {
   return oneOf.map((entry) => {
-    const { properties, required } = mergeVariantProperties(entry as AnySchemaObject, schema, schemaRefRegistry);
+    const entryObj = entry as AnySchemaObject;
+    const { properties, required } = mergeVariantProperties(entryObj, schema, schemaRefRegistry);
     const typeDef = properties.type as AnySchemaObject | undefined;
     let types: string[] = [];
     if (typeDef?.const) types = [String(typeDef.const)];
@@ -47,6 +49,7 @@ function extractEntities(
 
     return {
       types,
+      description: typeof entryObj.description === 'string' ? entryObj.description : undefined,
       properties: Object.keys(properties).filter((k) => k !== 'type'),
       required: required.filter((r) => r !== 'type'),
     };
@@ -92,13 +95,13 @@ function showEntities(
 ): void {
   const entities = extractEntities(oneOf, schemaRefRegistry, schema);
   console.log('\nEntities:');
-  for (const { types, properties, required } of entities) {
+  for (const { types, description, properties, required } of entities) {
     const label = types.length > 0 ? types.join(', ') : '(unknown)';
     if (properties.length === 0) {
-      console.log(`  ${label}`);
+      console.log(`  ${label}${description ? ` — ${description}` : ''}`);
     } else {
       const propList = properties.map((p) => (required.includes(p) ? `${p}*` : p)).join('  ');
-      console.log(`  ${label}`);
+      console.log(`  ${label}${description ? ` — ${description}` : ''}`);
       console.log(`    ${propList}`);
     }
   }
