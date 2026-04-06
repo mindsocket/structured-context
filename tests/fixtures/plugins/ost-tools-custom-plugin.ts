@@ -7,6 +7,7 @@ const customPlugin: OstToolsPlugin = {
   async parse(): Promise<ParseResult> {
     return {
       nodes: [],
+      parseIgnored: [],
       diagnostics: { source: 'custom' },
     };
   },

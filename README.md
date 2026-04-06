@@ -367,10 +367,13 @@ Keeps Obsidian template files in sync with schema examples:
 # Run a command against a configured space
 bun run src/index.ts validate personal
 
-# Run unit tests
+# Run type checking (checks all code including tests)
+bun run typecheck
+
+# Run core unit tests
 bun run test
 
-# Run smoke tests against all locally configured spaces
+# Run occasional smoke tests against all locally configured spaces
 bun run test:smoke
 
 # Build compiled output

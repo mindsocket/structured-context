@@ -36,5 +36,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .miro-cache/
 config.json
 .claude/settings.local.json
-CLAUDE.local.md
 .claude/worktrees/
+CLAUDE.local.md
+
+hook-test/fixtures/.state/

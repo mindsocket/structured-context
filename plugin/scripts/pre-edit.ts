@@ -8,12 +8,21 @@
 
 import { appendFileSync, mkdirSync } from 'node:fs';
 
-interface HookInput {
+export interface PreEditInput {
   tool_name?: string;
   tool_input?: {
     file_path?: string;
   };
   session_id?: string;
+}
+
+export interface PreEditOptions {
+  /** Overrides OST_TOOLS_STATE_DIR env var */
+  stateDir?: string;
+  /** Path to ost-tools entry point. When set, uses `bun run <path>` instead of `bunx ost-tools`. */
+  ostToolsBin?: string;
+  /** Path to config file. When set, passed as OST_TOOLS_CONFIG to validate-file subprocess. */
+  configPath?: string;
 }
 
 interface HookState {
@@ -29,28 +38,20 @@ interface ValidationResult {
   errors?: object;
 }
 
-async function main() {
-  const INPUT_TEXT = await Bun.stdin.text();
-  const INPUT = JSON.parse(INPUT_TEXT) as HookInput;
-
-  // DEBUG: log full input and env to stderr
-  console.error('[ost-tools pre-edit hook] input:', JSON.stringify(INPUT));
-  console.error('[ost-tools pre-edit hook] OST_TOOLS_STATE_DIR:', process.env.OST_TOOLS_STATE_DIR);
-
-  const TOOL = INPUT.tool_name ?? '';
-  const FILE_PATH = INPUT.tool_input?.file_path;
-  const SESSION_ID = INPUT.session_id ?? 'unknown';
+export async function runPreEdit(input: PreEditInput, options?: PreEditOptions): Promise<void> {
+  const TOOL = input.tool_name ?? '';
+  const FILE_PATH = input.tool_input?.file_path;
+  const SESSION_ID = input.session_id ?? 'unknown';
 
   if (!FILE_PATH) {
-    process.exit(0);
+    return;
   }
 
-  const STATE_DIR = process.env.OST_TOOLS_STATE_DIR ?? '/tmp';
+  const STATE_DIR = options?.stateDir ?? process.env.OST_TOOLS_STATE_DIR ?? '/tmp';
   const STATE_FILE = `${STATE_DIR}/ost-tools-hook-${SESSION_ID}.jsonl`;
   const TIMESTAMP = Date.now();
 
   if (TOOL === 'Write') {
-    // New file — record filename only, no baseline to establish
     const entry: HookState = {
       session_id: SESSION_ID,
       timestamp: TIMESTAMP,
@@ -60,17 +61,26 @@ async function main() {
     };
     mkdirSync(STATE_DIR, { recursive: true });
     appendFileSync(STATE_FILE, `${JSON.stringify(entry)}\n`);
-    process.exit(0);
+    return;
   }
 
   // Edit — validate current state as pre-edit baseline
-  const proc = Bun.$`bunx ost-tools validate-file ${FILE_PATH} --json`.quiet().nothrow();
+  const BIN = options?.ostToolsBin ?? process.env.OST_TOOLS_BIN;
+  const env: Record<string, string | undefined> = { ...process.env };
+  if (options?.configPath) {
+    env.OST_TOOLS_CONFIG = options.configPath;
+  }
+
+  const proc = BIN
+    ? Bun.$`bun run ${BIN} validate-file ${FILE_PATH} --json`.env(env).quiet().nothrow()
+    : Bun.$`bunx ost-tools validate-file ${FILE_PATH} --json`.env(env).quiet().nothrow();
+
   const resultText = await proc.text();
   const result = resultText ? (JSON.parse(resultText) as ValidationResult) : {};
   const IN_SPACE = result.inSpace ?? false;
 
   if (IN_SPACE !== true) {
-    process.exit(0);
+    return;
   }
 
   const ERRORS = result.errors ?? {};
@@ -85,7 +95,15 @@ async function main() {
   appendFileSync(STATE_FILE, `${JSON.stringify(entry)}\n`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function main() {
+  const INPUT_TEXT = await Bun.stdin.text();
+  const INPUT = JSON.parse(INPUT_TEXT) as PreEditInput;
+  await runPreEdit(INPUT);
+}
+
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

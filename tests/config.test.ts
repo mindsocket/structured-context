@@ -134,9 +134,9 @@ describe('loadConfig with includeSpacesFrom', () => {
 
     expect(config.spaces).toHaveLength(3);
     // Main config spaces come first, then included in order
-    expect(config.spaces[0].name).toBe('main-space');
-    expect(config.spaces[1].name).toBe('first-space');
-    expect(config.spaces[2].name).toBe('second-space');
+    expect(config.spaces[0]!.name).toBe('main-space');
+    expect(config.spaces[1]!.name).toBe('first-space');
+    expect(config.spaces[2]!.name).toBe('second-space');
   });
 
   it('handles absolute paths in includeSpacesFrom', () => {
@@ -167,7 +167,7 @@ describe('loadConfig with includeSpacesFrom', () => {
     const config = loadConfig();
 
     expect(config.spaces).toHaveLength(1);
-    expect(config.spaces[0].name).toBe('abs-space');
+    expect(config.spaces[0]!.name).toBe('abs-space');
   });
 
   it('throws error when included config has duplicate name', () => {
@@ -301,10 +301,10 @@ describe('loadConfig with includeSpacesFrom', () => {
 
     // Verify the included config file was updated
     const updatedConfig = JSON5.parse(readFileSync(otherConfigPath, 'utf-8')) as Config;
-    expect(updatedConfig.spaces[0].miroFrameId).toBe('new-frame-id');
+    expect(updatedConfig.spaces[0]!.miroFrameId).toBe('new-frame-id');
 
     // Verify the main config was not modified
     const mainConfig = JSON5.parse(readFileSync(mainConfigPath, 'utf-8')) as Config;
-    expect(mainConfig.spaces[0].name).toBe('main-space');
+    expect(mainConfig.spaces[0]!.name).toBe('main-space');
   });
 });

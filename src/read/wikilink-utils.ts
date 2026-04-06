@@ -1,4 +1,4 @@
-import type { SpaceNode } from '../types';
+import type { BaseNode } from '../types';
 
 /**
  * Extract the lookup key from a wikilink string such as:
@@ -18,11 +18,11 @@ export function wikilinkToTarget(wikilink: string): string {
  * Builds a fast lookup index mapping link targets to nodes.
  * Used for both hierarchy and relationship validation.
  *
- * @param nodes The complete set of SpaceNodes
+ * @param nodes The complete set of nodes (BaseNode, SpaceNode, or subtypes)
  * @returns Map of target strings to nodes. If a target is ambiguous (points to multiple nodes), its value is null.
  */
-export function buildTargetIndex(nodes: SpaceNode[]): Map<string, SpaceNode | null> {
-  const index = new Map<string, SpaceNode | null>();
+export function buildTargetIndex<T extends BaseNode>(nodes: T[]): Map<string, T | null> {
+  const index = new Map<string, T | null>();
 
   for (const node of nodes) {
     for (const target of node.linkTargets) {
