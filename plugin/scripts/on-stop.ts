@@ -92,8 +92,8 @@ export async function runOnStop(input: OnStopInput, options?: OnStopOptions): Pr
     }
 
     const proc = BIN
-      ? Bun.$`bun run ${BIN} validate-file ${FILE} --json`.env(env).quiet().nothrow()
-      : Bun.$`bunx ost-tools validate-file ${FILE} --json`.env(env).quiet().nothrow();
+      ? Bun.$`bun run ${[BIN]} validate-file ${[FILE]} --json`.env(env).quiet().nothrow()
+      : Bun.$`bunx ost-tools validate-file ${[FILE]} --json`.env(env).quiet().nothrow();
     const resultText = await proc.text();
     const result = resultText ? (JSON.parse(resultText) as ValidationResult) : {};
 
