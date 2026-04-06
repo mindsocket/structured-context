@@ -2,24 +2,30 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit",
+        "matcher": "Write|Edit",
         "hooks": [
           {
+            "if": "Write(*.md)",
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/pre-edit.sh",
+            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/pre-edit.ts",
+            "timeout": 30
+          },
+          {
+            "if": "Edit(*.md)",
+            "type": "command",
+            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/pre-edit.ts",
             "timeout": 30
           }
         ]
       }
     ],
-    "PostToolUse": [
+    "Stop": [
       {
-        "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-edit.sh",
-            "timeout": 30
+            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/on-stop.ts",
+            "timeout": 60
           }
         ]
       }

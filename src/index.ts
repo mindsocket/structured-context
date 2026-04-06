@@ -69,12 +69,13 @@ program
   .description('Validate space against JSON schema')
   .argument('<space-name>', 'Space name')
   .option('-w, --watch', 'Watch for changes and re-run validation')
+  .option('--json', 'Output results as JSON')
   .action(async (spaceName, options) => {
     const context = buildSpaceContext(spaceName);
     if (options.watch) {
       await watchValidate(context);
     } else {
-      const exitCode = await validate(context);
+      const exitCode = await validate(context, { json: options.json });
       process.exit(exitCode);
     }
   });

@@ -8,16 +8,12 @@ import { validateRules } from '../schema/validate-rules';
 import type { SpaceContext } from '../types';
 import { formatErrors } from './validate';
 
-export interface FileError {
-  kind: 'schema' | 'broken-link' | 'duplicate' | 'rule' | 'hierarchy';
-  message: string;
-}
-
 export interface FileValidationResult {
   file: string;
   label: string;
   space: string;
-  errors: FileError[];
+  /** Errors keyed by composite id (e.g. `schema:/status:enum:active`, `rule:my-rule-id`). */
+  errors: Record<string, { kind: string; message: string }>;
   errorCount: number;
   inSpace: true;
 }
@@ -83,7 +79,7 @@ export async function validateFile(filePath: string, options: { json?: boolean }
   const readResult = await readSpace(context);
   const { nodes } = readResult;
 
-  const errors: FileError[] = [];
+  const errors: Record<string, { kind: string; message: string }> = {};
 
   // Schema validation errors for this node
   for (const node of nodes) {
@@ -96,8 +92,8 @@ export async function validateFile(filePath: string, options: { json?: boolean }
         schemaRefRegistry,
         node.schemaData as Record<string, unknown>,
       );
-      for (const { message } of formatted) {
-        errors.push({ kind: 'schema', message });
+      for (const { message, dedupeKey } of formatted) {
+        errors[`schema:${dedupeKey}`] = { kind: 'schema', message };
       }
     }
   }
@@ -111,10 +107,10 @@ export async function validateFile(filePath: string, options: { json?: boolean }
   for (const [title, files] of titleToFiles) {
     if (files.length > 1 && files.includes(label)) {
       const others = files.filter((f) => f !== label);
-      errors.push({
+      errors[`duplicate:${title}`] = {
         kind: 'duplicate',
         message: `Duplicate title "${title}" also exists in: ${others.join(', ')}`,
-      });
+      };
     }
   }
 
@@ -122,12 +118,12 @@ export async function validateFile(filePath: string, options: { json?: boolean }
   const hierarchyValidation = validateGraph(nodes, metadata, readResult.unresolvedRefs);
   for (const { file, parent, error } of hierarchyValidation.refErrors) {
     if (file === label) {
-      errors.push({ kind: 'broken-link', message: `${parent} → ${error}` });
+      errors[`broken-link:${parent}`] = { kind: 'broken-link', message: `${parent} → ${error}` };
     }
   }
   for (const v of hierarchyValidation.violations) {
     if (v.file === label) {
-      errors.push({ kind: 'hierarchy', message: v.description });
+      errors[`hierarchy:${v.description}`] = { kind: 'hierarchy', message: v.description };
     }
   }
 
@@ -136,7 +132,7 @@ export async function validateFile(filePath: string, options: { json?: boolean }
     const ruleViolations = await validateRules(nodes, metadata.rules);
     for (const v of ruleViolations) {
       if (v.file === label) {
-        errors.push({ kind: 'rule', message: `[${v.ruleId}] ${v.description}` });
+        errors[`rule:${v.ruleId}`] = { kind: 'rule', message: `[${v.ruleId}] ${v.description}` };
       }
     }
   }
@@ -146,7 +142,7 @@ export async function validateFile(filePath: string, options: { json?: boolean }
     label,
     space: space.name,
     errors,
-    errorCount: errors.length,
+    errorCount: Object.keys(errors).length,
     inSpace: true,
   };
 
@@ -156,7 +152,7 @@ export async function validateFile(filePath: string, options: { json?: boolean }
     printHumanReadable(result);
   }
 
-  return errors.length > 0 ? 1 : 0;
+  return Object.keys(errors).length > 0 ? 1 : 0;
 }
 
 function printHumanReadable(result: FileValidationResult): void {
@@ -170,8 +166,8 @@ function printHumanReadable(result: FileValidationResult): void {
   }
 
   console.log(`\n${red}✗${reset} ${result.label} (space: ${result.space}) — ${result.errorCount} error(s)\n`);
-  for (const err of result.errors) {
-    console.log(`  [${err.kind}] ${err.message}`);
+  for (const { kind, message } of Object.values(result.errors)) {
+    console.log(`  [${kind}] ${message}`);
   }
   console.log('');
 }

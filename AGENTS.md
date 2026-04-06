@@ -7,6 +7,10 @@ Tools for working with Opportunity Solution Tree structures and other product ma
 Get a list of commands: `bun run src/index.ts --help`
 Space names (e.g. `personal`, `politics`) are resolved via a config file - `$OST_TOOLS_CONFIG`, `$XDG_CONFIG_HOME/ost-tools/config.json`, `--config <file>` param, or `./config.json`
 
+## Claude Code Plugin
+
+A Claude Code plugin lives at `plugin/`. It includes skills, commands and hooks used when working with collections of Obsidian markdown content (aka a space) in a vault.
+
 ## Definition of done
 
 There are several places that need reviewing and updating with any new feature or change added:
@@ -14,7 +18,7 @@ There are several places that need reviewing and updating with any new feature o
 - README.md - documentation, also displayed with `ost-tools readme` command
 - AGENTS.md - this file
 - docs/* - includes architecture, concepts etc
-- plugin/skills/ost-tools/* - skills information for AI agents (canonical; plugin is the single source)
+- plugin/* - skills, commands, hooks, and scripts; update any affected parts
 
 ## Project Context
 
@@ -33,6 +37,7 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 
 - `bun run test` — unit tests (fixtures in `tests/`)
 - `bun run test:smoke` — smoke tests that run `validate` against every space in `config.json` (`smoke/`)
+- `bun run test:hook` — test plugin hooks in Claude Code (`hook-test/`)
 
 ## Debugging
 

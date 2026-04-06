@@ -19,6 +19,8 @@ export type AugmentedFlatNode = Record<string, unknown> & {
 function flattenData(node: SpaceNode): Record<string, unknown> {
   return {
     ...node.schemaData,
+    label: node.label,
+    title: node.title,
     resolvedType: node.resolvedType,
   };
 }

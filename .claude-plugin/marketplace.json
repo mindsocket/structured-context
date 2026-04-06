@@ -1,0 +1,14 @@
+{
+  "name": "ost-tools",
+  "description": "Plugins for working with structured Obsidian markdown content using ost-tools.",
+  "owner": {
+    "name": "Roger Barnes",
+    "email": "roger@mindsocket.com.au"
+  },
+  "plugins": [
+    {
+      "name": "ost-tools",
+      "source": "./plugin/ost-tools"
+    }
+  ]
+}

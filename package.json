@@ -28,6 +28,7 @@
     "diagram": "bun run src/index.ts diagram",
     "test": "bun test tests/",
     "test:smoke": "bun test smoke/",
+    "test:hook": "bun test hook-test/",
     "test:all": "bun test",
     "lint": "biome check",
     "lint:fix": "biome check --write",
@@ -36,7 +37,7 @@
     "postversion": "git push --follow-tags"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.7",
+    "@biomejs/biome": "^2.4.10",
     "@types/bun": "latest",
     "@types/js-yaml": "^4.0.9",
     "json-schema-to-ts": "^3.1.1",
