@@ -22,13 +22,15 @@
   "scripts": {
     "clean": "rm -rf dist",
     "generate:schema-meta": "bun run scripts/generate-schema-meta.ts",
-    "build": "bun run clean && bun run generate:schema-meta && tsc && cp -r schemas dist/ && chmod +x dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "build": "bun run clean && bun run generate:schema-meta && tsc -p tsconfig.build.json && cp -r schemas dist/ && chmod +x dist/index.js",
     "prepublishOnly": "bun run build",
     "validate": "bun run src/index.ts validate",
     "diagram": "bun run src/index.ts diagram",
     "test": "bun test tests/",
     "test:smoke": "bun test smoke/",
-    "test:hook": "bun test hook-test/",
+    "test:hook": "bun test hook-test/unit/",
+    "test:hook:e2e": "bun test hook-test/hooks.test.ts",
     "test:all": "bun test",
     "lint": "biome check",
     "lint:fix": "biome check --write",
@@ -37,6 +39,7 @@
     "postversion": "git push --follow-tags"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.92",
     "@biomejs/biome": "^2.4.10",
     "@types/bun": "latest",
     "@types/js-yaml": "^4.0.9",

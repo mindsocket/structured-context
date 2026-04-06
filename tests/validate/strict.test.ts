@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 import { readSpaceDirectory, readSpaceOnAPage } from '../../src/plugins/markdown/read-space';
 import { bundledSchemasDir, createValidator } from '../../src/schema/schema';
-import type { SpaceNode } from '../../src/types';
+import type { BaseNode } from '../../src/types';
 import { makePluginContext } from '../helpers/context';
 
 const STRICT_SCHEMA_PATH = join(bundledSchemasDir, 'strict_ost.json');
@@ -192,7 +192,7 @@ describe('Strict OST schema validation', () => {
   });
 
   describe('valid fixtures (directory format)', () => {
-    let nodes: SpaceNode[];
+    let nodes: BaseNode[];
 
     beforeAll(async () => {
       ({ nodes } = await readSpaceDirectory(makePluginContext(VALID_DIR, STRICT_SCHEMA_PATH)));
@@ -210,7 +210,7 @@ describe('Strict OST schema validation', () => {
   });
 
   describe('valid fixtures (on-a-page format)', () => {
-    let nodes: SpaceNode[];
+    let nodes: BaseNode[];
 
     beforeAll(() => {
       ({ nodes } = readSpaceOnAPage(makePluginContext(VALID_ON_A_PAGE, STRICT_SCHEMA_PATH)));
@@ -228,7 +228,7 @@ describe('Strict OST schema validation', () => {
   });
 
   describe('valid-tree.md (minimal on-a-page)', () => {
-    let nodes: SpaceNode[];
+    let nodes: BaseNode[];
 
     beforeAll(() => {
       ({ nodes } = readSpaceOnAPage(makePluginContext(VALID_TREE, STRICT_SCHEMA_PATH)));
@@ -246,7 +246,7 @@ describe('Strict OST schema validation', () => {
   });
 
   describe('invalid fixtures', () => {
-    let nodes: SpaceNode[];
+    let nodes: BaseNode[];
 
     beforeAll(async () => {
       // Read from invalid directory - note that readSpaceDirectory doesn't validate

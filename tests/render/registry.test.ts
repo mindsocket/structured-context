@@ -27,9 +27,9 @@ describe('buildFormatRegistry', () => {
     const loaded = [makePlugin('ost-tools-markdown', [{ name: 'bullets', description: 'Bullet list' }])];
     const registry = buildFormatRegistry(loaded);
     expect(registry).toHaveLength(1);
-    expect(registry[0].qualifiedName).toBe('markdown.bullets');
-    expect(registry[0].format.name).toBe('bullets');
-    expect(registry[0].format.description).toBe('Bullet list');
+    expect(registry[0]!.qualifiedName).toBe('markdown.bullets');
+    expect(registry[0]!.format.name).toBe('bullets');
+    expect(registry[0]!.format.description).toBe('Bullet list');
   });
 
   it('collects formats from multiple plugins', () => {
@@ -52,6 +52,6 @@ describe('buildFormatRegistry', () => {
     ];
     const registry = buildFormatRegistry(loaded);
     expect(registry).toHaveLength(1);
-    expect(registry[0].qualifiedName).toBe('markdown.bullets');
+    expect(registry[0]!.qualifiedName).toBe('markdown.bullets');
   });
 });
