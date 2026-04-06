@@ -12,7 +12,7 @@ import type {
   SchemaMetadata,
   SharedEmbeddingFields,
 } from '../../plugin-api';
-import { applyFieldMap } from './util';
+import { applyFieldMap, coerceDates } from './util';
 
 /** Type values that identify a space_on_a_page container (not themselves space nodes). */
 export const ON_A_PAGE_TYPES = ['ost_on_a_page', 'space_on_a_page'];
@@ -831,7 +831,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         const code = child as Code;
         const parsed = yamlLoad(code.value);
         if (parsed && !Array.isArray(parsed) && typeof parsed === 'object') {
-          Object.assign(activeNode.schemaData, applyFieldMap(parsed as Record<string, unknown>, fieldMap));
+          Object.assign(activeNode.schemaData, coerceDates(applyFieldMap(parsed as Record<string, unknown>, fieldMap)));
         } else if (Array.isArray(parsed)) {
           throw new Error(`YAML block must be an object at "${activeNode.label}".`);
         } else {

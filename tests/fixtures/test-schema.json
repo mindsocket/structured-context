@@ -1,0 +1,31 @@
+{
+  "$id": "test://test-schema",
+  "description": "Minimal schema for unit and integration tests. Extend with additional types as test coverage requires new scenarios.",
+  "oneOf": [
+    {
+      "type": "object",
+      "description": "A simple note type with an optional date field for testing date coercion and format validation.",
+      "properties": {
+        "type": { "const": "note" },
+        "title": { "type": "string" },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO 8601 date (YYYY-MM-DD)"
+        },
+        "path": {
+          "type": "string",
+          "format": "path",
+          "description": "A filesystem path (absolute, relative, or plain filename)"
+        },
+        "related": {
+          "type": "string",
+          "format": "wikilink",
+          "description": "An Obsidian wikilink, e.g. [[Other Note]]"
+        }
+      },
+      "required": ["type", "title"],
+      "additionalProperties": true
+    }
+  ]
+}

@@ -84,8 +84,9 @@ function compileValidator(
   schemaRefRegistry: Map<string, AnySchemaObject>,
 ): ValidateFunction {
   const ajv = new Ajv();
-  ajv.addFormat('path', () => true);
-  ajv.addFormat('date', () => true);
+  ajv.addFormat('path', (value: string) => value.length > 0 && !value.includes('\0'));
+  ajv.addFormat('date', (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value));
+  ajv.addFormat('wikilink', (value: string) => /^\[\[.+\]\]$/.test(value));
   ajv.addKeyword({
     keyword: '$metadata',
     schemaType: 'object',

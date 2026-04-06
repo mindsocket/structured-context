@@ -48,6 +48,38 @@ Main types:
 
 This schema composes shared structural defs and strict metadata/rules from partials.
 
+## Custom format annotations
+
+`ost-tools` registers the following `format` annotations beyond standard JSON Schema. All apply to `string` properties and are validated at schema validation time.
+
+| Format | Validates | Example |
+|--------|-----------|---------|
+| `date` | ISO 8601 date (`YYYY-MM-DD`) | `"2026-03-31"` |
+| `path` | Non-empty filesystem path — absolute, relative, or a plain name | `"notes"`, `"./subdir/file.md"`, `"/abs/path"` |
+| `wikilink` | Obsidian wikilink syntax (`[[...]]`) | `"[[Parent Node]]"` |
+
+`path` and `wikilink` are also available as shared `$ref` definitions in `_ost_tools_base.json`:
+
+```json
+{ "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" }
+```
+
+Using `format` directly is more concise when the full definition isn't needed:
+
+```json
+{ "type": "string", "format": "wikilink" }
+```
+
+### Date coercion
+
+YAML parsers (gray-matter, js-yaml) coerce unquoted ISO dates to JavaScript `Date` objects:
+
+```yaml
+published_date: 2026-03-31   # parsed as a Date object by gray-matter
+```
+
+The markdown plugin automatically coerces `Date` objects to `YYYY-MM-DD` strings before validation, so unquoted dates in frontmatter and embedded YAML blocks work correctly with `format: "date"` fields.
+
 ## Metadata dialect
 
 Schemas use this metaschema URL:

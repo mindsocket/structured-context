@@ -89,7 +89,7 @@ export async function loadPlugins(
 ): Promise<LoadedPlugin[]> {
   const builtinsByName = new Map(builtinPlugins.map((p) => [p.name, p]));
   const ajv = new Ajv();
-  ajv.addFormat('path', () => true);
+  ajv.addFormat('path', (value: string) => value.length > 0 && !value.includes('\0'));
   const loaded: LoadedPlugin[] = [];
 
   // External plugins: entries in the map that are not built-in names

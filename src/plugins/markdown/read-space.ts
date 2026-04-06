@@ -6,7 +6,7 @@ import type { BaseNode } from '../../plugin-api';
 import type { ParseResult, PluginContext } from '../util';
 import type { MarkdownPluginConfig } from '.';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
-import { applyFieldMap } from './util';
+import { applyFieldMap, coerceDates } from './util';
 
 type ReadSpaceDirectoryOptions = {
   includeOnAPageFiles?: boolean;
@@ -83,7 +83,7 @@ export async function readSpaceDirectory(
       continue;
     }
 
-    const data = applyFieldMap(parsed.data, fieldMap);
+    const data = coerceDates(applyFieldMap(parsed.data, fieldMap));
 
     if (!data.type) {
       nonSpace.push(file);

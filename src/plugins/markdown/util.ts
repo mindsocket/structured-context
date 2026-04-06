@@ -1,4 +1,23 @@
 /**
+ * Coerce Date objects in frontmatter/YAML data to ISO date strings (YYYY-MM-DD).
+ * gray-matter and js-yaml parse unquoted ISO dates (e.g. `date: 2026-03-31`) as
+ * JavaScript Date objects, which are not valid JSON and fail string type validation.
+ */
+export function coerceDates(data: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value instanceof Date) {
+      result[key] = value.toISOString().slice(0, 10);
+    } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      result[key] = coerceDates(value as Record<string, unknown>);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/**
  * Apply field remapping to a data object.
  * Renames keys according to fieldMap (file field name → canonical field name).
  * Fields not in the map are passed through unchanged.
