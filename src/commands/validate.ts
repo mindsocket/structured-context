@@ -132,7 +132,7 @@ export function formatErrors(
   return formatted;
 }
 
-export async function validate(context: SpaceContext): Promise<number> {
+export async function validate(context: SpaceContext, options: { json?: boolean } = {}): Promise<number> {
   const { schema, schemaRefRegistry, schemaValidator } = context;
   const metadata = schema.metadata;
 
@@ -196,6 +196,63 @@ export async function validate(context: SpaceContext): Promise<number> {
   // Load and execute rules validation if schema defines rules
   if (metadata.rules) {
     result.ruleViolations = await validateRules(nodes, metadata.rules);
+  }
+
+  // JSON output mode
+  if (options.json) {
+    const errorsByFile: Record<string, Record<string, { kind: string; message: string }>> = {};
+
+    const addError = (file: string, key: string, kind: string, message: string) => {
+      if (!errorsByFile[file]) errorsByFile[file] = {};
+      errorsByFile[file][key] = { kind, message };
+    };
+
+    for (const { file, errors: ajvErrors, nodeData } of result.nodeErrors) {
+      const formatted = formatErrors(ajvErrors, schema, schemaRefRegistry, nodeData);
+      for (const { message, dedupeKey } of formatted) {
+        addError(file, `schema:${dedupeKey}`, 'schema', message);
+      }
+    }
+    for (const { file, parent, error } of result.refErrors) {
+      addError(file, `broken-link:${parent}`, 'broken-link', `${parent} → ${error}`);
+    }
+    for (const { title, files } of result.duplicateErrors) {
+      for (const file of files) {
+        const others = files.filter((f) => f !== file);
+        addError(
+          file,
+          `duplicate:${title}`,
+          'duplicate',
+          `Duplicate title "${title}" also exists in: ${others.join(', ')}`,
+        );
+      }
+    }
+    for (const v of result.ruleViolations) {
+      if (v.file) {
+        addError(v.file, `rule:${v.ruleId}`, 'rule', `[${v.ruleId}] ${v.description}`);
+      }
+    }
+    for (const v of result.hierarchyViolations) {
+      addError(v.file, `hierarchy:${v.description}`, 'hierarchy', v.description);
+    }
+
+    const errorCount = Object.values(errorsByFile).reduce((sum, errs) => sum + Object.keys(errs).length, 0);
+    console.log(
+      JSON.stringify(
+        {
+          space: context.space.name,
+          valid: errorCount === 0,
+          validCount: result.validCount,
+          errorCount,
+          errors: errorsByFile,
+          orphanCount: result.orphanCount,
+          parseIgnored: result.parseIgnored,
+        },
+        null,
+        2,
+      ),
+    );
+    return errorCount > 0 ? 1 : 0;
   }
 
   // Report

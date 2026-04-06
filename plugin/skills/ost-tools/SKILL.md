@@ -1,9 +1,10 @@
 ---
 name: ost-tools
 description: >
-  Use this skill when working with ost-tools — a CLI that validates Obsidian markdown frontmatter
-  against JSON schemas for structured knowledge "spaces", and converts to other formats. Trigger when: (1) validating a space after
-  content edits, (2) writing or updating a schema file or rules, (3) configuring a space or designing a schema (new or existing), (4) troubleshooting validation errors, (5) running `ost-tools` commands.
+  Use this skill when editing structured markdown content in Obsidian to ensure it conforms to a
+  schema, or when authoring or debugging schemas. Trigger when: (1) content needs validating after
+  edits, (2) schema files or rules need creating or updating, (3) configuring or designing a schema
+  for a space, (4) troubleshooting unexpected validation errors, (5) running ost-tools CLI commands.
 ---
 
 # ost-tools

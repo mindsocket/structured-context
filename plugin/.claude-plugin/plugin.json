@@ -1,12 +1,9 @@
 {
   "name": "ost-tools",
   "version": "0.8.3",
-  "description": "Validate and work with ost-tools spaces from Claude Code — includes validation hooks, slash commands, and agent skills.",
+  "description": "Structured content authoring for Obsidian — automatic validation hooks, slash commands, and agent skills to keep markdown files compliant with your schema.",
   "homepage": "https://github.com/mindsocket/ost-tools",
   "repository": "https://github.com/mindsocket/ost-tools",
   "license": "MIT",
-  "keywords": ["ost-tools", "validation", "markdown", "schema"],
-  "skills": "./skills/",
-  "commands": "./commands/",
-  "hooks": "./hooks/hooks.json"
+  "keywords": ["ost-tools", "validation", "markdown", "schema"]
 }

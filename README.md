@@ -253,7 +253,7 @@ Filter expressions are used with `--filter` and in config `views`. They use a `S
 | `SELECT {spec}` | Expand from all nodes via SELECT (no WHERE filter — returns all nodes, expanded per spec) |
 | `{jsonata}` | Bare JSONata, treated as a WHERE predicate (convenience shorthand) |
 
-The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression evaluated per node. Within the expression, each node's fields are accessible directly (e.g. `resolvedType`, `status`, any schema fields like `title`). Additionally, two pre-computed traversal arrays are available:
+The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression evaluated per node. Within the expression, each node's fields are accessible directly (e.g. `resolvedType`, `status`, any schema fields like `title`). Two built-in fields are always available regardless of schema: `label` (relative file path, e.g. `"solutions/My Solution.md"`) and `title` (node display name). Additionally, two pre-computed traversal arrays are available:
 
 - **`ancestors[]`** — flat array of ancestor nodes, nearest first, deduplicated. Each entry includes all schema fields of the ancestor node, plus:
   - `_field` — the edge field name that connects to the ancestor

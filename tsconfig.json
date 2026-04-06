@@ -31,5 +31,5 @@
     "noPropertyAccessFromIndexSignature": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests", "smoke"]
+  "exclude": ["node_modules", "dist", "tests", "smoke", "hook-test"]
 }
