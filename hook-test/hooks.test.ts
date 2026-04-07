@@ -1,5 +1,5 @@
 /**
- * End-to-end tests for ost-tools plugin hooks.
+ * End-to-end tests for structured-context plugin hooks.
  *
  * These tests run real Claude Code sessions via the Agent SDK to verify that
  * PreToolUse and Stop hooks fire and behave correctly.
@@ -53,7 +53,7 @@ describe('clean edit of valid file', () => {
       // State entries captured before deletion — confirms the file was written
       expect(result.stateEntries.length).toBeGreaterThan(0);
       // Stop hook must delete the state file after analysis
-      expect(existsSync(join(result.stateDir, `ost-tools-hook-${result.sessionId}.jsonl`))).toBe(false);
+      expect(existsSync(join(result.stateDir, `sctx-hook-${result.sessionId}.jsonl`))).toBe(false);
     },
     TEST_TIMEOUT,
   );
@@ -109,7 +109,7 @@ describe('Stop hook', () => {
       expect(result.exitCode).toBe(2);
 
       const errorContent = readFileSync(join(outputDir, 'stop-hook-errors.txt'), 'utf-8');
-      expect(errorContent).toContain('ost-tools: new validation errors');
+      expect(errorContent).toContain('structured-context: new validation errors');
       expect(errorContent).toContain('broken-link');
       expect(errorContent).toContain('Nonexistent Node');
     },

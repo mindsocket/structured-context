@@ -1,6 +1,6 @@
 /**
  * E2E test harness: runs a Claude Code session via the Agent SDK with hooks
- * wired directly to the ost-tools hook logic.
+ * wired directly to the structured-context hook logic.
  *
  * All output (SDK messages, errors) is written to files in outputDir so tests
  * can inspect them after the run without relying on in-process buffering.
@@ -12,7 +12,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import { runOnStop } from '../plugin/scripts/on-stop';
 import { runPreEdit } from '../plugin/scripts/pre-edit';
 
-const OST_TOOLS_BIN = join(import.meta.dir, '..', 'src', 'index.ts');
+const SCTX_BIN = join(import.meta.dir, '..', 'src', 'index.ts');
 
 export interface RunClaudeOptions {
   /** Prompt to send to Claude */
@@ -51,7 +51,7 @@ export async function runClaude(options: RunClaudeOptions): Promise<RunClaudeRes
 
   mkdirSync(outputDir, { recursive: true });
 
-  const hookOpts = { stateDir, ostToolsBin: OST_TOOLS_BIN, configPath };
+  const hookOpts = { stateDir, sctxBin: SCTX_BIN, configPath };
   let stopResult: { hasNewErrors: boolean; errorMessage?: string } = { hasNewErrors: false };
   let capturedStateEntries: object[] = [];
   let actualSessionId = 'unknown';
@@ -88,7 +88,7 @@ export async function runClaude(options: RunClaudeOptions): Promise<RunClaudeRes
               hooks: [
                 async (input) => {
                   // Capture state entries before runOnStop deletes the state file
-                  const stateFile = join(stateDir, `ost-tools-hook-${input.session_id}.jsonl`);
+                  const stateFile = join(stateDir, `sctx-hook-${input.session_id}.jsonl`);
                   if (existsSync(stateFile)) {
                     capturedStateEntries = readFileSync(stateFile, 'utf-8')
                       .trim()

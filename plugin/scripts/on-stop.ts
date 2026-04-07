@@ -6,11 +6,11 @@ export interface OnStopInput {
 }
 
 export interface OnStopOptions {
-  /** Overrides OST_TOOLS_STATE_DIR env var */
+  /** Overrides SCTX_STATE_DIR env var */
   stateDir?: string;
-  /** Path to ost-tools entry point. When set, uses `bun run <path>` instead of `bunx ost-tools`. */
-  ostToolsBin?: string;
-  /** Path to config file. When set, passed as OST_TOOLS_CONFIG to validate-file subprocess. */
+  /** Path to structured-context entry point. When set, uses `bun run <path>` instead of `bunx structured-context`. */
+  sctxBin?: string;
+  /** Path to config file. When set, passed as SCTX_CONFIG to validate-file subprocess. */
   configPath?: string;
 }
 
@@ -49,8 +49,8 @@ export async function runOnStop(input: OnStopInput, options?: OnStopOptions): Pr
     return { hasNewErrors: false };
   }
 
-  const STATE_DIR = options?.stateDir ?? process.env.OST_TOOLS_STATE_DIR ?? '/tmp';
-  const STATE_FILE = `${STATE_DIR}/ost-tools-hook-${SESSION_ID}.jsonl`;
+  const STATE_DIR = options?.stateDir ?? process.env.SCTX_STATE_DIR ?? '/tmp';
+  const STATE_FILE = `${STATE_DIR}/sctx-hook-${SESSION_ID}.jsonl`;
 
   const stateFile = Bun.file(STATE_FILE);
   const stateFileExists = await stateFile.exists();
@@ -77,10 +77,10 @@ export async function runOnStop(input: OnStopInput, options?: OnStopOptions): Pr
     }
   }
 
-  const BIN = options?.ostToolsBin ?? process.env.OST_TOOLS_BIN;
+  const BIN = options?.sctxBin ?? process.env.SCTX_BIN;
   const env: Record<string, string | undefined> = { ...process.env };
   if (options?.configPath) {
-    env.OST_TOOLS_CONFIG = options.configPath;
+    env.SCTX_CONFIG = options.configPath;
   }
 
   for (const [FILE, entry] of latestByFile) {
@@ -93,7 +93,7 @@ export async function runOnStop(input: OnStopInput, options?: OnStopOptions): Pr
 
     const proc = BIN
       ? Bun.$`bun run ${[BIN]} validate-file ${[FILE]} --json`.env(env).quiet().nothrow()
-      : Bun.$`bunx ost-tools validate-file ${[FILE]} --json`.env(env).quiet().nothrow();
+      : Bun.$`bunx structured-context validate-file ${[FILE]} --json`.env(env).quiet().nothrow();
     const resultText = await proc.text();
     const result = resultText ? (JSON.parse(resultText) as ValidationResult) : {};
 
@@ -138,7 +138,7 @@ export async function runOnStop(input: OnStopInput, options?: OnStopOptions): Pr
   await Bun.$`rm -f ${STATE_FILE}`;
 
   if (hasNewErrors) {
-    const errorMessage = `ost-tools: new validation errors introduced this session - use ost-tools skill to resolve:\n${newErrors.join('\n')}`;
+    const errorMessage = `structured-context: new validation errors introduced this session - use structured-context skill to resolve:\n${newErrors.join('\n')}`;
     return { hasNewErrors: true, errorMessage };
   }
 

@@ -35,7 +35,7 @@ describe('Smoke: schemas command', () => {
     const result = run('schemas', 'show', 'general');
     expect(result.exitCode).toBe(0);
     const out = new TextDecoder().decode(result.stdout);
-    expect(out).toContain('ost-tools://general');
+    expect(out).toContain('sctx://general');
     expect(out).toContain('Registry');
   });
 

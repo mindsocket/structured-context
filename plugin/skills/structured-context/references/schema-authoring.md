@@ -1,7 +1,7 @@
 # Schema Authoring Reference
 
 Schema files use a Draft-07-based dialect with top-level `$metadata`.
-See `~/src/ost-tools/schemas/` for examples (`general.json`, `strict_ost.json`, `_ost_strict.json`).
+See `~/src/structured-context/schemas/` for examples (`general.json`, `strict_ost.json`, `_ost_strict.json`).
 
 ## `$metadata` (top-level)
 
@@ -81,8 +81,8 @@ Rule entries may be inline or `$ref` imports:
 
 ```json5
 "rules": [
-  { "$ref": "ost-tools://my-rule-pack#/$defs/workflowRule" },
-  { "$ref": "ost-tools://my-rule-pack#/$defs/ruleSet" }
+  { "$ref": "sctx://my-rule-pack#/$defs/workflowRule" },
+  { "$ref": "sctx://my-rule-pack#/$defs/ruleSet" }
 ]
 ```
 
@@ -100,7 +100,7 @@ When content uses different field names, remap in space config:
   path: '../content',
   schema: 'my-schema.json',
   fieldMap: {
-    record_type: 'type',    // entity discriminator → "type" for ost-tools
+    record_type: 'type',    // entity discriminator → "type" for structured-context
     type: 'entity_type'     // sub-classification → renamed to avoid collision
   }
 }
@@ -117,9 +117,9 @@ Schema definitions use the mapped target names.
 
 ## `$ref` patterns
 
-Use `bunx ost-tools schemas show _ost_tools_base.json` to inspect built-in defs.
+Use `bunx structured-context schemas show _sctx_base.json` to inspect built-in defs.
 
-**Available partials in `_ost_tools_base`:**
+**Available partials in `_sctx_base`:**
 
 | Def | Purpose | Use when |
 |---|---|---|
@@ -147,13 +147,13 @@ Each entity type entry should have:
   "type": "object",
   "description": "A specific, scoped explanation of what this entity type represents and when to use it.",
   "allOf": [
-    { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }
+    { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }
     // add other partials only if appropriate to the domain of this schema
   ],
   "properties": {
     "type": { "const": "opportunity" },
     "summary": {
-      "$ref": "ost-tools://_ost_tools_base#/$defs/summary"
+      "$ref": "sctx://_sctx_base#/$defs/summary"
     },    // add domain-specific properties here
   },
   "required": ["type", "status"],

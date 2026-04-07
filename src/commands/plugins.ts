@@ -1,8 +1,8 @@
 import { builtinPlugins } from '../plugins';
 import { discoverPlugins } from '../plugins/loader';
-import type { OstToolsPlugin } from '../plugins/util';
+import type { StructuredContextPlugin } from '../plugins/util';
 
-function showConfigSchema(plugin: OstToolsPlugin): void {
+function showConfigSchema(plugin: StructuredContextPlugin): void {
   console.log(JSON.stringify(plugin.configSchema, null, 2));
 }
 

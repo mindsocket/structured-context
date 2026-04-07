@@ -1,4 +1,4 @@
-# ost-tools
+# structured-context
 
 Tools for working with Opportunity Solution Tree structures and other product management and strategy frameworks
 
@@ -7,13 +7,13 @@ Tools for working with Opportunity Solution Tree structures and other product ma
 Requires [Bun](https://bun.sh) runtime.
 
 ```bash
-bun install -g ost-tools
+bun install -g structured-context
 ```
 
 Or use directly via `bunx`:
 
 ```bash
-bunx ost-tools validate <space>
+bunx structured-context validate <space>
 ```
 
 ## Setup for AI Agents
@@ -21,13 +21,13 @@ bunx ost-tools validate <space>
 A Claude Code plugin is included at `plugin/`. It provides validation hooks, slash commands, and agent skills. Install it with:
 
 ```
-claude plugin install mindsocket/ost-tools
+claude plugin install mindsocket/structured-context
 ```
 
 Skills can also be installed standalone without the plugin:
 
 ```
-npx skills add https://github.com/mindsocket/ost-tools/tree/main/plugin/skills/ost-tools
+npx skills add https://github.com/mindsocket/structured-context/tree/main/plugin/skills/structured-context
 ```
 
 ## Concepts
@@ -36,24 +36,24 @@ See [docs/concepts.md](docs/concepts.md) for the full terminology reference, inc
 
 ## Configuration
 
-`ost-tools` looks for its config file in this order:
+`structured-context` looks for its config file in this order:
 
-1. `$OST_TOOLS_CONFIG` — explicit path override
-2. `~/.config/ost-tools/config.json` (or `$XDG_CONFIG_HOME/ost-tools/config.json`)
+1. `$SCTX_CONFIG` — explicit path override
+2. `~/.config/structured-context/config.json` (or `$XDG_CONFIG_HOME/structured-context/config.json`)
 3. `./config.json` in the current working directory
 
 See `config.example.json` for the full structure. The config maps space names to paths, with optional Miro integration fields and global defaults. Paths in config files are resolved relative to the config file.
 
 **Including spaces from other configs:** Use `includeSpacesFrom` to import space definitions from other config files. This is useful for aggregating spaces from multiple projects into a central config, reducing the need to specify `--config` on CLI commands. Duplicate space names are not allowed.
 
-**Plugins and markdown plugin config:** See `ost-tools docs config` for the full reference including `fieldMap`, `typeInference`, `templateDir`, filter views, and plugin loading rules.
+**Plugins and markdown plugin config:** See `sctx docs config` for the full reference including `fieldMap`, `typeInference`, `templateDir`, filter views, and plugin loading rules.
 
 ### Spaces
 
 A space is a named directory or single file registered in the config. Spaces let you reference content by name instead of path:
 
 ```bash
-ost-tools validate ProductX
+sctx validate ProductX
 ```
 
 ### Schemas
@@ -62,7 +62,7 @@ Schemas define the structure and rules for the entities in a space, allowing cus
 
 Two schemas (`general` and `strict_ost`) are included. The general schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely.
 
-ost-tools schemas use a metaschema based on JSON Schema Draft-07 that adds a top-level `$metadata` block:
+sctx schemas use a metaschema based on JSON Schema Draft-07 that adds a top-level `$metadata` block:
 
 ```json5
 "$metadata": {
@@ -148,7 +148,7 @@ Metadata is composable across `$ref` graphs:
 If no provider defines `hierarchy`, hierarchy-specific checks are skipped. Reading a `space_on_a_page` file still requires `hierarchy.levels`.
 
 **Customizing Schemas:**
-- **Partial schemas**: Files starting with an underscore (like `_ost_tools_base.json`) are loaded and used to resolve references (using `$ref`).
+- **Partial schemas**: Files starting with an underscore (like `_sctx_base.json`) are loaded and used to resolve references (using `$ref`).
 - **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "http://json-schema.org/draft-07/schema#"` so it validates standalone as plain JSON Schema.
 - **Loading priority**: Partial schemas are loaded from both the default schema directory and the directory of your specified target schema.
 - **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).
@@ -165,7 +165,7 @@ The tool executes JSONata expressions defined in schema files for rule validatio
 ### Validate nodes
 
 ```bash
-ost-tools validate <space> [--watch]
+sctx validate <space> [--watch]
 ```
 
 Validates markdown files against the JSON schema:
@@ -176,7 +176,7 @@ Validates markdown files against the JSON schema:
 ### Show space tree
 
 ```bash
-ost-tools show <space> [--filter <view-or-expression>]
+sctx show <space> [--filter <view-or-expression>]
 ```
 
 Prints the space as an indented hierarchy tree. Hierarchy roots are listed first, followed by orphans (nodes in the hierarchy but with no resolved parent) and non-hierarchy nodes.
@@ -187,10 +187,10 @@ When a node appears under multiple parents (DAG hierarchy), it is printed in ful
 
 ```bash
 # Inline expression
-ost-tools show <space> --filter "WHERE resolvedType='solution' and status='active'"
+sctx show <space> --filter "WHERE resolvedType='solution' and status='active'"
 
 # Named view from config
-ost-tools show <space> --filter active-solutions
+sctx show <space> --filter active-solutions
 ```
 
 See [Filter expressions](#filter-expressions) below for expression syntax.
@@ -261,7 +261,7 @@ SELECT relationships(assumption) WHERE resolvedType='opportunity'
 ### Generate Mermaid diagram
 
 ```bash
-ost-tools diagram <space> [--output path/to/output.mmd]
+sctx diagram <space> [--output path/to/output.mmd]
 ```
 
 Generates a Mermaid `graph TD` diagram from validated space nodes:
@@ -273,7 +273,7 @@ Generates a Mermaid `graph TD` diagram from validated space nodes:
 ### Show schema ERD
 
 ```bash
-ost-tools schemas show <schema-file> [--mermaid-erd] [--space <name>]
+sctx schemas show <schema-file> [--mermaid-erd] [--space <name>]
 ```
 
 Generates a Mermaid Entity Relationship Diagram from a schema:
@@ -283,13 +283,13 @@ Generates a Mermaid Entity Relationship Diagram from a schema:
 
 Example:
 ```bash
-ost-tools schemas show general --mermaid-erd
+sctx schemas show general --mermaid-erd
 ```
 
 ### Sync space to Miro
 
 ```bash
-ost-tools miro-sync <space> [--new-frame <title>] [--dry-run] [--verbose]
+sctx miro-sync <space> [--new-frame <title>] [--dry-run] [--verbose]
 ```
 
 Syncs space nodes to a Miro board as cards with connectors. Requires `MIRO_TOKEN` env var and `miroBoardId` set in the space's config entry.
@@ -305,7 +305,7 @@ Sync is one-way (OST → Miro) and scoped to a single frame. Only cards and conn
 ### Sync templates with schema
 
 ```bash
-ost-tools template-sync <space> [--create-missing] [--dry-run]
+sctx template-sync <space> [--create-missing] [--dry-run]
 ```
 
 Keeps Obsidian template files in sync with schema examples:
@@ -332,7 +332,7 @@ bun run test:smoke
 # Build compiled output
 bun run build
 
-# Link built package locally so `bunx ost-tools` picks up changes
+# Link built package locally so `bunx structured-context` picks up changes
 bun link
 ```
 

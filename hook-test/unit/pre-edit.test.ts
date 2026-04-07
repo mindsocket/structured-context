@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { runPreEdit } from '../../plugin/scripts/pre-edit';
 import { type IsolatedFixtures, isolateFixtures } from '../fixture-utils';
 
-const OST_TOOLS_BIN = join(import.meta.dir, '../../src/index.ts');
+const SCTX_BIN = join(import.meta.dir, '../../src/index.ts');
 
 let fixtures: IsolatedFixtures;
 let stateDir: string;
@@ -28,12 +28,12 @@ afterEach(() => {
 
 const opts = () => ({
   stateDir,
-  ostToolsBin: OST_TOOLS_BIN,
+  sctxBin: SCTX_BIN,
   configPath: fixtures.configPath,
 });
 
 function readState(sessionId: string): object[] {
-  const file = join(stateDir, `ost-tools-hook-${sessionId}.jsonl`);
+  const file = join(stateDir, `sctx-hook-${sessionId}.jsonl`);
   if (!existsSync(file)) return [];
   return readFileSync(file, 'utf-8')
     .trim()

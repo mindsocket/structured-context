@@ -11,7 +11,7 @@ export type ResolvedFormat = {
 /**
  * Build a registry of all render formats from loaded plugins.
  * Formats are namespaced as `{shortPluginName}.{formatName}` where
- * shortPluginName strips the `ost-tools-` prefix.
+ * shortPluginName strips the `sctx-` prefix.
  */
 export function buildFormatRegistry(loaded: LoadedPlugin[]): ResolvedFormat[] {
   const registry: ResolvedFormat[] = [];

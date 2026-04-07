@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "ost-tools://_ost_tools_base",
-  "description": "Shared definitions for OST tools schemas",
+  "$id": "sctx://_sctx_base",
+  "description": "Shared definitions for structured-context schemas",
   "$defs": {
     "title": {
       "type": "string",

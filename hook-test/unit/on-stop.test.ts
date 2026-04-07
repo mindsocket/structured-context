@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { runOnStop } from '../../plugin/scripts/on-stop';
 import { type IsolatedFixtures, isolateFixtures } from '../fixture-utils';
 
-const OST_TOOLS_BIN = join(import.meta.dir, '../../src/index.ts');
+const SCTX_BIN = join(import.meta.dir, '../../src/index.ts');
 
 let fixtures: IsolatedFixtures;
 let stateDir: string;
@@ -30,12 +30,12 @@ afterEach(() => {
 
 const opts = () => ({
   stateDir,
-  ostToolsBin: OST_TOOLS_BIN,
+  sctxBin: SCTX_BIN,
   configPath: fixtures.configPath,
 });
 
 function writeStateFile(sessionId: string, entries: object[]): string {
-  const file = join(stateDir, `ost-tools-hook-${sessionId}.jsonl`);
+  const file = join(stateDir, `sctx-hook-${sessionId}.jsonl`);
   writeFileSync(file, `${entries.map((e) => JSON.stringify(e)).join('\n')}\n`);
   return file;
 }
@@ -74,7 +74,7 @@ describe('Write entries', () => {
 
     const result = await runOnStop({ session_id: sessionId }, opts());
     expect(result.hasNewErrors).toBe(true);
-    expect(result.errorMessage).toContain('ost-tools: new validation errors');
+    expect(result.errorMessage).toContain('structured-context: new validation errors');
     expect(result.errorMessage).toContain('broken-link');
   });
 });

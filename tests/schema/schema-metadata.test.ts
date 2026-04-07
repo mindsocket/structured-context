@@ -43,7 +43,7 @@ describe('schema metadata', () => {
     );
   });
 
-  it('rejects invalid $metadata in ost-tools schema dialect', () => {
+  it('rejects invalid $metadata in structured-context schema dialect', () => {
     expect(() => createValidator(INVALID_SCHEMA_PATH)).toThrow();
   });
 });

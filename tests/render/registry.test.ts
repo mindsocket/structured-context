@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import type { LoadedPlugin } from '../../src/plugins/loader';
-import type { OstToolsPlugin } from '../../src/plugins/util';
+import type { StructuredContextPlugin } from '../../src/plugins/util';
 import { buildFormatRegistry } from '../../src/render/registry';
 
 function makePlugin(name: string, formats: { name: string; description: string }[]): LoadedPlugin {
-  const plugin: OstToolsPlugin = {
+  const plugin: StructuredContextPlugin = {
     name,
     configSchema: { type: 'object' },
     render: {
@@ -18,13 +18,13 @@ function makePlugin(name: string, formats: { name: string; description: string }
 describe('buildFormatRegistry', () => {
   it('returns empty registry for plugins with no render hook', () => {
     const loaded: LoadedPlugin[] = [
-      { plugin: { name: 'ost-tools-foo', configSchema: { type: 'object' } }, pluginConfig: {} },
+      { plugin: { name: 'sctx-foo', configSchema: { type: 'object' } }, pluginConfig: {} },
     ];
     expect(buildFormatRegistry(loaded)).toEqual([]);
   });
 
-  it('builds qualified names stripping the ost-tools- prefix', () => {
-    const loaded = [makePlugin('ost-tools-markdown', [{ name: 'bullets', description: 'Bullet list' }])];
+  it('builds qualified names stripping the sctx- prefix', () => {
+    const loaded = [makePlugin('sctx-markdown', [{ name: 'bullets', description: 'Bullet list' }])];
     const registry = buildFormatRegistry(loaded);
     expect(registry).toHaveLength(1);
     expect(registry[0]!.qualifiedName).toBe('markdown.bullets');
@@ -34,11 +34,11 @@ describe('buildFormatRegistry', () => {
 
   it('collects formats from multiple plugins', () => {
     const loaded = [
-      makePlugin('ost-tools-markdown', [
+      makePlugin('sctx-markdown', [
         { name: 'bullets', description: 'Bullet list' },
         { name: 'mermaid', description: 'Mermaid diagram' },
       ]),
-      makePlugin('ost-tools-slides', [{ name: 'reveal', description: 'Reveal.js slides' }]),
+      makePlugin('sctx-slides', [{ name: 'reveal', description: 'Reveal.js slides' }]),
     ];
     const registry = buildFormatRegistry(loaded);
     expect(registry).toHaveLength(3);
@@ -47,8 +47,8 @@ describe('buildFormatRegistry', () => {
 
   it('skips plugins without a render hook and includes those with one', () => {
     const loaded: LoadedPlugin[] = [
-      { plugin: { name: 'ost-tools-norender', configSchema: { type: 'object' } }, pluginConfig: {} },
-      ...[makePlugin('ost-tools-markdown', [{ name: 'bullets', description: 'Bullets' }])],
+      { plugin: { name: 'sctx-norender', configSchema: { type: 'object' } }, pluginConfig: {} },
+      ...[makePlugin('sctx-markdown', [{ name: 'bullets', description: 'Bullets' }])],
     ];
     const registry = buildFormatRegistry(loaded);
     expect(registry).toHaveLength(1);

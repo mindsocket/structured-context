@@ -1,4 +1,4 @@
-# OST Tools: Concepts and Terminology
+# Structured Context: Concepts and Terminology
 
 This document is the canonical reference for concepts and terminology used in this project. It focuses on the meta-concepts the project supports, not the content of specific frameworks modelled in schemas. Before naming things in code, tests, comments, or documentation, check definitions here for consistency, and update them here when the project's "world view" changes, avoiding blurry terms as much as possible.
 
@@ -353,7 +353,7 @@ Views are defined in the space config under the `views` key:
 }
 ```
 
-Use a view by name with `ost-tools show <space> --filter <view-name>`. If no matching view name is found in the config, the value is treated as an inline filter expression.
+Use a view by name with `sctx show <space> --filter <view-name>`. If no matching view name is found in the config, the value is treated as an inline filter expression.
 
 ---
 
@@ -374,10 +374,10 @@ A **plugin** is a module that extends the tool's capabilities.
 
 Plugins that support parsing produce raw `SpaceNode[]` results given a suitable configuration. Graph edge resolution (`resolveGraphEdges`) is called by the core afterwards.
 
-The `plugins` field in config is a **map** from plugin name to plugin config object. All plugin names must start with `ost-tools-`, but the prefix is optional in config and normalised on load. Built-in plugins take precedence and all are loaded by default. External plugin names specified in config are then resolved in order:
+The `plugins` field in config is a **map** from plugin name to plugin config object. All plugin names must start with `sctx-`, but the prefix is optional in config and normalised on load. Built-in plugins take precedence and all are loaded by default. External plugin names specified in config are then resolved in order:
 
-1. Config-adjacent: `{configDir}/plugins/{ost-tools-name}`
-2. npm: a package matching `ost-tools-*`
+1. Config-adjacent: `{configDir}/plugins/{sctx-name}`
+2. npm: a package matching `sctx-*`
 
 Each plugin declares a `configSchema` JSON Schema; the loader validates the config block against it before invoking the plugin. Config fields annotated with `format: 'path'` are resolved relative to `configDir` by the loader.
 

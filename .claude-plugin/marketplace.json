@@ -1,14 +1,14 @@
 {
-  "name": "ost-tools",
-  "description": "Plugins for working with structured Obsidian markdown content using ost-tools.",
+  "name": "structured-context",
+  "description": "Plugins for working with structured Obsidian markdown content using structured-context.",
   "owner": {
     "name": "Roger Barnes",
     "email": "roger@mindsocket.com.au"
   },
   "plugins": [
     {
-      "name": "ost-tools",
-      "source": "./plugin/ost-tools"
+      "name": "structured-context",
+      "source": "./plugin/structured-context"
     }
   ]
 }

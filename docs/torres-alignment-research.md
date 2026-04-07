@@ -1,6 +1,6 @@
 # Torres OST Alignment Research
 
-Research for [issue #3](https://github.com/mindsocket/ost-tools/issues/3): Check for alignment with Teresa Torres' perspective on OSTs.
+Research for [issue #3](https://github.com/mindsocket/structured-context/issues/3): Check for alignment with Teresa Torres' perspective on OSTs.
 
 ## Torres' Canonical OST Structure
 

@@ -1,20 +1,20 @@
 /**
- * Public API for external ost-tools plugins.
+ * Public API for external structured-context plugins.
  *
- * Import from this module to get the types needed to implement an OstToolsPlugin:
+ * Import from this module to get the types needed to implement a StructuredContextPlugin:
  *
- *   import type { OstToolsPlugin, PluginContext, ParseResult } from 'ost-tools/plugin-api';
+ *   import type { StructuredContextPlugin, PluginContext, ParseResult } from 'structured-context/plugin-api';
  */
 
 export type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
 export type {
-  OstToolsPlugin,
   ParseHook,
   ParseResult,
   PluginContext,
   RenderFormat,
   RenderHook,
   RenderOptions,
+  StructuredContextPlugin,
   TemplateSyncHook,
   TemplateSyncOptions,
 } from './plugins/util';

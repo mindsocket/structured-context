@@ -1,11 +1,11 @@
-# ost-tools Configuration Reference
+# structured-context Configuration Reference
 
 ## Config file location
 
-ost-tools looks for its config file in this order:
+structured-context looks for its config file in this order:
 
-1. `$OST_TOOLS_CONFIG` — explicit path override
-2. `~/.config/ost-tools/config.json` (or `$XDG_CONFIG_HOME/ost-tools/config.json`)
+1. `$SCTX_CONFIG` — explicit path override
+2. `~/.config/structured-context/config.json` (or `$XDG_CONFIG_HOME/structured-context/config.json`)
 3. `./config.json` in the current working directory
 
 See `config.example.json` for the full structure. Paths in config files are resolved relative to the config file.
@@ -44,12 +44,12 @@ Use `plugins` to load parse plugins that read spaces from non-markdown sources. 
     }
   ],
   "plugins": {
-    "ost-tools-confluence": { "baseUrl": "https://example.atlassian.net" }
+    "sctx-confluence": { "baseUrl": "https://example.atlassian.net" }
   }
 }
 ```
 
-All plugin names must start with `ost-tools-` (the prefix is optional in config and normalised on load). The special name `markdown` refers to the built-in markdown plugin. External plugins are resolved in order: config-adjacent (`{configDir}/plugins/{name}`), then npm. Each plugin must export a `configSchema` JSON Schema; config is validated against it on load. Fields annotated `format: 'path'` in a plugin's `configSchema` are resolved relative to the config file directory.
+All plugin names must start with `sctx-` (the prefix is optional in config and normalised on load). The special name `markdown` refers to the built-in markdown plugin. External plugins are resolved in order: config-adjacent (`{configDir}/plugins/{name}`), then npm. Each plugin must export a `configSchema` JSON Schema; config is validated against it on load. Fields annotated `format: 'path'` in a plugin's `configSchema` are resolved relative to the config file directory.
 
 ## Markdown plugin config
 
@@ -129,9 +129,9 @@ Named filter expressions can be defined per space under `views`. Each view has a
 }
 ```
 
-Use a view name with `ost-tools show <space> --filter <view-name>`.
+Use a view name with `sctx show <space> --filter <view-name>`.
 
-See `ost-tools docs concepts` for full filter expression syntax.
+See `sctx docs concepts` for full filter expression syntax.
 
 ## Security notice
 

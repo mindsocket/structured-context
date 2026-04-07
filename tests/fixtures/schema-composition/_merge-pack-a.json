@@ -1,7 +1,7 @@
 {
-  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
-  "$id": "ost-tools-test://schema-composition/merge/pack-a",
-  "allOf": [{ "$ref": "ost-tools-test://schema-composition/merge/leaf" }],
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
+  "$id": "sctx-test://schema-composition/merge/pack-a",
+  "allOf": [{ "$ref": "sctx-test://schema-composition/merge/leaf" }],
   "$metadata": {
     "aliases": {
       "outcome": "goal"

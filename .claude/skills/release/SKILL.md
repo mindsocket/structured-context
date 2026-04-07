@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut an npm release for the ost-tools project. Use when the user asks to cut a release, publish a new version, or run /release <major|minor|patch>.
+description: Cut an npm release for the structured-context project. Use when the user asks to cut a release, publish a new version, or run /release <major|minor|patch>.
 ---
 
 ## Task
@@ -22,7 +22,7 @@ Cut a **$ARGUMENTS** release (major, minor, or patch).
 
 4. Once the user confirms publish succeeded, verify it's live by running:
    ```
-   npm view ost-tools version
-   bunx ost-tools@latest --version
+   npm view structured-context version
+   bunx structured-context@latest --version
    ```
    The first confirms the registry has the new version. The second confirms the published package runs correctly. Report both results to the user.

@@ -1,11 +1,11 @@
-# OST Tools
+# Structured Context
 
 Tools for working with Opportunity Solution Tree structures and other product management and strategy frameworks
 
 ## Development
 
 Get a list of commands: `bun run src/index.ts --help`
-Space names (e.g. `personal`, `politics`) are resolved via a config file - `$OST_TOOLS_CONFIG`, `$XDG_CONFIG_HOME/ost-tools/config.json`, `--config <file>` param, or `./config.json`
+Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or `./config.json`
 
 ## Claude Code Plugin
 
@@ -15,7 +15,7 @@ A Claude Code plugin lives at `plugin/`. It includes skills, commands and hooks 
 
 There are several places that need reviewing and updating with any new feature or change added:
 
-- README.md - documentation, also displayed with `ost-tools readme` command
+- README.md - documentation, also displayed with `sctx readme` command
 - AGENTS.md - this file
 - docs/* - includes architecture, concepts etc
 - plugin/* - skills, commands, hooks, and scripts; update any affected parts
@@ -29,9 +29,9 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 ## Key Files
 
 - config — JSON5 file with spaces registered
-- `schemas/` — Bundled default schema files (JSON5) using the ost-tools schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`).
+- `schemas/` — Bundled default schema files (JSON5) using the structured-context schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`).
 - `src/metadata-contract.ts` — Single source of truth for the `$metadata` contract
-- `schemas/generated/_ost_tools_schema_meta.json` — Generated metaschema (generated on build or with `bun run generate:schema-meta`)
+- `schemas/generated/_structured_context_schema_meta.json` — Generated metaschema (generated on build or with `bun run generate:schema-meta`)
 
 ## Testing
 For most development only the main unit tests need re-running regularly.

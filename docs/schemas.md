@@ -1,12 +1,12 @@
 # Schemas
 
-This document explains schema usage, metadata shape, and composition semantics in `ost-tools`.
+This document explains schema usage, metadata shape, and composition semantics in `structured-context`.
 
 ## Overview
 
 A **schema** defines the valid structure for nodes in a `space`: entity types, field constraints, hierarchy behavior, type aliases, and executable rules.
 
-`ost-tools` uses JSON Schema Draft-07 plus a custom top-level `$metadata` keyword.
+`structured-context` uses JSON Schema Draft-07 plus a custom top-level `$metadata` keyword.
 
 ## Selecting a schema
 
@@ -50,7 +50,7 @@ This schema composes shared structural defs and strict metadata/rules from parti
 
 ## Custom format annotations
 
-`ost-tools` registers the following `format` annotations beyond standard JSON Schema. All apply to `string` properties and are validated at schema validation time.
+`structured-context` registers the following `format` annotations beyond standard JSON Schema. All apply to `string` properties and are validated at schema validation time.
 
 | Format | Validates | Example |
 |--------|-----------|---------|
@@ -58,10 +58,10 @@ This schema composes shared structural defs and strict metadata/rules from parti
 | `path` | Non-empty filesystem path — absolute, relative, or a plain name | `"notes"`, `"./subdir/file.md"`, `"/abs/path"` |
 | `wikilink` | Obsidian wikilink syntax (`[[...]]`) | `"[[Parent Node]]"` |
 
-`path` and `wikilink` are also available as shared `$ref` definitions in `_ost_tools_base.json`:
+`path` and `wikilink` are also available as shared `$ref` definitions in `_sctx_base.json`:
 
 ```json
-{ "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" }
+{ "$ref": "sctx://_sctx_base#/$defs/wikilink" }
 ```
 
 Using `format` directly is more concise when the full definition isn't needed:
@@ -84,7 +84,7 @@ The markdown plugin automatically coerces `Date` objects to `YYYY-MM-DD` strings
 
 Schemas use this metaschema URL:
 
-- `https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json`
+- `https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json`
 
 Top-level metadata shape:
 
@@ -272,8 +272,8 @@ Inside `$metadata.rules`, entries can be inline rules or `$ref` imports:
 
 ```json5
 "rules": [
-  { "$ref": "ost-tools://my-pack#/$defs/workflowRule" },
-  { "$ref": "ost-tools://my-pack#/$defs/ruleSet" }
+  { "$ref": "sctx://my-pack#/$defs/workflowRule" },
+  { "$ref": "sctx://my-pack#/$defs/ruleSet" }
 ]
 ```
 
@@ -315,7 +315,7 @@ Imported rules are normalized into one executable flat list before validation.
 Use the shipped metaschema URL in `$schema` for best cross-tool behavior.
 
 Notes:
-- Custom `$id` values like `ost-tools://...` are still supported by the CLI registry.
+- Custom `$id` values like `sctx://...` are still supported by the CLI registry.
 - Some generic editors may not resolve custom URI schemes for `$ref`; CLI behavior is authoritative.
 - Do not rely on editor-only mappings for runtime correctness.
 
@@ -328,7 +328,7 @@ For schemas migrating from older metadata structure:
 3. Move `allowSkipLevels` under `hierarchy`.
 4. Convert grouped rule containers to flat `rules[]` with per-rule `category`.
 5. If duplicate rule IDs are intentional, mark later rules with `override: true`.
-6. Re-run `bunx ost-tools schemas show --space <name>` and `validate` to confirm merged metadata/rules.
+6. Re-run `bunx structured-context schemas show --space <name>` and `validate` to confirm merged metadata/rules.
 
 ## JSON5 support
 

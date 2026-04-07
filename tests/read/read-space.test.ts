@@ -23,9 +23,9 @@ describe('readSpace', () => {
   });
 
   describe('default behaviour (markdown plugin)', () => {
-    it('reads a directory space and returns source: ost-tools-markdown', async () => {
+    it('reads a directory space and returns source: sctx-markdown', async () => {
       const result = await readSpace(makeSpaceContext(VALID_DIR));
-      expect(result.source).toBe('ost-tools-markdown');
+      expect(result.source).toBe('sctx-markdown');
       expect(result.nodes.length).toBeGreaterThan(0);
     });
 
@@ -34,9 +34,9 @@ describe('readSpace', () => {
       expect(result.diagnostics?.kind).toBe('directory');
     });
 
-    it('reads a space_on_a_page file and returns source: ost-tools-markdown', async () => {
+    it('reads a space_on_a_page file and returns source: sctx-markdown', async () => {
       const result = await readSpace(makeSpaceContext(VALID_PAGE));
-      expect(result.source).toBe('ost-tools-markdown');
+      expect(result.source).toBe('sctx-markdown');
       expect(result.nodes.length).toBeGreaterThan(0);
     });
 
@@ -54,30 +54,30 @@ describe('readSpace', () => {
 
   describe('plugin fallthrough (null plugin before markdown)', () => {
     it('falls through to markdown when first plugin returns null', async () => {
-      const ctx = makeSpaceContext(VALID_DIR, undefined, { 'ost-tools-null-plugin': {} });
+      const ctx = makeSpaceContext(VALID_DIR, undefined, { 'sctx-null-plugin': {} });
       ctx.configDir = FIXTURES_DIR;
       const result = await readSpace(ctx);
-      expect(result.source).toBe('ost-tools-markdown');
+      expect(result.source).toBe('sctx-markdown');
       expect(result.nodes.length).toBeGreaterThan(0);
     });
   });
 
   describe('first-match-wins', () => {
     it('uses first plugin that returns non-null, skips markdown', async () => {
-      const ctx = makeSpaceContext(VALID_DIR, undefined, { 'ost-tools-custom-plugin': {} });
+      const ctx = makeSpaceContext(VALID_DIR, undefined, { 'sctx-custom-plugin': {} });
       ctx.configDir = FIXTURES_DIR;
       const result = await readSpace(ctx);
-      expect(result.source).toBe('ost-tools-custom-plugin');
+      expect(result.source).toBe('sctx-custom-plugin');
       expect(result.diagnostics?.source).toBe('custom');
     });
   });
 
   describe('space-level plugins', () => {
     it('uses custom plugin configured on the space', async () => {
-      const ctx = makeSpaceContext(VALID_DIR, undefined, { 'ost-tools-custom-plugin': {} });
+      const ctx = makeSpaceContext(VALID_DIR, undefined, { 'sctx-custom-plugin': {} });
       ctx.configDir = FIXTURES_DIR;
       const result = await readSpace(ctx);
-      expect(result.source).toBe('ost-tools-custom-plugin');
+      expect(result.source).toBe('sctx-custom-plugin');
     });
   });
 });

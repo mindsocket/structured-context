@@ -25,7 +25,7 @@ describe('schema refs', () => {
     const schema = readRawSchema(ROOT_SCHEMA_PATH) as SchemaObject;
     const schemaRefRegistry = buildFullRegistry(ROOT_SCHEMA_PATH) as Map<string, AnySchemaObject>;
 
-    const status = resolveRef({ $ref: 'ost-tools://_ost_tools_base#/$defs/status' }, schema, schemaRefRegistry) as {
+    const status = resolveRef({ $ref: 'sctx://_sctx_base#/$defs/status' }, schema, schemaRefRegistry) as {
       enum?: string[];
     };
 

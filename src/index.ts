@@ -14,6 +14,7 @@ import { validate, watchValidate } from './commands/validate';
 import { validateFile } from './commands/validate-file';
 
 import { getSpaceConfigDir, loadConfig, resolveSchema, setConfigPath } from './config';
+import { CLI_NAME } from './constants';
 import { miroSync } from './integrations/miro/sync';
 import { loadSchema } from './schema/schema';
 import type { SpaceContext } from './types';
@@ -45,8 +46,8 @@ const packageJson = require('../package.json');
 const program = new Command();
 
 program
-  .name('ost-tools')
-  .description('Opportunity Solution Tree validation and diagram generation tool')
+  .name(CLI_NAME)
+  .description('Structured context validation and diagram generation tool')
   .version(packageJson.version)
   .option('--config <path>', 'Path to config file (overrides default config.json locations)');
 

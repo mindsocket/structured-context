@@ -1,7 +1,7 @@
 import type { FromSchema } from 'json-schema-to-ts';
 
-export const OST_TOOLS_SCHEMA_META_ID =
-  'https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json';
+export const SCHEMA_META_ID =
+  'https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json';
 
 /** Graph edge routing fields shared by hierarchy levels and relationships. */
 const EDGE_PROPS = {
@@ -79,7 +79,7 @@ const RELATIONSHIP_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export const OST_TOOLS_METADATA_SCHEMA = {
+export const METADATA_SCHEMA = {
   type: 'object',
   properties: {
     hierarchy: {
@@ -115,19 +115,19 @@ export const OST_TOOLS_METADATA_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export const OST_TOOLS_DIALECT_META_SCHEMA = {
+export const DIALECT_META_SCHEMA = {
   $schema: 'http://json-schema.org/draft-07/schema#',
-  $id: OST_TOOLS_SCHEMA_META_ID,
-  title: 'ost-tools schema dialect',
+  $id: SCHEMA_META_ID,
+  title: 'structured-context schema dialect',
   description: 'Extends JSON Schema Draft-07 with top-level $metadata for hierarchy and rule metadata.',
   type: 'object',
   allOf: [{ $ref: 'http://json-schema.org/draft-07/schema#' }],
   properties: {
-    $metadata: OST_TOOLS_METADATA_SCHEMA,
+    $metadata: METADATA_SCHEMA,
   },
 } as const;
 
-export type MetadataContract = FromSchema<typeof OST_TOOLS_METADATA_SCHEMA>;
+export type MetadataContract = FromSchema<typeof METADATA_SCHEMA>;
 export type MetadataContractHierarchyLevel = FromSchema<typeof HIERARCHY_LEVEL_SCHEMA>;
 export type MetadataContractRelationship = FromSchema<typeof RELATIONSHIP_SCHEMA>;
 export type SharedEdgeFields = FromSchema<typeof EDGE_SCHEMA>;

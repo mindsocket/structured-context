@@ -11,7 +11,7 @@
       "allOf": [{ "$ref": "test://leaf#/$defs/leafProps" }],
       "properties": {
         "mood": { "$ref": "#/$defs/mood" },
-        "status": { "$ref": "ost-tools://_ost_tools_base#/$defs/status" }
+        "status": { "$ref": "sctx://_sctx_base#/$defs/status" }
       },
       "required": ["mood", "status"]
     }

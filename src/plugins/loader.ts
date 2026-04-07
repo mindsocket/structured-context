@@ -3,10 +3,10 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv, { type AnySchemaObject } from 'ajv';
 import { getConfigSourceFiles } from '../config';
 import { builtinPlugins } from '.';
-import { CONFIG_PLUGINS_DIR, normalizePluginName, type OstToolsPlugin, PLUGIN_PREFIX } from './util';
+import { CONFIG_PLUGINS_DIR, normalizePluginName, PLUGIN_PREFIX, type StructuredContextPlugin } from './util';
 
 export type LoadedPlugin = {
-  plugin: OstToolsPlugin;
+  plugin: StructuredContextPlugin;
   pluginConfig: Record<string, unknown>;
 };
 
@@ -37,12 +37,12 @@ function resolveConfigPaths(
  * Resolve an external plugin by canonical name.
  * Resolution order: config-adjacent ({configDir}/plugins/{name}) → npm (import(name)).
  */
-async function resolveExternalPlugin(name: string, configDir: string): Promise<OstToolsPlugin> {
+async function resolveExternalPlugin(name: string, configDir: string): Promise<StructuredContextPlugin> {
   const localPath = resolve(join(configDir, CONFIG_PLUGINS_DIR, name));
   const module = existsSync(localPath) || existsSync(`${localPath}.ts`) ? await import(localPath) : await import(name);
-  const plugin = (module as { default?: OstToolsPlugin }).default ?? (module as OstToolsPlugin);
+  const plugin = (module as { default?: StructuredContextPlugin }).default ?? (module as StructuredContextPlugin);
   if (!plugin || typeof plugin.name !== 'string') {
-    throw new Error(`Plugin "${name}" must export an OstToolsPlugin as its default export`);
+    throw new Error(`Plugin "${name}" must export a StructuredContextPlugin as its default export`);
   }
   return plugin;
 }
@@ -52,11 +52,11 @@ async function resolveExternalPlugin(name: string, configDir: string): Promise<O
  * in {configDir}/plugins/ across all loaded config files. Does not load npm plugins
  * (those are only declared in space configs).
  */
-export async function discoverPlugins(): Promise<OstToolsPlugin[]> {
+export async function discoverPlugins(): Promise<StructuredContextPlugin[]> {
   // Convert the Set of files into a Set of dirs
   const configDirs = [...new Set(Array.from(getConfigSourceFiles()).map((f) => dirname(f)))];
 
-  const plugins: OstToolsPlugin[] = [...builtinPlugins];
+  const plugins: StructuredContextPlugin[] = [...builtinPlugins];
   const seenNames = new Set(builtinPlugins.map((p) => p.name));
 
   for (const configDir of configDirs) {

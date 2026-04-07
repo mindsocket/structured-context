@@ -1,12 +1,12 @@
 {
-  "name": "ost-tools",
+  "name": "structured-context",
   "version": "0.8.3",
   "description": "Tools for working with Opportunity Solution Tree structures and other product management and strategy frameworks",
   "module": "./dist/index.js",
   "type": "module",
   "license": "MIT",
   "bin": {
-    "ost-tools": "dist/index.js"
+    "sctx": "dist/index.js"
   },
   "files": [
     "dist/",

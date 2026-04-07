@@ -1,8 +1,9 @@
 import type { AnySchemaObject } from 'ajv';
+import { PLUGIN_PREFIX as _PLUGIN_PREFIX } from '../constants';
 import type { SpaceGraph } from '../space-graph';
 import type { BaseNode, SpaceContext } from '../types';
 
-export const PLUGIN_PREFIX = 'ost-tools-';
+export const PLUGIN_PREFIX = _PLUGIN_PREFIX;
 export const CONFIG_PLUGINS_DIR = 'plugins';
 
 /** Normalize a plugin name to its canonical prefixed form. */
@@ -62,7 +63,7 @@ export type RenderHook = {
  * - parse/templateSync return `T | null` → null means "didn't handle, try next plugin".
  * - render is additive: all plugins' formats are registered and dispatched by name.
  */
-export type OstToolsPlugin = {
+export type StructuredContextPlugin = {
   name: string;
   /** JSON Schema used to validate the plugin's config block. Fields with `format: 'path'`
    * are resolved relative to the config directory by `resolveConfigPaths` in the loader. */

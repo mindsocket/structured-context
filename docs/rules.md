@@ -83,8 +83,8 @@ Example:
 
 ```json5
 "rules": [
-  { "$ref": "ost-tools://rule-pack#/$defs/workflowRule" },
-  { "$ref": "ost-tools://rule-pack#/$defs/coreRuleSet" }
+  { "$ref": "sctx://rule-pack#/$defs/workflowRule" },
+  { "$ref": "sctx://rule-pack#/$defs/coreRuleSet" }
 ]
 ```
 

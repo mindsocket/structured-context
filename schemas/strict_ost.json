@@ -1,6 +1,6 @@
 {
-  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
-  "$id": "ost-tools://strict_ost",
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
+  "$id": "sctx://strict_ost",
   "title": "Opportunity Solution Tree (Strict)",
   // Follows Teresa Torres' 4-level OST structure as described in "Continuous Discovery Habits" (2021)
   // and at producttalk.org.
@@ -10,9 +10,9 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" },
-        { "$ref": "ost-tools://_ost_strict#/$defs/outcomeProps" }
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" },
+        { "$ref": "sctx://_ost_strict#/$defs/outcomeProps" }
       ],
       "properties": {
         "type": { "const": "outcome" }
@@ -31,10 +31,10 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" },
-        { "$ref": "ost-tools://_ost_strict#/$defs/opportunityProps" }
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" },
+        { "$ref": "sctx://_ost_strict#/$defs/opportunityProps" }
       ],
       "properties": {
         "type": { "const": "opportunity" }
@@ -53,9 +53,9 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" }
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "solution" }
@@ -73,10 +73,10 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/parentNodeProps" },
-        { "$ref": "ost-tools://_ost_tools_base#/$defs/ostEntityProps" },
-        { "$ref": "ost-tools://_ost_strict#/$defs/assumptionTestProps" }
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" },
+        { "$ref": "sctx://_ost_strict#/$defs/assumptionTestProps" }
       ],
       "properties": {
         "type": { "const": "assumption_test" }

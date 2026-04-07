@@ -1,5 +1,5 @@
 import { statSync } from 'node:fs';
-import type { OstToolsPlugin, ParseResult, PluginContext } from '../util';
+import type { ParseResult, PluginContext, StructuredContextPlugin } from '../util';
 import { PLUGIN_PREFIX } from '../util';
 import { readSpaceDirectory, readSpaceOnAPage } from './read-space';
 import { renderBullets } from './render-bullets';
@@ -47,7 +47,7 @@ async function parse(context: PluginContext): Promise<ParseResult | null> {
   return await readSpaceDirectory(context);
 }
 
-export const markdownPlugin: OstToolsPlugin = {
+export const markdownPlugin: StructuredContextPlugin = {
   name: `${PLUGIN_PREFIX}markdown`,
   configSchema: MARKDOWN_CONFIG_SCHEMA,
   parse,

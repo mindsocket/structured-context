@@ -43,7 +43,7 @@ Issue #28 opened the door to reorganize schema metadata, rules, and composition 
 
 ### Recommendation
 
-Use `"$metadata"`, with room to move to `"$ost"` only if we add several ost-tools-specific keywords later.
+Use `"$metadata"`, with room to move to `"$ost"` only if we add several structure-context-specific keywords later.
 
 Why:
 
@@ -53,7 +53,7 @@ Why:
 
 ### Decision and rationale
 Agreed. `"$metadata"`
-`"$ost"` is appealing but I'm still not final on this being named ost-tools forever given how far it's already gone beyond opportunity solution tree specific uses. Future sub-options: 1. rename project then choose a name, 2. stick with $metadata (it's honestly fine), 3. rename now to something more specific but not tied to project name, eg `"$validation"` or `"$validationMeta"` 4. Move to `"$ost"`. I'd be open to trying sub-option 3 sooner than later.
+`"$ost"` was appealing but we were not final on the forever name for the project, given how far it's already gone beyond opportunity solution tree specific uses. Future sub-options: 1. rename project then choose a name, 2. stick with $metadata (it's honestly fine), 3. rename now to something more specific but not tied to project name, eg `"$validation"` or `"$validationMeta"` 4. Move to `"$ost"`. I'd be open to trying sub-option 3 sooner than later.
 
 
 ## 2) Hierarchy Shape
@@ -289,15 +289,15 @@ Round 2: I agree that option B is directionally right. Can it also be used with 
 
 ### Current pain
 
-Custom `ost-tools://` schema identifiers are not resolvable by common editors, causing warnings.
+Custom `sctx://` schema identifiers are not resolvable by common editors, causing warnings.
 
 ### Recommendation
 
 Use a mixed strategy:
 
 - Keep `$schema` as a resolvable HTTPS URL to the generated metaschema:
-  - `https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json`
-- Keep bundled schema/partial `$id` values in the internal `ost-tools://...` namespace for stable CLI registry resolution.
+  - `https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json`
+- Keep bundled schema/partial `$id` values in the internal `sctx://...` namespace for stable CLI registry resolution.
 - Document that editor-side mappings (`json.schemas`) are optional conveniences and not a correctness mechanism.
 
 Notes:
@@ -306,7 +306,7 @@ Notes:
 - The CLI remains authoritative for resolution semantics.
 
 ### Decision and rationale
-Round 1: Tell me more about json.schemas. Assuming I don't get a domain and hosted metaschemas anytime soon we're already in a pickle. Can these settings solve for `ost-tools://...` references in this current project with vs code settings? If so, let's try it. If that works it might suffice to document the settings needed for schema developers (they'll need to locate the bundled schemas but that's doable).
+Round 1: Tell me more about json.schemas. Assuming I don't get a domain and hosted metaschemas anytime soon we're already in a pickle. Can these settings solve for `sctx://...` references in this current project with vs code settings? If so, let's try it. If that works it might suffice to document the settings needed for schema developers (they'll need to locate the bundled schemas but that's doable).
 
 Round 2: This proved to be a disaster and there's no good way to get vs code to cooperate. I've reverted to much like what we had. The code still appears to validate, though I note a very worrying `METADATA_KEYWORD_SCHEMA` in schema.ts. What's the point of that? The whole point of _ost_tools_schema_meta.json was to not hardcode the schema again. I'm expecting this will be addressed when we work on item 7 below.
 
@@ -366,7 +366,7 @@ Round 2: Given where things went with previous items I'm inclined to go with `js
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
   "$id": "ost-tools://general",
   "$metadata": {
     "hierarchy": {
@@ -405,7 +405,7 @@ Round 2: Given where things went with previous items I'm inclined to go with `js
 - Step 3: Migrate bundled schemas (`general`, `strict_ost`, partials).
 - Step 4: Update `docs/rules.md`, schema authoring skill docs, and examples.
 - Step 5: Add schema composition tests covering merge and conflict behavior.
-- Step 6: Keep mixed ID strategy (`$schema` HTTPS + internal `ost-tools://` IDs) and document editor constraints.
+- Step 6: Keep mixed ID strategy (`$schema` HTTPS + internal `sctx://` IDs) and document editor constraints.
 - Step 7: Keep metadata contract in code (`json-schema-to-ts`) and generate metaschema artifact from that source.
 
 ## Execution checklist (staged)

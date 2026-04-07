@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv from 'ajv';
 import { JSON5 } from 'bun';
+import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
 import { normalizePluginName } from './plugins/util';
 import { bundledSchemasDir } from './schema/schema';
 
@@ -92,11 +93,11 @@ export function configPath(): string {
   if (_configPathOverride) {
     return _configPathOverride;
   }
-  if (process.env.OST_TOOLS_CONFIG) {
-    return process.env.OST_TOOLS_CONFIG;
+  if (process.env[ENV_CONFIG_VAR]) {
+    return process.env[ENV_CONFIG_VAR]!;
   }
   const xdgBase = process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config');
-  const xdgPath = join(xdgBase, 'ost-tools', 'config.json');
+  const xdgPath = join(xdgBase, XDG_CONFIG_DIR, 'config.json');
   if (existsSync(xdgPath)) {
     return xdgPath;
   }

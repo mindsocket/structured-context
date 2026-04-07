@@ -1,6 +1,6 @@
 {
-  "$schema": "https://raw.githubusercontent.com/mindsocket/ost-tools/main/schemas/generated/_ost_tools_schema_meta.json",
-  "$id": "ost-tools://knowledge_wiki",
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
+  "$id": "sctx://knowledge_wiki",
   "title": "Knowledge Wiki",
   "description": "Lightweight schema for LLM-maintained knowledge wikis. Supports source pages, concept pages, syntheses, and notes. Designed for compounding knowledge bases where the LLM creates and maintains wiki pages from raw sources.\n\nFlat entity model — no hierarchy, no required parent links. Wikilinks between any pages are valid for arbitrary cross-referencing. The schema validates structure and provenance; it does not constrain meaning.\n\nBased on the pattern described in Karpathy's LLM Wiki (2026).",
   "$metadata": {
@@ -55,18 +55,18 @@
     {
       "type": "object",
       "description": "A processed summary of a raw source (article, paper, book, video, thread, podcast, etc.). Captures key information from the source in structured form with provenance.",
-      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "source" },
         "summary": {
-          "$ref": "ost-tools://_ost_tools_base#/$defs/summary"
+          "$ref": "sctx://_sctx_base#/$defs/summary"
         },
         "url": {
           "type": "string",
           "description": "URL of the original source"
         },
         "local_copy": {
-          "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink",
+          "$ref": "sctx://_sctx_base#/$defs/wikilink",
           "description": "Wikilink to a local copy of the source (e.g. a saved PDF or clipped note)"
         },
         "author": {
@@ -88,7 +88,7 @@
         },
         "sources": {
           "type": "array",
-          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to other source pages that this one references or extends"
         }
       },
@@ -107,20 +107,20 @@
     {
       "type": "object",
       "description": "A concept or entity page — defines and frames a specific idea, mechanism, or domain term. May draw from multiple sources. The building blocks of the wiki's knowledge graph.",
-      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "concept" },
         "summary": {
-          "$ref": "ost-tools://_ost_tools_base#/$defs/summary"
+          "$ref": "sctx://_sctx_base#/$defs/summary"
         },
         "sources": {
           "type": "array",
-          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to source pages that contributed to this concept"
         },
         "related": {
           "type": "array",
-          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to related concept or synthesis pages"
         }
       },
@@ -137,20 +137,20 @@
     {
       "type": "object",
       "description": "A synthesis page — connects multiple concepts and sources into a coherent model, framework, or thesis. The highest-value pages in a knowledge wiki. Must reference contributing sources.",
-      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "synthesis" },
         "summary": {
-          "$ref": "ost-tools://_ost_tools_base#/$defs/summary"
+          "$ref": "sctx://_sctx_base#/$defs/summary"
         },
         "sources": {
           "type": "array",
-          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to source pages this synthesis draws from"
         },
         "concepts": {
           "type": "array",
-          "items": { "$ref": "ost-tools://_ost_tools_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to concept pages this synthesis connects"
         }
       },
@@ -168,7 +168,7 @@
     {
       "type": "object",
       "description": "Personal notes, journal entries, appointments, experiential records. Your own data about your journey — not sourced from external material.",
-      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "note" },
         "date": {
@@ -190,7 +190,7 @@
     {
       "type": "object",
       "description": "The wiki index — a catalog of all pages with links, summaries, and metadata. Updated by the agent on ingest. Used as the primary navigation entry point.",
-      "allOf": [{ "$ref": "ost-tools://_ost_tools_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "index" }
       },

@@ -6,20 +6,20 @@ import Ajv, { type AnySchemaObject, type ValidateFunction } from 'ajv';
 import { JSON5 } from 'bun';
 import type { HierarchyLevel, RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
 import {
+  DIALECT_META_SCHEMA,
+  METADATA_SCHEMA,
   type MetadataContract,
   type MetadataContractRelationship,
-  OST_TOOLS_DIALECT_META_SCHEMA,
-  OST_TOOLS_METADATA_SCHEMA,
-  OST_TOOLS_SCHEMA_META_ID,
   type Rule,
   type RuleEntry,
+  SCHEMA_META_ID,
 } from './metadata-contract';
 import { isObject, mergeVariantProperties, resolveJsonPointer } from './schema-refs';
 
 const packageDir = dirname(fileURLToPath(import.meta.url));
 export const bundledSchemasDir = join(packageDir, '..', '..', 'schemas');
 
-const validateMetadataContract = new Ajv().compile(OST_TOOLS_METADATA_SCHEMA);
+const validateMetadataContract = new Ajv().compile(METADATA_SCHEMA);
 
 export function readRawSchema(schemaPath: string): AnySchemaObject {
   return JSON5.parse(readFileSync(resolve(schemaPath), 'utf-8')) as AnySchemaObject;
@@ -65,7 +65,7 @@ export function buildFullRegistry(schemaPath: string): Map<string, AnySchemaObje
   // Layer 2: schema's own dir (partials + target file)
   if (targetDir !== bundledSchemasDir) {
     const bundledIds = new Set(schemaRefRegistry.keys());
-    bundledIds.add(OST_TOOLS_SCHEMA_META_ID);
+    bundledIds.add(SCHEMA_META_ID);
     for (const [id, schema] of buildSchemaRegistry(targetDir, targetFile)) {
       if (bundledIds.has(id)) {
         throw new Error(
@@ -90,16 +90,16 @@ function compileValidator(
   ajv.addKeyword({
     keyword: '$metadata',
     schemaType: 'object',
-    metaSchema: OST_TOOLS_METADATA_SCHEMA as unknown as AnySchemaObject,
+    metaSchema: METADATA_SCHEMA as unknown as AnySchemaObject,
     valid: true,
     errors: false,
   });
-  const metaSchema = OST_TOOLS_DIALECT_META_SCHEMA as unknown as AnySchemaObject;
-  ajv.addSchema(metaSchema, OST_TOOLS_SCHEMA_META_ID);
+  const metaSchema = DIALECT_META_SCHEMA as unknown as AnySchemaObject;
+  ajv.addSchema(metaSchema, SCHEMA_META_ID);
 
   // Register all except target schema (AJV compiles targetSchema explicitly)
   for (const [id, schema] of schemaRefRegistry) {
-    if (id === targetSchema.$id || id === OST_TOOLS_SCHEMA_META_ID) continue;
+    if (id === targetSchema.$id || id === SCHEMA_META_ID) continue;
     ajv.addSchema(schema);
   }
 

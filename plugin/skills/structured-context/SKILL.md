@@ -1,42 +1,42 @@
 ---
-name: ost-tools
+name: structured-context
 description: >
   Use this skill when editing structured markdown content in Obsidian to ensure it conforms to a
   schema, or when authoring or debugging schemas. Trigger when: (1) content needs validating after
   edits, (2) schema files or rules need creating or updating, (3) configuring or designing a schema
-  for a space, (4) troubleshooting unexpected validation errors, (5) running ost-tools CLI commands.
+  for a space, (4) troubleshooting unexpected validation errors, (5) running structured-context CLI commands.
 ---
 
-# ost-tools
+# structured-context
 
-`ost-tools` validates Obsidian markdown frontmatter against JSON schemas. Content lives in
+`structured-context` validates Obsidian markdown frontmatter against JSON schemas. Content lives in
 **spaces** (directories of `.md` files or a single "on-a-page" format); schemas define entity types, properties, and rules.
 
 ## Finding the config
 
-ost-tools looks in `$XDG_CONFIG_HOME/ost-tools/config.json`, unless given an explicit config, e.g.:
+structured-context looks in `$XDG_CONFIG_HOME/structured-context/config.json`, unless given an explicit config, e.g.:
 
 ```bash
-bunx ost-tools validate <space> --config path/to/config.json
+bunx structured-context validate <space> --config path/to/config.json
 # or
-OST_TOOLS_CONFIG=path/to/config.json bunx ost-tools validate <space>
+SCTX_CONFIG=path/to/config.json bunx structured-context validate <space>
 ```
 
 **Always read the config first** to understand available spaces and their schema locations before running other commands.
 
-Tip: To reduce the need for `--config` flags consider, with user permission, using `includeSpacesFrom` in a central config file that's loaded by default (eg `~/.config/ost-tools/config.json`).
+Tip: To reduce the need for `--config` flags consider, with user permission, using `includeSpacesFrom` in a central config file that's loaded by default (eg `~/.config/structured-context/config.json`).
 
 ## Orientation
 
 Before working with a space, use these to understand what's configured:
 
 ```bash
-bunx ost-tools spaces --config <cfg>                        # per-space: path, schema, fieldMap, templates, miro
-bunx ost-tools schemas show --space <name> --config <cfg>  # entity types, properties, rules, enums + registry
-bunx ost-tools schemas show <filename>                      # inspect a bundled partial (e.g. _ost_tools_base.json)
-bunx ost-tools docs                                         # full README
-bunx ost-tools docs config                                  # plugin config reference (fieldMap, typeInference, etc.)
-bunx ost-tools docs concepts                                # terminology reference
+bunx structured-context spaces --config <cfg>                        # per-space: path, schema, fieldMap, templates, miro
+bunx structured-context schemas show --space <name> --config <cfg>  # entity types, properties, rules, enums + registry
+bunx structured-context schemas show <filename>                      # inspect a bundled partial (e.g. _sctx_base.json)
+bunx structured-context docs                                         # full README
+bunx structured-context docs config                                  # plugin config reference (fieldMap, typeInference, etc.)
+bunx structured-context docs concepts                                # terminology reference
 ```
 
 `spaces` is the starting point — it shows each space as a block with its schema name, `fieldMap`
@@ -45,7 +45,7 @@ mappings (if any), template config, and whether Miro is configured.
 `schemas show --space` is the primary schema tool — it lists entity types and their properties (required marked with `*`), the hierarchy, **adjacent relationships**, all rules with descriptions, definitions with enum values, and the loaded schema registry. **Run this before authoring content or writing rules** to ensure you use the correct field names and types. The registry section
 at the bottom shows which bundled and local partials are in scope for `$ref` targets.
 
-`schemas show <filename>` (e.g. `_ost_tools_base.json`) reveals available definitions in bundled
+`schemas show <filename>` (e.g. `_sctx_base.json`) reveals available definitions in bundled
 partials.
 
 ## Commands for working with spaces
@@ -60,7 +60,7 @@ template-sync <space>  Sync Obsidian templates from schema examples
 plugins                List available plugins
 ```
 
-All commands require a registered space name. Run `bunx ost-tools --help` or `bunx ost-tools <command> --help` for flags.
+All commands require a registered space name. Run `bunx structured-context --help` or `bunx structured-context <command> --help` for flags.
 
 **`dump` is the key debugging tool.** Use it to verify `fieldMap` remapping is working or to
 inspect exactly what JSONata rules see when a rule fires unexpectedly.
@@ -84,7 +84,7 @@ Embedded nodes are nodes that live physically inside another node's file (via ta
 When writing or editing Obsidian markdown frontmatter:
 
 - **Do not include `title`** — Obsidian derives the page title from the filename.
-- **Tags use plain strings** — In Obsidian frontmatter, tags are listed as plain strings without a `#` prefix (e.g. `tags: [adhd, reading]`). The `#` prefix is only used for inline tags in the document body.
+- **Tags use plain strings** — In Obsidian frontmatter, tags are listed as plain strings without a `#` prefix (e.g. `tags: [productivity, reading]`). The `#` prefix is only used for inline tags in the document body.
 - **Check entity descriptions before assigning a type to an existing document** — Run `schemas show --space <name>`. The description for each entity type, as well as any rules, should be carefully considered as part of determining that a type is appropriate for an existing document.
 
 ## Non-obvious issues
@@ -108,17 +108,17 @@ what the rule actually sees in the `current` object, then adjust the rule in the
 
 ## Plugins
 
-ost-tools supports **plugins** for extending capabilities. Currently, parse plugins allow reading spaces from sources other than markdown (which is a built-in plugin).
+structured-context supports **plugins** for extending capabilities. Currently, parse plugins allow reading spaces from sources other than markdown (which is a built-in plugin).
 
 For full plugin and markdown plugin config reference (fieldMap, typeInference, templateDir, filter views), run:
 
 ```bash
-bunx ost-tools docs config
+bunx structured-context docs config
 ```
 
 ## References
 
-- **`references/schema-authoring.md`** — schema file structure, `$metadata`, JSONata rules (run `ost-tools docs schema` for schema dialect reference)
+- **`references/schema-authoring.md`** — schema file structure, `$metadata`, JSONata rules (run `sctx docs schema` for schema dialect reference)
 - **`references/schema-design.md`** — process for designing a schema from existing content
 
-For CLI and config reference, use `ost-tools docs <topic>` (topics: `concepts`, `config`, `schema`, `rules`).
+For CLI and config reference, use `sctx docs <topic>` (topics: `concepts`, `config`, `schema`, `rules`).

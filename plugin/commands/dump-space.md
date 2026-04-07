@@ -4,7 +4,7 @@ description: Dump all parsed node data for an Obsidian space as JSON for debuggi
 ---
 
 ## Parsed node data
-!`bunx ost-tools dump $ARGUMENTS`
+!`bunx structured-context dump $ARGUMENTS`
 
 ## Your task
 

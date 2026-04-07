@@ -25,7 +25,7 @@ Produce an inventory table:
 
 ## 2. Identify the hierarchy
 
-ost-tools works best with a declared `hierarchy` in `$metadata.hierarchy.levels`. Identify the main chain of
+structured-context works best with a declared `hierarchy` in `$metadata.hierarchy.levels`. Identify the main chain of
 parent→child relationships.
 
 - Which entity types are "root" concepts (no natural parent)? (e.g., `outcome`)
@@ -58,12 +58,12 @@ Use **Adjacent Relationships** (`$metadata.relationships`) for fine-grained sub-
 ## 3. Handle naming conflicts
 
 **Common problem:** content uses `type` as a sub-classification field AND `record_type` (or similar)
-as the entity discriminator — which collides with ost-tools expecting `type` as the discriminator.
+as the entity discriminator — which collides with structured-context expecting `type` as the discriminator.
 
 **Solution:** use `fieldMap` in the space config:
 ```json5
 fieldMap: {
-  record_type: 'type',      // entity discriminator → becomes "type" for ost-tools
+  record_type: 'type',      // entity discriminator → becomes "type" for structured-context
   type: 'entity_type'       // sub-classification → renamed to avoid collision
 }
 ```
@@ -138,7 +138,7 @@ validation when extra fields exist — they just won't be type-checked.
 
 For any field where you observe a relationship to another entity type (e.g. `performed_by`
 links to Actor entities), capture it as an array of wikilinks and note the target type in the
-`description`. This makes the graph structure explicit even when ost-tools can't enforce
+`description`. This makes the graph structure explicit even when structured-context can't enforce
 referential integrity across entity types in a graph-shaped space.
 
 ## Example: canonical OST content
