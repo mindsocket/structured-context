@@ -28,6 +28,10 @@ export function makeSpaceContext(
 }
 
 /** Build a PluginContext for testing plugin functions directly. */
-export function makePluginContext(path: string, schemaPath?: string): PluginContext {
-  return { ...makeSpaceContext(path, schemaPath), pluginConfig: {} };
+export function makePluginContext(
+  path: string,
+  schemaPath?: string,
+  pluginConfig: Record<string, unknown> = {},
+): PluginContext {
+  return { ...makeSpaceContext(path, schemaPath), pluginConfig };
 }

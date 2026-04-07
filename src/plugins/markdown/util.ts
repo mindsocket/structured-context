@@ -1,3 +1,56 @@
+import { posix } from 'node:path';
+import type { TypeInferenceConfig } from '.';
+
+export function inferTypeFromPath(
+  filePath: string,
+  config: TypeInferenceConfig,
+  knownTypes: Set<string>,
+  typeAliases: Record<string, string> | undefined,
+): string | undefined {
+  if (config.mode === 'off') return undefined;
+
+  const normalized = filePath.replace(/\\/g, '/');
+  const dir = posix.dirname(normalized);
+  if (dir === '.') return undefined;
+
+  if (config.folderMap) {
+    const normalizedMap = Object.fromEntries(
+      Object.entries(config.folderMap).map(([k, v]) => [k.replace(/\\/g, '/').replace(/\/+$/, ''), v]),
+    );
+
+    let bestKey: string | undefined;
+    for (const key of Object.keys(normalizedMap)) {
+      if (dir === key || dir.startsWith(`${key}/`)) {
+        if (!bestKey || key.length > bestKey.length) bestKey = key;
+      }
+    }
+
+    if (!bestKey) return undefined;
+
+    const value = normalizedMap[bestKey]!;
+    if (typeAliases?.[value] !== undefined) return typeAliases[value];
+    if (knownTypes.has(value)) return value;
+
+    throw new Error(
+      `typeInference.folderMap: "${value}" does not resolve to a known type or alias (from key "${bestKey}")`,
+    );
+  }
+
+  const leafDir = posix.basename(dir).toLowerCase();
+
+  for (const type of knownTypes) {
+    if (type.toLowerCase() === leafDir) return type;
+  }
+
+  if (typeAliases) {
+    for (const [alias, canonical] of Object.entries(typeAliases)) {
+      if (alias.toLowerCase() === leafDir) return canonical;
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * Coerce Date objects in frontmatter/YAML data to ISO date strings (YYYY-MM-DD).
  * gray-matter and js-yaml parse unquoted ISO dates (e.g. `date: 2026-03-31`) as

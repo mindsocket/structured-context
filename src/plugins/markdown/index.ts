@@ -6,10 +6,16 @@ import { renderBullets } from './render-bullets';
 import { renderMermaid } from './render-mermaid';
 import { templateSync } from './template-sync';
 
+export type TypeInferenceConfig = {
+  mode?: 'folder-name' | 'off';
+  folderMap?: Record<string, string>;
+};
+
 export type MarkdownPluginConfig = {
   templateDir?: string;
   fieldMap?: Record<string, string>;
   templatePrefix?: string;
+  typeInference?: TypeInferenceConfig;
 };
 
 export const MARKDOWN_CONFIG_SCHEMA = {
@@ -18,6 +24,14 @@ export const MARKDOWN_CONFIG_SCHEMA = {
     templateDir: { type: 'string', format: 'path' }, // format is hint to config loader to resolve relative directories
     fieldMap: { type: 'object', additionalProperties: { type: 'string' } },
     templatePrefix: { type: 'string' },
+    typeInference: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', enum: ['folder-name', 'off'] },
+        folderMap: { type: 'object', additionalProperties: { type: 'string' } },
+      },
+      additionalProperties: false,
+    },
   },
   additionalProperties: false,
 };

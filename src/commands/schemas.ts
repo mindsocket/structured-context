@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
 import { loadConfig, resolveSchema } from '../config';
-import { bundledSchemasDir, loadSchema, readRawSchema } from '../schema/schema';
+import { bundledSchemasDir, type EntityInfo, extractEntityInfo, loadSchema, readRawSchema } from '../schema/schema';
 import { mergeVariantProperties } from '../schema/schema-refs';
 import type { SchemaMetadata, SchemaWithMetadata } from '../types';
 
@@ -28,12 +28,6 @@ interface EntityVariant {
   required: string[];
 }
 
-interface EntityInfo {
-  type: string;
-  properties: string[];
-  required: string[];
-}
-
 function extractEntities(
   oneOf: unknown[],
   schemaRefRegistry: Map<string, AnySchemaObject>,
@@ -54,38 +48,6 @@ function extractEntities(
       required: required.filter((r) => r !== 'type'),
     };
   });
-}
-
-/**
- * Extract entity information for ERD generation.
- * Returns a flat list of all entity types with their properties.
- */
-export function extractEntityInfo(
-  oneOf: unknown[],
-  schemaRefRegistry: Map<string, AnySchemaObject>,
-  schema: SchemaWithMetadata,
-): EntityInfo[] {
-  const result: EntityInfo[] = [];
-  for (const entry of oneOf) {
-    const { properties, required } = mergeVariantProperties(entry as AnySchemaObject, schema, schemaRefRegistry);
-    const typeDef = properties.type as AnySchemaObject | undefined;
-    if (typeDef?.const) {
-      result.push({
-        type: String(typeDef.const),
-        properties: Object.keys(properties).filter((k) => k !== 'type'),
-        required: required.filter((r) => r !== 'type'),
-      });
-    } else if (Array.isArray(typeDef?.enum)) {
-      for (const t of typeDef.enum as unknown[]) {
-        result.push({
-          type: String(t),
-          properties: Object.keys(properties).filter((k) => k !== 'type'),
-          required: required.filter((r) => r !== 'type'),
-        });
-      }
-    }
-  }
-  return result;
 }
 
 function showEntities(
@@ -315,7 +277,7 @@ export function showSchema(
 
   // Handle --mermaid-erd: generate ERD and exit
   if (options.mermaidErd) {
-    const entityInfo = Array.isArray(schema.oneOf) ? extractEntityInfo(schema.oneOf, schemaRefRegistry, schema) : [];
+    const entityInfo = extractEntityInfo(schema, schemaRefRegistry);
     const mermaid = generateMermaidErd(schema.metadata, entityInfo);
     process.stdout.write(mermaid);
     return;

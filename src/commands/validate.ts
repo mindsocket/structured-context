@@ -3,12 +3,11 @@ import type { ErrorObject } from 'ajv';
 import chokidar from 'chokidar';
 import { getConfigSourceFiles } from '../config';
 import { readSpace } from '../read/read-space';
-import { bundledSchemasDir } from '../schema/schema';
+import { bundledSchemasDir, extractEntityInfo } from '../schema/schema';
 import { validateGraph } from '../schema/validate-graph';
 import { validateRules } from '../schema/validate-rules';
 import { buildSpaceGraph } from '../space-graph';
 import type { GraphViolation, RuleViolation, SchemaWithMetadata, SpaceContext } from '../types';
-import { extractEntityInfo } from './schemas';
 
 export interface FormattedError {
   message: string;
@@ -58,7 +57,7 @@ export function formatErrors(
       hasOneOfContext = Array.isArray(schema.oneOf);
 
       if (hasOneOfContext) {
-        const entities = extractEntityInfo(schema.oneOf as unknown[], schemaRefRegistry, schema);
+        const entities = extractEntityInfo(schema, schemaRefRegistry);
         const validTypes = entities.map((e) => e.type).sort();
 
         if (validTypes.length > 0) {
