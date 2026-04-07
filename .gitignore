@@ -37,6 +37,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 config.json
 .claude/settings.local.json
 .claude/worktrees/
+.claude-pr/
 CLAUDE.local.md
+lefthook-local.yml
+.gitleaks-priv.toml
 
 hook-test/fixtures/.state/
