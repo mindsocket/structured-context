@@ -13,10 +13,10 @@ on:
 
 jobs:
   claude-review:
-    if: github.event.pull_request.author_association == 'OWNER'
+    if: github.event.pull_request.author_association == 'OWNER' && !github.event.pull_request.draft
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       issues: read
       id-token: write
@@ -57,7 +57,7 @@ jobs:
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment'
           track_progress: true
-          claude_args: '--allowedTools "Read,Write,Edit,Bash(git:*),mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checkout:*),Bash(git log:*),Bash(bun run test:*),Bash(bun run lint:*),Bash(bun run build:*),Bash(bun test:*),Bash(npx tsc:*),Bash(bun run tsc:*),Bash(gh pr checks:*),Bash(npx biome check:*),Bash(git fetch:*),Bash(gh issue list:*),Bash(gh issue view:*)"'
+          claude_args: '--allowedTools "Read,Write,Edit,Bash(git:*),mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr checkout:*),Bash(git log:*),Bash(bun run test:*),Bash(bun run lint:*),Bash(bun run build:*),Bash(bun test:*),Bash(npx tsc:*),Bash(bun run tsc:*),Bash(bun run typecheck*),Bash(gh pr checks:*),Bash(npx biome check:*),Bash(git fetch:*),Bash(gh issue list:*),Bash(gh issue view:*)"'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
