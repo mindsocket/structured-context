@@ -3,10 +3,11 @@ import { basename, join, resolve } from 'node:path';
 import { Glob } from 'bun';
 import matter from 'gray-matter';
 import type { BaseNode } from '../../plugin-api';
+import { extractSchemaTypeNames } from '../../schema/schema';
 import type { ParseResult, PluginContext } from '../util';
 import type { MarkdownPluginConfig } from '.';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
-import { applyFieldMap, coerceDates } from './util';
+import { applyFieldMap, coerceDates, inferTypeFromPath } from './util';
 
 type ReadSpaceDirectoryOptions = {
   includeOnAPageFiles?: boolean;
@@ -63,6 +64,10 @@ export async function readSpaceDirectory(
   const templateDir = mdCfg.templateDir;
   const absoluteTemplateDir = templateDir ? resolve(templateDir) : undefined;
 
+  const typeInferenceCfg = mdCfg.typeInference;
+  const knownTypes =
+    typeInferenceCfg?.mode !== 'off' ? extractSchemaTypeNames(context.schema, context.schemaRefRegistry) : undefined;
+
   const files = await Array.fromAsync(new Glob('**/*.md').scan({ cwd: directory, followSymlinks: true }));
   const nodes: BaseNode[] = [];
   const skipped: string[] = [];
@@ -84,6 +89,10 @@ export async function readSpaceDirectory(
     }
 
     const data = coerceDates(applyFieldMap(parsed.data, fieldMap));
+
+    if (!data.type && typeInferenceCfg && knownTypes) {
+      data.type = inferTypeFromPath(file, typeInferenceCfg, knownTypes, context.schema.metadata.typeAliases);
+    }
 
     if (!data.type) {
       nonSpace.push(file);

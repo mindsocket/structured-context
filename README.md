@@ -71,6 +71,40 @@ All plugin names must start with `ost-tools-` (the prefix is optional in config 
 - `templateDir` — directory containing template files (used by `template-sync`)
 - `templatePrefix` — filename prefix for templates (default blank)
 - `fieldMap` — maps file/frontmatter field names to canonical schema field names (e.g. `{ "record_type": "type" }`)
+- `typeInference` — automatically assign a node type based on folder structure when no `type` field is present in frontmatter. Explicit `type:` always takes precedence. See [Type inference](#type-inference) in concepts.
+
+**Type inference** (`typeInference` config block):
+
+```json
+{
+  "plugins": {
+    "markdown": {
+      "typeInference": { "mode": "folder-name" }
+    }
+  }
+}
+```
+
+- `mode` — `"folder-name"` (default) matches the leaf directory name case-insensitively against schema type names and alias keys. `"off"` disables inference entirely.
+- `folderMap` — explicit map from folder path (relative to space root) to type name or alias. When set, replaces auto-matching entirely; only folders listed in the map are inferred.
+
+```json
+{
+  "plugins": {
+    "markdown": {
+      "typeInference": {
+        "folderMap": {
+          "Research": "source",
+          "Personal": "note",
+          "topics/concepts": "concept"
+        }
+      }
+    }
+  }
+}
+```
+
+With `folderMap`, longest-prefix matching is used when keys overlap (e.g. `a/b` and `a/b/c` both present). Trailing slashes in keys are normalised. Values may be type aliases (resolved to canonical type). An unresolvable value throws a hard error at parse time.
 
 **Filter views:** Named filter expressions can be defined per space under `views`. Each view has an `expression` field using the filter expression syntax:
 

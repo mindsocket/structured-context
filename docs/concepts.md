@@ -56,8 +56,18 @@ Parsing behaviour for a space directory:
 - Files declaring a `space node` type via frontmatter are included as nodes.
 - Such files may also contain `embedded nodes` in their body, which are extracted and included.
 - Files declaring a `tooling type` (e.g. `space_on_a_page`, `dashboard`) are excluded from the node set.
-- Files without frontmatter, or without a `type` field, are excluded from the node set.
+- Files without frontmatter, or without a `type` field, are excluded from the node set (unless **type inference** is configured — see below).
 - Non-markdown files are not scanned.
+
+#### Type inference
+
+When `typeInference` is configured on the markdown plugin, files without an explicit `type` field in frontmatter can have their type inferred from their folder path. Explicit `type:` in frontmatter always takes precedence.
+
+Two modes are available:
+
+- **`folder-name`** (default) — the leaf directory name is matched case-insensitively against the schema's known type names and alias keys. For example, a file at `concept/page.md` is inferred as type `concept`; a file at `study/page.md` is inferred as `source` if `study` is an alias for `source` in the schema. A folder name that is neither a type name nor an alias key results in no inference.
+
+- **`folderMap`** — an explicit map from folder path (relative to space root) to a type name or alias. Replaces auto-matching entirely; only folders listed in the map are inferred. Longest-prefix matching is used when folder paths overlap. An unresolvable value (not a known type or alias) is a hard error at parse time.
 
 ### Space on a page
 

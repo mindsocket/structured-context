@@ -14,7 +14,7 @@ import {
   type Rule,
   type RuleEntry,
 } from './metadata-contract';
-import { isObject, resolveJsonPointer } from './schema-refs';
+import { isObject, mergeVariantProperties, resolveJsonPointer } from './schema-refs';
 
 const packageDir = dirname(fileURLToPath(import.meta.url));
 export const bundledSchemasDir = join(packageDir, '..', '..', 'schemas');
@@ -429,6 +429,47 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
           }))
         : undefined,
   };
+}
+
+export interface EntityInfo {
+  type: string;
+  properties: string[];
+  required: string[];
+}
+
+export function extractEntityInfo(
+  schema: SchemaWithMetadata,
+  schemaRefRegistry: Map<string, AnySchemaObject>,
+): EntityInfo[] {
+  if (!Array.isArray(schema.oneOf)) return [];
+  const result: EntityInfo[] = [];
+  for (const entry of schema.oneOf as AnySchemaObject[]) {
+    const { properties, required } = mergeVariantProperties(entry, schema, schemaRefRegistry);
+    const typeDef = properties.type as AnySchemaObject | undefined;
+    if (typeDef?.const !== undefined) {
+      result.push({
+        type: String(typeDef.const),
+        properties: Object.keys(properties).filter((k) => k !== 'type'),
+        required: required.filter((r) => r !== 'type'),
+      });
+    } else if (Array.isArray(typeDef?.enum)) {
+      for (const t of typeDef.enum as unknown[]) {
+        result.push({
+          type: String(t),
+          properties: Object.keys(properties).filter((k) => k !== 'type'),
+          required: required.filter((r) => r !== 'type'),
+        });
+      }
+    }
+  }
+  return result;
+}
+
+export function extractSchemaTypeNames(
+  schema: SchemaWithMetadata,
+  schemaRefRegistry: Map<string, AnySchemaObject>,
+): Set<string> {
+  return new Set(extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type));
 }
 
 export function loadMetadata(schemaPath: string): SchemaMetadata {
