@@ -34,7 +34,9 @@ Before working with a space, use these to understand what's configured:
 bunx ost-tools spaces --config <cfg>                        # per-space: path, schema, fieldMap, templates, miro
 bunx ost-tools schemas show --space <name> --config <cfg>  # entity types, properties, rules, enums + registry
 bunx ost-tools schemas show <filename>                      # inspect a bundled partial (e.g. _ost_tools_base.json)
-bunx ost-tools readme                                       # full documentation if needed
+bunx ost-tools docs                                         # full README
+bunx ost-tools docs config                                  # plugin config reference (fieldMap, typeInference, etc.)
+bunx ost-tools docs concepts                                # terminology reference
 ```
 
 `spaces` is the starting point — it shows each space as a block with its schema name, `fieldMap`
@@ -108,31 +110,15 @@ what the rule actually sees in the `current` object, then adjust the rule in the
 
 ost-tools supports **plugins** for extending capabilities. Currently, parse plugins allow reading spaces from sources other than markdown (which is a built-in plugin).
 
-Declare plugins in config as a of plugin name → config object:
+For full plugin and markdown plugin config reference (fieldMap, typeInference, templateDir, filter views), run:
 
-```json
-{
-  "spaces": [
-    {
-      "name": "PDFSpace",
-      "path": "https://...",
-      "plugins": {
-        "ost-tools-pdf": { "baseUrl": "https://example.pdfstore.net" }
-      }
-    }
-  ]
-}
+```bash
+bunx ost-tools docs config
 ```
-
-All plugin names must start with `ost-tools-` (the prefix is optional in config and normalised on load). External plugins are resolved in order: config-adjacent (`{configDir}/plugins/{name}`), then npm.
-
-**Markdown plugin config** (under `plugins.markdown` in a space entry):
-- `templateDir` — directory for template files used by `template-sync`, and to exclude templates when parsing and validating
-- `templatePrefix` — filename prefix for templates (default blank)
-- `fieldMap` — maps file field names to canonical schema field names (e.g. `{ "record_type": "type" }`)
 
 ## References
 
-- **`references/schema-authoring.md`** — schema file structure, `$metadata`, `fieldMap`, JSONata rules
+- **`references/schema-authoring.md`** — schema file structure, `$metadata`, JSONata rules (run `ost-tools docs schema` for schema dialect reference)
 - **`references/schema-design.md`** — process for designing a schema from existing content
-- **`references/commands.md`** — detailed CLI usage and examples
+
+For CLI and config reference, use `ost-tools docs <topic>` (topics: `concepts`, `config`, `schema`, `rules`).

@@ -1,8 +1,28 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export function readme(): void {
-  const content = readFileSync(join(import.meta.dir, '..', '..', 'README.md'), 'utf-8');
+const TOPICS: Record<string, string> = {
+  concepts: 'concepts.md',
+  config: 'config.md',
+  schema: 'schemas.md',
+  rules: 'rules.md',
+};
+
+export function docs(topic?: string): void {
+  let filePath: string;
+  if (!topic) {
+    filePath = join(import.meta.dir, '..', '..', 'README.md');
+  } else {
+    const file = TOPICS[topic];
+    if (!file) {
+      const available = Object.keys(TOPICS).join(', ');
+      console.error(`Unknown topic "${topic}". Available: ${available}`);
+      process.exit(1);
+    }
+    filePath = join(import.meta.dir, '..', '..', 'docs', file);
+  }
+
+  const content = readFileSync(filePath, 'utf-8');
   const cols = process.stdout.columns ?? 80;
   const rendered = Bun.markdown.render(content, {
     heading: (children, { level }) => {
