@@ -2,9 +2,9 @@
 import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { diagram } from './commands/diagram';
+import { docs } from './commands/docs';
 import { dump } from './commands/dump';
 import { listPlugins } from './commands/plugins';
-import { readme } from './commands/readme';
 import { render, renderList } from './commands/render';
 import { listSchemas, showSchema } from './commands/schemas';
 import { show } from './commands/show';
@@ -155,9 +155,9 @@ schemasCmd
 program.addCommand(schemasCmd);
 
 program
-  .command('readme')
-  .description('Show full README documentation')
-  .action(() => readme());
+  .command('docs [topic]')
+  .description('Show documentation (no arg: README; topics: concepts, config, schema, rules)')
+  .action((topic?: string) => docs(topic));
 
 const renderCmd = new Command('render').description('Render a space in a given format');
 renderCmd

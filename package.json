@@ -10,7 +10,11 @@
   },
   "files": [
     "dist/",
-    "schemas/"
+    "schemas/",
+    "docs/concepts.md",
+    "docs/config.md",
+    "docs/schemas.md",
+    "docs/rules.md"
   ],
   "exports": {
     ".": "./dist/index.js",
