@@ -92,6 +92,11 @@ export async function readSpaceDirectory(
     try {
       parsed = matter(content);
     } catch (err) {
+      // gray-matter caches parsed YAML and has a known bug where a caught exception
+      // corrupts its internal cache, causing subsequent parses to silently return {}.
+      // Clear the cache after any parse error to avoid stale state.
+      // See: https://github.com/jonschlinkert/gray-matter/issues/166
+      (matter as unknown as { clearCache: () => void }).clearCache();
       parseIssues.push({
         file,
         severity: 'error',
