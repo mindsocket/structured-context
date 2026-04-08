@@ -14,7 +14,7 @@ export async function readSpace(context: SpaceContext): Promise<ReadSpaceResult>
       return {
         nodes,
         source: plugin.name,
-        parseIgnored: result.parseIgnored,
+        parseIssues: result.parseIssues,
         diagnostics: result.diagnostics,
         unresolvedRefs,
       };

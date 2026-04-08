@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { readSpaceOnAPage } from '../../../src/plugins/markdown/read-space';
 import { resolveGraphEdges } from '../../../src/read/resolve-graph-edges';
 import { bundledSchemasDir, loadMetadata } from '../../../src/schema/schema';
-import type { SpaceNode } from '../../../src/types';
+import type { ParseIssue, SpaceNode } from '../../../src/types';
 import { makePluginContext } from '../../helpers/context';
 
 const metadata = loadMetadata(join(bundledSchemasDir, 'strategy_general.json'));
@@ -13,13 +13,13 @@ const SKIP_PAGE = join(import.meta.dir, '../../fixtures/general/on-a-page-headin
 
 describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
   let resolvedNodes: SpaceNode[];
-  let parseIgnored: string[];
+  let parseIssues: ParseIssue[];
   let diagnostics: Record<string, number | string | string[]>;
 
   beforeAll(() => {
     const result = readSpaceOnAPage(makePluginContext(VALID_PAGE));
     ({ nodes: resolvedNodes } = resolveGraphEdges(result.nodes, metadata));
-    parseIgnored = result.parseIgnored;
+    parseIssues = result.parseIssues;
     diagnostics = result.diagnostics;
   });
 
@@ -114,8 +114,11 @@ describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
       expect(diagnostics?.preambleNodeCount).toBeGreaterThanOrEqual(1);
     });
 
-    it('records Archived Vision in parseIgnored', () => {
-      expect(parseIgnored).toContain('Archived Vision');
+    it('records Archived Vision as a terminated warning in parseIssues', () => {
+      const issue = parseIssues.find((i) => i.file === 'Archived Vision');
+      expect(issue).toBeDefined();
+      expect(issue?.severity).toBe('warning');
+      expect(issue?.type).toBe('terminated');
     });
 
     it('does not include Archived Vision in nodes', () => {

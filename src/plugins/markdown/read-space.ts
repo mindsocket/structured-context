@@ -4,6 +4,7 @@ import { Glob } from 'bun';
 import matter from 'gray-matter';
 import type { BaseNode } from '../../plugin-api';
 import { extractSchemaTypeNames } from '../../schema/schema';
+import type { ParseIssue } from '../../types';
 import type { ParseResult, PluginContext } from '../util';
 import type { MarkdownPluginConfig } from '.';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
@@ -45,7 +46,13 @@ export function readSpaceOnAPage(context: PluginContext): ParseResult {
     metadata,
   });
 
-  return { nodes, parseIgnored: terminatedHeadings, diagnostics: { kind: 'page', preambleNodeCount } };
+  const parseIssues: ParseIssue[] = terminatedHeadings.map((heading) => ({
+    file: heading,
+    severity: 'warning',
+    type: 'terminated',
+    message: 'Ignored headings detected beyond end of hierarchy.',
+  }));
+  return { nodes, parseIssues, diagnostics: { kind: 'page', preambleNodeCount } };
 }
 
 export async function readSpaceDirectory(
@@ -70,8 +77,7 @@ export async function readSpaceDirectory(
 
   const files = await Array.fromAsync(new Glob('**/*.md').scan({ cwd: directory, followSymlinks: true }));
   const nodes: BaseNode[] = [];
-  const skipped: string[] = [];
-  const nonSpace: string[] = [];
+  const parseIssues: ParseIssue[] = [];
 
   for (const file of files) {
     const absoluteFilePath = resolve(directory, file);
@@ -81,10 +87,22 @@ export async function readSpaceDirectory(
     }
 
     const content = readFileSync(join(directory, file), 'utf-8');
-    const parsed = matter(content);
+
+    let parsed: ReturnType<typeof matter>;
+    try {
+      parsed = matter(content);
+    } catch (err) {
+      parseIssues.push({
+        file,
+        severity: 'error',
+        type: 'parse',
+        message: err instanceof Error ? err.message : String(err),
+      });
+      continue;
+    }
 
     if (!parsed.data || Object.keys(parsed.data).length === 0) {
-      skipped.push(file);
+      parseIssues.push({ file, severity: 'warning', type: 'empty' });
       continue;
     }
 
@@ -95,7 +113,7 @@ export async function readSpaceDirectory(
     }
 
     if (!data.type) {
-      nonSpace.push(file);
+      parseIssues.push({ file, severity: 'warning', type: 'no-type' });
       continue;
     }
 
@@ -124,10 +142,15 @@ export async function readSpaceDirectory(
       });
       nodes.push(...embedded);
       for (const heading of terminatedHeadings) {
-        nonSpace.push(`${file} > ${heading}`);
+        parseIssues.push({
+          file: `${file} > ${heading}`,
+          severity: 'warning',
+          type: 'terminated',
+          message: 'Ignored headings detected beyond end of hierarchy.',
+        });
       }
     }
   }
 
-  return { nodes, parseIgnored: [...skipped, ...nonSpace], diagnostics: { kind: 'directory' } };
+  return { nodes, parseIssues, diagnostics: { kind: 'directory' } };
 }

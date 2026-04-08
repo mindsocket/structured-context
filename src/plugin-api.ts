@@ -24,6 +24,7 @@ export type {
   BaseNode,
   EdgeDefinition,
   HierarchyLevel,
+  ParseIssue,
   Relationship,
   SchemaMetadata,
   SchemaWithMetadata,

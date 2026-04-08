@@ -7,7 +7,7 @@ const customPlugin: StructuredContextPlugin = {
   async parse(): Promise<ParseResult> {
     return {
       nodes: [],
-      parseIgnored: [],
+      parseIssues: [],
       diagnostics: { source: 'custom' },
     };
   },

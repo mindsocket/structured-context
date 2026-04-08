@@ -29,12 +29,18 @@ describe('readSpaceDirectory', () => {
       expect(vision?.schemaData.title).toBe('Personal Vision');
     });
 
-    it('skips no-frontmatter.md', () => {
-      expect(result.parseIgnored).toContain('no-frontmatter.md');
+    it('reports no-frontmatter.md as a warning with type empty', () => {
+      const issue = result.parseIssues.find((i) => i.file === 'no-frontmatter.md');
+      expect(issue).toBeDefined();
+      expect(issue?.severity).toBe('warning');
+      expect(issue?.type).toBe('empty');
     });
 
-    it('puts meeting-notes.md in parseIgnored', () => {
-      expect(result.parseIgnored).toContain('meeting-notes.md');
+    it('reports meeting-notes.md as a warning with type no-type', () => {
+      const issue = result.parseIssues.find((i) => i.file === 'meeting-notes.md');
+      expect(issue).toBeDefined();
+      expect(issue?.severity).toBe('warning');
+      expect(issue?.type).toBe('no-type');
     });
 
     it('skipped files do not appear in nodes', () => {
@@ -57,8 +63,8 @@ describe('readSpaceDirectory', () => {
       expect(result.nodes.every((n) => n.label !== 'Community OST.md')).toBe(true);
     });
 
-    it('Community OST.md does not appear in parseIgnored', () => {
-      expect(result.parseIgnored?.includes('Community OST.md')).toBe(false);
+    it('Community OST.md does not appear in parseIssues', () => {
+      expect(result.parseIssues.some((i) => i.file === 'Community OST.md')).toBe(false);
     });
   });
 
@@ -160,6 +166,22 @@ describe('readSpaceDirectory', () => {
 
   describe('invalid-ost directory', () => {
     it('returns all 3 nodes regardless of schema validity', async () => {
+      const result = await readSpaceDirectory(makePluginContext(INVALID_DIR));
+      expect(result.nodes).toHaveLength(3);
+    });
+  });
+
+  describe('YAML parse errors', () => {
+    it('reports bad-yaml.md as an error parse issue instead of crashing', async () => {
+      const result = await readSpaceDirectory(makePluginContext(INVALID_DIR));
+      const issue = result.parseIssues.find((i) => i.file === 'bad-yaml.md');
+      expect(issue).toBeDefined();
+      expect(issue?.severity).toBe('error');
+      expect(issue?.type).toBe('parse');
+      expect(issue?.message).toBeTruthy();
+    });
+
+    it('continues parsing other files after a YAML error', async () => {
       const result = await readSpaceDirectory(makePluginContext(INVALID_DIR));
       expect(result.nodes).toHaveLength(3);
     });

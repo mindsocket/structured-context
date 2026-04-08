@@ -7,7 +7,7 @@ import { bundledSchemasDir, extractEntityInfo } from '../schema/schema';
 import { validateGraph } from '../schema/validate-graph';
 import { validateRules } from '../schema/validate-rules';
 import { buildSpaceGraph } from '../space-graph';
-import type { GraphViolation, RuleViolation, SchemaWithMetadata, SpaceContext, SpaceNode } from '../types';
+import type { GraphViolation, ParseIssue, RuleViolation, SchemaWithMetadata, SpaceContext, SpaceNode } from '../types';
 
 export interface FormattedError {
   message: string;
@@ -23,7 +23,7 @@ interface ValidationResult {
   ruleViolations: RuleViolation[];
   hierarchyViolations: GraphViolation[];
   orphans: SpaceNode[];
-  parseIgnored: string[];
+  parseIssues: ParseIssue[];
 }
 
 /**
@@ -136,7 +136,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   const metadata = schema.metadata;
 
   const readResult = await readSpace(context);
-  const { nodes, parseIgnored } = readResult;
+  const { nodes, parseIssues } = readResult;
 
   const result: ValidationResult = {
     validCount: 0,
@@ -147,7 +147,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
     ruleViolations: [],
     hierarchyViolations: [],
     orphans: [],
-    parseIgnored: parseIgnored || [],
+    parseIssues,
   };
 
   for (const node of nodes) {
@@ -235,7 +235,9 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
       addError(v.file, `hierarchy:${v.description}`, 'hierarchy', v.description);
     }
 
-    const errorCount = Object.values(errorsByFile).reduce((sum, errs) => sum + Object.keys(errs).length, 0);
+    const parseErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
+    const errorCount =
+      Object.values(errorsByFile).reduce((sum, errs) => sum + Object.keys(errs).length, 0) + parseErrorCount;
     console.log(
       JSON.stringify(
         {
@@ -245,7 +247,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
           errorCount,
           errors: errorsByFile,
           orphanCount: result.orphans.length,
-          parseIgnored: result.parseIgnored,
+          parseIssues: result.parseIssues,
         },
         null,
         2,
@@ -287,16 +289,20 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   console.log(fmt('  Rule violations', result.ruleViolations.length, true));
   console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
   console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphans.length, true, true));
-  console.log(fmt('  Ignored during parsing', result.parseIgnored.length, true, true));
+  const parseIssueErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
+  console.log(fmt('  Excluded during parsing', result.parseIssues.length, true, parseIssueErrorCount === 0));
 
   if (result.orphans.length > 0) {
     console.log(`\nOrphans (hierarchy nodes - no parent):`);
     for (const node of result.orphans) console.log(`   ${node.label}`);
   }
 
-  if (result.parseIgnored.length > 0) {
-    console.log(`\nIgnored during parsing:`);
-    for (const f of result.parseIgnored) console.log(`   ${f}`);
+  if (result.parseIssues.length > 0) {
+    console.log(`\nExcluded during parsing:`);
+    for (const issue of result.parseIssues) {
+      const detail = issue.message ? ` - ${issue.message}` : '';
+      console.log(`   ${issue.file}: ${issue.severity} - ${issue.type}${detail}`);
+    }
   }
 
   if (result.nodeErrors.length > 0) {
@@ -363,7 +369,8 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
     result.refErrors.length > 0 ||
     result.duplicateErrors.length > 0 ||
     result.ruleViolations.length > 0 ||
-    result.hierarchyViolations.length > 0
+    result.hierarchyViolations.length > 0 ||
+    parseIssueErrorCount > 0
   ) {
     return 1;
   }

@@ -1,7 +1,7 @@
 import type { AnySchemaObject } from 'ajv';
 import { PLUGIN_PREFIX as _PLUGIN_PREFIX } from '../constants';
 import type { SpaceGraph } from '../space-graph';
-import type { BaseNode, SpaceContext } from '../types';
+import type { BaseNode, ParseIssue, SpaceContext } from '../types';
 
 export const PLUGIN_PREFIX = _PLUGIN_PREFIX;
 export const CONFIG_PLUGINS_DIR = 'plugins';
@@ -18,8 +18,8 @@ export type PluginContext = SpaceContext & {
 
 export type ParseResult = {
   nodes: BaseNode[];
-  /** Paths/items the plugin skipped during parsing, for any reason. */
-  parseIgnored: string[];
+  /** Issues encountered while parsing files — excluded files with reason and severity. */
+  parseIssues: ParseIssue[];
   /** Plugin diagnostics: keyed scalar or list values. */
   diagnostics: Record<string, number | string | string[]>;
 };

@@ -99,6 +99,19 @@ export type SpaceNode = BaseNode & {
   resolvedParents: ResolvedParentRef[];
 };
 
+export type ParseIssue = {
+  /** Source identifier of the file or item (filename or heading title). */
+  file: string;
+  /** error: prevented the file from producing nodes; warning: file was silently excluded. */
+  severity: 'error' | 'warning';
+  /** empty: no content; no-type: no type field;
+   *  parse: parse failure (syntax issue or unexpected content);
+   *  plugins may choose to provide additional types. */
+  type: 'empty' | 'no-type' | 'parse' | string;
+  /** Human-readable detail. */
+  message?: string;
+};
+
 /** Rule categories for organizing executable validation rules */
 export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-practice';
 
@@ -137,8 +150,8 @@ export type SchemaWithMetadata = SchemaObject & {
 export type ReadSpaceResult = {
   /** Fully resolved nodes produced by the plugin and enriched by core. */
   nodes: SpaceNode[];
-  /** Paths/items the plugin skipped during parsing, for any reason. */
-  parseIgnored: string[];
+  /** Issues encountered while parsing files — excluded files with reason and severity. */
+  parseIssues: ParseIssue[];
   /** Plugin diagnostics: keyed scalar or list values. */
   diagnostics: Record<string, number | string | string[]>;
   /** Name of the plugin that produced the nodes. */

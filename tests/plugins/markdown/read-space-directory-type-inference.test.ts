@@ -134,7 +134,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { mode: 'folder-name' },
       });
       const result = await readSpaceDirectory(ctx);
-      expect(result.parseIgnored).toContain('sources/sources-page.md');
+      expect(result.parseIssues.map((i) => i.file)).toContain('sources/sources-page.md');
     });
 
     it('explicit type in frontmatter overrides inferred type', async () => {
@@ -152,7 +152,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { mode: 'folder-name' },
       });
       const result = await readSpaceDirectory(ctx);
-      expect(result.parseIgnored).toContain('root-page.md');
+      expect(result.parseIssues.map((i) => i.file)).toContain('root-page.md');
     });
   });
 
@@ -163,7 +163,7 @@ describe('readSpaceDirectory with type inference', () => {
       });
       const result = await readSpaceDirectory(ctx);
       expect(result.nodes.find((n) => n.label === 'concept/concept-page.md')).toBeUndefined();
-      expect(result.parseIgnored).toContain('concept/concept-page.md');
+      expect(result.parseIssues.map((i) => i.file)).toContain('concept/concept-page.md');
     });
   });
 
@@ -172,7 +172,7 @@ describe('readSpaceDirectory with type inference', () => {
       const ctx = makePluginContext(FIXTURE_DIR, KNOWLEDGE_WIKI_SCHEMA);
       const result = await readSpaceDirectory(ctx);
       expect(result.nodes.find((n) => n.label === 'concept/concept-page.md')).toBeUndefined();
-      expect(result.parseIgnored).toContain('concept/concept-page.md');
+      expect(result.parseIssues.map((i) => i.file)).toContain('concept/concept-page.md');
     });
   });
 
@@ -191,7 +191,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { folderMap: { Research: 'source' } },
       });
       const result = await readSpaceDirectory(ctx);
-      expect(result.parseIgnored).toContain('Personal/personal-page.md');
+      expect(result.parseIssues.map((i) => i.file)).toContain('Personal/personal-page.md');
     });
 
     it('infers from nested path key', async () => {
