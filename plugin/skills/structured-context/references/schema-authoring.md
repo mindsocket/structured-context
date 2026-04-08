@@ -1,7 +1,7 @@
 # Schema Authoring Reference
 
 Schema files use a Draft-07-based dialect with top-level `$metadata`.
-See `~/src/structured-context/schemas/` for examples (`general.json`, `strict_ost.json`, `_ost_strict.json`).
+See `~/src/structured-context/schemas/` for examples (`strategy_general.json`, `strict_ost.json`, `_ost_strict.json`).
 
 ## `$metadata` (top-level)
 
@@ -133,7 +133,7 @@ Use `bunx structured-context schemas show _sctx_base.json` to inspect built-in d
 Convention:
 - define reusable concepts in `$defs`
 - reference via `$ref` from `oneOf` entries
-- **always check existing schemas** (`general.json`, `strict_ost.json`, `knowledge_wiki.json`) before authoring — use them as consistency references for property names, patterns, and structure
+- **always check existing schemas** (`strategy_general.json`, `strict_ost.json`, `knowledge_wiki.json`) before authoring — use them as consistency references for property names, patterns, and structure
 
 ## `oneOf` authoring pattern
 

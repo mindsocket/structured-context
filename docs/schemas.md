@@ -20,11 +20,11 @@ Set `schema` in the space config entry:
 }
 ```
 
-Resolution order: space `schema` > global `schema` > bundled `schemas/general.json`.
+Resolution order: space `schema` > global `schema`. Schema resolution fails if none is configured.
 
 ## Bundled schemas
 
-### `general.json` (default)
+### `strategy_general.json`
 
 Flexible planning schema spanning strategy + OST-like flow.
 

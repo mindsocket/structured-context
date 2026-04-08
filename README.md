@@ -193,7 +193,7 @@ If no provider defines `hierarchy`, hierarchy-specific checks are skipped. Readi
 - **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).
 - **Unique IDs**: To encourage clean namespacing, local partial schemas **must** have unique `$id`s that do not collide with the default schemas. If a collision is detected, validation will fail with an error.
 
-Schema resolution order: space config `schema` > global config `schema` > bundled `schemas/general.json`
+Schema resolution order: space config `schema` > global config `schema`. Schema resolution fails if none is configured.
 
 **⚠️ Security Notice: Only use schemas and configuration files from trusted sources.**
 
@@ -322,7 +322,7 @@ Generates a Mermaid Entity Relationship Diagram from a schema:
 
 Example:
 ```bash
-sctx schemas show general --mermaid-erd
+sctx schemas show strategy_general --mermaid-erd
 ```
 
 ### Sync space to Miro

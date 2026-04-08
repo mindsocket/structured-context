@@ -200,9 +200,13 @@ export function getSpaceConfig(name: string, config: Config): SpaceConfig {
   return space;
 }
 
-/** Resolve schema path: CLI arg > space-level config > global config > hardcoded default. */
+/** Resolve schema path: CLI arg > space-level config > global config. Throws if none configured. */
 export function resolveSchema(config: Config, space?: SpaceConfig): string {
-  return space?.schema ?? config.schema ?? join(bundledSchemasDir, 'general.json');
+  const schema = space?.schema ?? config.schema;
+  if (!schema) {
+    throw new Error('No schema configured. Set "schema" in the space config or at the top level of the config file.');
+  }
+  return schema;
 }
 
 type StringFields<T> = { [K in keyof T]: T[K] extends string | undefined ? K : never }[keyof T];

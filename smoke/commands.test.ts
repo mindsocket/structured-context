@@ -31,11 +31,11 @@ describe('Smoke: schemas command', () => {
     expect(new TextDecoder().decode(result.stdout)).toContain('Bundled schemas');
   });
 
-  it('schemas show general exits 0', () => {
-    const result = run('schemas', 'show', 'general');
+  it('schemas show strategy_general exits 0', () => {
+    const result = run('schemas', 'show', 'strategy_general');
     expect(result.exitCode).toBe(0);
     const out = new TextDecoder().decode(result.stdout);
-    expect(out).toContain('sctx://general');
+    expect(out).toContain('sctx://strategy_general');
     expect(out).toContain('Registry');
   });
 

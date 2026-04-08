@@ -1,5 +1,5 @@
 import { basename, resolve } from 'node:path';
-import { configPath, loadConfig, resolveSchema } from '../config';
+import { configPath, loadConfig } from '../config';
 
 function renderConfigValue(v: unknown): string {
   if (typeof v === 'object' && v !== null) return JSON.stringify(v);
@@ -13,7 +13,8 @@ export function listSpaces(): void {
   for (const space of config.spaces) {
     console.log(`${space.name}`);
     console.log(`  path:    ${space.path}`);
-    console.log(`  schema:  ${basename(resolveSchema(config, space))}`);
+    const schema = space.schema ?? config.schema;
+    console.log(`  schema:  ${schema ? basename(schema) : '(none)'}`);
     if (space.miroBoardId) console.log(`  miro:    configured`);
     const plugins = space.plugins ?? {};
     if (Object.keys(plugins).length > 0) {

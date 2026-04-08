@@ -6,7 +6,7 @@ import { bundledSchemasDir, loadMetadata } from '../../../src/schema/schema';
 import type { SpaceNode } from '../../../src/types';
 import { makePluginContext } from '../../helpers/context';
 
-const metadata = loadMetadata(join(bundledSchemasDir, 'general.json'));
+const metadata = loadMetadata(join(bundledSchemasDir, 'strategy_general.json'));
 
 const VALID_PAGE = join(import.meta.dir, '../../fixtures/general/on-a-page-valid.md');
 const SKIP_PAGE = join(import.meta.dir, '../../fixtures/general/on-a-page-heading-skip.md');

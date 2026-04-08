@@ -7,7 +7,7 @@ import { bundledSchemasDir, loadMetadata } from '../../../src/schema/schema';
 import type { SpaceNode } from '../../../src/types';
 import { makePluginContext } from '../../helpers/context';
 
-const metadata = loadMetadata(join(bundledSchemasDir, 'general.json'));
+const metadata = loadMetadata(join(bundledSchemasDir, 'strategy_general.json'));
 
 const VALID_DIR = join(import.meta.dir, '../../fixtures/general/valid-ost');
 const INVALID_DIR = join(import.meta.dir, '../../fixtures/general/invalid-ost');

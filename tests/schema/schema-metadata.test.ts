@@ -5,7 +5,7 @@ import { bundledSchemasDir, createValidator, loadMetadata } from '../../src/sche
 import { makePluginContext } from '../helpers/context';
 
 const FIXTURES_DIR = join(import.meta.dir, '..', 'fixtures/schema-metadata');
-const GENERAL_SCHEMA_PATH = join(bundledSchemasDir, 'general.json');
+const GENERAL_SCHEMA_PATH = join(bundledSchemasDir, 'strategy_general.json');
 const VALID_SCHEMA_PATH = join(FIXTURES_DIR, 'valid.json');
 const ALIAS_ONLY_SCHEMA_PATH = join(FIXTURES_DIR, 'alias-only.json');
 const INVALID_SCHEMA_PATH = join(FIXTURES_DIR, 'invalid-metadata.json');

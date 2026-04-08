@@ -8,7 +8,7 @@ import type { BaseNode, SpaceNode, UnresolvedRef } from '../../src/types';
 import { makePluginContext } from '../helpers/context';
 import { makeLevel } from '../test-helpers';
 
-const DEFAULT_SCHEMA_PATH = join(bundledSchemasDir, 'general.json');
+const DEFAULT_SCHEMA_PATH = join(bundledSchemasDir, 'strategy_general.json');
 const VALID_DIR = join(import.meta.dir, '../fixtures/general/valid-ost');
 const INVALID_DIR = join(import.meta.dir, '../fixtures/general/invalid-ost');
 const VALID_PAGE = join(import.meta.dir, '../fixtures/general/on-a-page-valid.md');

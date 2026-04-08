@@ -181,4 +181,4 @@ bunx structured-context template-sync <space> --create-missing
 
 All commands require a registered space name (not an arbitrary path).
 
-Schema resolution order: space `schema` > global `schema` > bundled `general.json`.
+Schema resolution order: space `schema` > global `schema`. Schema resolution fails if none is configured.

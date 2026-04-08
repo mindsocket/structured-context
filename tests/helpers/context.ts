@@ -4,7 +4,7 @@ import type { PluginContext } from '../../src/plugins/util';
 import { bundledSchemasDir, loadSchema } from '../../src/schema/schema';
 import type { SpaceContext } from '../../src/types';
 
-const DEFAULT_SCHEMA = join(bundledSchemasDir, 'general.json');
+const DEFAULT_SCHEMA = join(bundledSchemasDir, 'strategy_general.json');
 
 /** Build a SpaceContext for test fixtures that don't need a real config file. */
 export function makeSpaceContext(

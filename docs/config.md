@@ -20,7 +20,7 @@ A space is a named directory or single file registered in the config. Example:
     {
       "name": "ProductX",
       "path": "/path/to/space",
-      "schema": "general.json"
+      "schema": "strategy_general.json"
     }
   ]
 }
