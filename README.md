@@ -1,10 +1,57 @@
 # structured-context
 
-Tools for working with Opportunity Solution Tree structures and other product management and strategy frameworks
+Keep your content clean and your thinking clear.
+
+`structured-context` provides assistive tools for working with structured content, including knowledge wikis (a la [Karpathy](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)), product/strategy frameworks (like [Teresa Torres' Opportunity Solution Trees](https://www.producttalk.org/opportunity-solution-trees/) and [Martin et al's strategy cascade](https://rogerlmartin.com/thought-pillars/strategy), and more. Great for flat sets of documents, hierarchical or layered context trees, or any kind of knowledge graph.
+
+Assign a schema to your markdown content to give humans and AI agents consistent structure and content guidelines. 
+
+In Claude Code:
+```
+❯ Use /structured-context to configure 'my-research' as a knowledge wiki, then organise it
+
+⏺ Skill(structured-context)
+  ⎿  Successfully loaded skill
+
+...
+
+```
+
+Command line tools:
+```
+> sctx validate strategy
+
+Space Validation Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Content and structure
+  Valid                                   16
+  Schema validation errors                 0
+  Broken links                             1
+  Duplicate keys                           0
+  Rule violations                          2
+  Hierarchy violations                     0
+  Orphans (hierarchy nodes - no parent)    1
+  Ignored during parsing                   0
+
+Orphans (hierarchy nodes - no parent):
+   Solution looking for a problem.md
+
+Broken links:
+   Steal underpants.md: [[Gnome goals]] → Link target "Gnome goals" in field "related" not found
+
+Rule violations:
+  workflow (1):
+    Build Death Star.md: Opportunities should contribute to at least one Outcome
+  
+  best-practice (1):
+    High tech juice press.md: Explore multiple candidate solutions (aim for at least three) for an active target opportunity
+```
 
 ## Installation
 
 Requires [Bun](https://bun.sh) runtime.
+
+Install globally (recommended):
 
 ```bash
 bun install -g structured-context
@@ -18,10 +65,11 @@ bunx structured-context validate <space>
 
 ## Setup for AI Agents
 
-A Claude Code plugin is included at `plugin/`. It provides validation hooks, slash commands, and agent skills. Install it with:
+Claude Code plugin, providing validation hooks, slash commands, and agent skills. Install it with:
 
 ```
-claude plugin install mindsocket/structured-context
+claude plugin marketplace add mindsocket/structured-context
+claude plugin install structured-context
 ```
 
 Skills can also be installed standalone without the plugin:
@@ -38,31 +86,24 @@ See [docs/concepts.md](docs/concepts.md) for the full terminology reference, inc
 
 `structured-context` looks for its config file in this order:
 
-1. `$SCTX_CONFIG` — explicit path override
-2. `~/.config/structured-context/config.json` (or `$XDG_CONFIG_HOME/structured-context/config.json`)
-3. `./config.json` in the current working directory
+1. `--config` command line argument
+2. `$SCTX_CONFIG` env var
+3. `~/.config/structured-context/config.json` (or `$XDG_CONFIG_HOME/structured-context/config.json`)
+4. `./config.json` in the current working directory
 
-See `config.example.json` for the full structure. The config maps space names to paths, with optional Miro integration fields and global defaults. Paths in config files are resolved relative to the config file.
+See `config.example.json` for the full structure. The config maps space names to paths, with optional additional configuration options for parsing and integrations. Paths in config files are resolved relative to the config file.
 
 **Including spaces from other configs:** Use `includeSpacesFrom` to import space definitions from other config files. This is useful for aggregating spaces from multiple projects into a central config, reducing the need to specify `--config` on CLI commands. Duplicate space names are not allowed.
 
 **Plugins and markdown plugin config:** See `sctx docs config` for the full reference including `fieldMap`, `typeInference`, `templateDir`, filter views, and plugin loading rules.
 
-### Spaces
-
-A space is a named directory or single file registered in the config. Spaces let you reference content by name instead of path:
-
-```bash
-sctx validate ProductX
-```
-
 ### Schemas
 
 Schemas define the structure and rules for the entities in a space, allowing customisation and extension to different models.
 
-Two schemas (`general` and `strict_ost`) are included. The general schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely.
+Several schemas (`strict_ost`, `knowledge_wiki` and `general`) are included. The general (strategy) schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely. The knowledge wiki schema defines a flatter set of types used for knowledge bases.
 
-sctx schemas use a metaschema based on JSON Schema Draft-07 that adds a top-level `$metadata` block:
+structured-context schemas use a metaschema based on JSON Schema Draft-07 that adds a top-level `$metadata` block:
 
 ```json5
 "$metadata": {
@@ -90,8 +131,6 @@ sctx schemas use a metaschema based on JSON Schema Draft-07 that adds a top-leve
   ]
 }
 ```
-
-Rules are a flat array (`rules[]`) with per-rule `category`.
 
 Schema hierarchy levels support DAG (multi-parent) relationships via configurable edge fields. Each entry in `$metadata.hierarchy.levels` can be a plain type name string (defaults to `parent` field on child nodes) or an object:
 
