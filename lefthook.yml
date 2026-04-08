@@ -1,5 +1,8 @@
 pre-commit:
   commands:
+    sync-plugin-version:
+      glob: "{package.json,plugin/**}"
+      run: bash scripts/sync-plugin-version.sh
     biome:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
       run: bunx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
