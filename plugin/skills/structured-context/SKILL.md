@@ -12,14 +12,24 @@ description: >
 `structured-context` validates Obsidian markdown frontmatter against JSON schemas. Content lives in
 **spaces** (directories of `.md` files or a single "on-a-page" format); schemas define entity types, properties, and rules.
 
+## Version compatibility
+
+Before starting work, verify `sctx` is installed and check the version:
+
+!`sctx --version`
+
+The plugin version is listed in `plugin/.claude-plugin/plugin.json`. A match on **minor version** (e.g. both `0.9.*`) indicates compatibility. If the installed `sctx` minor version differs from the plugin minor version, warn the user — behaviour may differ from what the skill describes.
+
+If not installed, run `bun install -g structured-context`
+
 ## Finding the config
 
 structured-context looks in `$XDG_CONFIG_HOME/structured-context/config.json`, unless given an explicit config, e.g.:
 
 ```bash
-bunx structured-context validate <space> --config path/to/config.json
+sctx validate <space> --config path/to/config.json
 # or
-SCTX_CONFIG=path/to/config.json bunx structured-context validate <space>
+SCTX_CONFIG=path/to/config.json sctx validate <space>
 ```
 
 **Always read the config first** to understand available spaces and their schema locations before running other commands.
@@ -31,16 +41,19 @@ Tip: To reduce the need for `--config` flags consider, with user permission, usi
 Before working with a space, use these to understand what's configured:
 
 ```bash
-bunx structured-context spaces --config <cfg>                        # per-space: path, schema, fieldMap, templates, miro
-bunx structured-context schemas show --space <name> --config <cfg>  # entity types, properties, rules, enums + registry
-bunx structured-context schemas show <filename>                      # inspect a bundled partial (e.g. _sctx_base.json)
-bunx structured-context docs                                         # full README
-bunx structured-context docs config                                  # plugin config reference (fieldMap, typeInference, etc.)
-bunx structured-context docs concepts                                # terminology reference
+sctx spaces --config <cfg>                        # per-space: path, schema, fieldMap, templates, miro
+sctx schemas list --config <cfg>                  # list available schemas by name
+sctx schemas show --space <name> --config <cfg>  # entity types, properties, rules, enums + registry
+sctx schemas show <filename>                      # inspect a bundled partial (e.g. _sctx_base.json)
+sctx docs                                         # full README
+sctx docs config                                  # plugin config reference (fieldMap, typeInference, etc.)
+sctx docs concepts                                # terminology reference
 ```
 
 `spaces` is the starting point — it shows each space as a block with its schema name, `fieldMap`
 mappings (if any), template config, and whether Miro is configured.
+
+`schemas list` shows all available schema names — use this first to discover what schemas exist before inspecting one.
 
 `schemas show --space` is the primary schema tool — it lists entity types and their properties (required marked with `*`), the hierarchy, **adjacent relationships**, all rules with descriptions, definitions with enum values, and the loaded schema registry. **Run this before authoring content or writing rules** to ensure you use the correct field names and types. The registry section
 at the bottom shows which bundled and local partials are in scope for `$ref` targets.
@@ -60,7 +73,7 @@ template-sync <space>  Sync Obsidian templates from schema examples
 plugins                List available plugins
 ```
 
-All commands require a registered space name. Run `bunx structured-context --help` or `bunx structured-context <command> --help` for flags.
+All commands require a registered space name. Run `sctx --help` or `sctx <command> --help` for flags.
 
 **`dump` is the key debugging tool.** Use it to verify `fieldMap` remapping is working or to
 inspect exactly what JSONata rules see when a rule fires unexpectedly.
@@ -113,7 +126,7 @@ structured-context supports **plugins** for extending capabilities. Currently, p
 For full plugin and markdown plugin config reference (fieldMap, typeInference, templateDir, filter views), run:
 
 ```bash
-bunx structured-context docs config
+sctx docs config
 ```
 
 ## References
