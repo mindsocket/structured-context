@@ -7,3 +7,8 @@ pre-commit:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
       run: bunx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
       stage_fixed: true
+
+pre-push:
+  commands:
+    check-plugin-version:
+      run: bash scripts/check-plugin-version.sh
