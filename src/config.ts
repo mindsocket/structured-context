@@ -124,13 +124,22 @@ function resolveRelativePaths(config: Config, configDir: string): Config {
     if (!p || isAbsolute(p) || isUrl(p)) return p;
     return resolve(configDir, p);
   };
+  const relSchema = (p: string | undefined): string | undefined => {
+    if (!p || isAbsolute(p) || isUrl(p)) return p;
+    if (!p.includes('/') && !p.includes('\\')) {
+      const localPath = resolve(configDir, p);
+      if (existsSync(localPath)) return localPath;
+      return join(bundledSchemasDir, p);
+    }
+    return resolve(configDir, p);
+  };
   return {
     ...config,
-    schema: rel(config.schema),
+    schema: relSchema(config.schema),
     spaces: config.spaces.map((s) => ({
       ...s,
       path: rel(s.path)!,
-      schema: rel(s.schema),
+      schema: relSchema(s.schema),
       plugins: normalizePlugins(s.plugins),
     })),
   };

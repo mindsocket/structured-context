@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "structured-context",
-      "source": "./plugin/structured-context"
+      "source": "./plugin"
     }
   ]
 }

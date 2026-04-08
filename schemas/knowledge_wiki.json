@@ -9,7 +9,9 @@
       "study": "source",
       "article": "source",
       "paper": "source",
-      "research": "source"
+      "research": "source",
+      "comparison": "synthesis",
+      "query": "synthesis"
     },
     "relationships": [
       {
@@ -22,6 +24,13 @@
       {
         "parent": "source",
         "type": "synthesis",
+        "field": "sources",
+        "fieldOn": "child",
+        "multiple": true
+      },
+      {
+        "parent": "source",
+        "type": "entity",
         "field": "sources",
         "fieldOn": "child",
         "multiple": true
@@ -131,6 +140,36 @@
           "type": "concept",
           "summary": "A property of an object that signals how it can be used, first described by Gibson and popularised in design by Norman",
           "tags": ["design", "ux"]
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "description": "A concrete entity — a person, organisation, product, model, or other named thing. The building blocks of the wiki's knowledge graph alongside concepts. Entities are distinct from concepts: a concept frames an idea or mechanism; an entity is a specific, identifiable thing in the world.",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "const": "entity" },
+        "summary": {
+          "$ref": "sctx://_sctx_base#/$defs/summary"
+        },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "description": "Wikilinks to source pages that contributed to this entity page"
+        },
+        "related": {
+          "type": "array",
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "description": "Wikilinks to related entity, concept, or synthesis pages"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "entity",
+          "summary": "AI safety research lab founded by Dario Amodei and Daniela Amodei",
+          "tags": ["company", "ai", "safety"]
         }
       ]
     },

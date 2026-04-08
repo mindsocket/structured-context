@@ -7,7 +7,7 @@ import { bundledSchemasDir, extractEntityInfo } from '../schema/schema';
 import { validateGraph } from '../schema/validate-graph';
 import { validateRules } from '../schema/validate-rules';
 import { buildSpaceGraph } from '../space-graph';
-import type { GraphViolation, RuleViolation, SchemaWithMetadata, SpaceContext } from '../types';
+import type { GraphViolation, RuleViolation, SchemaWithMetadata, SpaceContext, SpaceNode } from '../types';
 
 export interface FormattedError {
   message: string;
@@ -22,7 +22,7 @@ interface ValidationResult {
   duplicateErrors: Array<{ title: string; files: string[] }>;
   ruleViolations: RuleViolation[];
   hierarchyViolations: GraphViolation[];
-  orphanCount: number;
+  orphans: SpaceNode[];
   parseIgnored: string[];
 }
 
@@ -146,7 +146,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
     duplicateErrors: [],
     ruleViolations: [],
     hierarchyViolations: [],
-    orphanCount: 0,
+    orphans: [],
     parseIgnored: parseIgnored || [],
   };
 
@@ -189,7 +189,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
 
   // Calculate orphan count (informational, not a validation error)
   if (metadata.hierarchy) {
-    result.orphanCount = buildSpaceGraph(nodes, metadata.hierarchy.levels).orphans.length;
+    result.orphans = [...buildSpaceGraph(nodes, metadata.hierarchy.levels).orphans];
   }
 
   // Load and execute rules validation if schema defines rules
@@ -244,7 +244,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
           validCount: result.validCount,
           errorCount,
           errors: errorsByFile,
-          orphanCount: result.orphanCount,
+          orphanCount: result.orphans.length,
           parseIgnored: result.parseIgnored,
         },
         null,
@@ -286,8 +286,13 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   console.log(fmt('  Duplicate keys', result.duplicateErrors.length, true));
   console.log(fmt('  Rule violations', result.ruleViolations.length, true));
   console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
-  console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphanCount, true, true));
+  console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphans.length, true, true));
   console.log(fmt('  Ignored during parsing', result.parseIgnored.length, true, true));
+
+  if (result.orphans.length > 0) {
+    console.log(`\nOrphans (hierarchy nodes - no parent):`);
+    for (const node of result.orphans) console.log(`   ${node.label}`);
+  }
 
   if (result.parseIgnored.length > 0) {
     console.log(`\nIgnored during parsing:`);
