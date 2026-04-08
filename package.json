@@ -1,6 +1,6 @@
 {
   "name": "structured-context",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Tools for working with Opportunity Solution Tree structures and other product management and strategy frameworks",
   "module": "./dist/index.js",
   "type": "module",
