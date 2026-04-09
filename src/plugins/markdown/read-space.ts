@@ -107,7 +107,7 @@ export async function readSpaceDirectory(
     }
 
     if (!parsed.data || Object.keys(parsed.data).length === 0) {
-      parseIssues.push({ file, severity: 'warning', type: 'empty' });
+      parseIssues.push({ file, severity: 'warning', type: 'no-type', message: 'No front-matter or type specified' });
       continue;
     }
 

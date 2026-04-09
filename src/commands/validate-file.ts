@@ -2,7 +2,7 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import type { Config, SpaceConfig } from '../config';
 import { getSpaceConfigDir, loadConfig, resolveSchema } from '../config';
 import { readSpace } from '../read/read-space';
-import { loadSchema } from '../schema/schema';
+import { extractEntityInfo, loadSchema } from '../schema/schema';
 import { validateGraph } from '../schema/validate-graph';
 import { validateRules } from '../schema/validate-rules';
 import type { SpaceContext } from '../types';
@@ -79,11 +79,25 @@ export async function validateFile(filePath: string, options: { json?: boolean }
   const readResult = await readSpace(context);
   const { nodes } = readResult;
 
+  // Pre-extract valid types for early type validation
+  const validTypes = Array.isArray(schema.oneOf) ? extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type) : [];
+
   const errors: Record<string, { kind: string; message: string }> = {};
 
   // Schema validation errors for this node
   for (const node of nodes) {
     if (node.label !== label) continue;
+
+    // Early type validation - check before full AJV validation to prevent cascading errors
+    const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
+    if (nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType)) {
+      errors[`schema:type:${validTypes.join(',')}`] = {
+        kind: 'schema',
+        message: `Invalid type "${nodeType}". Valid types are: ${validTypes.sort().join(', ')}`,
+      };
+      continue;
+    }
+
     const valid = schemaValidator(node.schemaData);
     if (!valid) {
       const formatted = formatErrors(

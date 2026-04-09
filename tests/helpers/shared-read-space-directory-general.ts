@@ -13,12 +13,13 @@ export const defineValidSpaceTests = (it: Test<[]>, expect: Expect) => (getResul
     expect(vision?.schemaData.title).toBe('Personal Vision');
   });
 
-  it('reports no-frontmatter.md as a warning with type empty', () => {
+  it('reports no-frontmatter.md as a warning with type no-type', () => {
     const result = getResult();
     const issue = result.parseIssues.find((i) => i.file === 'no-frontmatter.md');
     expect(issue).toBeDefined();
     expect(issue?.severity).toBe('warning');
-    expect(issue?.type).toBe('empty');
+    expect(issue?.type).toBe('no-type');
+    expect(issue?.message).toBe('No front-matter or type specified');
   });
 
   it('reports meeting-notes.md as a warning with type no-type', () => {

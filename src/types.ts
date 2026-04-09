@@ -104,10 +104,10 @@ export type ParseIssue = {
   file: string;
   /** error: prevented the file from producing nodes; warning: file was silently excluded. */
   severity: 'error' | 'warning';
-  /** empty: no content; no-type: no type field;
+  /** no-type: no type field;
    *  parse: parse failure (syntax issue or unexpected content);
    *  plugins may choose to provide additional types. */
-  type: 'empty' | 'no-type' | 'parse' | string;
+  type: 'no-type' | 'parse' | string;
   /** Human-readable detail. */
   message?: string;
 };

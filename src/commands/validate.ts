@@ -138,6 +138,9 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   const readResult = await readSpace(context);
   const { nodes, parseIssues } = readResult;
 
+  // Pre-extract valid types for early type validation
+  const validTypes = Array.isArray(schema.oneOf) ? extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type) : [];
+
   const result: ValidationResult = {
     validCount: 0,
     nodeErrorCount: 0,
@@ -151,6 +154,27 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   };
 
   for (const node of nodes) {
+    // Early type validation - check before full AJV validation to prevent cascading errors
+    const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
+    if (nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType)) {
+      result.nodeErrorCount++;
+      result.nodeErrors.push({
+        file: node.label,
+        errors: [
+          {
+            instancePath: '/type',
+            keyword: 'enum',
+            message: `Invalid type "${nodeType}". Valid types are: ${validTypes.sort().join(', ')}`,
+            params: { allowedValues: validTypes },
+            schemaPath: '#/oneOf',
+            data: nodeType,
+          } as ErrorObject,
+        ],
+        nodeData: node.schemaData as Record<string, unknown>,
+      });
+      continue;
+    }
+
     const valid = schemaValidator(node.schemaData);
 
     if (valid) {
