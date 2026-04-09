@@ -1,4 +1,5 @@
 import { statSync } from 'node:fs';
+import type { FromSchema } from 'json-schema-to-ts';
 import type { ParseResult, PluginContext, StructuredContextPlugin } from '../util';
 import { PLUGIN_PREFIX } from '../util';
 import { readSpaceDirectory, readSpaceOnAPage } from './read-space';
@@ -6,35 +7,27 @@ import { renderBullets } from './render-bullets';
 import { renderMermaid } from './render-mermaid';
 import { templateSync } from './template-sync';
 
-export type TypeInferenceConfig = {
-  mode?: 'folder-name' | 'off';
-  folderMap?: Record<string, string>;
-};
-
-export type MarkdownPluginConfig = {
-  templateDir?: string;
-  fieldMap?: Record<string, string>;
-  templatePrefix?: string;
-  typeInference?: TypeInferenceConfig;
-};
-
+const TYPE_INFERENCE_CONFIG_SCHEMA = {
+  type: 'object',
+  properties: {
+    mode: { type: 'string', enum: ['folder-name', 'off'] },
+    folderMap: { type: 'object', additionalProperties: { type: 'string' } },
+  },
+  additionalProperties: false,
+} as const;
 export const MARKDOWN_CONFIG_SCHEMA = {
   type: 'object',
   properties: {
     templateDir: { type: 'string', format: 'path' }, // format is hint to config loader to resolve relative directories
     fieldMap: { type: 'object', additionalProperties: { type: 'string' } },
     templatePrefix: { type: 'string' },
-    typeInference: {
-      type: 'object',
-      properties: {
-        mode: { type: 'string', enum: ['folder-name', 'off'] },
-        folderMap: { type: 'object', additionalProperties: { type: 'string' } },
-      },
-      additionalProperties: false,
-    },
+    typeInference: TYPE_INFERENCE_CONFIG_SCHEMA,
   },
   additionalProperties: false,
-};
+} as const;
+
+export type MarkdownPluginConfig = FromSchema<typeof MARKDOWN_CONFIG_SCHEMA>;
+export type TypeInferenceConfig = FromSchema<typeof TYPE_INFERENCE_CONFIG_SCHEMA>;
 
 export function getMarkdownConfig(plugins?: Record<string, Record<string, unknown>>): MarkdownPluginConfig {
   return (plugins?.[`${PLUGIN_PREFIX}markdown`] ?? {}) as MarkdownPluginConfig;
