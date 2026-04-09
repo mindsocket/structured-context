@@ -17,10 +17,11 @@ describe('schema composition metadata', () => {
     expect(metadata.rules?.map((rule) => rule.id)).toEqual(['leaf-rule', 'pack-a-rule', 'root-rule']);
   });
 
-  it('rejects multiple hierarchy providers', () => {
-    expect(() => loadMetadata(join(FIXTURES_DIR, 'hierarchy-conflict-root.json'))).toThrow(
-      'Multiple metadata providers define "$metadata.hierarchy"',
-    );
+  it('uses root schema hierarchy when multiple providers define one', () => {
+    const metadata = loadMetadata(join(FIXTURES_DIR, 'hierarchy-conflict-root.json'));
+    // Root schema defines hierarchy with only ["goal"]; partial defines ["vision", "goal"].
+    // Root wins — it is processed last and overrides the partial.
+    expect(metadata.hierarchy?.levels.map((l) => l.type)).toEqual(['goal']);
   });
 
   it('fails conflicting rule IDs without explicit override', () => {

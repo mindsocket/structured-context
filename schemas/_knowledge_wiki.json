@@ -1,0 +1,246 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
+  "$id": "sctx://_knowledge_wiki",
+  // Shared entity definitions for knowledge wiki schemas.
+  // Provides aliases, relationships, rules, and entity type $defs.
+  // This partial has no hierarchy — wiki entities are flat with no required parent links.
+  "$metadata": {
+    "aliases": {
+      "source_summary": "source",
+      "study": "source",
+      "article": "source",
+      "paper": "source",
+      "research": "source",
+      "comparison": "synthesis",
+      "query": "synthesis"
+    },
+    "relationships": [
+      {
+        "parent": "source",
+        "type": "source",
+        "field": "sources",
+        "fieldOn": "child",
+        "multiple": true
+      },
+      {
+        "parent": "source",
+        "type": "synthesis",
+        "field": "sources",
+        "fieldOn": "child",
+        "multiple": true
+      },
+      {
+        "parent": "source",
+        "type": "entity",
+        "field": "sources",
+        "fieldOn": "child",
+        "multiple": true
+      },
+      {
+        "parent": "concept",
+        "type": "synthesis",
+        "field": "concepts",
+        "fieldOn": "child",
+        "multiple": true
+      }
+    ],
+    "rules": [
+      {
+        "id": "synthesis-references-sources",
+        "category": "coherence",
+        "description": "Syntheses should reference at least one contributing source in their sources array",
+        "type": "synthesis",
+        "check": "$exists(current.sources) and $count(current.sources) >= 1"
+      },
+      {
+        "id": "concept-has-summary",
+        "category": "best-practice",
+        "description": "Concept pages should have a short summary for index discoverability",
+        "type": "concept",
+        "check": "$exists(current.summary) and $length(current.summary) > 0"
+      }
+    ]
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "description": "A processed summary of a raw source (article, paper, book, video, thread, podcast, etc.). Captures key information from the source in structured form with provenance.",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "const": "source" },
+        "summary": {
+          "$ref": "sctx://_sctx_base#/$defs/summary"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL of the original source"
+        },
+        "local_copy": {
+          "$ref": "sctx://_sctx_base#/$defs/wikilink",
+          "description": "Wikilink to a local copy of the source (e.g. a saved PDF or clipped note)"
+        },
+        "author": {
+          "type": "string",
+          "description": "Author or creator of the source"
+        },
+        "book": {
+          "type": "string",
+          "description": "Book title and author if the source is a book"
+        },
+        "published_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Original publication date"
+        },
+        "source_type": {
+          "type": "string",
+          "description": "Kind of source material. Free-form — common values include article, paper, book, video, podcast, thread, substack, tweet, website. Not enum-constrained to allow evolving vocabulary."
+        },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "description": "Wikilinks to other source pages that this one references or extends"
+        }
+      },
+      "required": ["type", "url"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "source",
+          "author": "Joe Bloggs",
+          "url": "https://example.com/design-of-yesterday-things",
+          "source_type": "book",
+          "tags": ["design", "ux", "psychology"]
+        }
+      ]
+    },
+    "concept": {
+      "type": "object",
+      "description": "A concept page — defines and frames a specific idea, mechanism, or domain term. May draw from multiple sources. The building blocks of the wiki's knowledge graph.",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "const": "concept" },
+        "summary": {
+          "$ref": "sctx://_sctx_base#/$defs/summary"
+        },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "description": "Wikilinks to source pages that contributed to this concept"
+        },
+        "related": {
+          "type": "array",
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "description": "Wikilinks to related concept or synthesis pages"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "concept",
+          "summary": "A property of an object that signals how it can be used, first described by Gibson and popularised in design by Norman",
+          "tags": ["design", "ux"]
+        }
+      ]
+    },
+    "entity": {
+      "type": "object",
+      "description": "A concrete entity — a person, organisation, product, model, or other named thing. The building blocks of the wiki's knowledge graph alongside concepts. Entities are distinct from concepts: a concept frames an idea or mechanism; an entity is a specific, identifiable thing in the world.",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "const": "entity" },
+        "summary": {
+          "$ref": "sctx://_sctx_base#/$defs/summary"
+        },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "description": "Wikilinks to source pages that contributed to this entity page"
+        },
+        "related": {
+          "type": "array",
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "description": "Wikilinks to related entity, concept, or synthesis pages"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "entity",
+          "summary": "AI safety research lab founded by Dario Amodei and Daniela Amodei",
+          "tags": ["company", "ai", "safety"]
+        }
+      ]
+    },
+    "synthesis": {
+      "type": "object",
+      "description": "A synthesis page — connects multiple concepts and sources into a coherent model, framework, or thesis. The highest-value pages in a knowledge wiki. Must reference contributing sources.",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "const": "synthesis" },
+        "summary": {
+          "$ref": "sctx://_sctx_base#/$defs/summary"
+        },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "description": "Wikilinks to source pages this synthesis draws from"
+        },
+        "concepts": {
+          "type": "array",
+          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "description": "Wikilinks to concept pages this synthesis connects"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "synthesis",
+          "summary": "How Norman's affordance model and feedback principles combine to explain intuitive vs confusing interfaces",
+          "sources": ["[[The Design of Everyday Things - Don Norman]]"],
+          "concepts": ["[[Affordance]]", "[[Feedback loop]]"]
+        }
+      ]
+    },
+    "note": {
+      "type": "object",
+      "description": "Personal notes, journal entries, appointments, experiential records. Your own data about your journey — not sourced from external material.",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "const": "note" },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date this entry was created or relates to"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "note",
+          "date": "2024-03-15",
+          "tags": ["reading-log"]
+        }
+      ]
+    },
+    "index": {
+      "type": "object",
+      "description": "The wiki index — a catalog of all pages with links, summaries, and metadata. Updated by the agent on ingest. Used as the primary navigation entry point.",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "const": "index" }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "index"
+        }
+      ]
+    }
+  }
+}

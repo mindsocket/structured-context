@@ -9,6 +9,8 @@ const GENERAL_SCHEMA_PATH = join(bundledSchemasDir, 'strategy_general.json');
 const VALID_SCHEMA_PATH = join(FIXTURES_DIR, 'valid.json');
 const ALIAS_ONLY_SCHEMA_PATH = join(FIXTURES_DIR, 'alias-only.json');
 const INVALID_SCHEMA_PATH = join(FIXTURES_DIR, 'invalid-metadata.json');
+const INVALID_TYPE_REF_SCHEMA_PATH = join(FIXTURES_DIR, 'invalid-type-reference.json');
+const PARTIALLY_INVALID_RELATIONSHIPS_SCHEMA_PATH = join(FIXTURES_DIR, 'partially-invalid-relationships.json');
 const ON_A_PAGE_FIXTURE_PATH = join(import.meta.dir, '..', 'fixtures/general/on-a-page-valid.md');
 
 describe('schema metadata', () => {
@@ -45,5 +47,19 @@ describe('schema metadata', () => {
 
   it('rejects invalid $metadata in structured-context schema dialect', () => {
     expect(() => createValidator(INVALID_SCHEMA_PATH)).toThrow();
+  });
+
+  it('rejects metadata that references types not in oneOf', () => {
+    expect(() => loadMetadata(INVALID_TYPE_REF_SCHEMA_PATH)).toThrow('Schema metadata validation failed');
+  });
+
+  it('filters relationships to only include types in oneOf', () => {
+    // Schema has 3 relationships: 1 valid, 2 with invalid types
+    const metadata = loadMetadata(PARTIALLY_INVALID_RELATIONSHIPS_SCHEMA_PATH);
+
+    // Should only include the relationship where both parent and child types are valid
+    expect(metadata.relationships).toHaveLength(1);
+    expect(metadata.relationships?.[0]?.parent).toBe('goal');
+    expect(metadata.relationships?.[0]?.type).toBe('vision');
   });
 });

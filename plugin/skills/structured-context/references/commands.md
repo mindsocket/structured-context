@@ -1,12 +1,17 @@
 # structured-context Command Reference
 
-All commands use `bunx structured-context` (or `bun run src/index.ts` in development). Always pass
-`--config <path>` when the config is not in the default location.
+Install the CLI globally:
+
+```bash
+bun install -g structured-context
+```
+
+Then use the `sctx` command for all operations. Always pass `--config <path>` when the config is not in the default location.
 
 ## validate
 
 ```bash
-bunx structured-context validate <space> [--watch] [--config <path>]
+sctx validate <space> [--watch] [--config <path>]
 ```
 
 Validates all `.md` files in the space against the JSON schema. For each file:
@@ -23,16 +28,16 @@ Exit codes: `0` = clean, `1` = validation issues found.
 
 ```bash
 # Validate after editing content
-bunx structured-context validate <space>
+sctx validate <space>
 
 # Watch mode — re-validates on file changes
-bunx structured-context validate <space> --watch
+sctx validate <space> --watch
 ```
 
 ## show
 
 ```bash
-bunx structured-context show <space> [--filter <view-or-expression>]
+sctx show <space> [--filter <view-or-expression>]
 ```
 
 Prints a hierarchical tree of all nodes, indented by parent→child relationships. Useful for
@@ -46,13 +51,13 @@ expression. Only matching nodes are shown in the tree.
 
 ```bash
 # Inline expression
-bunx structured-context show <space> --filter "WHERE resolvedType='solution' and status='active'"
+sctx show <space> --filter "WHERE resolvedType='solution' and status='active'"
 
 # Ancestor attribute filter (solutions under an active opportunity)
-bunx structured-context show <space> --filter "WHERE resolvedType='solution' and \$exists(ancestors[resolvedType='opportunity' and status='active'])"
+sctx show <space> --filter "WHERE resolvedType='solution' and \$exists(ancestors[resolvedType='opportunity' and status='active'])"
 
 # Named view from config
-bunx structured-context show <space> --filter my-view-name
+sctx show <space> --filter my-view-name
 ```
 
 **Filter expression syntax:** `WHERE {jsonata}` | `SELECT {spec} WHERE {jsonata}` | `SELECT {spec}` | bare JSONata.
@@ -77,7 +82,7 @@ The SELECT spec is a comma-separated list of directives that expand the result s
 ## dump
 
 ```bash
-bunx structured-context dump <space>
+sctx dump <space>
 ```
 
 Outputs the full parsed node data as JSON, including resolved fields:
@@ -89,13 +94,13 @@ is working, or inspect what JSONata expressions see at evaluation time.
 
 ```bash
 # Pipe through jq to inspect a specific node
-bunx structured-context dump <space> | jq '.[] | select(.title == "My Node Title")'
+sctx dump <space> | jq '.[] | select(.title == "My Node Title")'
 ```
 
 ## diagram
 
 ```bash
-bunx structured-context diagram <space> [--output <file.mmd>]
+sctx diagram <space> [--output <file.mmd>]
 ```
 
 Generates a Mermaid `graph TD` diagram from space nodes. Nodes are colour-coded by type;
@@ -103,13 +108,13 @@ orphans are clustered separately. `--output` to file or stdout otherwise.
 
 ```bash
 # Write diagram to file
-bunx structured-context diagram <space> --output /tmp/tree.mmd
+sctx diagram <space> --output /tmp/tree.mmd
 ```
 
 ## miro-sync
 
 ```bash
-bunx structured-context miro-sync <space> [--new-frame <title>] [--dry-run] [--verbose] [--config <path>]
+sctx miro-sync <space> [--new-frame <title>] [--dry-run] [--verbose] [--config <path>]
 ```
 
 Syncs space nodes to a Miro board. Requires:
@@ -123,16 +128,16 @@ Sync is one-way (structured-context → Miro). Manual edits to managed cards in 
 
 ```bash
 # First sync to a new frame
-MIRO_TOKEN=xxx bunx structured-context miro-sync <space> --new-frame "My Frame"
+MIRO_TOKEN=xxx sctx miro-sync <space> --new-frame "My Frame"
 
 # Dry run to preview changes
-MIRO_TOKEN=xxx bunx structured-context miro-sync <space> --dry-run
+MIRO_TOKEN=xxx sctx miro-sync <space> --dry-run
 ```
 
 ## template-sync
 
 ```bash
-bunx structured-context template-sync <space> [--create-missing] [--dry-run] [--config <path>]
+sctx template-sync <space> [--create-missing] [--dry-run] [--config <path>]
 ```
 
 Keeps Obsidian template files in sync with schema `examples`. For each node type:
@@ -145,10 +150,10 @@ Requires `templateDir` (and optionally `templatePrefix`) set in the space's `plu
 
 ```bash
 # Preview template updates
-bunx structured-context template-sync <space> --dry-run
+sctx template-sync <space> --dry-run
 
 # Create missing templates
-bunx structured-context template-sync <space> --create-missing
+sctx template-sync <space> --create-missing
 ```
 
 ## Config structure

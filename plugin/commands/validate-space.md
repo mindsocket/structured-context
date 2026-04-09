@@ -4,10 +4,10 @@ description: Validate structured markdown content in an Obsidian space against i
 ---
 
 ## Available spaces
-!`bunx structured-context spaces 2>/dev/null`
+!`sctx spaces 2>/dev/null`
 
 ## Validation results
-!`bunx structured-context validate $ARGUMENTS`
+!`sctx validate $ARGUMENTS`
 
 ## Your task
 

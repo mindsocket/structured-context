@@ -6,12 +6,15 @@
       "outcome": "goal"
     }
   },
-  "type": "object",
-  "properties": {
-    "type": {
-      "const": "goal"
+  "oneOf": [
+    {
+      "type": "object",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "const": "goal" }
+      },
+      "required": ["type"],
+      "additionalProperties": true
     }
-  },
-  "required": ["type"],
-  "additionalProperties": true
+  ]
 }

@@ -55,12 +55,13 @@ Install globally (recommended):
 
 ```bash
 bun install -g structured-context
+sctx --help
 ```
 
 Or use directly via `bunx`:
 
 ```bash
-bunx structured-context validate <space>
+bunx structured-context --help
 ```
 
 ## Setup for AI Agents
@@ -179,15 +180,18 @@ Bare wikilink items (`- [[Existing Node]]`) in any embedding section populate a 
 With `fieldOn: "parent"`, embedded child nodes (parsed from a matching heading's list or table) are appended as wikilinks to the parent's `field` array, rather than receiving a `parent` field. This matches schemas where the content model naturally lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`).
 
 Metadata is composable across `$ref` graphs:
-- zero or one metadata provider may define `hierarchy`
+- `hierarchy`: multiple schema files may define a hierarchy; **last one wins** (root schema overrides partials)
 - `aliases` are shallow-merged (later wins)
 - `rules` merge by `id`; conflicts error unless the later rule sets `override: true`
 - `$metadata.rules` supports `$ref` imports for reusable rule packs
+- `relationships` are collected from all files
 
-If no provider defines `hierarchy`, hierarchy-specific checks are skipped. Reading a `space_on_a_page` file still requires `hierarchy.levels`.
+If no file defines `hierarchy`, hierarchy-specific checks are skipped.
 
 **Customizing Schemas:**
-- **Partial schemas**: Files starting with an underscore (like `_sctx_base.json`) are loaded and used to resolve references (using `$ref`).
+- **Partial schemas**: Files starting with an underscore (like `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`) are loaded and used to resolve references (using `$ref`).
+- **Partials as entity libraries**: Partials can define reusable entity types in `$defs` that composing schemas reference via `$ref`. Bundled partials like `_strategy_general` and `_knowledge_wiki` provide common entity sets for strategy and wiki content.
+- **Partials can carry metadata**: Unlike plain JSON Schema, partials may include `$metadata` (hierarchy, aliases, relationships, rules). This makes them self-contained units that bundle both type definitions and behavioral metadata.
 - **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "http://json-schema.org/draft-07/schema#"` so it validates standalone as plain JSON Schema.
 - **Loading priority**: Partial schemas are loaded from both the default schema directory and the directory of your specified target schema.
 - **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).

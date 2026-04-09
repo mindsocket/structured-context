@@ -258,8 +258,9 @@ Metadata is composed across the `$ref` graph with deterministic behavior:
 2. Apply root schema metadata last.
 
 Merge rules:
-- `hierarchy`: zero or one provider allowed. Multiple providers error.
-- `aliases`: shallow merged; later provider wins per key.
+- `hierarchy`: may be defined in partials; **last one wins**. This allows partials to define a default hierarchy that composing schemas can override.
+- `aliases`: shallow merged; later file wins per key.
+- `relationships`: collected from all files; order preserved.
 - `rules`: merged by `id`.
 - Duplicate rule `id` with different payload errors by default.
 - A later rule may replace an earlier one only with `"override": true`.
@@ -309,6 +310,8 @@ Imported rules are normalized into one executable flat list before validation.
 - Local partial `$id` values must not collide with bundled IDs.
 - `$ref` resolution is transitive across files.
 - Partials with no `$metadata` should prefer `$schema: "http://json-schema.org/draft-07/schema#"` so they validate standalone as plain JSON Schema fragments.
+- **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference these via `$ref` rather than redefining common entity types.
+- **Partials can carry metadata**: Partials may include `$metadata` (hierarchy, aliases, relationships, rules). This makes them self-contained units that bundle both type definitions and behavioral metadata.
 
 ## Editor expectations
 
@@ -328,7 +331,7 @@ For schemas migrating from older metadata structure:
 3. Move `allowSkipLevels` under `hierarchy`.
 4. Convert grouped rule containers to flat `rules[]` with per-rule `category`.
 5. If duplicate rule IDs are intentional, mark later rules with `override: true`.
-6. Re-run `bunx structured-context schemas show --space <name>` and `validate` to confirm merged metadata/rules.
+6. Re-run `sctx schemas show --space <name>` and `validate` to confirm merged metadata/rules.
 
 ## JSON5 support
 

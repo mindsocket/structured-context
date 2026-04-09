@@ -340,7 +340,6 @@ function areRulesEquivalent(left: Rule, right: Rule): boolean {
 function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string, AnySchemaObject>): SchemaMetadata {
   const metadataProviders = collectMetadataProviders(schema, schemaRefRegistry);
 
-  let hierarchyProvider: string | undefined;
   let mergedHierarchy: MetadataContract['hierarchy'] | undefined;
   const mergedAliases: Record<string, string> = {};
   const mergedRules = new Map<string, { providerId: string; rule: Rule }>();
@@ -348,12 +347,8 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
 
   for (const provider of metadataProviders) {
     if (provider.metadata.hierarchy) {
-      if (mergedHierarchy) {
-        throw new Error(
-          `Multiple metadata providers define "$metadata.hierarchy": "${hierarchyProvider}" and "${provider.schemaId}". Exactly one provider is allowed.`,
-        );
-      }
-      hierarchyProvider = provider.schemaId;
+      // Later providers (including root schema) override earlier ones (e.g. partials).
+      // This allows partials to define a default hierarchy that composing schemas can override.
       mergedHierarchy = provider.metadata.hierarchy;
     }
 
@@ -390,6 +385,17 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
     }
   }
 
+  // Collect valid type names from the schema's oneOf list for validation
+  const validTypeNames = extractSchemaTypeNames(schema as SchemaWithMetadata, schemaRefRegistry);
+
+  // Validate and filter metadata references against valid type names
+  validateMetadataReferences({ mergedHierarchy, mergedAliases, mergedRules, mergedRelationships }, validTypeNames);
+
+  // Filter relationships to only include those where both parent and child types are valid
+  const filteredRelationships = mergedRelationships.filter((rel) => {
+    return validTypeNames.has(rel.parent) && validTypeNames.has(rel.type);
+  });
+
   const levels: HierarchyLevel[] | undefined = mergedHierarchy?.levels.map((entry) => {
     if (typeof entry === 'string') {
       return { type: entry, field: 'parent', fieldOn: 'child', multiple: false, selfRef: false };
@@ -420,8 +426,8 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
     typeAliases: Object.keys(mergedAliases).length > 0 ? mergedAliases : undefined,
     rules: mergedRules.size > 0 ? [...mergedRules.values()].map(({ rule }) => normalizeRule(rule)) : undefined,
     relationships:
-      mergedRelationships.length > 0
-        ? mergedRelationships.map((rel) => ({
+      filteredRelationships.length > 0
+        ? filteredRelationships.map((rel) => ({
             ...rel,
             field: rel.field ?? 'parent',
             fieldOn: rel.fieldOn === 'parent' ? 'parent' : ('child' as const),
@@ -429,6 +435,52 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
           }))
         : undefined,
   };
+}
+
+interface MetadataForValidation {
+  mergedHierarchy: MetadataContract['hierarchy'] | undefined;
+  mergedAliases: Record<string, string>;
+  mergedRules: Map<string, { providerId: string; rule: Rule }>;
+  mergedRelationships: MetadataContractRelationship[];
+}
+
+function validateMetadataReferences(metadata: MetadataForValidation, validTypes: Set<string>): void {
+  // Skip validation if no types are defined (e.g., schemas without oneOf or placeholder schemas)
+  if (validTypes.size === 0) {
+    return;
+  }
+
+  const errors: string[] = [];
+
+  // Validate hierarchy level types
+  if (metadata.mergedHierarchy?.levels) {
+    for (const level of metadata.mergedHierarchy.levels) {
+      const typeName = typeof level === 'string' ? level : level.type;
+      if (!validTypes.has(typeName)) {
+        errors.push(`Hierarchy level "${typeName}" is not a valid type in the schema's oneOf list`);
+      }
+    }
+  }
+
+  // Validate alias targets (the values)
+  for (const [alias, target] of Object.entries(metadata.mergedAliases)) {
+    if (!validTypes.has(target)) {
+      errors.push(`Alias "${alias}" → "${target}" references type "${target}" which is not in the schema's oneOf list`);
+    }
+  }
+
+  // Note: relationships are filtered (not validated) - see extractMetadata
+
+  // Validate rule types
+  for (const { rule } of metadata.mergedRules.values()) {
+    if (rule.type && !validTypes.has(rule.type)) {
+      errors.push(`Rule "${rule.id}" has type "${rule.type}" which is not in the schema's oneOf list`);
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Schema metadata validation failed:\n  - ${errors.join('\n  - ')}`);
+  }
 }
 
 export interface EntityInfo {

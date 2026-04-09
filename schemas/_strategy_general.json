@@ -1,0 +1,262 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
+  "$id": "sctx://_strategy_general",
+  // Shared entity definitions for strategy-general schemas.
+  // Provides a default hierarchy, aliases, relationships, and entity type $defs.
+  // Composing schemas can override the hierarchy by defining their own.
+  "$metadata": {
+    "hierarchy": {
+      "levels": [
+        "vision",
+        "mission",
+        { "type": "goal", "selfRef": true, "matchers": ["Goals"] },
+        { "type": "opportunity", "selfRef": true, "matchers": ["Opportunities"] },
+        {
+          "type": "solution",
+          "selfRef": true,
+          "matchers": ["Solutions", "Potential solutions", "Solutions considered", "Possible solutions"]
+        },
+        "experiment"
+      ]
+    },
+    "aliases": {
+      "outcome": "goal",
+      "assumption_test": "experiment",
+      "test": "experiment"
+    },
+    "relationships": [
+      {
+        "parent": "opportunity",
+        "type": "problem_statement",
+        "templateFormat": "heading",
+        "matchers": ["Problem statement", "What problem are we solving?"],
+        "multiple": false
+      },
+      {
+        "parent": "opportunity",
+        "type": "assumption",
+        "templateFormat": "table",
+        "matchers": ["Assumptions", "^Assumptions?$"],
+        "embeddedTemplateFields": ["assumption", "status", "confidence"],
+        "multiple": true
+      }
+    ]
+  },
+  "$defs": {
+    "dashboard": {
+      "type": "object",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "const": "dashboard" }
+      },
+      "required": ["type"],
+      "additionalProperties": true
+    },
+    "ost_on_a_page": {
+      "type": "object",
+      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "properties": {
+        "type": { "enum": ["ost_on_a_page", "space_on_a_page"] }
+      },
+      "required": ["type"],
+      "additionalProperties": true
+    },
+    "vision": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "vision" }
+      },
+      "required": ["type"],
+      "not": { "required": ["parent"] },
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "vision",
+          "status": "active"
+        }
+      ]
+    },
+    "mission": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "mission" }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "mission",
+          "status": "active",
+          "parent": "[[Personal Vision]]"
+        }
+      ]
+    },
+    "goal": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "enum": ["goal", "outcome"] },
+        "priority": { "$ref": "sctx://_sctx_base#/$defs/priority" }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "goal",
+          "status": "active",
+          "parent": "[[My Mission (2026)]]",
+          "priority": "p2"
+        }
+      ]
+    },
+    "opportunity": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "opportunity" },
+        "priority": { "$ref": "sctx://_sctx_base#/$defs/priority" },
+        "impact": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
+        "feasibility": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
+        "resources": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
+        "timeline": {
+          "type": "string",
+          "description": "Timeline estimate (e.g., S-M, M-L)"
+        },
+        "next_steps": {
+          "type": "string",
+          "description": "Next steps for this opportunity"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "opportunity",
+          "status": "identified",
+          "parent": "[[Career Growth]]",
+          "priority": "p2"
+        }
+      ]
+    },
+    "solution": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "solution" },
+        "priority": { "$ref": "sctx://_sctx_base#/$defs/priority" },
+        "impact": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
+        "feasibility": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
+        "resources": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
+        "timeline": {
+          "type": "string",
+          "description": "Timeline estimate (e.g., S-M, M-L)"
+        },
+        "next_steps": {
+          "type": "string",
+          "description": "Next steps for this solution"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "solution",
+          "status": "identified",
+          "parent": "[[Some Opportunity]]",
+          "priority": "p3"
+        }
+      ]
+    },
+    "experiment": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "enum": ["experiment", "assumption_test", "test"] }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "experiment",
+          "status": "exploring",
+          "parent": "[[Build a Side Project]]"
+        },
+        {
+          "type": "test",
+          "status": "active",
+          "parent": "[[Mobile App Solution]]"
+        }
+      ]
+    },
+    "assumption": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "assumption" },
+        "confidence": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Confidence level in this assumption"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "assumption",
+          "status": "identified",
+          "parent": "[[Some Opportunity]]",
+          "confidence": "medium"
+        }
+      ]
+    },
+    "problem_statement": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+      ],
+      "properties": {
+        "type": { "const": "problem_statement" }
+      },
+      "required": ["type"],
+      "additionalProperties": true,
+      "examples": [
+        {
+          "type": "problem_statement",
+          "status": "identified"
+        }
+      ]
+    }
+  }
+}

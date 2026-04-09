@@ -117,7 +117,7 @@ Schema definitions use the mapped target names.
 
 ## `$ref` patterns
 
-Use `bunx structured-context schemas show _sctx_base.json` to inspect built-in defs.
+Use `sctx schemas show _sctx_base.json` to inspect built-in defs.
 
 **Available partials in `_sctx_base`:**
 

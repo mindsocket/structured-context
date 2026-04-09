@@ -13,8 +13,14 @@ set -euo pipefail
 
 PLUGIN_JSON="plugin/.claude-plugin/plugin.json"
 
-pkg_version=$(bun -e "process.stdout.write(JSON.parse(require('fs').readFileSync('package.json','utf8')).version)")
-plugin_version=$(bun -e "process.stdout.write(JSON.parse(require('fs').readFileSync('$PLUGIN_JSON','utf8')).version)")
+BUN=$(command -v bun 2>/dev/null || echo "$HOME/.bun/bin/bun")
+if ! "$BUN" --version >/dev/null 2>&1; then
+  echo "sync-plugin-version: bun not found, cannot sync plugin version" >&2
+  exit 1
+fi
+
+pkg_version=$("$BUN" -e "process.stdout.write(JSON.parse(require('fs').readFileSync('package.json','utf8')).version)")
+plugin_version=$("$BUN" -e "process.stdout.write(JSON.parse(require('fs').readFileSync('$PLUGIN_JSON','utf8')).version)")
 
 IFS='.' read -r pkg_major pkg_minor _pkg_patch <<< "$pkg_version"
 IFS='.' read -r plugin_major plugin_minor plugin_patch <<< "$plugin_version"
