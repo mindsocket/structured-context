@@ -11,4 +11,4 @@ pre-commit:
 pre-push:
   commands:
     check-plugin-version:
-      run: bash scripts/check-plugin-version.sh
+      run: bash scripts/sync-plugin-version.sh --check
