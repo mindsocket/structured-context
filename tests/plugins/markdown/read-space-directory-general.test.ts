@@ -1,14 +1,11 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
-import { defineValidSpaceTests } from 'tests/helpers/shared-read-space-directory-general';
 import { readSpaceDirectory } from '../../../src/plugins/markdown/read-space';
 import type { ParseResult } from '../../../src/plugins/util';
 import { resolveGraphEdges } from '../../../src/read/resolve-graph-edges';
 import { bundledSchemasDir, loadMetadata } from '../../../src/schema/schema';
 import type { SpaceNode } from '../../../src/types';
 import { makePluginContext } from '../../helpers/context';
-
-const checkValidSpace = defineValidSpaceTests(it, expect);
 
 const metadata = loadMetadata(join(bundledSchemasDir, 'strategy_general.json'));
 
@@ -23,7 +20,53 @@ describe('readSpaceDirectory', () => {
       result = await readSpaceDirectory(makePluginContext(VALID_DIR));
     });
 
-    checkValidSpace(() => result);
+    it('returns 12 OST nodes (5 original + vision_page + 2 embedded + solution_page + anchor_vision + 2 embedded)', () => {
+      expect(result.nodes).toHaveLength(12);
+    });
+
+    it('injects title from filename for file-based nodes', () => {
+      const vision = result.nodes.find((n) => n.label === 'Personal Vision.md');
+      expect(vision?.schemaData.title).toBe('Personal Vision');
+    });
+
+    it('reports no-frontmatter.md as a warning with type no-type', () => {
+      const issue = result.parseIssues.find((i) => i.file === 'no-frontmatter.md');
+      expect(issue).toBeDefined();
+      expect(issue?.severity).toBe('warning');
+      expect(issue?.type).toBe('no-type');
+      expect(issue?.message).toBe('No front-matter or type specified');
+    });
+
+    it('reports meeting-notes.md as a warning with type no-type', () => {
+      const issue = result.parseIssues.find((i) => i.file === 'meeting-notes.md');
+      expect(issue).toBeDefined();
+      expect(issue?.severity).toBe('warning');
+      expect(issue?.type).toBe('no-type');
+    });
+
+    it('skipped files do not appear in nodes', () => {
+      expect(result.nodes.every((n) => n.label !== 'no-frontmatter.md')).toBe(true);
+    });
+
+    it('nonSpace files do not appear in nodes', () => {
+      expect(result.nodes.every((n) => n.label !== 'meeting-notes.md')).toBe(true);
+    });
+
+    it('preserves numeric frontmatter fields on Technical Skills', () => {
+      const ts = result.nodes.find((n) => n.label === 'Technical Skills.md');
+      expect(ts?.schemaData.impact).toBe(4);
+      expect(ts?.schemaData.feasibility).toBe(3);
+      expect(ts?.schemaData.resources).toBe(2);
+      expect(ts?.schemaData.priority).toBe('p3');
+    });
+
+    it('Community OST.md (ost_on_a_page) is excluded from nodes', () => {
+      expect(result.nodes.every((n) => n.label !== 'Community OST.md')).toBe(true);
+    });
+
+    it('Community OST.md does not appear in parseIssues', () => {
+      expect(result.parseIssues.some((i) => i.file === 'Community OST.md')).toBe(false);
+    });
   });
 
   describe('embedded nodes in typed pages', () => {
