@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
-import { Glob } from 'bun';
+import fg from 'fast-glob';
 import matter from 'gray-matter';
-import type { BaseNode } from '../../plugin-api';
+import type { BaseNode } from '../../api';
 import { extractSchemaTypeNames } from '../../schema/schema';
 import type { ParseIssue } from '../../types';
 import type { ParseResult, PluginContext } from '../util';
@@ -75,7 +75,7 @@ export async function readSpaceDirectory(
   const knownTypes =
     typeInferenceCfg?.mode !== 'off' ? extractSchemaTypeNames(context.schema, context.schemaRefRegistry) : undefined;
 
-  const files = await Array.fromAsync(new Glob('**/*.md').scan({ cwd: directory, followSymlinks: true }));
+  const files = await fg('**/*.md', { cwd: directory, followSymbolicLinks: true });
   const nodes: BaseNode[] = [];
   const parseIssues: ParseIssue[] = [];
 

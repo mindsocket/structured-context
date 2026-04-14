@@ -11,7 +11,7 @@ import type {
   Relationship,
   SchemaMetadata,
   SharedEmbeddingFields,
-} from '../../plugin-api';
+} from '../../api';
 import { applyFieldMap, coerceDates } from './util';
 
 /** Type values that identify a space_on_a_page container (not themselves space nodes). */

@@ -1,225 +1,13 @@
 import { dirname } from 'node:path';
-import type { ErrorObject } from 'ajv';
 import chokidar from 'chokidar';
 import { getConfigSourceFiles } from '../config';
-import { readSpace } from '../read/read-space';
-import { bundledSchemasDir, extractEntityInfo } from '../schema/schema';
-import { validateGraph } from '../schema/validate-graph';
-import { validateRules } from '../schema/validate-rules';
-import { buildSpaceGraph } from '../space-graph';
-import type { GraphViolation, ParseIssue, RuleViolation, SchemaWithMetadata, SpaceContext, SpaceNode } from '../types';
-
-export interface FormattedError {
-  message: string;
-  dedupeKey: string;
-}
-
-interface ValidationResult {
-  validCount: number;
-  nodeErrorCount: number;
-  nodeErrors: Array<{ file: string; errors: ErrorObject[]; nodeData: Record<string, unknown> }>;
-  refErrors: Array<{ file: string; parent: string; error: string }>;
-  duplicateErrors: Array<{ title: string; files: string[] }>;
-  ruleViolations: RuleViolation[];
-  hierarchyViolations: GraphViolation[];
-  orphans: SpaceNode[];
-  parseIssues: ParseIssue[];
-}
-
-/**
- * Format AJV errors for better readability.
- * Groups related errors and extracts helpful context like allowed values.
- */
-export function formatErrors(
-  errors: ErrorObject[],
-  schema: SchemaWithMetadata,
-  schemaRefRegistry: Parameters<typeof extractEntityInfo>[1],
-  nodeData: Record<string, unknown>,
-): FormattedError[] {
-  const formatted: FormattedError[] = [];
-  const seen = new Set<string>();
-
-  // Group errors by instancePath
-  const byPath = new Map<string, ErrorObject[]>();
-  for (const err of errors) {
-    const path = err.instancePath || 'root';
-    if (!byPath.has(path)) {
-      byPath.set(path, []);
-    }
-    byPath.get(path)!.push(err);
-  }
-
-  for (const [path, pathErrors] of byPath) {
-    // Check if this is a oneOf failure at root - extract valid types from schema
-    const isRootOneOf = path === 'root' || path === '/type';
-    let hasOneOfContext = false;
-    if (isRootOneOf && pathErrors.length > 1) {
-      hasOneOfContext = Array.isArray(schema.oneOf);
-
-      if (hasOneOfContext) {
-        const entities = extractEntityInfo(schema, schemaRefRegistry);
-        const validTypes = entities.map((e) => e.type).sort();
-
-        if (validTypes.length > 0) {
-          const actualValue = nodeData.type;
-          // Only show type error if the actual type is NOT in the valid types list
-          if (actualValue !== undefined && !validTypes.includes(String(actualValue))) {
-            const message = `Invalid type "${actualValue}". Valid types are: ${validTypes.join(', ')}`;
-            const key = `type:${validTypes.join(',')}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              formatted.push({ message, dedupeKey: key });
-            }
-          }
-        }
-      }
-    }
-
-    // Handle individual errors
-    for (const err of pathErrors) {
-      // Skip individual type const/enum errors when in oneOf context (we handle it above)
-      if (
-        hasOneOfContext &&
-        (err.keyword === 'const' || err.keyword === 'enum') &&
-        (err.instancePath === '' || err.instancePath === '/type')
-      ) {
-        continue;
-      }
-
-      const parts = err.instancePath.split('/').filter(Boolean);
-      const fieldName = parts.length > 0 ? parts[parts.length - 1]! : 'root';
-
-      let message = err.message;
-      let key = `${err.instancePath}:${err.keyword}`;
-
-      // Enhance const errors
-      if (err.keyword === 'const' && err.params?.allowedValue !== undefined) {
-        const actual = err.data !== undefined ? `"${err.data}"` : 'missing value';
-        const expected = `"${err.params.allowedValue}"`;
-        message = `${fieldName}: expected ${expected}, got ${actual}`;
-        key = `${err.instancePath}:const:${err.params.allowedValue}`;
-      }
-      // Enhance enum errors
-      else if (err.keyword === 'enum' && err.params?.allowedValues && Array.isArray(err.params.allowedValues)) {
-        let actual = err.data !== undefined ? `"${err.data}"` : null;
-        // If err.data is undefined, try to get the value from nodeData using the field name
-        if (actual === null && fieldName !== 'root') {
-          const actualValue = nodeData[fieldName];
-          if (actualValue !== undefined) {
-            actual = `"${actualValue}"`;
-          }
-        }
-        if (actual === null) {
-          actual = 'missing value';
-        }
-        const allowed = err.params.allowedValues.map((v: unknown) => `"${v}"`).join(', ');
-        message = `${fieldName}: ${actual} is not valid. Allowed: ${allowed}`;
-        key = `${err.instancePath}:enum:${err.params.allowedValues.join(',')}`;
-      }
-      // Generic message with path
-      else {
-        message = `${fieldName}: ${err.message}`;
-      }
-
-      if (!seen.has(key)) {
-        seen.add(key);
-        formatted.push({ message, dedupeKey: key });
-      }
-    }
-  }
-
-  return formatted;
-}
+import { bundledSchemasDir } from '../schema/schema';
+import type { SpaceContext } from '../types';
+import { formatErrors, validateSpace } from '../validate';
 
 export async function validate(context: SpaceContext, options: { json?: boolean } = {}): Promise<number> {
-  const { schema, schemaRefRegistry, schemaValidator } = context;
-  const metadata = schema.metadata;
-
-  const readResult = await readSpace(context);
-  const { nodes, parseIssues } = readResult;
-
-  // Pre-extract valid types for early type validation
-  const validTypes = Array.isArray(schema.oneOf) ? extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type) : [];
-
-  const result: ValidationResult = {
-    validCount: 0,
-    nodeErrorCount: 0,
-    nodeErrors: [],
-    refErrors: [],
-    duplicateErrors: [],
-    ruleViolations: [],
-    hierarchyViolations: [],
-    orphans: [],
-    parseIssues,
-  };
-
-  for (const node of nodes) {
-    // Early type validation - check before full AJV validation to prevent cascading errors
-    const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
-    if (nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType)) {
-      result.nodeErrorCount++;
-      result.nodeErrors.push({
-        file: node.label,
-        errors: [
-          {
-            instancePath: '/type',
-            keyword: 'enum',
-            message: `Invalid type "${nodeType}". Valid types are: ${validTypes.sort().join(', ')}`,
-            params: { allowedValues: validTypes },
-            schemaPath: '#/oneOf',
-            data: nodeType,
-          } as ErrorObject,
-        ],
-        nodeData: node.schemaData as Record<string, unknown>,
-      });
-      continue;
-    }
-
-    const valid = schemaValidator(node.schemaData);
-
-    if (valid) {
-      result.validCount++;
-    } else {
-      result.nodeErrorCount++;
-      result.nodeErrors.push({
-        file: node.label,
-        errors: schemaValidator.errors || [],
-        nodeData: node.schemaData as Record<string, unknown>,
-      });
-    }
-  }
-
-  // Detect duplicate node keys (titles)
-  const titleToFiles = new Map<string, string[]>();
-  for (const node of nodes) {
-    const title = node.title;
-    if (!titleToFiles.has(title)) {
-      titleToFiles.set(title, []);
-    }
-    titleToFiles.get(title)!.push(node.label);
-  }
-
-  for (const [title, files] of titleToFiles) {
-    if (files.length > 1) {
-      result.duplicateErrors.push({ title, files });
-    }
-  }
-
-  // Validate all hierarchy constraints (field references and structure)
-  const hierarchyValidation = validateGraph(nodes, metadata, readResult.unresolvedRefs);
-
-  result.refErrors.push(...hierarchyValidation.refErrors);
-  result.hierarchyViolations = [...hierarchyValidation.violations];
-
-  // Calculate orphan count (informational, not a validation error)
-  if (metadata.hierarchy) {
-    result.orphans = [...buildSpaceGraph(nodes, metadata.hierarchy.levels).orphans];
-  }
-
-  // Load and execute rules validation if schema defines rules
-  if (metadata.rules) {
-    result.ruleViolations = await validateRules(nodes, metadata.rules);
-  }
+  const { schema, schemaRefRegistry } = context;
+  const result = await validateSpace(context);
 
   // JSON output mode
   if (options.json) {
@@ -227,7 +15,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
 
     const addError = (file: string, key: string, kind: string, message: string) => {
       if (!errorsByFile[file]) errorsByFile[file] = {};
-      errorsByFile[file][key] = { kind, message };
+      errorsByFile[file]![key] = { kind, message };
     };
 
     for (const { file, errors: ajvErrors, nodeData } of result.nodeErrors) {
@@ -280,7 +68,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
     return errorCount > 0 ? 1 : 0;
   }
 
-  // Report
+  // Human-readable output
   const reset = '\x1b[0m';
   const green = '\x1b[32m';
   const red = '\x1b[31m';
@@ -296,7 +84,6 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
     if (isError) {
       color = colorFor(count, isWarning);
     } else {
-      // For non-error items (like "Valid"), green if count > 0, red if 0
       color = count > 0 ? green : red;
     }
     const countStr = String(count).padStart(3);
@@ -360,16 +147,12 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   if (result.ruleViolations.length > 0) {
     console.log(`\nRule violations:`);
 
-    // Group by category
-    const byCategory = new Map<string, RuleViolation[]>();
+    const byCategory = new Map<string, typeof result.ruleViolations>();
     for (const v of result.ruleViolations) {
-      if (!byCategory.has(v.category)) {
-        byCategory.set(v.category, []);
-      }
+      if (!byCategory.has(v.category)) byCategory.set(v.category, []);
       byCategory.get(v.category)!.push(v);
     }
 
-    // Report each category
     for (const [category, violations] of byCategory) {
       console.log(`  ${category.toUpperCase()} (${violations.length}):`);
       for (const v of violations) {
@@ -387,7 +170,6 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
 
   console.log(`\n`);
 
-  // Return exit code (0 for success, 1 for validation failures)
   if (
     result.nodeErrorCount > 0 ||
     result.refErrors.length > 0 ||
@@ -417,7 +199,6 @@ export async function watchValidate(context: SpaceContext): Promise<never> {
   console.log(`   Space:  ${spacePath}`);
   console.log(`   Press Ctrl+C to stop\n`);
 
-  // Save cursor position after header (for clearing later)
   process.stdout.write('\x1b[s');
 
   let exitCode = 0;
@@ -442,7 +223,6 @@ export async function watchValidate(context: SpaceContext): Promise<never> {
   });
 
   const handleFileChange = async (filePath: string, action: string) => {
-    // Restore cursor to header position and clear everything below
     process.stdout.write('\x1b[u\x1b[0J');
     console.log(`🔄 ${filePath} ${action}, re-validating...\n`);
     await innerValidate();
@@ -451,12 +231,10 @@ export async function watchValidate(context: SpaceContext): Promise<never> {
   watcher.on('add', (path) => handleFileChange(path, 'added'));
   watcher.on('change', (path) => handleFileChange(path, 'changed'));
   watcher.on('unlink', (path) => handleFileChange(path, 'removed'));
-
   watcher.on('error', (error) => {
     console.error(`Watcher error: ${error}`);
   });
 
-  // Keep process alive
   return new Promise((_, reject) => {
     process.on('SIGINT', () => {
       console.log('\n\n👋 Stopping watch mode...');

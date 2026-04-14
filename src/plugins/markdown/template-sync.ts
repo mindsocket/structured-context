@@ -1,10 +1,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
-import { Glob } from 'bun';
+import fg from 'fast-glob';
 import matter from 'gray-matter';
 import yaml from 'js-yaml';
-import type { HierarchyLevel, Relationship, SchemaWithMetadata } from '../../plugin-api';
+import type { HierarchyLevel, Relationship, SchemaWithMetadata } from '../../api';
 import { mergeVariantProperties, resolveRef } from '../../schema/schema-refs';
 import type { PluginContext, TemplateSyncOptions } from '../util';
 import type { MarkdownPluginConfig } from './index';
@@ -260,7 +260,7 @@ export async function templateSync(context: PluginContext, options: TemplateSync
   const typeVariants = getTypeVariants(schema, schemaRefRegistry);
   const matchedTypes = new Set<string>();
 
-  const files = await Array.fromAsync(new Glob('*.md').scan({ cwd: templateDir, absolute: true }));
+  const files = await fg('*.md', { cwd: templateDir, absolute: true });
   const dryRun = options.dryRun ?? false;
   let filesModified = 0;
   let filesCreated = 0;
