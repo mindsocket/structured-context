@@ -1,9 +1,14 @@
 {
   "name": "structured-context",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "description": "Structured content authoring for Obsidian — automatic validation hooks, slash commands, and agent skills to keep markdown files compliant with your schema.",
   "homepage": "https://github.com/mindsocket/structured-context",
   "repository": "https://github.com/mindsocket/structured-context",
   "license": "MIT",
-  "keywords": ["structured-context", "validation", "markdown", "schema"]
+  "keywords": [
+    "structured-context",
+    "validation",
+    "markdown",
+    "schema"
+  ]
 }

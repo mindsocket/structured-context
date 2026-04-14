@@ -1,6 +1,6 @@
 {
   "name": "structured-context",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "description": "Keep your content clean and your thinking clear with assistive tools for structured knowledge",
   "module": "./dist/index.js",
   "type": "module",
