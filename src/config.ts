@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv from 'ajv';
-import { JSON5 } from 'bun';
+import JSON5 from 'json5';
 import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
 import { normalizePluginName } from './plugins/util';
 import { bundledSchemasDir } from './schema/schema';

@@ -11,7 +11,7 @@ import { show } from './commands/show';
 import { listSpaces } from './commands/spaces';
 import { templateSync } from './commands/template-sync';
 import { validate, watchValidate } from './commands/validate';
-import { validateFile } from './commands/validate-file';
+import { validateFileCommand } from './commands/validate-file';
 
 import { getSpaceConfigDir, loadConfig, resolveSchema, setConfigPath } from './config';
 import { CLI_NAME } from './constants';
@@ -61,7 +61,7 @@ program
   .argument('<path>', 'Path to the file to validate')
   .option('--json', 'Output results as JSON (machine-readable, for hooks)')
   .action(async (filePath, options) => {
-    const exitCode = await validateFile(filePath, { json: options.json });
+    const exitCode = await validateFileCommand(filePath, { json: options.json });
     process.exit(exitCode);
   });
 

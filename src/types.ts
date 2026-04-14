@@ -176,3 +176,21 @@ export type SpaceContext = {
   /** Directory of the config file that defines this space. Used for resolving relative paths in plugin configs. */
   configDir: string;
 };
+
+export interface FileValidationResult {
+  file: string;
+  label: string;
+  space: string;
+  /** Errors keyed by composite id (e.g. `schema:/status:enum:active`, `rule:my-rule-id`). */
+  errors: Record<string, { kind: string; message: string }>;
+  errorCount: number;
+  inSpace: true;
+}
+
+export interface FileNotInSpaceResult {
+  file: string;
+  inSpace: false;
+  message: string;
+}
+
+export type ValidateFileOutput = FileValidationResult | FileNotInSpaceResult;

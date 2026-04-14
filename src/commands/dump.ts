@@ -1,4 +1,4 @@
-import { JSON5 } from 'bun';
+import JSON5 from 'json5';
 import { readSpace } from '../read/read-space';
 import type { SpaceContext } from '../types';
 

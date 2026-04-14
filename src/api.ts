@@ -1,12 +1,14 @@
 /**
- * Public API for external structured-context plugins.
+ * Public API for structured-context.
  *
- * Import from this module to get the types needed to implement a StructuredContextPlugin:
+ * Import from this module to use structured-context as a library:
  *
- *   import type { StructuredContextPlugin, PluginContext, ParseResult } from 'structured-context/plugin-api';
+ *   import { validateFile } from 'structured-context/api';
+ *   import type { StructuredContextPlugin, PluginContext, ParseResult } from 'structured-context/api';
  */
 
 export type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
+export type { Config, SpaceConfig } from './config';
 export type {
   ParseHook,
   ParseResult,
@@ -23,6 +25,8 @@ export type { SpaceGraph } from './space-graph';
 export type {
   BaseNode,
   EdgeDefinition,
+  FileNotInSpaceResult,
+  FileValidationResult,
   HierarchyLevel,
   ParseIssue,
   Relationship,
@@ -31,4 +35,6 @@ export type {
   SpaceContext,
   SpaceNode,
   UnresolvedRef,
+  ValidateFileOutput,
 } from './types';
+export { validateFile } from './validate';
