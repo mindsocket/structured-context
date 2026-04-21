@@ -12,27 +12,21 @@ export interface SyncOptions {
 
 export async function miroSync(context: PluginContext, graph: SpaceGraph, options: SyncOptions): Promise<string> {
   const token = process.env.MIRO_TOKEN;
-  if (!token) {
-    console.error('MIRO_TOKEN environment variable is required');
-    process.exit(1);
-  }
+  if (!token) throw new Error('MIRO_TOKEN environment variable is required');
 
   const { space } = context;
   const boardId = context.pluginConfig.boardId as string | undefined;
   const configuredFrameId = context.pluginConfig.frameId as string | undefined;
 
   // 1. Resolve board
-  if (!boardId) {
-    console.error(`No boardId configured for space "${space.name}".`);
-    console.error('Add boardId to the miro plugin config in the space entry.');
-    process.exit(1);
-  }
+  if (!boardId)
+    throw new Error(
+      `No boardId configured for space "${space.name}". Add boardId to the miro plugin config in the space entry.`,
+    );
 
   // 2. Resolve frame
-  if (!configuredFrameId && !options.newFrame) {
-    console.error('No frameId in miro plugin config. Pass --new-frame "Title" to create one.');
-    process.exit(1);
-  }
+  if (!configuredFrameId && !options.newFrame)
+    throw new Error('No frameId in miro plugin config. Pass --new-frame "Title" to create one.');
 
   // 3. Filter to hierarchy nodes only (graph already built by caller)
   const nodes = [...graph.nodes.values()].filter((n) => graph.hierarchyTitles.has(n.title));
