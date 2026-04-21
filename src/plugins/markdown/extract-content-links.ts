@@ -57,51 +57,6 @@ function extractWikilinksFromText(text: string): ContentLink[] {
 }
 
 /**
- * Extract bare URLs (http/https) from a plain text string.
- * Skips URLs that are already inside a markdown link `[text](url)` to avoid duplication.
- */
-function extractBareUrlsFromText(text: string): ContentLink[] {
-  const links: ContentLink[] = [];
-  // Negative lookbehind: skip URLs immediately preceded by `](` (already a markdown link target)
-  for (const match of text.matchAll(/(?<!\]\()https?:\/\/[^\s\])"<>]+/g)) {
-    links.push({ text: match[0], target: match[0], action: 'link', linkSyntax: 'markdown' });
-  }
-  return links;
-}
-
-/**
- * Extract standard markdown links and images from a plain text string.
- * Used for scanning frontmatter string values.
- */
-function extractMarkdownLinksFromText(text: string): ContentLink[] {
-  const links: ContentLink[] = [];
-
-  for (const match of text.matchAll(/(!?)\[([^\]]*)\]\(([^)]+)\)/g)) {
-    const isEmbed = match[1] === '!';
-    const linkText = match[2]!;
-    const url = match[3]!.trim();
-    if (!url) continue;
-
-    links.push({
-      text: linkText,
-      target: url,
-      action: isEmbed ? 'embed' : 'link',
-      linkSyntax: 'markdown',
-    });
-  }
-
-  return links;
-}
-
-/**
- * Extract all links (wikilinks, markdown links, and bare URLs) from a plain text string.
- * Used for scanning frontmatter string field values.
- */
-export function extractLinksFromText(text: string): ContentLink[] {
-  return [...extractWikilinksFromText(text), ...extractMarkdownLinksFromText(text), ...extractBareUrlsFromText(text)];
-}
-
-/**
  * Recursively walk an mdast subtree and collect all links.
  * Handles standard markdown link/image nodes and scans text nodes for wikilinks.
  */
@@ -178,18 +133,19 @@ export function getEdgeFieldNames(metadata: SchemaMetadata): Set<string> {
 
 /**
  * Extract links from frontmatter data fields, excluding known graph edge fields.
- * Scans string values and string array elements for both wikilinks and markdown links.
+ * Parses each string value as markdown (via mdast) to keep link extraction consistent
+ * with body content parsing — handles wikilinks, markdown links, images, and bare URLs.
  */
 export function extractLinksFromFrontmatter(data: Record<string, unknown>, edgeFields: Set<string>): ContentLink[] {
   const links: ContentLink[] = [];
   for (const [key, value] of Object.entries(data)) {
     if (edgeFields.has(key)) continue;
     if (typeof value === 'string') {
-      links.push(...extractLinksFromText(value));
+      links.push(...extractLinksFromBody(value));
     } else if (Array.isArray(value)) {
       for (const item of value) {
         if (typeof item === 'string') {
-          links.push(...extractLinksFromText(item));
+          links.push(...extractLinksFromBody(item));
         }
       }
     }

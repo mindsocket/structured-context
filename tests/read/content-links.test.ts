@@ -20,58 +20,12 @@ import { unified } from 'unified';
 import {
   extractLinksFromAstNode,
   extractLinksFromFrontmatter,
-  extractLinksFromText,
   getEdgeFieldNames,
 } from '../../src/plugins/markdown/extract-content-links';
 
 function parseBody(markdown: string): Root {
   return unified().use(remarkParse).use(remarkGfm).parse(markdown) as Root;
 }
-
-describe('extractLinksFromText', () => {
-  it('extracts wikilinks', () => {
-    const links = extractLinksFromText('See [[Personal Vision]] for more.');
-    expect(links).toHaveLength(1);
-    expect(links[0]).toMatchObject({
-      text: 'Personal Vision',
-      target: 'Personal Vision',
-      action: 'link',
-      linkSyntax: 'wikilink',
-    });
-  });
-
-  it('extracts wikilinks with anchors', () => {
-    const links = extractLinksFromText('Go to [[vision_page#^embmission]].');
-    expect(links).toHaveLength(1);
-    expect(links[0]).toMatchObject({ target: 'vision_page', anchor: '^embmission', linkSyntax: 'wikilink' });
-  });
-
-  it('extracts wikilinks with aliases', () => {
-    const links = extractLinksFromText('See [[Personal Vision|our vision]].');
-    expect(links[0]).toMatchObject({ text: 'our vision', target: 'Personal Vision' });
-  });
-
-  it('extracts embed wikilinks', () => {
-    const links = extractLinksFromText('![[image.png]]');
-    expect(links[0]).toMatchObject({ action: 'embed', target: 'image.png', linkSyntax: 'wikilink' });
-  });
-
-  it('extracts markdown links', () => {
-    const links = extractLinksFromText('[click here](https://example.com)');
-    expect(links[0]).toMatchObject({ text: 'click here', target: 'https://example.com', linkSyntax: 'markdown' });
-  });
-
-  it('extracts markdown image embeds', () => {
-    const links = extractLinksFromText('![alt text](https://example.com/img.png)');
-    expect(links[0]).toMatchObject({ action: 'embed', text: 'alt text', target: 'https://example.com/img.png' });
-  });
-
-  it('extracts multiple mixed links from one string', () => {
-    const links = extractLinksFromText('See [[A]] and [B](https://b.com) and [[C]].');
-    expect(links).toHaveLength(3);
-    expect(links.map((l) => l.target)).toEqual(['A', 'C', 'https://b.com']);
-  });
-});
 
 describe('extractLinksFromAstNode', () => {
   it('extracts a markdown link node', () => {
