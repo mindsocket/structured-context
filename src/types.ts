@@ -68,6 +68,47 @@ export type UnresolvedRef = {
 };
 
 /**
+ * A link extracted from node content at parse time, before location classification.
+ * Populated by plugins that support content link extraction (e.g. the markdown plugin).
+ */
+export type ContentLink = {
+  /** Display text of the link (text content for markdown links, inner text or target for wikilinks). */
+  text: string;
+  /** Raw link target: URL for markdown links, wikilink path (without [[ ]]) for wikilinks. */
+  target: string;
+  /** Whether the link navigates to a resource or transcludes/embeds it. */
+  action: 'link' | 'embed';
+  /** Anchor fragment (heading or block ref, e.g. 'heading-title' or '^blockid') if present. */
+  anchor?: string;
+  /** Link syntax — used during resolution to determine how to classify the target. */
+  linkSyntax: 'wikilink' | 'markdown';
+};
+
+/**
+ * A fully classified link from node content, after location resolution.
+ * Present on SpaceNode after graph resolution.
+ */
+export type ResolvedContentLink = {
+  /** Display text of the link. */
+  text: string;
+  /** Link target (URL or wikilink target without [[ ]]). */
+  target: string;
+  /** Whether the link navigates or embeds. */
+  action: 'link' | 'embed';
+  /** Anchor fragment if present. */
+  anchor?: string;
+  /**
+   * Resolved location classification:
+   * - 'node'     — wikilink resolved to a known space node
+   * - 'internal' — wikilink or relative path, in the source system but not a space node
+   * - 'external' — http/https URL
+   * - 'system'   — file:// URL
+   * - 'protocol' — other scheme (e.g. obsidian://)
+   */
+  location: 'node' | 'internal' | 'external' | 'system' | 'protocol';
+};
+
+/**
  * A node as produced by a parse plugin — raw type from content, no graph resolution applied.
  * Core enriches this into a SpaceNode after parsing.
  */
@@ -82,6 +123,11 @@ export type BaseNode = {
   linkTargets: string[];
   /** Raw type string from content, as written by the user. */
   type: string;
+  /**
+   * Links extracted from content body and non-edge string fields at parse time.
+   * Populated by plugins that support content link extraction; absent if not populated.
+   */
+  contentLinks?: ContentLink[];
 };
 
 /**
@@ -97,6 +143,11 @@ export type SpaceNode = BaseNode & {
    * Always present, empty if no parents resolved.
    */
   resolvedParents: ResolvedParentRef[];
+  /**
+   * Links from content body and non-edge fields, with location classified after graph resolution.
+   * Always present, empty if the plugin did not populate rawContentLinks.
+   */
+  resolvedLinks: ResolvedContentLink[];
 };
 
 export type ParseIssue = {
@@ -184,6 +235,9 @@ export interface FileValidationResult {
   /** Errors keyed by composite id (e.g. `schema:/status:enum:active`, `rule:my-rule-id`). */
   errors: Record<string, { kind: string; message: string }>;
   errorCount: number;
+  /** Warnings keyed by composite id. Do not affect exit code or errorCount. */
+  warnings: Record<string, { kind: string; message: string }>;
+  warningCount: number;
   inSpace: true;
 }
 

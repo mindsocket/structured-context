@@ -60,6 +60,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
           errors: errorsByFile,
           orphanCount: result.orphans.length,
           parseIssues: result.parseIssues,
+          unresolvedContentLinks: result.unresolvedContentLinks,
         },
         null,
         2,
@@ -100,12 +101,26 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   console.log(fmt('  Rule violations', result.ruleViolations.length, true));
   console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
   console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphans.length, true, true));
+  console.log(fmt('  Unresolved content links', result.unresolvedContentLinks.length, true, true));
   const parseIssueErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
   console.log(fmt('  Excluded during parsing', result.parseIssues.length, true, parseIssueErrorCount === 0));
 
   if (result.orphans.length > 0) {
     console.log(`\nOrphans (hierarchy nodes - no parent):`);
     for (const node of result.orphans) console.log(`   ${node.label}`);
+  }
+
+  if (result.unresolvedContentLinks.length > 0) {
+    console.log(`\nUnresolved content links (may be outside-space or broken):`);
+    const byFile = new Map<string, string[]>();
+    for (const { file, target } of result.unresolvedContentLinks) {
+      if (!byFile.has(file)) byFile.set(file, []);
+      byFile.get(file)!.push(target);
+    }
+    for (const [file, targets] of byFile) {
+      console.log(`   ${file}:`);
+      for (const target of targets) console.log(`      ${target}`);
+    }
   }
 
   if (result.parseIssues.length > 0) {

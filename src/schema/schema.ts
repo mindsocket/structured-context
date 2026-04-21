@@ -16,8 +16,13 @@ import {
 } from './metadata-contract';
 import { isObject, mergeVariantProperties, resolveJsonPointer } from './schema-refs';
 
-const packageDir = dirname(fileURLToPath(import.meta.url));
-export const bundledSchemasDir = join(packageDir, '..', '..', 'schemas');
+const packageDir = import.meta.url ? dirname(fileURLToPath(import.meta.url)) : '';
+export let bundledSchemasDir = packageDir ? join(packageDir, '..', '..', 'schemas') : '';
+
+/** Override the bundled schemas directory (e.g. when running in a bundled context). */
+export function setBundledSchemasDir(dir: string): void {
+  bundledSchemasDir = dir;
+}
 
 const validateMetadataContract = new Ajv().compile(METADATA_SCHEMA);
 

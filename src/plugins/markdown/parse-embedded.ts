@@ -12,6 +12,7 @@ import type {
   SchemaMetadata,
   SharedEmbeddingFields,
 } from '../../api';
+import { extractLinksFromAstNode } from './extract-content-links';
 import { applyFieldMap, coerceDates } from './util';
 
 /** Type values that identify a space_on_a_page container (not themselves space nodes). */
@@ -266,6 +267,7 @@ function processListItem(
       schemaData,
       linkTargets,
       type,
+      contentLinks: [],
     };
     nodes.push(newNode);
 
@@ -347,6 +349,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     schemaData: { type: 'space_on_a_page' },
     linkTargets: [],
     type: 'space_on_a_page',
+    contentLinks: [],
   };
 
   const tree = unified().use(remarkParse).use(remarkGfm).parse(body) as Root;
@@ -618,6 +621,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         schemaData,
         linkTargets,
         type,
+        contentLinks: [],
       };
 
       // Push to stack BEFORE resolving semantic parent — stack[-2] is the correct parent.
@@ -788,6 +792,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
               schemaData,
               linkTargets,
               type: rowTypeStr,
+              contentLinks: [],
             };
             nodes.push(rowNode);
 
@@ -827,6 +832,8 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
         Object.assign(activeNode.schemaData, allFields);
         if (remainingText) appendContent(activeNode, remainingText);
+        activeNode.contentLinks ??= [];
+        activeNode.contentLinks.push(...extractLinksFromAstNode(child));
       } else if (child.type === 'code' && (child as Code).lang?.trim() === 'yaml') {
         const code = child as Code;
         const parsed = yamlLoad(code.value);
@@ -839,6 +846,8 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         }
       } else {
         appendContent(activeNode, mdastToString(child));
+        activeNode.contentLinks ??= [];
+        activeNode.contentLinks.push(...extractLinksFromAstNode(child));
       }
     }
   }

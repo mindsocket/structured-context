@@ -20,8 +20,8 @@ describe('readSpaceDirectory', () => {
       result = await readSpaceDirectory(makePluginContext(VALID_DIR));
     });
 
-    it('returns 12 OST nodes (5 original + vision_page + 2 embedded + solution_page + anchor_vision + 2 embedded)', () => {
-      expect(result.nodes).toHaveLength(12);
+    it('returns 13 OST nodes (5 original + vision_page + 2 embedded + solution_page + anchor_vision + 2 embedded + links_opportunity)', () => {
+      expect(result.nodes).toHaveLength(13);
     });
 
     it('injects title from filename for file-based nodes', () => {

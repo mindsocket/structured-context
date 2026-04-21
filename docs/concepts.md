@@ -254,6 +254,29 @@ Each entry is a `ResolvedParentRef` object:
 
 The `source` label lets downstream consumers distinguish edge types without re-inspecting the schema. Validation routes `hierarchy` edges to structural checks (parent-type rules, skip-level detection) and `relationship` edges to field reference checks (type-match, missing-target). Tree rendering and rule evaluation use the full set.
 
+### Content links
+
+**Content links** (`resolvedLinks` on `SpaceNode`) are all links extracted from a node's content at parse time — both from frontmatter non-edge fields and from the body text. They are distinct from graph edges: they are never used to infer structure, but are available to consumers for rendering, auditing, or navigation.
+
+Each entry is a `ResolvedContentLink` object:
+
+| Field | Type | Description |
+|---|---|---|
+| `text` | `string` | Display text of the link |
+| `target` | `string` | Raw link target (URL or wikilink path) |
+| `action` | `'link' \| 'embed'` | Whether the link navigates or transcludes |
+| `anchor` | `string?` | Fragment component (heading or block ref) if present |
+| `location` | `'node' \| 'internal' \| 'external' \| 'system' \| 'protocol'` | Resolved location classification |
+
+**Location classification:**
+- `node` — wikilink resolved to a known space node
+- `internal` — wikilink or relative path to an in-source target that is not a space node
+- `external` — `http://` or `https://` URL
+- `system` — `file://` URL
+- `protocol` — any other scheme (e.g. `obsidian://`)
+
+**Sources:** Both wikilink syntax (`[[Target]]`, `![[Image]]`) and markdown link syntax (`[text](url)`, `![alt](url)`) are extracted. Bare URLs in frontmatter string fields are also captured. Graph edge fields (hierarchy `parent`, relationship fields) are excluded — those are graph edges, not content links.
+
 ### Anchor
 
 An **anchor** is a block anchor (e.g. `^goal1`) appended to a heading in a `typed page`, using Obsidian block anchor syntax. Anchors serve two purposes:

@@ -26,22 +26,35 @@ export async function validateFileCommand(filePath: string, options: { json?: bo
     printHumanReadable(result);
   }
 
-  return Object.keys(result.errors).length > 0 ? 1 : 0;
+  return result.errorCount > 0 ? 1 : 0;
 }
 
 function printHumanReadable(result: FileValidationResult): void {
   const reset = '\x1b[0m';
   const green = '\x1b[32m';
   const red = '\x1b[31m';
+  const yellow = '\x1b[33m';
 
-  if (result.errorCount === 0) {
+  if (result.errorCount === 0 && result.warningCount === 0) {
     console.log(`${green}✓${reset} ${result.label} (space: ${result.space})`);
     return;
   }
 
-  console.log(`\n${red}✗${reset} ${result.label} (space: ${result.space}) — ${result.errorCount} error(s)\n`);
-  for (const { kind, message } of Object.values(result.errors)) {
-    console.log(`  [${kind}] ${message}`);
+  if (result.errorCount > 0) {
+    console.log(`\n${red}✗${reset} ${result.label} (space: ${result.space}) — ${result.errorCount} error(s)\n`);
+    for (const { kind, message } of Object.values(result.errors)) {
+      console.log(`  [${kind}] ${message}`);
+    }
+  } else {
+    console.log(`\n${green}✓${reset} ${result.label} (space: ${result.space})`);
   }
+
+  if (result.warningCount > 0) {
+    console.log(`\n  ${yellow}${result.warningCount} warning(s):${reset}`);
+    for (const { kind, message } of Object.values(result.warnings)) {
+      console.log(`  ${yellow}[${kind}]${reset} ${message}`);
+    }
+  }
+
   console.log('');
 }

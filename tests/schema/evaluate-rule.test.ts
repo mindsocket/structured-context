@@ -18,6 +18,7 @@ describe('evaluate-rule', () => {
       linkTargets: ['Test Node'],
       resolvedParents: [makeParentRef('Parent Opportunity')],
       resolvedType: 'solution',
+      resolvedLinks: [],
     };
 
     const mockParent: SpaceNode = {
@@ -32,6 +33,7 @@ describe('evaluate-rule', () => {
       linkTargets: ['Parent Opportunity'],
       resolvedParents: [],
       resolvedType: 'opportunity',
+      resolvedLinks: [],
     };
 
     const mockNodeIndex = new Map<string, SpaceNode>([
@@ -96,6 +98,7 @@ describe('evaluate-rule', () => {
         linkTargets: ['Orphan Node'],
         resolvedParents: [],
         resolvedType: 'goal', // outcome is an alias for goal
+        resolvedLinks: [],
       };
       const context = buildEvalContext(nodeWithoutParent, allNodes, mockNodeIndex);
       const result = await evaluateExpression('$exists(parent) = false', context);
@@ -132,6 +135,7 @@ describe('evaluate-rule', () => {
       linkTargets: ['Child'],
       resolvedParents: [makeParentRef('Parent')],
       resolvedType: 'solution',
+      resolvedLinks: [],
     };
 
     const parentNode: SpaceNode = {
@@ -142,6 +146,7 @@ describe('evaluate-rule', () => {
       linkTargets: ['Parent'],
       resolvedParents: [],
       resolvedType: 'opportunity',
+      resolvedLinks: [],
     };
 
     const mockNodes = [childNode, parentNode];
@@ -182,6 +187,7 @@ describe('evaluate-rule', () => {
         linkTargets: ['Orphan'],
         resolvedParents: [],
         resolvedType: 'goal', // outcome is an alias for goal
+        resolvedLinks: [],
       };
       const context = buildEvalContext(orphanNode, mockNodes, nodeIndex);
       expect(context.parent).toBeUndefined();

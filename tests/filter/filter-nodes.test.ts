@@ -15,6 +15,7 @@ function makeNode(title: string, type: string, extra: Record<string, unknown> = 
     type,
     resolvedType: type,
     resolvedParents: [],
+    resolvedLinks: [],
   };
 }
 

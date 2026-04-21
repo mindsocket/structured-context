@@ -34,6 +34,8 @@ export interface ValidationResult {
   hierarchyViolations: GraphViolation[];
   orphans: SpaceNode[];
   parseIssues: ParseIssue[];
+  /** Content links that could not be resolved to a space node. Warning only — not counted in errors. */
+  unresolvedContentLinks: Array<{ file: string; target: string }>;
 }
 
 /**
@@ -165,6 +167,7 @@ export async function validateSpace(context: SpaceContext): Promise<ValidationRe
     hierarchyViolations: [],
     orphans: [],
     parseIssues,
+    unresolvedContentLinks: [],
   };
 
   for (const node of nodes) {
@@ -231,6 +234,20 @@ export async function validateSpace(context: SpaceContext): Promise<ValidationRe
   // Load and execute rules validation if schema defines rules
   if (metadata.rules) {
     result.ruleViolations = await validateRules(nodes, metadata.rules);
+  }
+
+  // Collect unresolved content links (warnings — not errors)
+  const seen = new Set<string>();
+  for (const node of nodes) {
+    for (const link of node.resolvedLinks) {
+      if (link.location === 'internal') {
+        const key = `${node.label}::${link.target}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.unresolvedContentLinks.push({ file: node.label, target: link.target });
+        }
+      }
+    }
   }
 
   return result;
@@ -358,12 +375,30 @@ export async function validateFile(filePath: string, config: Config): Promise<Va
     }
   }
 
+  // Unresolved content links for this node (warnings — do not affect errorCount)
+  const warnings: Record<string, { kind: string; message: string }> = {};
+  const targetNode = nodes.find((n) => n.label === label);
+  if (targetNode) {
+    const seen = new Set<string>();
+    for (const link of targetNode.resolvedLinks) {
+      if (link.location === 'internal' && !seen.has(link.target)) {
+        seen.add(link.target);
+        warnings[`content-link:${link.target}`] = {
+          kind: 'content-link',
+          message: `Unresolved content link: ${link.target}`,
+        };
+      }
+    }
+  }
+
   return {
     file: isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath),
     label,
     space: space.name,
     errors,
     errorCount: Object.keys(errors).length,
+    warnings,
+    warningCount: Object.keys(warnings).length,
     inSpace: true,
   } satisfies FileValidationResult;
 }

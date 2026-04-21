@@ -15,6 +15,7 @@ function makeNode(title: string, type: string): SpaceNode {
     type,
     resolvedType: type,
     resolvedParents: [],
+    resolvedLinks: [],
   };
 }
 
