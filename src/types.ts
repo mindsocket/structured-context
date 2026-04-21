@@ -68,10 +68,9 @@ export type UnresolvedRef = {
 };
 
 /**
- * A link extracted from node content at parse time, before location classification.
- * Populated by plugins that support content link extraction (e.g. the markdown plugin).
+ * Shared fields for all content link variants.
  */
-export type ContentLink = {
+type ContentLinkBase = {
   /** Display text of the link (text content for markdown links, inner text or target for wikilinks). */
   text: string;
   /** Raw link target: URL for markdown links, wikilink path (without [[ ]]) for wikilinks. */
@@ -80,6 +79,13 @@ export type ContentLink = {
   action: 'link' | 'embed';
   /** Anchor fragment (heading or block ref, e.g. 'heading-title' or '^blockid') if present. */
   anchor?: string;
+};
+
+/**
+ * A link extracted from node content at parse time, before location classification.
+ * Populated by plugins that support content link extraction (e.g. the markdown plugin).
+ */
+export type ContentLink = ContentLinkBase & {
   /** Link syntax — used during resolution to determine how to classify the target. */
   linkSyntax: 'wikilink' | 'markdown';
 };
@@ -88,15 +94,7 @@ export type ContentLink = {
  * A fully classified link from node content, after location resolution.
  * Present on SpaceNode after graph resolution.
  */
-export type ResolvedContentLink = {
-  /** Display text of the link. */
-  text: string;
-  /** Link target (URL or wikilink target without [[ ]]). */
-  target: string;
-  /** Whether the link navigates or embeds. */
-  action: 'link' | 'embed';
-  /** Anchor fragment if present. */
-  anchor?: string;
+export type ResolvedContentLink = ContentLinkBase & {
   /**
    * Resolved location classification:
    * - 'node'     — wikilink resolved to a known space node

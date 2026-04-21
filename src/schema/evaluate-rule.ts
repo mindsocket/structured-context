@@ -70,6 +70,7 @@ function flattenNode(node: SpaceNode): Record<string, unknown> {
     resolvedType: node.resolvedType,
     resolvedParentTitle: node.resolvedParents[0]?.title, // first parent or undefined, provided for convenience
     resolvedParentTitles: node.resolvedParents.map((r) => r.title), // full array of parent titles
+    resolvedLinks: node.resolvedLinks,
   };
 }
 
