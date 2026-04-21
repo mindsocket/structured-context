@@ -1,65 +1,48 @@
-import { updateSpaceField } from '../../config';
-import { readSpace } from '../../read/read-space';
-import { buildSpaceGraph } from '../../space-graph';
-import type { SpaceContext, SpaceNode } from '../../types';
+import type { PluginContext, SpaceGraph, SpaceNode } from '../../api';
 import { computeMiroCardHash, computeNodeHash, loadCache, saveCache } from './cache';
 import { MiroClient, MiroNotFoundError } from './client';
 import { CARD_WIDTH, layoutNewCards } from './layout';
 import { buildCardDescription, buildCardTitle, getCardColor } from './styles';
 
-interface SyncOptions {
+export interface SyncOptions {
   newFrame?: string;
   dryRun?: boolean;
   verbose?: boolean;
 }
 
-export async function miroSync(context: SpaceContext, options: SyncOptions): Promise<void> {
+export async function miroSync(context: PluginContext, graph: SpaceGraph, options: SyncOptions): Promise<string> {
   const token = process.env.MIRO_TOKEN;
   if (!token) {
     console.error('MIRO_TOKEN environment variable is required');
     process.exit(1);
   }
 
-  const {
-    space,
-    schema: { metadata },
-  } = context;
+  const { space } = context;
+  const boardId = context.pluginConfig.boardId as string | undefined;
+  const configuredFrameId = context.pluginConfig.frameId as string | undefined;
 
   // 1. Resolve board
-  if (!space.miroBoardId) {
-    console.error(`No miroBoardId configured for space "${space.name}".`);
-    console.error('Add miroBoardId to the space entry in config.');
+  if (!boardId) {
+    console.error(`No boardId configured for space "${space.name}".`);
+    console.error('Add boardId to the miro plugin config in the space entry.');
     process.exit(1);
   }
-
-  const boardId = space.miroBoardId;
 
   // 2. Resolve frame
-  if (!space.miroFrameId && !options.newFrame) {
-    console.error('No miroFrameId in space config. Pass --new-frame "Title" to create one.');
+  if (!configuredFrameId && !options.newFrame) {
+    console.error('No frameId in miro plugin config. Pass --new-frame "Title" to create one.');
     process.exit(1);
   }
 
-  // 3. Load space nodes (load before creating frame so we can calculate size)
-  let nodes: SpaceNode[];
-
-  ({ nodes } = await readSpace(context));
+  // 3. Filter to hierarchy nodes only (graph already built by caller)
+  const nodes = [...graph.nodes.values()].filter((n) => graph.hierarchyTitles.has(n.title));
 
   if (nodes.length === 0) {
-    console.log('No space nodes found.');
-    return;
+    return 'No space nodes found.';
   }
 
-  // Filter to hierarchy nodes only
-  const levels = metadata.hierarchy?.levels ?? [];
-
-  const { nonHierarchy, hierarchyTitles: hierarchyNodeTitles } = buildSpaceGraph(nodes, levels);
-
-  // Filter nodes to only hierarchy nodes
-  nodes = nodes.filter((n) => hierarchyNodeTitles.has(n.title));
-
-  if (options.verbose && nonHierarchy.length > 0) {
-    console.log(`Excluded ${nonHierarchy.length} non-hierarchy nodes from sync`);
+  if (options.verbose && graph.nonHierarchy.length > 0) {
+    console.log(`Excluded ${graph.nonHierarchy.length} non-hierarchy nodes from sync`);
   }
 
   const client = new MiroClient(boardId, token);
@@ -68,7 +51,7 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
 
   if (options.newFrame) {
     // Calculate layout bounds to size the frame appropriately
-    const { bounds } = layoutNewCards(nodes, new Map(), levels);
+    const { bounds } = layoutNewCards(nodes, new Map(), graph.levels);
     const frameWidth = Math.max(1600, bounds.maxX - bounds.minX);
     const frameHeight = Math.max(1200, bounds.maxY - bounds.minY);
 
@@ -95,11 +78,11 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
       });
       frameId = frame.id;
       console.log(`Created frame "${options.newFrame}" (${frameId}) - size: ${finalFrameWidth}x${finalFrameHeight}`);
-      updateSpaceField(space.name, 'miroFrameId', frameId);
-      console.log(`Saved miroFrameId to config`);
+      context.callbacks?.persistConfig?.({ frameId });
+      console.log(`Saved frameId to miro plugin config`);
     }
   } else {
-    frameId = space.miroFrameId!;
+    frameId = configuredFrameId!;
   }
 
   // 4. Load cache
@@ -205,7 +188,7 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
   }
 
   // Compute positions for new cards
-  const { positions: newPositions } = layoutNewCards(newNodes, existingPositions, levels);
+  const { positions: newPositions } = layoutNewCards(newNodes, existingPositions, graph.levels);
 
   // 7. Create new cards
   let createdCount = 0;
@@ -238,7 +221,7 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
         title: buildCardTitle(node),
         description: buildCardDescription(node),
       },
-      style: { cardTheme: getCardColor(type, levels) },
+      style: { cardTheme: getCardColor(type, graph.levels) },
       position: { x: pos.x, y: pos.y, origin: 'center' },
       parent: { id: frameId },
       geometry: { width: CARD_WIDTH },
@@ -287,7 +270,7 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
             title: buildCardTitle(node),
             description: buildCardDescription(node),
           },
-          style: { cardTheme: getCardColor(type, levels) },
+          style: { cardTheme: getCardColor(type, graph.levels) },
           position: { x: 0, y: 0, origin: 'center' },
           parent: { id: frameId },
           geometry: { width: CARD_WIDTH },
@@ -386,7 +369,5 @@ export async function miroSync(context: SpaceContext, options: SyncOptions): Pro
   if (!options.dryRun) saveCache(cache);
 
   // Summary
-  console.log(`\n${prefix}Sync complete:`);
-  console.log(`  Cards: ${createdCount} created, ${updatedCount} updated, ${skippedCount} unchanged`);
-  console.log(`  Connectors: ${connectorsCreated} created, ${connectorsDeleted} deleted`);
+  return `\n${prefix}Sync complete:\n  Cards: ${createdCount} created, ${updatedCount} updated, ${skippedCount} unchanged\n  Connectors: ${connectorsCreated} created, ${connectorsDeleted} deleted`;
 }

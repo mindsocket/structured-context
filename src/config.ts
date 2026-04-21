@@ -4,7 +4,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv from 'ajv';
 import JSON5 from 'json5';
 import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
-import { normalizePluginName } from './plugins/util';
+import { normalizePluginName, shortenPluginName } from './plugins/util';
 import { bundledSchemasDir } from './schema/schema';
 
 const CONFIG_SCHEMA = {
@@ -18,8 +18,6 @@ const CONFIG_SCHEMA = {
           name: { type: 'string', pattern: '^[a-z0-9_-]+$' },
           path: { type: 'string' },
           schema: { type: 'string' },
-          miroBoardId: { type: 'string' },
-          miroFrameId: { type: 'string' },
           plugins: { type: 'object', additionalProperties: { type: 'object' } },
           views: {
             type: 'object',
@@ -46,8 +44,6 @@ export type SpaceConfig = {
   name: string;
   path: string;
   schema?: string;
-  miroBoardId?: string;
-  miroFrameId?: string;
   /** Plugin name → plugin config map. Overrides top-level plugins when set. */
   plugins?: Record<string, Record<string, unknown>>;
   /** Named filter views for this space. Keys are view names; values contain the filter expression. */
@@ -209,19 +205,22 @@ export function resolveSchema(config: Config, space?: SpaceConfig): string {
   return schema;
 }
 
-type StringFields<T> = { [K in keyof T]: T[K] extends string | undefined ? K : never }[keyof T];
-
-/** Update a string field on a space entry and persist config. */
-export function updateSpaceField(spaceName: string, field: StringFields<SpaceConfig>, value: string): void {
+/** Update a string field on a space entry and persist config. When `plugin` is given, updates that field inside `space.plugins[plugin]` instead. */
+export function updateSpaceField(spaceName: string, field: string, value: string, plugin?: string): void {
   const sourcePath = _spaceSourceFiles.get(spaceName);
-  if (!sourcePath) {
-    throw new Error(`Space "${spaceName}" not found in any config file`);
-  }
+  if (!sourcePath) throw new Error(`Space "${spaceName}" not found in any config file`);
   const config = _loadConfig(sourcePath);
   const space = config.spaces?.find((s: SpaceConfig) => s.name === spaceName);
-  if (!space) {
-    throw new Error(`Unknown space config: "${spaceName}". Check config.`);
+  if (!space) throw new Error(`Unknown space config: "${spaceName}". Check config.`);
+  if (plugin !== undefined) {
+    if (!space.plugins) space.plugins = {};
+    const normalized = normalizePluginName(plugin);
+    const shortName = shortenPluginName(normalized);
+    const existingKey = Object.keys(space.plugins).find((k) => k === normalized || k === shortName) ?? normalized;
+    if (!space.plugins[existingKey]) space.plugins[existingKey] = {};
+    space.plugins[existingKey][field] = value;
+  } else {
+    (space as unknown as Record<string, unknown>)[field] = value;
   }
-  (space as unknown as Record<string, unknown>)[field as string] = value;
   writeFileSync(sourcePath, `${JSON5.stringify(config, null, 2)}\n`);
 }

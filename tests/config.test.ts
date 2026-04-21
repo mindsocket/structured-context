@@ -274,7 +274,7 @@ describe('loadConfig with includeSpacesFrom', () => {
       otherConfigPath,
       JSON.stringify(
         {
-          spaces: [{ name: 'included-space', path: '/included', miroFrameId: 'old-frame-id' }],
+          spaces: [{ name: 'included-space', path: '/included', schema: 'old-schema' }],
         },
         null,
         2,
@@ -297,13 +297,54 @@ describe('loadConfig with includeSpacesFrom', () => {
     loadConfig(); // Load and track space sources
 
     // Update the included space
-    updateSpaceField('included-space', 'miroFrameId', 'new-frame-id');
+    updateSpaceField('included-space', 'schema', 'new-schema');
 
     // Verify the included config file was updated
     const updatedConfig = JSON5.parse(readFileSync(otherConfigPath, 'utf-8')) as Config;
-    expect(updatedConfig.spaces[0]!.miroFrameId).toBe('new-frame-id');
+    expect(updatedConfig.spaces[0]!.schema).toBe('new-schema');
 
     // Verify the main config was not modified
+    const mainConfig = JSON5.parse(readFileSync(mainConfigPath, 'utf-8')) as Config;
+    expect(mainConfig.spaces[0]!.name).toBe('main-space');
+  });
+
+  it('updatePluginConfig writes plugin config to correct file for included spaces', () => {
+    const otherDir = join(testDir, 'other2');
+    mkdirSync(otherDir, { recursive: true });
+    const otherConfigPath = join(otherDir, 'config.json');
+
+    writeFileSync(
+      otherConfigPath,
+      JSON.stringify(
+        {
+          spaces: [{ name: 'plugin-space', path: '/plugin', plugins: { miro: { boardId: 'board-1' } } }],
+        },
+        null,
+        2,
+      ),
+    );
+
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: ['other2/config.json'],
+          spaces: [{ name: 'main-space', path: '/main' }],
+        },
+        null,
+        2,
+      ),
+    );
+
+    setConfigPath(mainConfigPath);
+    loadConfig();
+
+    updateSpaceField('plugin-space', 'frameId', 'frame-abc', 'miro');
+
+    const updatedConfig = JSON5.parse(readFileSync(otherConfigPath, 'utf-8')) as Config;
+    expect(updatedConfig.spaces[0]!.plugins!.miro!.frameId).toBe('frame-abc');
+    expect(updatedConfig.spaces[0]!.plugins!.miro!.boardId).toBe('board-1');
+
     const mainConfig = JSON5.parse(readFileSync(mainConfigPath, 'utf-8')) as Config;
     expect(mainConfig.spaces[0]!.name).toBe('main-space');
   });

@@ -68,7 +68,7 @@ validate <space>       Validate space content against schema (--watch for live)
 show <space>           Output the node hierarchy
 dump <space>           Output parsed node data as JSON
 diagram <space>        Generate Mermaid diagram (--output <file>)
-miro-sync <space>      Sync to Miro board (requires MIRO_TOKEN env var + miroBoardId in config)
+miro-sync <space>      Sync to Miro board (requires MIRO_TOKEN env var + miro plugin config with boardId)
 template-sync <space>  Sync Obsidian templates from schema examples
 plugins                List available plugins
 ```

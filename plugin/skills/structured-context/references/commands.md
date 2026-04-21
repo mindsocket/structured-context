@@ -119,10 +119,10 @@ sctx miro-sync <space> [--new-frame <title>] [--dry-run] [--verbose] [--config <
 
 Syncs space nodes to a Miro board. Requires:
 - `MIRO_TOKEN` environment variable
-- `miroBoardId` in the space's config entry
+- `boardId` set in `plugins.miro` for the space
 
-First sync: use `--new-frame "Frame Title"` to create a new frame; the resulting `miroFrameId`
-is auto-saved to config. Subsequent syncs reuse the cached frame ID.
+First sync: use `--new-frame "Frame Title"` to create a new frame; the resulting `frameId`
+is auto-saved to the miro plugin config. Subsequent syncs reuse the cached frame ID.
 
 Sync is one-way (structured-context → Miro). Manual edits to managed cards in Miro are overwritten.
 
@@ -172,10 +172,12 @@ sctx template-sync <space> --create-missing
           },
           templateDir: '../templates',
           templatePrefix: '',
-        }
+        },
+        miro: {
+          boardId: 'xxx',
+          frameId: 'xxx',  // auto-populated by --new-frame
+        },
       },
-      miroBoardId: 'xxx',
-      miroFrameId: 'xxx',  // auto-populated by --new-frame
       views: {
         'active-solutions': { expression: "WHERE resolvedType='solution' and status='active'" },
       },

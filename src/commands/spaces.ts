@@ -15,7 +15,6 @@ export function listSpaces(): void {
     console.log(`  path:    ${space.path}`);
     const schema = space.schema ?? config.schema;
     console.log(`  schema:  ${schema ? basename(schema) : '(none)'}`);
-    if (space.miroBoardId) console.log(`  miro:    configured`);
     const plugins = space.plugins ?? {};
     if (Object.keys(plugins).length > 0) {
       console.log('  plugins:');

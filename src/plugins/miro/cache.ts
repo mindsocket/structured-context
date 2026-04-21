@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { SpaceNode } from '../../types';
+import type { SpaceNode } from '../../api';
 
 export interface CachedNode {
   miroCardId: string;

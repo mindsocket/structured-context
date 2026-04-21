@@ -5,12 +5,14 @@
       "name": "ProductX",
       "path": "/path/to/ProductX/Opportunity Solution Tree",
       "schema": "/path/to/custom/schemas/my-projectx-schema.json",
-      "miroBoardId": "iAmAB04rdId",
-      "miroFrameId": "1234567789",
       "plugins": {
         "markdown": {
           "templateDir": "../templates",
           "templatePrefix": "prodx-"
+        },
+        "miro": {
+          "boardId": "iAmAB04rdId",
+          "frameId": "1234567789"
         }
       }
     }
