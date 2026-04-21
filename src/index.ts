@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { diagram } from './commands/diagram';
 import { docs } from './commands/docs';
 import { dump } from './commands/dump';
+import { miroSyncCommand } from './commands/miro-sync';
 import { listPlugins } from './commands/plugins';
 import { render, renderList } from './commands/render';
 import { listSchemas, showSchema } from './commands/schemas';
@@ -12,10 +13,8 @@ import { listSpaces } from './commands/spaces';
 import { templateSync } from './commands/template-sync';
 import { validate, watchValidate } from './commands/validate';
 import { validateFileCommand } from './commands/validate-file';
-
 import { getSpaceConfigDir, loadConfig, resolveSchema, setConfigPath } from './config';
 import { CLI_NAME } from './constants';
-import { miroSync } from './integrations/miro/sync';
 import { loadSchema } from './schema/schema';
 import type { SpaceContext } from './types';
 
@@ -109,7 +108,7 @@ program
   .option('--new-frame <title>', 'Create a new frame on the board and sync into it')
   .option('--dry-run', 'Show what would change without touching Miro')
   .option('-v, --verbose', 'Detailed output')
-  .action((spaceName, options) => miroSync(buildSpaceContext(spaceName), options));
+  .action((spaceName, options) => miroSyncCommand(buildSpaceContext(spaceName), options));
 
 program
   .command('template-sync')

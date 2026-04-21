@@ -335,13 +335,26 @@ sctx schemas show strategy_general --mermaid-erd
 sctx miro-sync <space> [--new-frame <title>] [--dry-run] [--verbose]
 ```
 
-Syncs space nodes to a Miro board as cards with connectors. Requires `MIRO_TOKEN` env var and `miroBoardId` set in the space's config entry.
+Syncs space nodes to a Miro board as cards with connectors. Requires `MIRO_TOKEN` env var and `boardId` set in the `miro` plugin config for the space.
 
-- `--new-frame <title>` — create a new frame on the board and sync into it; auto-saves the resulting `miroFrameId` back to the config file
+- `--new-frame <title>` — create a new frame on the board and sync into it; auto-saves the resulting `frameId` back to the miro plugin config
 - `--dry-run` — show what would change without touching Miro
 - `--verbose` / `-v` — detailed per-card and per-connector output
 
-On subsequent runs, the cached `miroFrameId` is used automatically. Cards are colour-coded by node type and linked by parent→child connectors. A local `.miro-cache/` directory tracks Miro IDs to enable incremental updates.
+Configure the miro plugin in the space's config entry:
+
+```json
+{
+  "plugins": {
+    "miro": {
+      "boardId": "your-board-id",
+      "frameId": "your-frame-id"
+    }
+  }
+}
+```
+
+On subsequent runs, the cached `frameId` is used automatically. Cards are colour-coded by node type and linked by parent→child connectors. A local `.miro-cache/` directory tracks Miro IDs to enable incremental updates.
 
 Sync is one-way (OST → Miro) and scoped to a single frame. Only cards and connectors created by this tool within that frame are managed — everything else on the board is left untouched. Card content and connectors are overwritten or recreated to match the markdown source; any edits made directly in Miro to managed cards will be lost on the next sync. Existing card positions are not changed.
 

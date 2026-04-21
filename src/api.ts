@@ -10,6 +10,7 @@
 export type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
 export type { Config, SpaceConfig } from './config';
 export { loadConfig, setConfigPath } from './config';
+export { PLUGIN_PREFIX } from './constants';
 export type {
   ParseHook,
   ParseResult,

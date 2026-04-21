@@ -1,3 +1,5 @@
+import { shortenPluginName } from '@/plugins/util';
+import { updateSpaceField } from '../config';
 import { filterNodes } from '../filter/filter-nodes';
 import { loadPlugins } from '../plugins/loader';
 import { readSpace } from '../read/read-space';
@@ -8,7 +10,7 @@ import { buildFormatRegistry } from './registry';
 export async function executeRender(
   formatName: string,
   context: SpaceContext,
-  options: { filter?: string },
+  options: { filter?: string; data?: Record<string, unknown> },
 ): Promise<string> {
   const pluginMap: Record<string, Record<string, unknown>> = context.space?.plugins ?? {};
   const loaded = await loadPlugins(pluginMap, context.configDir);
@@ -37,6 +39,20 @@ export async function executeRender(
     graph = await filterNodes(expression, graph);
   }
 
-  const pluginContext = { ...context, pluginConfig: entry.plugin.pluginConfig };
-  return entry.plugin.plugin.render!.render(pluginContext, graph, { format: entry.format.name });
+  const shortName = shortenPluginName(entry.plugin.plugin.name);
+  const pluginContext = {
+    ...context,
+    pluginConfig: entry.plugin.pluginConfig,
+    callbacks: {
+      persistConfig: (updates: Record<string, string>) => {
+        for (const [field, value] of Object.entries(updates)) {
+          updateSpaceField(context.space.name, field, value, shortName);
+        }
+      },
+    },
+  };
+  return entry.plugin.plugin.render!.render(pluginContext, graph, {
+    format: entry.format.name,
+    data: options.data,
+  });
 }

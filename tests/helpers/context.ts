@@ -33,5 +33,13 @@ export function makePluginContext(
   schemaPath?: string,
   pluginConfig: Record<string, unknown> = {},
 ): PluginContext {
-  return { ...makeSpaceContext(path, schemaPath), pluginConfig };
+  return {
+    ...makeSpaceContext(path, schemaPath),
+    pluginConfig,
+    callbacks: {
+      persistConfig: () => {
+        // no-op in tests
+      },
+    },
+  };
 }

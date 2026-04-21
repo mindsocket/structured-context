@@ -11,9 +11,19 @@ export function normalizePluginName(name: string): string {
   return name.startsWith(PLUGIN_PREFIX) ? name : `${PLUGIN_PREFIX}${name}`;
 }
 
+/** Shorten a plugin name to its non-prefixed form. */
+export function shortenPluginName(name: string): string {
+  return name.startsWith(PLUGIN_PREFIX) ? name.slice(PLUGIN_PREFIX.length) : name;
+}
+
 export type PluginContext = SpaceContext & {
   /** Validated config for this plugin invocation. */
   pluginConfig: Record<string, unknown>;
+  /** Optional callback functions for plugins to interact with the system. */
+  callbacks?: {
+    /** Persist plugin config updates to the config file. */
+    persistConfig?: (updates: Record<string, string>) => void;
+  };
 };
 
 export type ParseResult = {
@@ -45,6 +55,8 @@ export type RenderFormat = {
 export type RenderOptions = {
   /** The format name being rendered (e.g. 'bullets', 'mermaid'). */
   format: string;
+  /** Plugin-specific extra data (e.g. CLI flags forwarded by a convenience command). */
+  data?: Record<string, unknown>;
 };
 
 /**

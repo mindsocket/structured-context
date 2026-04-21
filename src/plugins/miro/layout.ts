@@ -1,4 +1,4 @@
-import type { HierarchyLevel, SpaceNode } from '../../types';
+import type { HierarchyLevel, SpaceNode } from '../../api';
 
 export const CARD_WIDTH = 320;
 const CARD_HEIGHT = 160;
@@ -13,19 +13,6 @@ export interface LayoutResult {
 }
 
 /**
- * DEPRECATED - likely not needed after migration to render plugin and SpaceGraph
- * Build a depth map from hierarchy levels.
- * The position in the hierarchy array determines the depth.
- */
-function buildDepthMap(hierarchyLevels: HierarchyLevel[]): Map<string, number> {
-  const depthMap = new Map<string, number>();
-  for (const [i, level] of hierarchyLevels.entries()) {
-    depthMap.set(level.type, i);
-  }
-  return depthMap;
-}
-
-/**
  * Compute positions for new cards only. Existing cards keep their Miro positions.
  * New cards are laid out in rows grouped by OST type depth, starting below
  * the lowest existing card (or at the origin if no existing cards).
@@ -37,11 +24,8 @@ function buildDepthMap(hierarchyLevels: HierarchyLevel[]): Map<string, number> {
 export function layoutNewCards(
   newNodes: SpaceNode[],
   existingPositions: Map<string, { x: number; y: number }>,
-  hierarchyLevels: HierarchyLevel[],
+  hierarchyLevels: readonly HierarchyLevel[],
 ): LayoutResult {
-  // Build depth map from hierarchy levels (position in hierarchy = depth)
-  const depthMap = buildDepthMap(hierarchyLevels);
-
   // Find the lowest y among existing cards
   let lowestY = 0;
   for (const pos of existingPositions.values()) {
@@ -52,10 +36,11 @@ export function layoutNewCards(
 
   const startY = existingPositions.size > 0 ? lowestY + V_GAP * 2 : 0;
 
-  // Group new nodes by depth
+  // Group new nodes by depth (position in hierarchy levels array)
   const byDepth = new Map<number, SpaceNode[]>();
   for (const node of newNodes) {
-    const depth = depthMap.get(node.schemaData.type as string) ?? depthMap.size;
+    const idx = hierarchyLevels.findIndex((l) => l.type === (node.schemaData.type as string));
+    const depth = idx === -1 ? hierarchyLevels.length : idx;
     if (!byDepth.has(depth)) byDepth.set(depth, []);
     byDepth.get(depth)?.push(node);
   }

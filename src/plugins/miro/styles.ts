@@ -1,4 +1,4 @@
-import type { HierarchyLevel, SpaceNode } from '../../types';
+import type { HierarchyLevel, SpaceNode } from '../../api';
 
 // Color palette for hierarchy levels (distinct, visually appealing colors)
 const COLOR_PALETTE = [
@@ -31,7 +31,7 @@ const STATUS_ICONS: Record<string, string> = {
  * @param type - The node's type string
  * @param hierarchyLevels - Hierarchy levels from metadata
  */
-export function getCardColor(type: string, hierarchyLevels: HierarchyLevel[]): string {
+export function getCardColor(type: string, hierarchyLevels: readonly HierarchyLevel[]): string {
   // Find the level index for this type
   const levelIndex = hierarchyLevels.findIndex((level) => level.type === type);
   if (levelIndex >= 0) {

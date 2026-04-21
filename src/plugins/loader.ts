@@ -3,7 +3,13 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv, { type AnySchemaObject } from 'ajv';
 import { getConfigSourceFiles } from '../config';
 import { builtinPlugins } from '.';
-import { CONFIG_PLUGINS_DIR, normalizePluginName, PLUGIN_PREFIX, type StructuredContextPlugin } from './util';
+import {
+  CONFIG_PLUGINS_DIR,
+  normalizePluginName,
+  PLUGIN_PREFIX,
+  type StructuredContextPlugin,
+  shortenPluginName,
+} from './util';
 
 export type LoadedPlugin = {
   plugin: StructuredContextPlugin;
@@ -110,7 +116,7 @@ export async function loadPlugins(
 
   // Built-in plugins: always loaded, config taken from map if declared (with or without prefix)
   for (const builtin of builtinPlugins) {
-    const rawConfig = pluginMap[builtin.name] ?? pluginMap[builtin.name.slice(PLUGIN_PREFIX.length)] ?? {};
+    const rawConfig = pluginMap[builtin.name] ?? pluginMap[shortenPluginName(builtin.name)] ?? {};
     const pluginConfig = resolveConfigPaths(builtin.configSchema, rawConfig, configDir);
     const validate = ajv.compile(builtin.configSchema);
     if (!validate(pluginConfig)) {
