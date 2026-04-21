@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { renderMermaid } from '../../src/plugins/markdown/render-mermaid';
+import { renderMermaid } from '../../src/plugins/mermaid/render-mermaid';
 import { buildSpaceGraph } from '../../src/space-graph';
 import type { SpaceNode } from '../../src/types';
 import { makeLevel, makeParentRef } from '../test-helpers';
@@ -31,10 +31,19 @@ describe('renderMermaid', () => {
     expect(output.startsWith('graph TD\n')).toBe(true);
   });
 
-  it('renders a root node with type_status class', () => {
-    const goal = makeNode('My Goal', 'goal', 'active');
+  it('emits classDefs derived from hierarchy levels', () => {
+    const customLevels = [makeLevel('theme'), makeLevel('initiative')];
+    const output = renderMermaid(buildSpaceGraph([], customLevels));
+    expect(output).toContain('classDef theme ');
+    expect(output).toContain('classDef initiative ');
+    expect(output).not.toContain('classDef vision');
+    expect(output).not.toContain('classDef goal');
+  });
+
+  it('renders a root node with the hierarchy type as its class', () => {
+    const goal = makeNode('My Goal', 'goal');
     const output = renderMermaid(buildSpaceGraph([goal], levels));
-    expect(output).toContain('My_Goal["My Goal"]:::goal_active');
+    expect(output).toContain('My_Goal["My Goal"]:::goal');
   });
 
   it('renders edges between parent and child', () => {
@@ -46,10 +55,10 @@ describe('renderMermaid', () => {
   });
 
   it('wraps orphans in a subgraph', () => {
-    const orphan = makeNode('Orphaned Opp', 'opportunity', 'active');
+    const orphan = makeNode('Orphaned Opp', 'opportunity');
     const output = renderMermaid(buildSpaceGraph([orphan], levels));
     expect(output).toContain('subgraph Orphans');
-    expect(output).toContain('Orphaned_Opp["Orphaned Opp"]:::opportunity_active');
+    expect(output).toContain('Orphaned_Opp["Orphaned Opp"]:::opportunity');
   });
 
   it('escapes double quotes in node labels', () => {

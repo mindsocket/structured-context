@@ -9,15 +9,18 @@ describe('loadPlugins', () => {
   describe('built-in plugins', () => {
     it('always includes built-in plugins when no map is given', async () => {
       const loaded = await loadPlugins({}, CONFIG_DIR);
-      expect(loaded).toHaveLength(1);
-      expect(loaded[0]!.plugin.name).toBe('sctx-markdown');
-      expect(loaded[0]!.pluginConfig).toEqual({});
+      expect(loaded).toHaveLength(2);
+      expect(loaded.map((l) => l.plugin.name)).toContain('sctx-markdown');
+      expect(loaded.map((l) => l.plugin.name)).toContain('sctx-mermaid');
+      expect(loaded.find((l) => l.plugin.name === 'sctx-markdown')!.pluginConfig).toEqual({});
+      expect(loaded.find((l) => l.plugin.name === 'sctx-mermaid')!.pluginConfig).toEqual({});
     });
 
     it('built-in plugins come after external plugins', async () => {
       const loaded = await loadPlugins({ 'sctx-null-plugin': {} }, CONFIG_DIR);
       expect(loaded[0]!.plugin.name).toBe('sctx-null-plugin');
-      expect(loaded[1]!.plugin.name).toBe('sctx-markdown');
+      expect(loaded.map((l) => l.plugin.name)).toContain('sctx-markdown');
+      expect(loaded.map((l) => l.plugin.name)).toContain('sctx-mermaid');
     });
 
     it('passes config from map to built-in plugin when declared by full name', async () => {

@@ -1,6 +1,17 @@
 import type { SpaceGraph } from '../../space-graph';
 import type { SpaceNode } from '../../types';
 
+const LEVEL_PALETTE = [
+  { fill: '#ff9999', stroke: '#ff0000' },
+  { fill: '#99ccff', stroke: '#0066cc' },
+  { fill: '#99ff99', stroke: '#00cc00' },
+  { fill: '#ffcc99', stroke: '#cc9900' },
+  { fill: '#cc99ff', stroke: '#6600cc' },
+  { fill: '#ff99cc', stroke: '#cc0066' },
+  { fill: '#99ffff', stroke: '#009999' },
+  { fill: '#ffff99', stroke: '#cccc00' },
+];
+
 function escapeMermaidString(str: string): string {
   return str.replace(/"/g, '&quot;');
 }
@@ -10,23 +21,15 @@ function safeNodeId(id: string): string {
 }
 
 export function renderMermaid(graph: SpaceGraph): string {
-  const { hierarchyRoots, orphans, hierarchyChildren: children, hierarchyTitles: hierarchyNodeSet } = graph;
+  const { hierarchyRoots, orphans, hierarchyChildren: children, hierarchyTitles: hierarchyNodeSet, levels } = graph;
 
   let mmd = 'graph TD\n';
 
-  mmd += '  classDef vision fill:#ff9999,stroke:#ff0000,stroke-width:2px\n';
-  mmd += '  classDef mission fill:#99ccff,stroke:#0066cc,stroke-width:2px\n';
-  mmd += '  classDef goal fill:#99ff99,stroke:#00cc00,stroke-width:2px\n';
-  mmd += '  classDef opportunity fill:#ffcc99,stroke:#cc9900,stroke-width:2px\n';
-  mmd += '  classDef solution fill:#cc99ff,stroke:#6600cc,stroke-width:2px\n';
-
-  mmd += '  classDef identified fill:#f0f0f0,stroke:#999999,stroke-dasharray: 5 5\n';
-  mmd += '  classDef wondering fill:#fff0cc,stroke:#cccc00,stroke-dasharray: 5 5\n';
-  mmd += '  classDef exploring fill:#ffcc99,stroke:#cc9900,stroke-dasharray: 5 5\n';
-  mmd += '  classDef active fill:#99ff99,stroke:#00cc00,stroke-width:2px\n';
-  mmd += '  classDef paused fill:#ffcc99,stroke:#cc9900,stroke-width:2px\n';
-  mmd += '  classDef completed fill:#ccccff,stroke:#6666cc,stroke-width:2px\n';
-  mmd += '  classDef archived fill:#e0e0e0,stroke:#999999,stroke-width:2px\n';
+  for (let i = 0; i < levels.length; i++) {
+    const level = levels[i]!;
+    const color = LEVEL_PALETTE[i % LEVEL_PALETTE.length]!;
+    mmd += `  classDef ${level.type} fill:${color.fill},stroke:${color.stroke},stroke-width:2px\n`;
+  }
 
   const addedNodes = new Set<string>();
 
@@ -36,15 +39,13 @@ export function renderMermaid(graph: SpaceGraph): string {
     addedNodes.add(nodeId);
 
     const type = node.resolvedType;
-    const status = node.schemaData.status as string;
     const priority = node.schemaData.priority as string | undefined;
     const label = priority ? `${nodeId} (${priority})` : nodeId;
-    const className = `${type}_${status}`;
 
     const safeId = safeNodeId(nodeId);
     const escapedLabel = escapeMermaidString(label);
 
-    mmd += `  ${safeId}["${escapedLabel}"]:::${className}\n`;
+    mmd += `  ${safeId}["${escapedLabel}"]:::${type}\n`;
 
     const nodeChildren = children.get(nodeId) ?? [];
     for (const child of nodeChildren) {

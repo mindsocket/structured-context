@@ -47,7 +47,7 @@ A catalog of use cases for structured-context, covering both direct CLI usage an
 | **Visualise a space** | Produce a structured view of the space's nodes and relationships | | |
 | — Tree view | Print hierarchy, spot orphans, verify parent links | done | `sctx show` · `sctx render <space> markdown.bullets` |
 | — Filtered / sliced view | Show a subset of nodes matching a type, status, or relationship condition | done | `sctx show --filter` · named views in config |
-| — Mermaid diagram | Visual node map with type-based styling, exportable to `.mmd` | done | `sctx diagram [--output]` · `sctx render <space> markdown.mermaid` |
+| — Mermaid diagram | Visual node map with type-based styling, exportable to `.mmd` | done | `sctx diagram [--output]` · `sctx render <space> mermaid.graph` |
 | — Miro board sync | Push nodes and connectors to a Miro board as interactive cards | done | `sctx miro-sync [--new-frame] [--dry-run]` |
 | — Custom output format | Render a space in a pluggable format (registered by a render plugin) | partial | `sctx render <space> <format>` · `sctx render list` shows registered formats |
 | **Inspect and debug** | Examine parsed content in detail | | |

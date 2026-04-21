@@ -4,7 +4,6 @@ import type { ParseResult, PluginContext, StructuredContextPlugin } from '../uti
 import { PLUGIN_PREFIX } from '../util';
 import { readSpaceDirectory, readSpaceOnAPage } from './read-space';
 import { renderBullets } from './render-bullets';
-import { renderMermaid } from './render-mermaid';
 import { templateSync } from './template-sync';
 
 const TYPE_INFERENCE_CONFIG_SCHEMA = {
@@ -46,13 +45,9 @@ export const markdownPlugin: StructuredContextPlugin = {
   parse,
   templateSync,
   render: {
-    formats: [
-      { name: 'bullets', description: 'Indented bullet list' },
-      { name: 'mermaid', description: 'Mermaid graph TD diagram' },
-    ],
+    formats: [{ name: 'bullets', description: 'Indented bullet list' }],
     render(_context, graph, { format }) {
       if (format === 'bullets') return renderBullets(graph);
-      if (format === 'mermaid') return renderMermaid(graph);
       throw new Error(`Unknown markdown render format: "${format}"`);
     },
   },
