@@ -7,6 +7,7 @@ import { extractSchemaTypeNames } from '../../schema/schema';
 import type { ParseIssue } from '../../types';
 import type { ParseResult, PluginContext } from '../util';
 import type { MarkdownPluginConfig } from '.';
+import { extractLinksFromBody, extractLinksFromFrontmatter, getEdgeFieldNames } from './extract-content-links';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
 import { applyFieldMap, coerceDates, inferTypeFromPath } from './util';
 
@@ -75,6 +76,8 @@ export async function readSpaceDirectory(
   const knownTypes =
     typeInferenceCfg?.mode !== 'off' ? extractSchemaTypeNames(context.schema, context.schemaRefRegistry) : undefined;
 
+  const edgeFields = getEdgeFieldNames(metadata);
+
   const files = await fg('**/*.md', { cwd: directory, followSymbolicLinks: true });
   const nodes: BaseNode[] = [];
   const parseIssues: ParseIssue[] = [];
@@ -136,6 +139,7 @@ export async function readSpaceDirectory(
       schemaData: { title, ...data },
       linkTargets: [title, fileBase],
       type: pageType,
+      contentLinks: [...extractLinksFromFrontmatter(data, edgeFields), ...extractLinksFromBody(parsed.content)],
     });
 
     if (!ON_A_PAGE_TYPES.includes(pageType)) {

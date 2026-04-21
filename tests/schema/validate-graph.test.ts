@@ -87,6 +87,7 @@ describe('validate-graph', () => {
     linkTargets: [title],
     resolvedParents: parentTitle ? [makeParentRef(parentTitle)] : [],
     resolvedType: resolveNodeType(type, typeAliases),
+    resolvedLinks: [],
   });
 
   describe('hierarchy with selfRef', () => {

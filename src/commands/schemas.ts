@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
 import { loadConfig, resolveSchema } from '../config';
 import { bundledSchemasDir, type EntityInfo, extractEntityInfo, loadSchema, readRawSchema } from '../schema/schema';
-import { mergeVariantProperties } from '../schema/schema-refs';
+import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
 import type { SchemaMetadata, SchemaWithMetadata } from '../types';
 
 function isBundledPath(schemaPath: string): boolean {
@@ -35,6 +35,7 @@ function extractEntities(
 ): EntityVariant[] {
   return oneOf.map((entry) => {
     const entryObj = entry as AnySchemaObject;
+    const resolvedObj = resolveRef(entryObj, schema, schemaRefRegistry) ?? entryObj;
     const { properties, required } = mergeVariantProperties(entryObj, schema, schemaRefRegistry);
     const typeDef = properties.type as AnySchemaObject | undefined;
     let types: string[] = [];
@@ -43,7 +44,7 @@ function extractEntities(
 
     return {
       types,
-      description: typeof entryObj.description === 'string' ? entryObj.description : undefined,
+      description: typeof resolvedObj.description === 'string' ? resolvedObj.description : undefined,
       properties: Object.keys(properties).filter((k) => k !== 'type'),
       required: required.filter((r) => r !== 'type'),
     };

@@ -13,6 +13,7 @@ function makeNode(title: string, type: string, parentRefs: ReturnType<typeof mak
     type,
     resolvedType: type,
     resolvedParents: parentRefs,
+    resolvedLinks: [],
   };
 }
 

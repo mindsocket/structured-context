@@ -13,6 +13,7 @@ describe('validate-rules', () => {
         schemaData: { title: 'Outcome', type: 'outcome', status: 'active', metric: 'Increase X' },
         linkTargets: ['Outcome'],
         resolvedParents: [],
+        resolvedLinks: [],
         resolvedType: 'goal', // outcome is an alias for goal
       },
       {
@@ -28,6 +29,7 @@ describe('validate-rules', () => {
         },
         linkTargets: ['Opportunity'],
         resolvedParents: [makeParentRef('Outcome')],
+        resolvedLinks: [],
         resolvedType: 'opportunity',
       },
       {
@@ -37,6 +39,7 @@ describe('validate-rules', () => {
         schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
         linkTargets: ['Solution'],
         resolvedParents: [makeParentRef('Opportunity')],
+        resolvedLinks: [],
         resolvedType: 'solution',
       },
       {
@@ -46,6 +49,7 @@ describe('validate-rules', () => {
         schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },
         linkTargets: ['Bad Solution'],
         resolvedParents: [makeParentRef('Solution')],
+        resolvedLinks: [],
         resolvedType: 'solution',
       },
       {
@@ -61,6 +65,7 @@ describe('validate-rules', () => {
         },
         linkTargets: ['Experiment'],
         resolvedParents: [makeParentRef('Solution')],
+        resolvedLinks: [],
         resolvedType: 'experiment',
       },
       {
@@ -76,6 +81,7 @@ describe('validate-rules', () => {
         },
         linkTargets: ['Bad Experiment'],
         resolvedParents: [makeParentRef('Opportunity')],
+        resolvedLinks: [],
         resolvedType: 'experiment',
       },
     ];
@@ -140,6 +146,7 @@ describe('validate-rules', () => {
           schemaData: { title: 'Bad Outcome', type: 'outcome', status: 'active', parent: '[[Vision]]' },
           linkTargets: ['Bad Outcome'],
           resolvedParents: [makeParentRef('Vision')],
+          resolvedLinks: [],
           resolvedType: 'outcome',
         };
         const visionNode: SpaceNode = {
@@ -149,6 +156,7 @@ describe('validate-rules', () => {
           schemaData: { title: 'Vision', type: 'vision', status: 'active' },
           linkTargets: ['Vision'],
           resolvedParents: [],
+          resolvedLinks: [],
           resolvedType: 'vision',
         };
         // Pass both nodes so the parent can be found in the index
@@ -183,6 +191,7 @@ describe('validate-rules', () => {
           },
           linkTargets: ['Opportunity'],
           resolvedParents: [makeParentRef('Outcome')],
+          resolvedLinks: [],
           resolvedType: 'opportunity',
         };
 
@@ -198,6 +207,7 @@ describe('validate-rules', () => {
           },
           linkTargets: [`Solution ${i}`],
           resolvedParents: [makeParentRef('Opportunity')],
+          resolvedLinks: [],
           resolvedType: 'solution',
         }));
 
@@ -220,6 +230,7 @@ describe('validate-rules', () => {
           },
           linkTargets: ['Opportunity'],
           resolvedParents: [makeParentRef('Outcome')],
+          resolvedLinks: [],
           resolvedType: 'opportunity',
         };
 
@@ -230,6 +241,7 @@ describe('validate-rules', () => {
           schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
           linkTargets: ['Solution'],
           resolvedParents: [makeParentRef('Opportunity')],
+          resolvedLinks: [],
           resolvedType: 'solution',
         };
 
@@ -273,6 +285,7 @@ describe('validate-rules', () => {
             schemaData: { title: 'Outcome 1', type: 'outcome', status: 'active', metric: 'X' },
             linkTargets: ['Outcome 1'],
             resolvedParents: [],
+            resolvedLinks: [],
             resolvedType: 'outcome',
           },
           {
@@ -282,6 +295,7 @@ describe('validate-rules', () => {
             schemaData: { title: 'Outcome 2', type: 'outcome', status: 'active', metric: 'Y' },
             linkTargets: ['Outcome 2'],
             resolvedParents: [],
+            resolvedLinks: [],
             resolvedType: 'outcome',
           },
           {
@@ -291,6 +305,7 @@ describe('validate-rules', () => {
             schemaData: { title: 'Unrelated', type: 'solution', status: 'exploring' },
             linkTargets: ['Unrelated'],
             resolvedParents: [],
+            resolvedLinks: [],
             resolvedType: 'solution',
           },
         ];
@@ -309,6 +324,7 @@ describe('validate-rules', () => {
           schemaData: { title: 'Outcome', type: 'outcome', status: 'inactive', metric: 'X' },
           linkTargets: ['Outcome'],
           resolvedParents: [],
+          resolvedLinks: [],
           resolvedType: 'outcome',
         };
         const childNode: SpaceNode = {
@@ -324,6 +340,7 @@ describe('validate-rules', () => {
           },
           linkTargets: ['Opportunity'],
           resolvedParents: [makeParentRef('Outcome')],
+          resolvedLinks: [],
           resolvedType: 'opportunity',
         };
         const violations = await validateRules([parentNode, childNode], [workflowRules[1]!]);
@@ -341,6 +358,7 @@ describe('validate-rules', () => {
           schemaData: { title: 'Outcome', type: 'outcome', status: 'active', metric: 'X' },
           linkTargets: ['Outcome'],
           resolvedParents: [],
+          resolvedLinks: [],
           resolvedType: 'outcome',
         };
         const childNode: SpaceNode = {
@@ -356,6 +374,7 @@ describe('validate-rules', () => {
           },
           linkTargets: ['Opportunity'],
           resolvedParents: [makeParentRef('Outcome')],
+          resolvedLinks: [],
           resolvedType: 'opportunity',
         };
         const violations = await validateRules([parentNode, childNode], [workflowRules[1]!]);
@@ -390,6 +409,7 @@ describe('validate-rules', () => {
             schemaData: { title: 'Outcome 1', type: 'outcome', status: 'active', metric: 'X' },
             linkTargets: ['Outcome 1'],
             resolvedParents: [],
+            resolvedLinks: [],
             resolvedType: 'outcome',
           },
           {
@@ -399,6 +419,7 @@ describe('validate-rules', () => {
             schemaData: { title: 'Outcome 2', type: 'outcome', status: 'active', metric: 'Y' },
             linkTargets: ['Outcome 2'],
             resolvedParents: [],
+            resolvedLinks: [],
             resolvedType: 'outcome',
           },
           {
@@ -408,6 +429,7 @@ describe('validate-rules', () => {
             schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
             linkTargets: ['Solution'],
             resolvedParents: [makeParentRef('Opportunity')],
+            resolvedLinks: [],
             resolvedType: 'solution',
           },
           {
@@ -417,6 +439,7 @@ describe('validate-rules', () => {
             schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },
             linkTargets: ['Bad Solution'],
             resolvedParents: [makeParentRef('Solution')],
+            resolvedLinks: [],
             resolvedType: 'solution',
           },
         ];

@@ -26,8 +26,8 @@ describe('Schema validation', () => {
       ({ nodes, unresolvedRefs } = resolveGraphEdges(result.nodes, metadata));
     });
 
-    it('all 12 nodes pass schema validation', () => {
-      expect(nodes).toHaveLength(12);
+    it('all 13 nodes pass schema validation', () => {
+      expect(nodes).toHaveLength(13);
       for (const node of nodes) {
         expect(validateNode(node.schemaData)).toBe(true);
       }

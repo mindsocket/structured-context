@@ -1,5 +1,14 @@
 import { resolveNodeType } from '../schema/schema';
-import type { BaseNode, EdgeDefinition, ResolvedParentRef, SchemaMetadata, SpaceNode, UnresolvedRef } from '../types';
+import type {
+  BaseNode,
+  ContentLink,
+  EdgeDefinition,
+  ResolvedContentLink,
+  ResolvedParentRef,
+  SchemaMetadata,
+  SpaceNode,
+  UnresolvedRef,
+} from '../types';
 import { buildTargetIndex, wikilinkToTarget } from './wikilink-utils';
 
 /**
@@ -137,6 +146,37 @@ function resolveEdge(
 }
 
 /**
+ * Classify a ContentLink into a ResolvedContentLink by determining its location.
+ *
+ * Wikilinks are resolved against the target index: if found, location is 'node',
+ * otherwise 'internal' (in the source system but not a space node).
+ * Markdown links are classified by URL scheme: external (http/https), system (file://),
+ * protocol (other scheme), or internal (relative path / no scheme).
+ */
+function classifyContentLink(link: ContentLink, targetIndex: Map<string, SpaceNode | null>): ResolvedContentLink {
+  const { linkSyntax, target, text, action, anchor } = link;
+  const base = { text, target, action, ...(anchor !== undefined ? { anchor } : {}) };
+
+  if (linkSyntax === 'wikilink') {
+    // Try the full target#anchor key first, then the bare target — either means it's a space node.
+    const lookupKey = anchor !== undefined ? `${target}#${anchor}` : target;
+    const inIndex = targetIndex.has(lookupKey) || (anchor !== undefined && targetIndex.has(target));
+    return { ...base, location: inIndex ? 'node' : 'internal' };
+  }
+
+  // Markdown link: classify by URL scheme.
+  const colonIdx = target.indexOf('://');
+  if (colonIdx > 0) {
+    const scheme = target.slice(0, colonIdx).toLowerCase();
+    const location = scheme === 'https' || scheme === 'http' ? 'external' : scheme === 'file' ? 'system' : 'protocol';
+    return { ...base, location };
+  }
+
+  // Relative path or fragment — in the source system but not a resolvable space node.
+  return { ...base, location: 'internal' };
+}
+
+/**
  * Enrich parsed nodes into SpaceNodes by applying type alias resolution and resolving
  * parent links using the hierarchy levels and relationships from schema metadata.
  *
@@ -155,6 +195,7 @@ export function resolveGraphEdges(
     ...n,
     resolvedType: resolveNodeType(n.type, typeAliases),
     resolvedParents: [],
+    resolvedLinks: [],
   }));
 
   const targetIndex = buildTargetIndex(spaceNodes);
@@ -230,6 +271,11 @@ export function resolveGraphEdges(
       multiple: rel.multiple,
     };
     resolveEdge(nodesByType, targetIndex, edge, 'relationship', rel.type === rel.parent, unresolvedRefs, typeAliases);
+  }
+
+  // 3. Resolve content links — classify each raw ContentLink into a ResolvedContentLink.
+  for (const node of spaceNodes) {
+    node.resolvedLinks = (node.contentLinks ?? []).map((link) => classifyContentLink(link, targetIndex));
   }
 
   // Deduplicate by (label, field, ref) — the same broken link may be encountered across

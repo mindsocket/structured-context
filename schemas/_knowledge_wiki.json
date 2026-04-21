@@ -207,7 +207,7 @@
     },
     "note": {
       "type": "object",
-      "description": "Personal notes, journal entries, appointments, experiential records. Your own data about your journey — not sourced from external material.",
+      "description": "Personal notes, journal entries, talk notes, or rough thoughts not drawn from an external URL.",
       "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "note" },

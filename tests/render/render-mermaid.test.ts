@@ -21,6 +21,7 @@ function makeNode(title: string, type: string, status = 'active'): SpaceNode {
     type,
     resolvedType: type,
     resolvedParents: [],
+    resolvedLinks: [],
   };
 }
 
