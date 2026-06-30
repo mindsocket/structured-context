@@ -1,10 +1,8 @@
 import { shortenPluginName } from '@/plugins/util';
 import { updateSpaceField } from '../config';
-import { filterNodes } from '../filter/filter-nodes';
+import { assembleSpaceGraph } from '../load-space-graph';
 import { loadPlugins } from '../plugins/loader';
-import { readSpace } from '../read/read-space';
-import { buildSpaceGraph } from '../space-graph';
-import type { SpaceContext, SpaceNode } from '../types';
+import type { SpaceContext } from '../types';
 import { buildFormatRegistry } from './registry';
 
 export async function executeRender(
@@ -24,20 +22,7 @@ export async function executeRender(
     );
   }
 
-  const { nodes: allNodes } = await readSpace(context);
-
-  // Validate: drop nodes that fail schema validation
-  const { schemaValidator } = context;
-  const validNodes: SpaceNode[] = allNodes.filter((node) => schemaValidator(node.schemaData));
-
-  const levels = context.schema.metadata.hierarchy?.levels ?? [];
-  let graph = buildSpaceGraph(validNodes, levels);
-
-  // Filter: apply filter expression if provided
-  if (options.filter) {
-    const expression = context.space.views?.[options.filter]?.expression ?? options.filter;
-    graph = await filterNodes(expression, graph);
-  }
+  const graph = await assembleSpaceGraph(context, { filter: options.filter });
 
   const shortName = shortenPluginName(entry.plugin.plugin.name);
   const pluginContext = {

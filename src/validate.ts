@@ -1,17 +1,18 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
-import { getSpaceConfigDir, resolveSchema } from './config';
 import { readSpace } from './read/read-space';
-import { extractEntityInfo, loadSchema } from './schema/schema';
+import { extractEntityInfo } from './schema/schema';
 import { validateGraph } from './schema/validate-graph';
 import { validateRules } from './schema/validate-rules';
+import { createSpaceContext } from './space-context';
 import { buildSpaceGraph } from './space-graph';
 import type {
   FileNotInSpaceResult,
   FileValidationResult,
   GraphViolation,
   ParseIssue,
+  ReadSpaceResult,
   RuleViolation,
   SchemaWithMetadata,
   SpaceContext,
@@ -147,11 +148,14 @@ export function formatErrors(
  * Run full validation on a space and return a structured result.
  * Does not output to console or call process.exit.
  */
-export async function validateSpace(context: SpaceContext): Promise<ValidationResult> {
+export async function validateSpace(
+  context: SpaceContext,
+  options: { readResult?: ReadSpaceResult } = {},
+): Promise<ValidationResult> {
   const { schema, schemaRefRegistry, schemaValidator } = context;
   const metadata = schema.metadata;
 
-  const readResult = await readSpace(context);
+  const readResult = options.readResult ?? (await readSpace(context));
   const { nodes, parseIssues } = readResult;
 
   // Pre-extract valid types for early type validation
@@ -268,13 +272,6 @@ function resolveFileSpace(filePath: string, config: Config): { space: SpaceConfi
   return null;
 }
 
-function buildContextForSpace(space: SpaceConfig, config: Config): SpaceContext {
-  const resolvedSchemaPath = resolveSchema(config, space);
-  const { schema, schemaRefRegistry, schemaValidator } = loadSchema(resolvedSchemaPath);
-  const configDir = getSpaceConfigDir(space.name);
-  return { space, config, resolvedSchemaPath, schema, schemaRefRegistry, schemaValidator, configDir };
-}
-
 /**
  * Validate a single file within its space.
  *
@@ -284,7 +281,11 @@ function buildContextForSpace(space: SpaceConfig, config: Config): SpaceContext 
  * Returns a result object — does not output to console or call process.exit.
  * If the file is not in any configured space, returns a result with `inSpace: false`.
  */
-export async function validateFile(filePath: string, config: Config): Promise<ValidateFileOutput> {
+export async function validateFile(
+  filePath: string,
+  config: Config,
+  options: { configDir?: string } = {},
+): Promise<ValidateFileOutput> {
   const resolved = resolveFileSpace(filePath, config);
 
   if (!resolved) {
@@ -296,7 +297,7 @@ export async function validateFile(filePath: string, config: Config): Promise<Va
   }
 
   const { space, label } = resolved;
-  const context = buildContextForSpace(space, config);
+  const context = createSpaceContext(space.name, config, { configDir: options.configDir });
   const { schema, schemaRefRegistry, schemaValidator } = context;
   const metadata = schema.metadata;
 

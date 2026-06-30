@@ -28,6 +28,7 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 
 ## Key Files
 
+- `src/api.ts` — Public library entry point (`structured-context/api`). Re-exports the supported programmatic surface. Keep CLI-only concerns out of it.
 - config — JSON5 file with spaces registered
 - `schemas/` — Bundled default schema files (JSON5) using the structured-context schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`).
 - `src/metadata-contract.ts` — Single source of truth for the `$metadata` contract

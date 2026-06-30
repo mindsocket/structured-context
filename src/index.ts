@@ -13,30 +13,21 @@ import { listSpaces } from './commands/spaces';
 import { templateSync } from './commands/template-sync';
 import { validate, watchValidate } from './commands/validate';
 import { validateFileCommand } from './commands/validate-file';
-import { getSpaceConfigDir, loadConfig, resolveSchema, setConfigPath } from './config';
+import { loadConfig, setConfigPath } from './config';
 import { CLI_NAME } from './constants';
-import { loadSchema } from './schema/schema';
+import { createSpaceContext, SpaceNotFoundError } from './space-context';
 import type { SpaceContext } from './types';
 
 export function buildSpaceContext(spaceName: string): SpaceContext {
-  const config = loadConfig();
-  const space = config.spaces.find((s) => s.name === spaceName);
-  if (!space) {
-    console.error(`Error: Unknown space "${spaceName}"`);
-    process.exit(1);
+  try {
+    return createSpaceContext(spaceName, loadConfig());
+  } catch (err) {
+    if (err instanceof SpaceNotFoundError) {
+      console.error(`Error: ${err.message}`);
+      process.exit(1);
+    }
+    throw err;
   }
-  const resolvedSchemaPath = resolveSchema(config, space);
-  const { schema, schemaRefRegistry, schemaValidator } = loadSchema(resolvedSchemaPath);
-  const configDir = getSpaceConfigDir(space.name);
-  return {
-    space,
-    config,
-    resolvedSchemaPath,
-    schema,
-    schemaRefRegistry,
-    schemaValidator,
-    configDir,
-  };
 }
 
 const require = createRequire(import.meta.url);

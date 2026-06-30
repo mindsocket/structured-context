@@ -370,6 +370,12 @@ Keeps Obsidian template files in sync with schema examples:
 - `templatePrefix` in `plugins.markdown` config (default blank) sets a naming convention for templates (`{templatePrefix}{type}.md`). This will be used to check existing filenames, and create new templates with `--create-missing`.
 - `--dry-run` previews changes without writing files
 
+## Programmatic API
+
+The package exposes a library entry point at `structured-context/api` for embedding the tooling
+in other applications. See
+[docs/api.md](docs/api.md) for the full reference and usage examples.
+
 ## Development
 
 ```bash

@@ -48,6 +48,12 @@ export type SpaceConfig = {
   plugins?: Record<string, Record<string, unknown>>;
   /** Named filter views for this space. Keys are view names; values contain the filter expression. */
   views?: Record<string, { expression: string }>;
+  /**
+   * Directory of the config file that defined this space, used to anchor relative plugin-config
+   * paths. Set by loadConfig; absent for a hand-assembled Config, whose callers must pass an
+   * explicit configDir to createSpaceContext. Not persisted by updateSpaceField.
+   */
+  sourceDir?: string;
 };
 
 export type Config = {
@@ -71,18 +77,6 @@ export function getConfigSourceFiles(): Set<string> {
     loadConfig();
   }
   return new Set(_spaceSourceFiles.values());
-}
-
-/**
- * Get the directory of the config file that defines a given space.
- */
-export function getSpaceConfigDir(spaceName: string): string {
-  if (_spaceSourceFiles.size === 0) {
-    loadConfig();
-  }
-  const spaceConfigPath = _spaceSourceFiles.get(spaceName);
-  if (!spaceConfigPath) throw new Error('Space config path not found');
-  return dirname(spaceConfigPath);
 }
 
 export function configPath(): string {
@@ -166,8 +160,10 @@ export function loadConfig(): Config {
   const config = _loadConfig(path);
   _spaceSourceFiles.clear();
   // Track which spaces come from the main config file
+  const mainSourceDir = dirname(resolve(path));
   for (const space of config.spaces) {
     _spaceSourceFiles.set(space.name, path);
+    space.sourceDir = mainSourceDir;
   }
   // Load includeSpacesFrom configs and merge their spaces in, with later entries taking precedence over earlier ones
   if (config.includeSpacesFrom) {
@@ -179,8 +175,10 @@ export function loadConfig(): Config {
         throw new Error(`Included config contains spaces with duplicate names: ${resolvedIncludePath}`);
       }
       // Track which spaces come from this included config file
+      const includeSourceDir = dirname(resolvedIncludePath);
       for (const space of includedConfig.spaces) {
         _spaceSourceFiles.set(space.name, resolvedIncludePath);
+        space.sourceDir = includeSourceDir;
       }
       config.spaces.push(...includedConfig.spaces);
     }
