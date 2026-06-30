@@ -36,7 +36,7 @@ const CONFIG_SCHEMA = {
     schema: { type: 'string' },
     includeSpacesFrom: { type: 'array', items: { type: 'string' } },
   },
-  required: ['spaces'],
+  anyOf: [{ required: ['spaces'] }, { required: ['includeSpacesFrom'] }],
   additionalProperties: false,
 };
 
@@ -153,6 +153,7 @@ function _loadConfig(path: string): Config {
   if (!validate(config)) {
     throw new Error(`Invalid config in ${path}: ${JSON.stringify(validate.errors)}`);
   }
+  if (!config.spaces) config.spaces = [];
   return config as unknown as Config;
 }
 

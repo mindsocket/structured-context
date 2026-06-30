@@ -170,6 +170,44 @@ describe('loadConfig with includeSpacesFrom', () => {
     expect(config.spaces[0]!.name).toBe('abs-space');
   });
 
+  it('loads a config with only includeSpacesFrom and no spaces', () => {
+    writeFileSync(
+      includedConfigPath,
+      JSON.stringify(
+        {
+          spaces: [{ name: 'included-space', path: '/path/to/included' }],
+        },
+        null,
+        2,
+      ),
+    );
+
+    writeFileSync(
+      mainConfigPath,
+      JSON.stringify(
+        {
+          includeSpacesFrom: ['included-config.json'],
+        },
+        null,
+        2,
+      ),
+    );
+
+    setConfigPath(mainConfigPath);
+    const config = loadConfig();
+
+    expect(config.spaces).toHaveLength(1);
+    expect(config.spaces[0]?.name).toBe('included-space');
+  });
+
+  it('throws when neither spaces nor includeSpacesFrom is present', () => {
+    writeFileSync(mainConfigPath, JSON.stringify({ schema: 'strategy_general.json' }, null, 2));
+
+    setConfigPath(mainConfigPath);
+
+    expect(() => loadConfig()).toThrow('Invalid config');
+  });
+
   it('throws error when included config has duplicate name', () => {
     writeFileSync(
       includedConfigPath,

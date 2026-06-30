@@ -28,6 +28,8 @@ A space is a named directory or single file registered in the config. Example:
 
 **`includeSpacesFrom`** — import space definitions from other config files. Useful for aggregating spaces from multiple projects into a central config. Duplicate space names are not allowed.
 
+A config must define at least one of `spaces` or `includeSpacesFrom`. When using `includeSpacesFrom` alone, `spaces` can be omitted entirely.
+
 ## Plugins
 
 Use `plugins` to load parse plugins that read spaces from non-markdown sources. The built-in markdown plugin is always available without any declaration. Plugins are tried in order; the first to return a result wins. The `plugins` field is a map of plugin name to plugin config, and can be declared at the top level (applies to all spaces) or per-space (overrides the top level):
