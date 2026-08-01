@@ -1,7 +1,7 @@
+import { shortenPluginName } from '@/plugins/util';
 import { updateSpaceField } from '../config';
 import { assembleSpaceGraph } from '../load-space-graph';
 import { loadPlugins } from '../plugins/loader';
-import { shortenPluginName } from '../plugins/util';
 import type { SpaceContext } from '../types';
 import { buildFormatRegistry } from './registry';
 
