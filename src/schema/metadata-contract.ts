@@ -63,13 +63,19 @@ const RULE_SCHEMA = {
     severity: { enum: ['error', 'warning', 'info'] },
     description: { type: 'string', minLength: 1 },
     check: { type: 'string', minLength: 1 },
+    mode: { enum: ['expression', 'semantic'] },
+    rubric: { type: 'string', minLength: 1 },
+    /** Semantic rules: the closed set of verdicts a judge may return, each with a description. Defaults to `pass`/`fail`. */
+    verdicts: { type: 'object', additionalProperties: { type: 'string', minLength: 1 }, minProperties: 2 },
+    /** Semantic rules: which verdicts count as a violation. Defaults to `fail`; every other verdict passes. */
+    failOn: { type: 'array', items: { type: 'string', minLength: 1 }, minItems: 1, uniqueItems: true },
     type: { type: 'string', minLength: 1 },
     scope: { enum: ['global'] },
     override: { type: 'boolean' },
     /** Whether a violation of this rule gates (suppresses) downstream checks on the node's hierarchy subtree. Defaults to true for `error` severity rules and false otherwise. */
     gatesDescendants: { type: 'boolean' },
   },
-  required: ['id', 'category', 'description', 'check'],
+  required: ['id', 'category', 'description'],
   additionalProperties: false,
 } as const;
 

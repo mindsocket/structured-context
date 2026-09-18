@@ -1,4 +1,5 @@
 import { loadConfig } from '../config';
+import { parseRuleFilter } from '../schema/rule-filter';
 import type { FileValidationIssue, FileValidationResult } from '../types';
 import { validateFile } from '../validate';
 
@@ -11,10 +12,14 @@ export { validateFile } from '../validate';
  */
 export async function validateFileCommand(
   filePath: string,
-  options: { json?: boolean; includeGated?: boolean } = {},
+  options: { json?: boolean; includeGated?: boolean; semantic?: boolean; ruleFilter?: string[] } = {},
 ): Promise<number> {
   const config = loadConfig();
-  const result = await validateFile(filePath, config, { includeGated: options.includeGated });
+  const result = await validateFile(filePath, config, {
+    includeGated: options.includeGated,
+    semantic: options.semantic,
+    ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
+  });
 
   if (!result.inSpace) {
     if (options.json) {
