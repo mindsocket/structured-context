@@ -1,3 +1,5 @@
+import { judgeNode } from '../judge/judge-node';
+import type { GatedRuleRecord, SemanticEvaluationRecord, SemanticJudgeProvider } from '../judge/types';
 import type { Rule, RuleCategory, RuleSeverity, RuleViolation, SpaceNode } from '../types';
 import { buildEvalContext, evaluateExpression } from './evaluate-rule';
 
@@ -14,16 +16,40 @@ export function ruleSeverity(rule: Rule): RuleSeverity {
   return rule.severity ?? DEFAULT_SEVERITY_BY_CATEGORY[rule.category];
 }
 
+export interface ValidateRulesOptions {
+  /** Whether to run semantic rules (default: false). */
+  semantic?: boolean;
+  /** The semantic judge provider to use if semantic is true. */
+  judgeProvider?: SemanticJudgeProvider;
+  /** Set of node labels that have already failed upstream structural checks. */
+  gatedNodeLabels?: Set<string>;
+}
+
+export type ValidatedRulesResult = RuleViolation[] & {
+  semanticEvaluations: SemanticEvaluationRecord[];
+  gatedRules: GatedRuleRecord[];
+};
+
 /**
  * Validate nodes against rules metadata.
- * Returns a list of rule violations found.
+ * Evaluates deterministic expression rules and (when opt-in) semantic judge rules.
  *
  * @param nodes - All nodes in the space
  * @param rules - Rules metadata list
- * @returns Array of rule violations
+ * @param options - Validation options including semantic opt-in and judge provider
+ * @returns Array of rule violations with semanticEvaluations and gatedRules metadata attached
  */
-export async function validateRules(nodes: SpaceNode[], rules: Rule[]): Promise<RuleViolation[]> {
+export async function validateRules(
+  nodes: SpaceNode[],
+  rules: Rule[],
+  options: ValidateRulesOptions = {},
+): Promise<ValidatedRulesResult> {
   const violations: RuleViolation[] = [];
+  const semanticEvaluations: SemanticEvaluationRecord[] = [];
+  const gatedRules: GatedRuleRecord[] = [];
+
+  // Track nodes that have failed checks (for cascading gating)
+  const failedNodeLabels = new Set<string>(options.gatedNodeLabels || []);
 
   // Build node index for efficient lookups
   const nodeIndex = new Map<string, SpaceNode>();
@@ -34,16 +60,30 @@ export async function validateRules(nodes: SpaceNode[], rules: Rule[]): Promise<
     }
   }
 
-  // Evaluate each rule against applicable nodes
+  // Separate rules into expression rules and semantic rules
+  const expressionRules: Rule[] = [];
+  const semanticRules: Rule[] = [];
+
   for (const rule of rules) {
+    if (rule.mode === 'semantic') {
+      semanticRules.push(rule);
+    } else if (rule.check) {
+      expressionRules.push(rule);
+    }
+  }
+
+  // 1. Evaluate deterministic expression rules first
+  for (const rule of expressionRules) {
+    const check = rule.check as string;
     const severity = ruleSeverity(rule);
+
     if (rule.scope === 'global') {
       // Global rules are evaluated once against the full node set.
       // A sentinel node provides the evaluation context (nodes array is what matters).
       const sentinel = nodes[0];
       if (sentinel) {
         const context = buildEvalContext(sentinel, nodes, nodeIndex);
-        const result = await evaluateExpression(rule.check, context);
+        const result = await evaluateExpression(check, context);
         if (result !== true) {
           violations.push({
             file: '',
@@ -58,7 +98,7 @@ export async function validateRules(nodes: SpaceNode[], rules: Rule[]): Promise<
       const targetNodes = rule.type ? nodes.filter((n) => n.resolvedType === rule.type) : nodes;
       for (const node of targetNodes) {
         const context = buildEvalContext(node, nodes, nodeIndex);
-        const result = await evaluateExpression(rule.check, context);
+        const result = await evaluateExpression(check, context);
         if (result !== true) {
           violations.push({
             file: node.label,
@@ -67,10 +107,49 @@ export async function validateRules(nodes: SpaceNode[], rules: Rule[]): Promise<
             severity,
             description: rule.description,
           });
+          failedNodeLabels.add(node.label);
         }
       }
     }
   }
 
-  return violations;
+  // 2. Evaluate semantic rules only if explicitly requested
+  if (options.semantic) {
+    const judgeProvider = options.judgeProvider;
+    if (!judgeProvider) {
+      throw new Error('Semantic evaluation was requested but no judgeProvider was provided to validateRules.');
+    }
+
+    for (const node of nodes) {
+      const applicable = semanticRules.filter((r) => !r.type || r.type === node.resolvedType);
+      if (applicable.length === 0) continue;
+
+      // Safe cascading default: gate semantic evaluation if node failed upstream checks
+      if (failedNodeLabels.has(node.label)) {
+        for (const rule of applicable) {
+          gatedRules.push({ file: node.label, ruleId: rule.id, reason: 'Gated by upstream error on node' });
+        }
+        continue;
+      }
+
+      for (const j of await judgeNode(judgeProvider, node, applicable)) {
+        if (j.record) semanticEvaluations.push(j.record);
+        if (!j.failed) continue;
+        violations.push({
+          file: node.label,
+          ruleId: j.rule.id,
+          category: j.rule.category,
+          severity: ruleSeverity(j.rule),
+          description: j.error ? `${j.rule.description} (Judge error: ${j.error})` : j.rule.description,
+          evidence: j.evidence,
+        });
+        if (!j.error) failedNodeLabels.add(node.label);
+      }
+    }
+  }
+
+  const result = violations as ValidatedRulesResult;
+  result.semanticEvaluations = semanticEvaluations;
+  result.gatedRules = gatedRules;
+  return result;
 }

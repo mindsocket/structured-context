@@ -1,3 +1,5 @@
+import { judgeNode } from '../judge/judge-node';
+import type { GatedRuleRecord, SemanticEvaluationRecord, SemanticJudgeProvider } from '../judge/types';
 import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleViolation, SpaceNode } from '../types';
 import { buildEvalContext, evaluateExpression } from './evaluate-rule';
@@ -41,7 +43,18 @@ export type CoverageGate = {
 export type GatedRuleEvaluation = {
   violations: RuleViolation[];
   gates: CoverageGate[];
+  /** Semantic judgements made (empty unless a judge was supplied). */
+  semanticEvaluations: SemanticEvaluationRecord[];
+  /** Semantic rule/node pairs skipped because the node was gated (empty unless a judge was supplied). */
+  gatedRules: GatedRuleRecord[];
 };
+
+export interface GatingOptions {
+  /** Evaluate rules on gated nodes anyway (gates are still reported). */
+  includeGated?: boolean;
+  /** Judge for `mode: semantic` rules. Without it, semantic rules are not evaluated. */
+  judge?: SemanticJudgeProvider;
+}
 
 /**
  * Compute breadth-first depth (1-based, from hierarchy roots and orphans) for every
@@ -81,7 +94,7 @@ export async function evaluateRulesWithGating(
   rules: Rule[],
   graph: SpaceGraph,
   seeds: GatingSeed[],
-  options: { includeGated?: boolean } = {},
+  options: GatingOptions = {},
 ): Promise<GatedRuleEvaluation> {
   const includeGated = options.includeGated ?? false;
 
@@ -98,7 +111,10 @@ export async function evaluateRulesWithGating(
     }
   }
 
+  const judge = options.judge;
   const violations: RuleViolation[] = [];
+  const semanticEvaluations: SemanticEvaluationRecord[] = [];
+  const gatedRules: GatedRuleRecord[] = [];
   const gateOrigins = new Map<string, CoverageGate>();
 
   function originFor(
@@ -113,12 +129,12 @@ export async function evaluateRulesWithGating(
     return origin;
   }
 
-  const globalRules = rules.filter((r) => r.scope === 'global');
+  const globalRules = rules.filter((r) => r.scope === 'global' && r.mode !== 'semantic');
   const sentinel = nodes[0];
   if (sentinel) {
     for (const rule of globalRules) {
       const context = buildEvalContext(sentinel, nodes, nodeIndex);
-      const result = await evaluateExpression(rule.check, context);
+      const result = await evaluateExpression(rule.check as string, context);
       if (result !== true) {
         violations.push({
           file: '',
@@ -131,28 +147,49 @@ export async function evaluateRulesWithGating(
     }
   }
 
-  const perNodeRules = rules.filter((r) => r.scope !== 'global');
+  const perNodeRules = rules.filter((r) => r.scope !== 'global' && (r.mode !== 'semantic' || judge));
+
+  function applicableRules(node: SpaceNode): Rule[] {
+    return perNodeRules.filter((r) => !r.type || r.type === node.resolvedType);
+  }
 
   async function evaluateApplicableRules(node: SpaceNode): Promise<{ blockingRuleId?: string }> {
     let blockingRuleId: string | undefined;
-    const applicable = perNodeRules.filter((r) => !r.type || r.type === node.resolvedType);
-    for (const rule of applicable) {
-      const context = buildEvalContext(node, nodes, nodeIndex);
-      const result = await evaluateExpression(rule.check, context);
-      if (result !== true) {
-        violations.push({
-          file: node.label,
-          ruleId: rule.id,
-          category: rule.category,
-          severity: ruleSeverity(rule),
-          description: rule.description,
-        });
-        if (ruleGatesDescendants(rule) && !blockingRuleId) {
-          blockingRuleId = rule.id;
-        }
+    const applicable = applicableRules(node);
+
+    function report(rule: Rule, evidence?: string, error?: string): void {
+      violations.push({
+        file: node.label,
+        ruleId: rule.id,
+        category: rule.category,
+        severity: ruleSeverity(rule),
+        description: error ? `${rule.description} (Judge error: ${error})` : rule.description,
+        ...(evidence !== undefined && { evidence }),
+      });
+      // A judge error says nothing about the node, so it never gates.
+      if (!error && ruleGatesDescendants(rule) && !blockingRuleId) blockingRuleId = rule.id;
+    }
+
+    // Cheap deterministic rules first; the judge is only consulted afterwards, once per node.
+    for (const rule of applicable.filter((r) => r.mode !== 'semantic')) {
+      const result = await evaluateExpression(rule.check as string, buildEvalContext(node, nodes, nodeIndex));
+      if (result !== true) report(rule);
+    }
+
+    const semantic = applicable.filter((r) => r.mode === 'semantic');
+    if (judge && semantic.length > 0) {
+      for (const j of await judgeNode(judge, node, semantic)) {
+        if (j.record) semanticEvaluations.push(j.record);
+        if (j.failed) report(j.rule, j.evidence, j.error);
       }
     }
     return { blockingRuleId };
+  }
+
+  function recordGatedSemantic(node: SpaceNode, reason: string): void {
+    for (const rule of applicableRules(node)) {
+      if (rule.mode === 'semantic') gatedRules.push({ file: node.label, ruleId: rule.id, reason });
+    }
   }
 
   // Non-hierarchy nodes sit outside the subtree cascade — always evaluated, never gated.
@@ -179,6 +216,9 @@ export async function evaluateRulesWithGating(
     const shouldEvaluate = !isGated || includeGated;
 
     const { blockingRuleId } = shouldEvaluate ? await evaluateApplicableRules(node) : {};
+    if (!shouldEvaluate) {
+      recordGatedSemantic(node, isGatedByAncestor ? 'Gated by an ancestor failure' : 'Gated by failure on node');
+    }
 
     let childOrigin: string | undefined = ancestorOrigin;
     if (isGatedByAncestor) {
@@ -199,5 +239,10 @@ export async function evaluateRulesWithGating(
     }
   }
 
-  return { violations, gates: [...gateOrigins.values()].filter((g) => g.gatedFiles.length > 0) };
+  return {
+    violations,
+    gates: [...gateOrigins.values()].filter((g) => g.gatedFiles.length > 0),
+    semanticEvaluations,
+    gatedRules,
+  };
 }

@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020';
 import JSON5 from 'json5';
 import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
+import type { JudgeConfig } from './judge/types';
 import {
   normalizePluginName,
   resolvePluginSchemasDir,
@@ -11,6 +12,18 @@ import {
   shortenPluginName,
 } from './plugins/util';
 import { bundledSchemasDir } from './schema/schema';
+
+const JUDGE_CONFIG_SCHEMA = {
+  type: 'object',
+  properties: {
+    provider: { type: 'string', enum: ['anthropic', 'openai', 'fake'] },
+    model: { type: 'string' },
+    apiKey: { type: 'string' },
+    endpoint: { type: 'string' },
+    autoRun: { type: 'boolean' },
+  },
+  additionalProperties: false,
+} as const;
 
 const CONFIG_SCHEMA = {
   type: 'object',
@@ -33,6 +46,8 @@ const CONFIG_SCHEMA = {
               additionalProperties: false,
             },
           },
+          judge: JUDGE_CONFIG_SCHEMA,
+          semantic: { type: 'boolean' },
         },
         required: ['name', 'path'],
         additionalProperties: false,
@@ -40,6 +55,8 @@ const CONFIG_SCHEMA = {
     },
     schema: { type: 'string' },
     includeSpacesFrom: { type: 'array', items: { type: 'string' } },
+    judge: JUDGE_CONFIG_SCHEMA,
+    semantic: { type: 'boolean' },
   },
   anyOf: [{ required: ['spaces'] }, { required: ['includeSpacesFrom'] }],
   additionalProperties: false,
@@ -53,6 +70,10 @@ export type SpaceConfig = {
   plugins?: Record<string, Record<string, unknown>>;
   /** Named filter views for this space. Keys are view names; values contain the filter expression. */
   views?: Record<string, { expression: string }>;
+  /** LLM judge provider configuration for semantic rule evaluation. */
+  judge?: JudgeConfig;
+  /** Whether to evaluate semantic rules during validation for this space. */
+  semantic?: boolean;
   /**
    * Directory of the config file that defined this space, used to anchor relative plugin-config
    * paths. Set by loadConfig; absent for a hand-assembled Config, whose callers must pass an
@@ -65,6 +86,10 @@ export type Config = {
   spaces: SpaceConfig[];
   schema?: string;
   includeSpacesFrom?: string[];
+  /** Default LLM judge provider configuration for semantic rule evaluation. */
+  judge?: JudgeConfig;
+  /** Whether to evaluate semantic rules during validation across spaces. */
+  semantic?: boolean;
 };
 
 let _configPathOverride: string | undefined;

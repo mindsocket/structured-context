@@ -207,6 +207,30 @@
                 "type": "string",
                 "minLength": 1
               },
+              "mode": {
+                "enum": ["expression", "semantic"]
+              },
+              "rubric": {
+                "type": "string",
+                "minLength": 1
+              },
+              "verdicts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minProperties": 2
+              },
+              "failOn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
               "type": {
                 "type": "string",
                 "minLength": 1
@@ -221,7 +245,7 @@
                 "type": "boolean"
               }
             },
-            "required": ["id", "category", "description", "check"],
+            "required": ["id", "category", "description"],
             "additionalProperties": false
           }
         }

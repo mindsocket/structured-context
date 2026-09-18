@@ -22,6 +22,20 @@ export type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
 export type { Config, SpaceConfig } from './config';
 export { loadConfig, resolveSchema, resolveSchemaPath, setConfigPath } from './config';
 export { PLUGIN_PREFIX } from './constants';
+export type {
+  GatedRuleRecord,
+  JudgeConfig,
+  SemanticEvaluationRecord,
+  SemanticJudgeInput,
+  SemanticJudgeProvider,
+  SemanticJudgeVerdict,
+} from './judge';
+export {
+  AnthropicJudgeProvider,
+  createJudgeProvider,
+  FakeJudgeProvider,
+  OpenAIJudgeProvider,
+} from './judge';
 export { assembleSpaceGraph, loadSpaceGraph } from './load-space-graph';
 export type {
   ParseHook,
@@ -79,5 +93,5 @@ export type {
   UnresolvedRef,
   ValidateFileOutput,
 } from './types';
-export type { ValidationResult } from './validate';
+export type { ValidateFileOptions, ValidateSpaceOptions, ValidationResult } from './validate';
 export { validateFile, validateSpace } from './validate';

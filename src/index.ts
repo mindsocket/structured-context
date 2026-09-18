@@ -61,8 +61,19 @@ program
     '--include-gated',
     'Evaluate rules even when the file is gated by an upstream schema/hierarchy/rule failure (still reported as gated)',
   )
+  .option(
+    '--rule-filter <dimension=values>',
+    'Evaluate only matching rules; dimensions: mode, category, severity, type, id (repeatable, e.g. mode=semantic)',
+    (v: string, prev: string[] = []) => [...prev, v],
+  )
+  .option('--semantic', 'Evaluate semantic rules using built-in LLM judge')
   .action(async (filePath, options) => {
-    process.exitCode = await validateFileCommand(filePath, { json: options.json, includeGated: options.includeGated });
+    process.exitCode = await validateFileCommand(filePath, {
+      json: options.json,
+      includeGated: options.includeGated,
+      semantic: options.semantic,
+      ruleFilter: options.ruleFilter,
+    });
   });
 
 program
@@ -80,6 +91,12 @@ program
     '--include-gated',
     'Evaluate rules even on nodes gated by an upstream schema/hierarchy/rule failure (still reported as gated)',
   )
+  .option(
+    '--rule-filter <dimension=values>',
+    'Evaluate only matching rules; dimensions: mode, category, severity, type, id (repeatable, e.g. mode=semantic)',
+    (v: string, prev: string[] = []) => [...prev, v],
+  )
+  .option('--semantic', 'Evaluate semantic rules using built-in LLM judge')
   .action(async (spaceName, options) => {
     const context = buildSpaceContext(spaceName);
     if (options.watch) {
@@ -90,6 +107,8 @@ program
         json: options.json,
         depth: options.depth,
         includeGated: options.includeGated,
+        semantic: options.semantic,
+        ruleFilter: options.ruleFilter,
       });
     }
   });

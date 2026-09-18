@@ -201,6 +201,8 @@ export type RuleViolation = {
   category: RuleCategory;
   severity: RuleSeverity;
   description: string;
+  /** Cited evidence or reasoning from evaluation (for semantic judge rules). */
+  evidence?: string;
 };
 
 export type GraphViolation = {

@@ -1,17 +1,32 @@
 import { dirname } from 'node:path';
 import chokidar from 'chokidar';
 import { getConfigSourceFiles } from '../config';
+import type { SemanticJudgeProvider } from '../judge/types';
 import { resolveSpacePluginSchemas } from '../plugins/util';
+import { parseRuleFilter } from '../schema/rule-filter';
 import { bundledSchemasDir } from '../schema/schema';
 import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
 import { formatErrors, validateSpace } from '../validate';
 
 export async function validate(
   context: SpaceContext,
-  options: { json?: boolean; depth?: number; includeGated?: boolean } = {},
+  options: {
+    json?: boolean;
+    depth?: number;
+    includeGated?: boolean;
+    semantic?: boolean;
+    ruleFilter?: string[];
+    judgeProvider?: SemanticJudgeProvider;
+  } = {},
 ): Promise<number> {
   const { schema, schemaRefRegistry } = context;
-  const result = await validateSpace(context, { depth: options.depth, includeGated: options.includeGated });
+  const result = await validateSpace(context, {
+    depth: options.depth,
+    includeGated: options.includeGated,
+    semantic: options.semantic,
+    ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
+    judgeProvider: options.judgeProvider,
+  });
   const ruleCounts: Record<RuleSeverity, number> = { error: 0, warning: 0, info: 0 };
   for (const v of result.ruleViolations) ruleCounts[v.severity]++;
 
@@ -46,7 +61,10 @@ export async function validate(
     }
     for (const v of result.ruleViolations) {
       if (v.file && v.severity === 'error') {
-        addError(v.file, `rule:${v.ruleId}`, 'rule', `[${v.ruleId}] ${v.description}`, v.severity);
+        const message = v.evidence
+          ? `[${v.ruleId}] ${v.description} (Evidence: ${v.evidence})`
+          : `[${v.ruleId}] ${v.description}`;
+        addError(v.file, `rule:${v.ruleId}`, 'rule', message, v.severity);
       }
     }
     const globalRuleErrorCount = result.ruleViolations.filter((v) => !v.file && v.severity === 'error').length;
@@ -74,6 +92,7 @@ export async function validate(
           coverageGates: result.coverageGates,
           skippedByDepth: result.skippedByDepth,
           depthLimit: result.depthLimit,
+          semanticEvaluations: result.semanticEvaluations,
         },
         null,
         2,
@@ -193,8 +212,22 @@ export async function validate(
       console.log(`  ${severityColor[severity]}${severity.toUpperCase()}${reset} (${violations.length}):`);
       for (const v of violations) {
         console.log(`    ${v.file ? `${v.file}: ` : ''}${v.description} [${v.category}: ${v.ruleId}]`);
+        if (v.evidence) {
+          console.log(`      Evidence: ${v.evidence}`);
+        }
       }
     }
+  }
+
+  if (result.semanticEvaluations && result.semanticEvaluations.length > 0) {
+    const passed = result.semanticEvaluations.filter((e) => e.pass).length;
+    const failed = result.semanticEvaluations.filter((e) => !e.pass).length;
+    console.log(
+      `\nSemantic evaluations: ${result.semanticEvaluations.length} total (${passed} passed, ${failed} failed)`,
+    );
+  }
+  if (result.gatedRules && result.gatedRules.length > 0) {
+    console.log(`Gated semantic rules (skipped due to upstream errors): ${result.gatedRules.length}`);
   }
 
   if (result.hierarchyViolations.length > 0) {
