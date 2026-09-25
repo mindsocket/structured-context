@@ -148,6 +148,9 @@
                   "category": {
                     "enum": ["validation", "coherence", "workflow", "best-practice"]
                   },
+                  "severity": {
+                    "enum": ["error", "warning", "info"]
+                  },
                   "description": {
                     "type": "string",
                     "minLength": 1

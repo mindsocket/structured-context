@@ -1,5 +1,18 @@
-import type { Rule, RuleViolation, SpaceNode } from '../types';
+import type { Rule, RuleCategory, RuleSeverity, RuleViolation, SpaceNode } from '../types';
 import { buildEvalContext, evaluateExpression } from './evaluate-rule';
+
+/** Default severity for each rule category. A rule's own `severity` field overrides this. */
+export const DEFAULT_SEVERITY_BY_CATEGORY: Record<RuleCategory, RuleSeverity> = {
+  validation: 'error',
+  coherence: 'warning',
+  workflow: 'warning',
+  'best-practice': 'info',
+};
+
+/** Effective severity of a rule: its explicit `severity`, else its category default. */
+export function ruleSeverity(rule: Rule): RuleSeverity {
+  return rule.severity ?? DEFAULT_SEVERITY_BY_CATEGORY[rule.category];
+}
 
 /**
  * Validate nodes against rules metadata.
@@ -23,6 +36,7 @@ export async function validateRules(nodes: SpaceNode[], rules: Rule[]): Promise<
 
   // Evaluate each rule against applicable nodes
   for (const rule of rules) {
+    const severity = ruleSeverity(rule);
     if (rule.scope === 'global') {
       // Global rules are evaluated once against the full node set.
       // A sentinel node provides the evaluation context (nodes array is what matters).
@@ -31,7 +45,13 @@ export async function validateRules(nodes: SpaceNode[], rules: Rule[]): Promise<
         const context = buildEvalContext(sentinel, nodes, nodeIndex);
         const result = await evaluateExpression(rule.check, context);
         if (result !== true) {
-          violations.push({ file: '', ruleId: rule.id, category: rule.category, description: rule.description });
+          violations.push({
+            file: '',
+            ruleId: rule.id,
+            category: rule.category,
+            severity,
+            description: rule.description,
+          });
         }
       }
     } else {
@@ -44,6 +64,7 @@ export async function validateRules(nodes: SpaceNode[], rules: Rule[]): Promise<
             file: node.label,
             ruleId: rule.id,
             category: rule.category,
+            severity,
             description: rule.description,
           });
         }

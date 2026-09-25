@@ -64,7 +64,7 @@ Relationships define how sub-entities (nodes inside other files) are parsed and 
 
 **`fieldOn: "parent"` pattern** — use when the content model lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`). Embedded parsing appends child wikilinks to the parent's `field` array rather than setting a `parent` field on each child. Validation checks each array entry resolves to a node of `type`.
 
-Rules are a flat array. Categories are labels only (`validation`, `coherence`, `workflow`, `best-practice`).
+Rules are a flat array. Each rule's `category` (`validation`, `coherence`, `workflow`, `best-practice`) supplies its default severity: `validation` → `error`, `coherence` and `workflow` → `warning`, `best-practice` → `info`. Only `error` violations fail validation; warnings and info are reported only. An optional per-rule `severity` (`error` | `warning` | `info`) overrides the category default — prefer picking the right category over overriding.
 
 ## Metadata composition semantics
 

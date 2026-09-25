@@ -19,10 +19,10 @@ Validates all `.md` files in the space against the JSON schema. For each file:
 - Skips files with no frontmatter or no `type` field (after `fieldMap` remapping)
 - Runs JSON schema validation
 - Runs reference checks (wikilinks → known node titles)
-- Runs executable rules (JSONata expressions in `$metadata.rules`)
+- Runs executable rules (JSONata expressions in `$metadata.rules`), reporting each violation with a severity (`error`, `warning`, `info`)
 - Checks hierarchy ordering
 
-Exit codes: `0` = clean, `1` = validation issues found.
+Exit codes: `0` = clean (warning and info rule violations don't fail), `1` = validation errors found.
 
 **Scenarios:**
 

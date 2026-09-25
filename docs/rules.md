@@ -24,22 +24,56 @@ Rules are a flat array.
 |---|---|---|
 | `id` | yes | Unique rule identifier |
 | `category` | yes | `validation` \| `coherence` \| `workflow` \| `best-practice` |
+| `severity` | no | `error` \| `warning` \| `info`; overrides the category default (see [Severity](#severity)) |
 | `description` | yes | Human-readable rule intent |
 | `check` | yes | JSONata expression; must evaluate to `true` |
 | `type` | no | Restrict rule to nodes of this `resolvedType` |
 | `scope` | no | Use `"global"` to evaluate once for the whole space |
 | `override` | no | Only for merge conflicts: allows later duplicate `id` to replace earlier |
 
-## Categories
+## Categories and severity
 
-Categories label violations for reporting. They do not change expression execution semantics.
+Categories describe a rule's intent and supply its default severity. They do not change expression execution semantics.
 
-| Category | Typical use |
-|---|---|
-| `validation` | Hard correctness constraints |
-| `coherence` | Cross-node consistency checks |
-| `workflow` | Process/operating-discipline checks |
-| `best-practice` | Advisory quality checks |
+| Category | Typical use | Default severity |
+|---|---|---|
+| `validation` | Hard correctness constraints | `error` |
+| `coherence` | Cross-node consistency checks | `warning` |
+| `workflow` | Process/operating-discipline checks | `warning` |
+| `best-practice` | Advisory quality checks | `info` |
+
+### Severity
+
+Every rule violation is reported with a severity:
+
+| Severity | Meaning | Fails validation |
+|---|---|---|
+| `error` | Content is wrong | yes |
+| `warning` | Content is likely inconsistent or incomplete | no |
+| `info` | Content could be better | no |
+
+Only `error` violations fail validation: `sctx validate` and `sctx validate-file` exit non-zero, and JSON output reports `valid: false`. Warnings and info violations are reported but don't fail, so a work-in-progress space can still pass while advisory checks remain visible.
+
+Prefer choosing the right category and relying on its default. Set `severity` on an individual rule only when that rule genuinely differs from the rest of its category:
+
+```json5
+{
+  "id": "goal-not-blocked",
+  "category": "workflow",
+  "severity": "error",
+  "description": "Goals must not be left blocked",
+  "type": "goal",
+  "check": "current.status != 'blocked'"
+}
+```
+
+`sctx schemas show` lists each category with its default severity and marks rules that override it.
+
+### Output
+
+- **`sctx validate`** — the summary counts rule violations per severity, and details are grouped by severity with each line showing the rule's category and id.
+- **`sctx validate --json`** — `errors` includes only `error` severity rule violations (keyed `rule:<id>`, with a `severity` field). A `ruleViolations` array lists every violation with `file`, `ruleId`, `category`, `severity` and `description` (`file` is empty for global rules).
+- **`sctx validate-file`** — `error` severity violations appear under `errors`; `warning` and `info` violations appear under `warnings`. Rule entries carry a `severity` field.
 
 ## Evaluation model
 

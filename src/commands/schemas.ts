@@ -4,7 +4,8 @@ import type { AnySchemaObject } from 'ajv';
 import { loadConfig, resolveSchema } from '../config';
 import { bundledSchemasDir, type EntityInfo, extractEntityInfo, loadSchema, readRawSchema } from '../schema/schema';
 import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
-import type { SchemaMetadata, SchemaWithMetadata } from '../types';
+import { DEFAULT_SEVERITY_BY_CATEGORY } from '../schema/validate-rules';
+import type { Rule, RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
 
 function isBundledPath(schemaPath: string): boolean {
   return dirname(schemaPath) === bundledSchemasDir;
@@ -103,19 +104,20 @@ function showMetadata(metadata: SchemaMetadata): void {
   }
 
   if (metadata.rules) {
-    const groups = new Map<string, Array<{ id: string; description: string }>>();
+    const groups = new Map<RuleCategory, Rule[]>();
     for (const rule of metadata.rules) {
       const rules = groups.get(rule.category) ?? [];
-      rules.push({ id: rule.id, description: rule.description });
+      rules.push(rule);
       groups.set(rule.category, rules);
     }
 
     if (groups.size > 0) {
       console.log('\nRules:');
-      for (const [group, items] of groups) {
-        console.log(`  ${group}:`);
-        for (const item of items) {
-          console.log(`    ${item.id}: ${item.description}`);
+      for (const [category, rules] of groups) {
+        console.log(`  ${category} (default severity: ${DEFAULT_SEVERITY_BY_CATEGORY[category]}):`);
+        for (const rule of rules) {
+          const override = rule.severity ? ` [severity: ${rule.severity}]` : '';
+          console.log(`    ${rule.id}: ${rule.description}${override}`);
         }
       }
     }

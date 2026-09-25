@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import Ajv, { type AnySchemaObject, type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
-import type { HierarchyLevel, RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
+import type { HierarchyLevel, RuleCategory, RuleSeverity, SchemaMetadata, SchemaWithMetadata } from '../types';
 import {
   DIALECT_META_SCHEMA,
   METADATA_SCHEMA,
@@ -126,7 +126,8 @@ interface MetadataProvider {
 }
 
 const RULE_CATEGORIES = new Set<RuleCategory>(['validation', 'coherence', 'workflow', 'best-practice']);
-const RULE_ALLOWED_KEYS = new Set(['id', 'category', 'description', 'check', 'type', 'scope', 'override']);
+const RULE_SEVERITIES = new Set<RuleSeverity>(['error', 'warning', 'info']);
+const RULE_ALLOWED_KEYS = new Set(['id', 'category', 'severity', 'description', 'check', 'type', 'scope', 'override']);
 
 function readTopLevelMetadata(schema: AnySchemaObject): MetadataContract | undefined {
   const metadata = schema.$metadata;
@@ -245,6 +246,7 @@ function isMetadataRule(value: unknown): value is Rule {
   if (typeof record.check !== 'string' || record.check.length === 0) return false;
 
   if ('type' in record && (typeof record.type !== 'string' || record.type.length === 0)) return false;
+  if ('severity' in record && !RULE_SEVERITIES.has(record.severity as RuleSeverity)) return false;
   if ('scope' in record && record.scope !== 'global') return false;
   if ('override' in record && typeof record.override !== 'boolean') return false;
 
