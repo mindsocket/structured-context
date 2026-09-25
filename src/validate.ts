@@ -9,6 +9,7 @@ import { createSpaceContext } from './space-context';
 import { buildSpaceGraph } from './space-graph';
 import type {
   FileNotInSpaceResult,
+  FileValidationIssue,
   FileValidationResult,
   GraphViolation,
   ParseIssue,
@@ -31,6 +32,7 @@ export interface ValidationResult {
   nodeErrors: Array<{ file: string; errors: ErrorObject[]; nodeData: Record<string, unknown> }>;
   refErrors: Array<{ file: string; parent: string; error: string }>;
   duplicateErrors: Array<{ title: string; files: string[] }>;
+  /** All rule violations with their effective severity. Only `error` severity fails validation. */
   ruleViolations: RuleViolation[];
   hierarchyViolations: GraphViolation[];
   orphans: SpaceNode[];
@@ -307,7 +309,8 @@ export async function validateFile(
   // Pre-extract valid types for early type validation
   const validTypes = Array.isArray(schema.oneOf) ? extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type) : [];
 
-  const errors: Record<string, { kind: string; message: string }> = {};
+  const errors: Record<string, FileValidationIssue> = {};
+  const warnings: Record<string, FileValidationIssue> = {};
 
   // Schema validation errors for this node
   for (const node of nodes) {
@@ -366,18 +369,18 @@ export async function validateFile(
     }
   }
 
-  // Rule violations for this node
+  // Rule violations for this node — only error severity counts as an error
   if (metadata.rules) {
     const ruleViolations = await validateRules(nodes, metadata.rules);
     for (const v of ruleViolations) {
       if (v.file === label) {
-        errors[`rule:${v.ruleId}`] = { kind: 'rule', message: `[${v.ruleId}] ${v.description}` };
+        const target = v.severity === 'error' ? errors : warnings;
+        target[`rule:${v.ruleId}`] = { kind: 'rule', message: `[${v.ruleId}] ${v.description}`, severity: v.severity };
       }
     }
   }
 
   // Unresolved content links for this node (warnings — do not affect errorCount)
-  const warnings: Record<string, { kind: string; message: string }> = {};
   const targetNode = nodes.find((n) => n.label === label);
   if (targetNode) {
     const seen = new Set<string>();

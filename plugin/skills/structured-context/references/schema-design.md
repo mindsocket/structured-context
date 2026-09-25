@@ -125,7 +125,7 @@ Write an initial schema, run validation, and treat the output as a specification
 - **All files as "Non-space (no type field)"** → `fieldMap` not configured, or wrong field name
 - **0 rule violations on suspicious content** → rules may not be evaluating (check `type` filter
   matches `resolvedType`; use `dump` to inspect)
-- **Rule violations on every node of a type** → rule may be too strict; recategorise or remove
+- **Rule violations on every node of a type** → rule may be too strict; recategorise (which changes its default severity) or remove
 - **Rule violations on a handful of nodes** → likely genuine content gaps worth flagging
 
 Expected iteration: 2–4 rounds of validation before all genuine issues are resolved.

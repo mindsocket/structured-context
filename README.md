@@ -28,10 +28,13 @@ Content and structure
   Schema validation errors                 0
   Broken links                             1
   Duplicate keys                           0
-  Rule violations                          2
+  Rule violations (error)                  0
+  Rule violations (warning)                1
+  Rule violations (info)                   1
   Hierarchy violations                     0
   Orphans (hierarchy nodes - no parent)    1
-  Ignored during parsing                   0
+  Unresolved content links                 0
+  Excluded during parsing                  0
 
 Orphans (hierarchy nodes - no parent):
    Solution looking for a problem.md
@@ -40,12 +43,13 @@ Broken links:
    Steal underpants.md: [[Gnome goals]] → Link target "Gnome goals" in field "related" not found
 
 Rule violations:
-  workflow (1):
-    Build Death Star.md: Opportunities should contribute to at least one Outcome
-  
-  best-practice (1):
-    High tech juice press.md: Explore multiple candidate solutions (aim for at least three) for an active target opportunity
+  WARNING (1):
+    Build Death Star.md: Opportunities should contribute to at least one Outcome [workflow: opportunity-has-outcome]
+  INFO (1):
+    High tech juice press.md: Explore multiple candidate solutions (aim for at least three) for the target opportunity [best-practice: solution-quantity]
 ```
+
+Rule violations carry a severity (`error`, `warning` or `info`) that defaults from the rule's category. Only errors fail validation — see [docs/rules.md](docs/rules.md#categories-and-severity).
 
 ## Installation
 
@@ -183,6 +187,7 @@ Metadata is composable across `$ref` graphs:
 - `hierarchy`: multiple schema files may define a hierarchy; **last one wins** (root schema overrides partials)
 - `aliases` are shallow-merged (later wins)
 - `rules` merge by `id`; conflicts error unless the later rule sets `override: true`
+- each rule's `category` supplies its default severity (`validation` → `error`, `coherence`/`workflow` → `warning`, `best-practice` → `info`); an optional `severity` field overrides it
 - `$metadata.rules` supports `$ref` imports for reusable rule packs
 - `relationships` are collected from all files
 

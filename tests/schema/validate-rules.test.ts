@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { validateRules } from '../../src/schema/validate-rules';
+import { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity, validateRules } from '../../src/schema/validate-rules';
 import type { Rule, SpaceNode } from '../../src/types';
 import { makeParentRef } from '../test-helpers';
 
@@ -452,6 +452,47 @@ describe('validate-rules', () => {
 
         expect(validationViolations.length).toBeGreaterThan(0);
         expect(workflowViolations.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('severity', () => {
+      const failingRule = (overrides: Partial<Rule>): Rule => ({
+        id: 'always-fails',
+        category: 'workflow',
+        description: 'Always fails',
+        check: 'false',
+        ...overrides,
+      });
+
+      it('defaults severity from category', () => {
+        expect(DEFAULT_SEVERITY_BY_CATEGORY).toEqual({
+          validation: 'error',
+          coherence: 'warning',
+          workflow: 'warning',
+          'best-practice': 'info',
+        });
+        expect(ruleSeverity(failingRule({ category: 'validation' }))).toBe('error');
+        expect(ruleSeverity(failingRule({ category: 'best-practice' }))).toBe('info');
+      });
+
+      it('uses an explicit rule severity over the category default', () => {
+        expect(ruleSeverity(failingRule({ category: 'validation', severity: 'info' }))).toBe('info');
+        expect(ruleSeverity(failingRule({ category: 'best-practice', severity: 'error' }))).toBe('error');
+      });
+
+      it('attaches effective severity to node and global violations', async () => {
+        const node = mockNodes[0]!;
+        const violations = await validateRules(
+          [node],
+          [
+            failingRule({ id: 'node-default', category: 'coherence' }),
+            failingRule({ id: 'global-override', scope: 'global', severity: 'error' }),
+          ],
+        );
+        expect(violations.map((v) => [v.ruleId, v.severity])).toEqual([
+          ['node-default', 'warning'],
+          ['global-override', 'error'],
+        ]);
       });
     });
   });

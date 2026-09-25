@@ -16,6 +16,8 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. |
 | `validateFile(filePath, config)` | Validate a single file within its space. |
 
+`ValidationResult.ruleViolations` carries each violation's effective `severity` (`error`, `warning` or `info`). Only `error` severity violations should be treated as failures; `validateFile` reports `warning` and `info` rule violations under `warnings` rather than `errors`.
+
 ## Usage
 
 ```ts

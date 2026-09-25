@@ -141,6 +141,8 @@ Rules may be:
 
 Rules are distinct from schema validation: the schema checks structure; rules check meaning and quality.
 
+Each executable rule has a **category** (`validation`, `coherence`, `workflow`, `best-practice`) that supplies its default **severity** (`error`, `warning`, `info`). A rule may override its category's severity, but categories are the preferred grouping. Only `error` severity violations fail validation.
+
 See [docs/rules.md](rules.md) for the rules reference, including JSONata expression syntax and the full `$metadata` field reference.
 
 ---

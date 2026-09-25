@@ -2,20 +2,22 @@ import { dirname } from 'node:path';
 import chokidar from 'chokidar';
 import { getConfigSourceFiles } from '../config';
 import { bundledSchemasDir } from '../schema/schema';
-import type { SpaceContext } from '../types';
+import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
 import { formatErrors, validateSpace } from '../validate';
 
 export async function validate(context: SpaceContext, options: { json?: boolean } = {}): Promise<number> {
   const { schema, schemaRefRegistry } = context;
   const result = await validateSpace(context);
+  const ruleCounts: Record<RuleSeverity, number> = { error: 0, warning: 0, info: 0 };
+  for (const v of result.ruleViolations) ruleCounts[v.severity]++;
 
   // JSON output mode
   if (options.json) {
-    const errorsByFile: Record<string, Record<string, { kind: string; message: string }>> = {};
+    const errorsByFile: Record<string, Record<string, FileValidationIssue>> = {};
 
-    const addError = (file: string, key: string, kind: string, message: string) => {
+    const addError = (file: string, key: string, kind: string, message: string, severity?: RuleSeverity) => {
       if (!errorsByFile[file]) errorsByFile[file] = {};
-      errorsByFile[file]![key] = { kind, message };
+      errorsByFile[file]![key] = severity ? { kind, message, severity } : { kind, message };
     };
 
     for (const { file, errors: ajvErrors, nodeData } of result.nodeErrors) {
@@ -39,17 +41,20 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
       }
     }
     for (const v of result.ruleViolations) {
-      if (v.file) {
-        addError(v.file, `rule:${v.ruleId}`, 'rule', `[${v.ruleId}] ${v.description}`);
+      if (v.file && v.severity === 'error') {
+        addError(v.file, `rule:${v.ruleId}`, 'rule', `[${v.ruleId}] ${v.description}`, v.severity);
       }
     }
+    const globalRuleErrorCount = result.ruleViolations.filter((v) => !v.file && v.severity === 'error').length;
     for (const v of result.hierarchyViolations) {
       addError(v.file, `hierarchy:${v.description}`, 'hierarchy', v.description);
     }
 
     const parseErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
     const errorCount =
-      Object.values(errorsByFile).reduce((sum, errs) => sum + Object.keys(errs).length, 0) + parseErrorCount;
+      Object.values(errorsByFile).reduce((sum, errs) => sum + Object.keys(errs).length, 0) +
+      parseErrorCount +
+      globalRuleErrorCount;
     console.log(
       JSON.stringify(
         {
@@ -58,6 +63,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
           validCount: result.validCount,
           errorCount,
           errors: errorsByFile,
+          ruleViolations: result.ruleViolations,
           orphanCount: result.orphans.length,
           parseIssues: result.parseIssues,
           unresolvedContentLinks: result.unresolvedContentLinks,
@@ -98,7 +104,9 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   console.log(fmt('  Schema validation errors', result.nodeErrorCount, true));
   console.log(fmt('  Broken links', result.refErrors.length, true));
   console.log(fmt('  Duplicate keys', result.duplicateErrors.length, true));
-  console.log(fmt('  Rule violations', result.ruleViolations.length, true));
+  console.log(fmt('  Rule violations (error)', ruleCounts.error, true));
+  console.log(fmt('  Rule violations (warning)', ruleCounts.warning, true, true));
+  console.log(fmt('  Rule violations (info)', ruleCounts.info, true, true));
   console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
   console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphans.length, true, true));
   console.log(fmt('  Unresolved content links', result.unresolvedContentLinks.length, true, true));
@@ -162,16 +170,13 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   if (result.ruleViolations.length > 0) {
     console.log(`\nRule violations:`);
 
-    const byCategory = new Map<string, typeof result.ruleViolations>();
-    for (const v of result.ruleViolations) {
-      if (!byCategory.has(v.category)) byCategory.set(v.category, []);
-      byCategory.get(v.category)!.push(v);
-    }
-
-    for (const [category, violations] of byCategory) {
-      console.log(`  ${category.toUpperCase()} (${violations.length}):`);
+    const severityColor: Record<RuleSeverity, string> = { error: red, warning: yellow, info: reset };
+    for (const severity of ['error', 'warning', 'info'] as const) {
+      const violations = result.ruleViolations.filter((v) => v.severity === severity);
+      if (violations.length === 0) continue;
+      console.log(`  ${severityColor[severity]}${severity.toUpperCase()}${reset} (${violations.length}):`);
       for (const v of violations) {
-        console.log(`    ${v.file ? `${v.file}: ` : ''}${v.description}`);
+        console.log(`    ${v.file ? `${v.file}: ` : ''}${v.description} [${v.category}: ${v.ruleId}]`);
       }
     }
   }
@@ -189,7 +194,7 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
     result.nodeErrorCount > 0 ||
     result.refErrors.length > 0 ||
     result.duplicateErrors.length > 0 ||
-    result.ruleViolations.length > 0 ||
+    ruleCounts.error > 0 ||
     result.hierarchyViolations.length > 0 ||
     parseIssueErrorCount > 0
   ) {

@@ -1,5 +1,5 @@
 import { loadConfig } from '../config';
-import type { FileValidationResult } from '../types';
+import type { FileValidationIssue, FileValidationResult } from '../types';
 import { validateFile } from '../validate';
 
 export { validateFile } from '../validate';
@@ -42,8 +42,8 @@ function printHumanReadable(result: FileValidationResult): void {
 
   if (result.errorCount > 0) {
     console.log(`\n${red}✗${reset} ${result.label} (space: ${result.space}) — ${result.errorCount} error(s)\n`);
-    for (const { kind, message } of Object.values(result.errors)) {
-      console.log(`  [${kind}] ${message}`);
+    for (const issue of Object.values(result.errors)) {
+      console.log(`  [${issueLabel(issue)}] ${issue.message}`);
     }
   } else {
     console.log(`\n${green}✓${reset} ${result.label} (space: ${result.space})`);
@@ -51,10 +51,14 @@ function printHumanReadable(result: FileValidationResult): void {
 
   if (result.warningCount > 0) {
     console.log(`\n  ${yellow}${result.warningCount} warning(s):${reset}`);
-    for (const { kind, message } of Object.values(result.warnings)) {
-      console.log(`  ${yellow}[${kind}]${reset} ${message}`);
+    for (const issue of Object.values(result.warnings)) {
+      console.log(`  ${yellow}[${issueLabel(issue)}]${reset} ${issue.message}`);
     }
   }
 
   console.log('');
+}
+
+function issueLabel({ kind, severity }: FileValidationIssue): string {
+  return severity ? `${kind}:${severity}` : kind;
 }

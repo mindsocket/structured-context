@@ -48,6 +48,7 @@ const RULE_SCHEMA = {
   properties: {
     id: { type: 'string', minLength: 1 },
     category: { enum: ['validation', 'coherence', 'workflow', 'best-practice'] },
+    severity: { enum: ['error', 'warning', 'info'] },
     description: { type: 'string', minLength: 1 },
     check: { type: 'string', minLength: 1 },
     type: { type: 'string', minLength: 1 },

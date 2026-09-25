@@ -164,12 +164,20 @@ export type ParseIssue = {
 /** Rule categories for organizing executable validation rules */
 export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-practice';
 
+/**
+ * Rule violation severity. Only `error` fails validation; `warning` and `info` are reported only.
+ * A rule's severity defaults from its category and may be overridden per rule.
+ */
+export type RuleSeverity = 'error' | 'warning' | 'info';
+
 export type { Rule } from './schema/metadata-contract';
 
 export type RuleViolation = {
+  /** Node label, or empty string for global-scope rules. */
   file: string;
   ruleId: string;
   category: RuleCategory;
+  severity: RuleSeverity;
   description: string;
 };
 
@@ -226,15 +234,25 @@ export type SpaceContext = {
   configDir: string;
 };
 
+export interface FileValidationIssue {
+  kind: string;
+  message: string;
+  /** Present for rule violations (`kind: 'rule'`). */
+  severity?: RuleSeverity;
+}
+
 export interface FileValidationResult {
   file: string;
   label: string;
   space: string;
   /** Errors keyed by composite id (e.g. `schema:/status:enum:active`, `rule:my-rule-id`). */
-  errors: Record<string, { kind: string; message: string }>;
+  errors: Record<string, FileValidationIssue>;
   errorCount: number;
-  /** Warnings keyed by composite id. Do not affect exit code or errorCount. */
-  warnings: Record<string, { kind: string; message: string }>;
+  /**
+   * Warnings keyed by composite id, including `warning` and `info` severity rule violations.
+   * Do not affect exit code or errorCount.
+   */
+  warnings: Record<string, FileValidationIssue>;
   warningCount: number;
   inSpace: true;
 }
