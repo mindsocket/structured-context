@@ -1,5 +1,5 @@
 import { resolveNodeType } from '../schema/schema';
-import type { GraphViolation, SchemaMetadata, SpaceNode, UnresolvedRef } from '../types';
+import type { GraphViolation, Hierarchy, SchemaMetadata, SpaceNode, UnresolvedRef } from '../types';
 
 export interface GraphValidationResult {
   violations: GraphViolation[];
@@ -23,7 +23,7 @@ export function validateGraph(
 /**
  * Validate that resolved parents follow hierarchy level rules and relationship type constraints.
  *
- * For hierarchy edges (fieldOn:'child', source:'hierarchy'): validates level ordering.
+ * For hierarchy edges (fieldOn:'child', source:'hierarchy'): validates level ordering within the edge's hierarchy.
  * For relationship edges (fieldOn:'child', source:'relationship'): validates parent type.
  * For fieldOn:'parent' edges: validates child type, violation attributed to the field-owner node.
  *
@@ -31,12 +31,15 @@ export function validateGraph(
  */
 export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaMetadata): GraphViolation[] {
   const violations: GraphViolation[] = [];
-  const levels = metadata.hierarchy?.levels ?? [];
+  const hierarchies = metadata.hierarchies ?? [];
   const relationships = metadata.relationships ?? [];
-  const allowSkipLevels = metadata.hierarchy?.allowSkipLevels ?? false;
   const typeAliases = metadata.typeAliases;
 
-  const hierarchy = levels.map((level) => resolveNodeType(level.type, typeAliases));
+  const hierarchiesByName = new Map<string, Hierarchy>(hierarchies.map((h) => [h.name, h]));
+  const levelTypesByName = new Map<string, string[]>(
+    hierarchies.map((h) => [h.name, h.levels.map((level) => resolveNodeType(level.type, typeAliases))]),
+  );
+  const allHierarchyTypes = new Set([...levelTypesByName.values()].flat());
 
   // Build type rules: (ownerType, field) → set of valid target types.
   // For fieldOn:'child': owner=childType, target=parentType.
@@ -52,15 +55,17 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
     fieldMap.get(field)!.add(target);
   }
 
-  for (let i = 1; i < levels.length; i++) {
-    const level = levels[i]!;
-    const parentLevel = levels[i - 1]!;
-    if (level.fieldOn === 'parent') {
-      addTypeRule(parentLevel.type, level.field, level.type);
-      if (level.selfRef) addTypeRule(level.type, level.field, level.type);
-    } else {
-      addTypeRule(level.type, level.field, parentLevel.type);
-      if (level.selfRef) addTypeRule(level.type, level.field, level.type);
+  for (const { levels } of hierarchies) {
+    for (let i = 1; i < levels.length; i++) {
+      const level = levels[i]!;
+      const parentLevel = levels[i - 1]!;
+      if (level.fieldOn === 'parent') {
+        addTypeRule(parentLevel.type, level.field, level.type);
+        if (level.selfRef) addTypeRule(level.type, level.field, level.type);
+      } else {
+        addTypeRule(level.type, level.field, parentLevel.type);
+        if (level.selfRef) addTypeRule(level.type, level.field, level.type);
+      }
     }
   }
 
@@ -119,17 +124,25 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
           });
         }
       } else {
-        // Hierarchy edge (fieldOn:'child', source:'hierarchy'): validate level ordering.
-        const typeIndex = hierarchy.indexOf(nodeType);
-        const parentIndex = hierarchy.indexOf(parentType);
+        // Hierarchy edge (fieldOn:'child', source:'hierarchy'): validate level ordering within its hierarchy.
+        const edgeHierarchy =
+          parentRef.hierarchy !== undefined ? hierarchiesByName.get(parentRef.hierarchy) : undefined;
+        if (!edgeHierarchy) continue;
+        const levelTypes = levelTypesByName.get(edgeHierarchy.name)!;
+        const typeIndex = levelTypes.indexOf(nodeType);
+        const parentIndex = levelTypes.indexOf(parentType);
 
-        if (typeIndex === -1 || parentIndex === -1) continue;
+        // A parent from another hierarchy is invalid; a parent of a type outside every hierarchy is not checked here.
+        if (typeIndex === -1 || (parentIndex === -1 && !allHierarchyTypes.has(parentType))) continue;
 
-        const level = levels[typeIndex]!;
+        const level = edgeHierarchy.levels[typeIndex]!;
         const canSelfRef = level.selfRef || level.selfRefField !== undefined;
+        const allowSkipLevels = edgeHierarchy.allowSkipLevels ?? false;
 
         let isValidHierarchy = false;
-        if (parentIndex === typeIndex - 1) {
+        if (parentIndex === -1) {
+          isValidHierarchy = false;
+        } else if (parentIndex === typeIndex - 1) {
           isValidHierarchy = true;
         } else if (canSelfRef && parentIndex === typeIndex) {
           isValidHierarchy = true;

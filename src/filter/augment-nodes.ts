@@ -4,6 +4,8 @@ import type { ResolvedParentRef, SpaceNode } from '../types';
 export type EdgeMetadata = {
   _field: string;
   _source: 'hierarchy' | 'relationship';
+  /** Hierarchy name, present only for hierarchy edges. */
+  _hierarchy?: string;
   _selfRef: boolean;
 };
 
@@ -14,6 +16,16 @@ export type AugmentedFlatNode = Record<string, unknown> & {
   ancestors: Array<Record<string, unknown> & EdgeMetadata>;
   descendants: Array<Record<string, unknown> & EdgeMetadata>;
 };
+
+/** Edge metadata for the resolvedParents entry connecting two nodes. */
+function edgeMetadata(ref: ResolvedParentRef): EdgeMetadata {
+  return {
+    _field: ref.field,
+    _source: ref.source,
+    ...(ref.hierarchy !== undefined ? { _hierarchy: ref.hierarchy } : {}),
+    _selfRef: ref.selfRef,
+  };
+}
 
 /** Flatten a SpaceNode's data fields for use in an augmented representation. */
 function flattenData(node: SpaceNode): Record<string, unknown> {
@@ -31,7 +43,7 @@ function flattenData(node: SpaceNode): Record<string, unknown> {
  *
  * - ancestors: BFS from node via resolvedParents, nearest first, deduplicated by title.
  * - descendants: BFS via childrenIndex, nearest first, deduplicated by title.
- * - Each entry merges the parent/child node's fields with edge metadata (_field, _source, _selfRef).
+ * - Each entry merges the parent/child node's fields with edge metadata (_field, _source, _hierarchy, _selfRef).
  */
 export function augmentNode(
   node: SpaceNode,
@@ -73,9 +85,7 @@ function buildAncestors(
 
     result.push({
       ...flattenData(item.node),
-      _field: item.ref.field,
-      _source: item.ref.source,
-      _selfRef: item.ref.selfRef,
+      ...edgeMetadata(item.ref),
     });
 
     // Continue BFS upward
@@ -115,9 +125,7 @@ function buildDescendants(
 
     result.push({
       ...flattenData(item.childNode),
-      _field: item.ref.field,
-      _source: item.ref.source,
-      _selfRef: item.ref.selfRef,
+      ...edgeMetadata(item.ref),
     });
 
     const grandchildren = childrenIndex.get(title) ?? [];

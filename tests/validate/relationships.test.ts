@@ -2,11 +2,11 @@ import { describe, expect, it } from 'bun:test';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { validateGraph } from '../../src/schema/validate-graph';
 import type { SchemaMetadata } from '../../src/types';
-import { makeLevel, makeNode, makeRelationship } from '../test-helpers';
+import { makeLevel, makeNode, makeRelationship, withHierarchy } from '../test-helpers';
 
 describe('validateGraph - Relationships', () => {
   const metadata: SchemaMetadata = {
-    hierarchy: { levels: [makeLevel('opportunity')] },
+    ...withHierarchy([makeLevel('opportunity')]),
     relationships: [makeRelationship('opportunity', 'assumption', { templateFormat: 'table' })],
   };
 
@@ -58,7 +58,7 @@ describe('validateGraph - Relationships', () => {
 
   it('uses custom field name when fieldOn is child', () => {
     const metaWithCustomField: SchemaMetadata = {
-      hierarchy: { levels: [makeLevel('opportunity')] },
+      ...withHierarchy([makeLevel('opportunity')]),
       relationships: [makeRelationship('opportunity', 'assumption', { field: 'linked_opportunity' })],
     };
 
@@ -74,7 +74,7 @@ describe('validateGraph - Relationships', () => {
 
   it('reports error for custom field pointing to wrong type', () => {
     const metaWithCustomField: SchemaMetadata = {
-      hierarchy: { levels: [makeLevel('opportunity')] },
+      ...withHierarchy([makeLevel('opportunity')]),
       relationships: [makeRelationship('opportunity', 'assumption', { field: 'linked_opportunity' })],
     };
 
@@ -92,7 +92,7 @@ describe('validateGraph - Relationships', () => {
 
 describe('validateGraph — fieldOn: parent', () => {
   const metadata: SchemaMetadata = {
-    hierarchy: { levels: [makeLevel('activity')] },
+    ...withHierarchy([makeLevel('activity')]),
     relationships: [makeRelationship('activity', 'task', { field: 'tasks', fieldOn: 'parent', multiple: true })],
   };
 

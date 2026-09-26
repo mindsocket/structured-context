@@ -18,7 +18,7 @@ function makeNode(title: string, type: string, parentRefs: ReturnType<typeof mak
 }
 
 function childrenOf(nodes: SpaceNode[]) {
-  return buildSpaceGraph(nodes, []).children;
+  return buildSpaceGraph(nodes, undefined).children;
 }
 
 describe('augmentNode', () => {

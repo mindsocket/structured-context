@@ -49,6 +49,8 @@ export type ResolvedParentRef = {
   field: string;
   /** Whether this edge originates from a hierarchy level or a relationship definition. */
   source: 'hierarchy' | 'relationship';
+  /** Name of the hierarchy the edge belongs to. Set only when source is 'hierarchy'. */
+  hierarchy?: string;
   /** Whether the parent and child are the same node type (self-referential edge). */
   selfRef: boolean;
   /** Whether the edge field is on the child node (default) or on the parent node (fieldOn:'parent' edges). */
@@ -190,11 +192,19 @@ export type GraphViolation = {
   description: string;
 };
 
+/** A named hierarchy, normalized from a schema's `$metadata.hierarchy`. */
+export type Hierarchy = {
+  /** Declared short name, defaulting to the declaring schema's file stem. */
+  name: string;
+  levels: HierarchyLevel[]; // full per-level config
+  allowSkipLevels?: boolean;
+};
+
 export type SchemaMetadata = {
-  hierarchy?: {
-    levels: HierarchyLevel[]; // full per-level config
-    allowSkipLevels?: boolean;
-  };
+  /** Main hierarchy: used for space_on_a_page parsing, embedding, template-sync and default rendering. */
+  hierarchy?: Hierarchy;
+  /** Every hierarchy in the composed schema (main included), in composition order. Each type belongs to at most one. */
+  hierarchies?: Hierarchy[];
   typeAliases?: Record<string, string>;
   rules?: Rule[];
   relationships?: Relationship[];

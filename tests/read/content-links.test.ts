@@ -193,13 +193,14 @@ describe('contentLinks and resolvedLinks integration', () => {
 // ---------------------------------------------------------------------------
 
 import { resolveGraphEdges as resolveEdges } from '../../src/read/resolve-graph-edges';
+import { withHierarchy } from '../test-helpers';
 
 describe('link location classification', () => {
   const levels = [
     { type: 'goal', field: 'parent', fieldOn: 'child' as const, multiple: false, selfRef: false },
     { type: 'solution', field: 'parent', fieldOn: 'child' as const, multiple: false, selfRef: false },
   ];
-  const metadata = { hierarchy: { levels } };
+  const metadata = { ...withHierarchy(levels) };
 
   function makeBaseNode(title: string, type: string, links: ContentLink[] = []) {
     return {

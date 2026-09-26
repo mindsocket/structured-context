@@ -1,15 +1,24 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import Ajv, { type AnySchemaObject, type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
-import type { HierarchyLevel, RuleCategory, RuleSeverity, SchemaMetadata, SchemaWithMetadata } from '../types';
+import type {
+  Hierarchy,
+  HierarchyLevel,
+  RuleCategory,
+  RuleSeverity,
+  SchemaMetadata,
+  SchemaWithMetadata,
+} from '../types';
 import {
   DIALECT_META_SCHEMA,
   METADATA_SCHEMA,
   type MetadataContract,
+  type MetadataContractHierarchy,
   type MetadataContractRelationship,
+  type MetadataRef,
   type Rule,
   type RuleEntry,
   SCHEMA_META_ID,
@@ -26,8 +35,13 @@ export function setBundledSchemasDir(dir: string): void {
 
 const validateMetadataContract = new Ajv().compile(METADATA_SCHEMA);
 
+/** File stem of each schema read from disk — the default name of the hierarchy it declares. */
+const schemaFileStems = new WeakMap<AnySchemaObject, string>();
+
 export function readRawSchema(schemaPath: string): AnySchemaObject {
-  return JSON5.parse(readFileSync(resolve(schemaPath), 'utf-8')) as AnySchemaObject;
+  const schema = JSON5.parse(readFileSync(resolve(schemaPath), 'utf-8')) as AnySchemaObject;
+  schemaFileStems.set(schema, basename(schemaPath, extname(schemaPath)));
+  return schema;
 }
 
 /**
@@ -52,8 +66,8 @@ function buildSchemaRegistry(dir: string, targetFile?: string): Map<string, AnyS
 /**
  * Build the full two-layer registry for a schema path:
  * - Layer 1: bundled schemas/ dir (partials only, as fallback)
- * - Layer 2: schema's own dir (partials + target file) — overrides layer 1
- * Does not throw on $id collision; layer 2 silently wins.
+ * - Layer 2: schema's own dir (partials + target file)
+ * Throws if a layer 2 schema reuses an $id reserved by layer 1.
  */
 export function buildFullRegistry(schemaPath: string): Map<string, AnySchemaObject> {
   const absPath = resolve(schemaPath);
@@ -132,8 +146,13 @@ const RULE_ALLOWED_KEYS = new Set(['id', 'category', 'severity', 'description', 
 function readTopLevelMetadata(schema: AnySchemaObject): MetadataContract | undefined {
   const metadata = schema.$metadata;
   if (!isObject(metadata)) return undefined;
+  const schemaId = typeof schema.$id === 'string' ? schema.$id : '(unknown schema)';
+  if (isObject(metadata.hierarchy) && '$ref' in metadata.hierarchy && Object.keys(metadata.hierarchy).length > 1) {
+    throw new Error(
+      `Invalid $metadata in schema "${schemaId}": hierarchy both declares levels and selects a hierarchy with "$ref". Use one or the other.`,
+    );
+  }
   if (!validateMetadataContract(metadata)) {
-    const schemaId = typeof schema.$id === 'string' ? schema.$id : '(unknown schema)';
     const errors =
       validateMetadataContract.errors?.map((e) => `${e.instancePath || '(root)'} ${e.message}`).join('; ') ??
       'unknown error';
@@ -142,7 +161,7 @@ function readTopLevelMetadata(schema: AnySchemaObject): MetadataContract | undef
   return metadata as MetadataContract;
 }
 
-function resolveRefTargetForRule(
+function resolveMetadataRef(
   ref: string,
   currentRootSchema: AnySchemaObject,
   schemaRefRegistry: Map<string, AnySchemaObject>,
@@ -231,7 +250,7 @@ function collectMetadataProviders(
   return providers;
 }
 
-function isRuleRefEntry(value: unknown): value is { $ref: string } {
+function isRefEntry(value: unknown): value is MetadataRef {
   if (!isObject(value)) return false;
   return typeof value.$ref === 'string' && value.$ref.length > 0 && Object.keys(value).length === 1;
 }
@@ -267,11 +286,11 @@ function resolveRuleEntries(
     return [ruleEntry];
   }
 
-  if (!isRuleRefEntry(ruleEntry)) {
+  if (!isRefEntry(ruleEntry)) {
     throw new Error(`Invalid rule entry in metadata from "${provider.schemaId}".`);
   }
 
-  const target = resolveRefTargetForRule(ruleEntry.$ref, provider.schema, schemaRefRegistry);
+  const target = resolveMetadataRef(ruleEntry.$ref, provider.schema, schemaRefRegistry);
   if (stack.has(target.refKey)) {
     throw new Error(
       `Cyclic rule import detected while loading metadata from "${provider.schemaId}": ${[...stack, target.refKey].join(
@@ -347,16 +366,26 @@ function areRulesEquivalent(left: Rule, right: Rule): boolean {
 function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string, AnySchemaObject>): SchemaMetadata {
   const metadataProviders = collectMetadataProviders(schema, schemaRefRegistry);
 
-  let mergedHierarchy: MetadataContract['hierarchy'] | undefined;
+  // Each declared hierarchy is kept as a separate named hierarchy, keyed by its declaring object
+  // so a root `hierarchy: { $ref }` selection can be matched to it.
+  const hierarchies = new Map<MetadataContractHierarchy, Hierarchy>();
+  let mainHierarchy: Hierarchy | undefined;
+  let mainSelection: MetadataRef | undefined;
   const mergedAliases: Record<string, string> = {};
   const mergedRules = new Map<string, { providerId: string; rule: Rule }>();
   const mergedRelationships: MetadataContractRelationship[] = [];
 
   for (const provider of metadataProviders) {
-    if (provider.metadata.hierarchy) {
-      // Later providers (including root schema) override earlier ones (e.g. partials).
-      // This allows partials to define a default hierarchy that composing schemas can override.
-      mergedHierarchy = provider.metadata.hierarchy;
+    const declaredHierarchy = provider.metadata.hierarchy;
+    const isRoot = provider.schema === schema;
+    if (isRefEntry(declaredHierarchy)) {
+      // A hierarchy selection only applies when its schema is the root; composed schemas contribute
+      // their declared hierarchies, not their selections.
+      if (isRoot) mainSelection = declaredHierarchy;
+    } else if (declaredHierarchy) {
+      const hierarchy = normalizeHierarchy(declaredHierarchy, provider);
+      hierarchies.set(declaredHierarchy, hierarchy);
+      if (isRoot) mainHierarchy = hierarchy;
     }
 
     if (provider.metadata.aliases) {
@@ -392,18 +421,56 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
     }
   }
 
+  const allHierarchies = [...hierarchies.values()];
+  validateHierarchyComposition(allHierarchies);
+
+  if (mainSelection) {
+    const target = resolveMetadataRef(mainSelection.$ref, schema, schemaRefRegistry);
+    mainHierarchy = hierarchies.get(target.value as MetadataContractHierarchy);
+    if (!mainHierarchy) {
+      throw new Error(
+        `Hierarchy $ref "${mainSelection.$ref}" does not point to a hierarchy declared by a composed schema. Expected a ref like "<schema $id>#/$metadata/hierarchy".`,
+      );
+    }
+  } else if (!mainHierarchy && allHierarchies.length === 1) {
+    mainHierarchy = allHierarchies[0];
+  } else if (!mainHierarchy && allHierarchies.length > 1) {
+    const rootSchemaId = typeof schema.$id === 'string' ? schema.$id : '(root schema)';
+    throw new Error(
+      `Schema "${rootSchemaId}" composes multiple hierarchies (${allHierarchies.map((h) => `"${h.name}"`).join(', ')}) but selects none as its main hierarchy. Declare one, or select one with "hierarchy": { "$ref": "<schema $id>#/$metadata/hierarchy" }.`,
+    );
+  }
+
   // Collect valid type names from the schema's oneOf list for validation
   const validTypeNames = extractSchemaTypeNames(schema as SchemaWithMetadata, schemaRefRegistry);
 
   // Validate and filter metadata references against valid type names
-  validateMetadataReferences({ mergedHierarchy, mergedAliases, mergedRules, mergedRelationships }, validTypeNames);
+  validateMetadataReferences({ allHierarchies, mergedAliases, mergedRules, mergedRelationships }, validTypeNames);
 
   // Filter relationships to only include those where both parent and child types are valid
   const filteredRelationships = mergedRelationships.filter((rel) => {
     return validTypeNames.has(rel.parent) && validTypeNames.has(rel.type);
   });
 
-  const levels: HierarchyLevel[] | undefined = mergedHierarchy?.levels.map((entry) => {
+  return {
+    hierarchy: mainHierarchy,
+    hierarchies: allHierarchies.length > 0 ? allHierarchies : undefined,
+    typeAliases: Object.keys(mergedAliases).length > 0 ? mergedAliases : undefined,
+    rules: mergedRules.size > 0 ? [...mergedRules.values()].map(({ rule }) => normalizeRule(rule)) : undefined,
+    relationships:
+      filteredRelationships.length > 0
+        ? filteredRelationships.map((rel) => ({
+            ...rel,
+            field: rel.field ?? 'parent',
+            fieldOn: rel.fieldOn === 'parent' ? 'parent' : ('child' as const),
+            multiple: rel.multiple ?? false,
+          }))
+        : undefined,
+  };
+}
+
+function normalizeHierarchy(declared: MetadataContractHierarchy, provider: MetadataProvider): Hierarchy {
+  const levels: HierarchyLevel[] = declared.levels.map((entry) => {
     if (typeof entry === 'string') {
       return { type: entry, field: 'parent', fieldOn: 'child', multiple: false, selfRef: false };
     }
@@ -421,31 +488,36 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
       embeddedTemplateFields: entry.embeddedTemplateFields,
     };
   });
-
   return {
-    hierarchy:
-      levels !== undefined
-        ? {
-            levels,
-            allowSkipLevels: mergedHierarchy?.allowSkipLevels,
-          }
-        : undefined,
-    typeAliases: Object.keys(mergedAliases).length > 0 ? mergedAliases : undefined,
-    rules: mergedRules.size > 0 ? [...mergedRules.values()].map(({ rule }) => normalizeRule(rule)) : undefined,
-    relationships:
-      filteredRelationships.length > 0
-        ? filteredRelationships.map((rel) => ({
-            ...rel,
-            field: rel.field ?? 'parent',
-            fieldOn: rel.fieldOn === 'parent' ? 'parent' : ('child' as const),
-            multiple: rel.multiple ?? false,
-          }))
-        : undefined,
+    name: declared.name ?? schemaFileStems.get(provider.schema) ?? provider.schemaId,
+    levels,
+    allowSkipLevels: declared.allowSkipLevels,
   };
 }
 
+/** Hierarchy names must be unique, and each type may belong to at most one hierarchy. */
+function validateHierarchyComposition(hierarchies: Hierarchy[]): void {
+  const names = new Set<string>();
+  const typeOwners = new Map<string, string>();
+  for (const hierarchy of hierarchies) {
+    if (names.has(hierarchy.name)) {
+      throw new Error(`Duplicate hierarchy name "${hierarchy.name}". Set a unique "name" on one of the hierarchies.`);
+    }
+    names.add(hierarchy.name);
+    for (const { type } of hierarchy.levels) {
+      const owner = typeOwners.get(type);
+      if (owner !== undefined && owner !== hierarchy.name) {
+        throw new Error(
+          `Type "${type}" belongs to both hierarchy "${owner}" and hierarchy "${hierarchy.name}". Each type may belong to at most one hierarchy.`,
+        );
+      }
+      typeOwners.set(type, hierarchy.name);
+    }
+  }
+}
+
 interface MetadataForValidation {
-  mergedHierarchy: MetadataContract['hierarchy'] | undefined;
+  allHierarchies: Hierarchy[];
   mergedAliases: Record<string, string>;
   mergedRules: Map<string, { providerId: string; rule: Rule }>;
   mergedRelationships: MetadataContractRelationship[];
@@ -460,11 +532,10 @@ function validateMetadataReferences(metadata: MetadataForValidation, validTypes:
   const errors: string[] = [];
 
   // Validate hierarchy level types
-  if (metadata.mergedHierarchy?.levels) {
-    for (const level of metadata.mergedHierarchy.levels) {
-      const typeName = typeof level === 'string' ? level : level.type;
-      if (!validTypes.has(typeName)) {
-        errors.push(`Hierarchy level "${typeName}" is not a valid type in the schema's oneOf list`);
+  for (const hierarchy of metadata.allHierarchies) {
+    for (const { type } of hierarchy.levels) {
+      if (!validTypes.has(type)) {
+        errors.push(`Hierarchy "${hierarchy.name}" level "${type}" is not a valid type in the schema's oneOf list`);
       }
     }
   }

@@ -91,9 +91,14 @@ function showDefs(defs: Record<string, unknown>): void {
 }
 
 function showMetadata(metadata: SchemaMetadata): void {
-  if (metadata.hierarchy?.levels.length) {
-    const parts = metadata.hierarchy.levels.map((l) => (l.selfRef ? `${l.type}(+)` : l.type));
-    console.log(`\nhierarchy: ${parts.join(' → ')}`);
+  const hierarchies = metadata.hierarchies ?? [];
+  if (hierarchies.length > 0) {
+    console.log('');
+    for (const hierarchy of hierarchies) {
+      const parts = hierarchy.levels.map((l) => (l.selfRef ? `${l.type}(+)` : l.type));
+      const main = hierarchy === metadata.hierarchy ? ' (main)' : '';
+      console.log(`hierarchy "${hierarchy.name}"${main}: ${parts.join(' → ')}`);
+    }
   } else {
     console.log('\nhierarchy: (none)');
   }
@@ -154,8 +159,6 @@ function showRegistry(schemaPath: string, schemaRefRegistry: Map<string, AnySche
 function generateMermaidErd(metadata: SchemaMetadata, entities: EntityInfo[]): string {
   let mmd = 'erDiagram\n';
 
-  const hierarchyLevels = metadata.hierarchy?.levels ?? [];
-
   // Generate entity definitions with properties
   for (const entity of entities) {
     const safeName = entity.type.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -171,8 +174,8 @@ function generateMermaidErd(metadata: SchemaMetadata, entities: EntityInfo[]): s
     mmd += '  }\n';
   }
 
-  // Generate relationships based on hierarchy metadata
-  if (hierarchyLevels.length > 0) {
+  // Generate relationships based on the levels of each hierarchy
+  for (const { levels: hierarchyLevels } of metadata.hierarchies ?? []) {
     for (let i = 0; i < hierarchyLevels.length - 1; i++) {
       const current = hierarchyLevels[i];
       const next = hierarchyLevels[i + 1];

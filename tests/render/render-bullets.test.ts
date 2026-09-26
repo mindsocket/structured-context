@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { renderBullets } from '../../src/plugins/markdown/render-bullets';
 import { buildSpaceGraph } from '../../src/space-graph';
 import type { SpaceNode } from '../../src/types';
-import { makeLevel, makeParentRef } from '../test-helpers';
+import { makeHierarchy, makeLevel, makeParentRef } from '../test-helpers';
 
 const levels = [makeLevel('goal'), makeLevel('opportunity'), makeLevel('solution')];
 
@@ -22,7 +22,7 @@ function makeNode(title: string, type: string): SpaceNode {
 describe('renderBullets', () => {
   it('renders a single root with no children', () => {
     const root = makeNode('My Goal', 'goal');
-    const output = renderBullets(buildSpaceGraph([root], levels));
+    const output = renderBullets(buildSpaceGraph([root], makeHierarchy(levels)));
     expect(output).toBe('- goal: My Goal');
   });
 
@@ -30,20 +30,20 @@ describe('renderBullets', () => {
     const goal = makeNode('My Goal', 'goal');
     const opp = makeNode('An Opportunity', 'opportunity');
     opp.resolvedParents = [makeParentRef('My Goal')];
-    const output = renderBullets(buildSpaceGraph([goal, opp], levels));
+    const output = renderBullets(buildSpaceGraph([goal, opp], makeHierarchy(levels)));
     expect(output).toBe('- goal: My Goal\n  - opportunity: An Opportunity');
   });
 
   it('renders orphans in a separate section', () => {
     const orphan = makeNode('Orphaned Opp', 'opportunity');
-    const output = renderBullets(buildSpaceGraph([orphan], levels));
+    const output = renderBullets(buildSpaceGraph([orphan], makeHierarchy(levels)));
     expect(output).toContain('Orphans (missing parent):');
     expect(output).toContain('- opportunity: Orphaned Opp');
   });
 
   it('renders non-hierarchy nodes in a separate section', () => {
     const dashboard = makeNode('My Dashboard', 'dashboard');
-    const output = renderBullets(buildSpaceGraph([dashboard], levels));
+    const output = renderBullets(buildSpaceGraph([dashboard], makeHierarchy(levels)));
     expect(output).toContain('Other (not in hierarchy):');
     expect(output).toContain('- dashboard: My Dashboard');
   });
@@ -56,7 +56,7 @@ describe('renderBullets', () => {
     // opp is referenced under both goals and has a child
     opp.resolvedParents = [makeParentRef('My Goal'), makeParentRef('Another Goal')];
     solution.resolvedParents = [makeParentRef('Shared Opp')];
-    const output = renderBullets(buildSpaceGraph([goal, goal2, opp, solution], levels));
+    const output = renderBullets(buildSpaceGraph([goal, goal2, opp, solution], makeHierarchy(levels)));
     expect(output).toContain('- opportunity: Shared Opp\n    - solution: A Solution');
     expect(output).toContain('- opportunity: Shared Opp (*)');
   });
@@ -66,7 +66,7 @@ describe('renderBullets', () => {
     const goal2 = makeNode('Another Goal', 'goal');
     const opp = makeNode('Shared Opp', 'opportunity');
     opp.resolvedParents = [makeParentRef('My Goal'), makeParentRef('Another Goal')];
-    const output = renderBullets(buildSpaceGraph([goal, goal2, opp], levels));
+    const output = renderBullets(buildSpaceGraph([goal, goal2, opp], makeHierarchy(levels)));
     expect(output).toContain('- opportunity: Shared Opp');
     expect(output).not.toContain('(*)');
   });

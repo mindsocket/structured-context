@@ -120,7 +120,8 @@ Top-level metadata shape:
 
 | Field | Type | Notes |
 |---|---|---|
-| `hierarchy` | object | Optional per provider; at most one provider may define it after composition |
+| `hierarchy` | object | Optional; declares this schema's hierarchy, or (root schema only) selects the main hierarchy with `{ "$ref": "<schema $id>#/$metadata/hierarchy" }`. See [Multiple hierarchies](#multiple-hierarchies) |
+| `hierarchy.name` | `string` | Optional short name; defaults to the declaring schema's file stem |
 | `hierarchy.levels` | `(string \| HierarchyLevel)[]` | Ordered root→leaf types |
 | `hierarchy.allowSkipLevels` | `boolean` | Optional; allows parent to be any ancestor level |
 | `relationships` | `Relationship[]` | Optional; defines related node links outside the primary hierarchy |
@@ -258,7 +259,7 @@ Metadata is composed across the `$ref` graph with deterministic behavior:
 2. Apply root schema metadata last.
 
 Merge rules:
-- `hierarchy`: may be defined in partials; **last one wins**. This allows partials to define a default hierarchy that composing schemas can override.
+- `hierarchy`: not merged. Each declared hierarchy is kept as a separate named hierarchy (see below).
 - `aliases`: shallow merged; later file wins per key.
 - `relationships`: collected from all files; order preserved.
 - `rules`: merged by `id`.
@@ -266,6 +267,46 @@ Merge rules:
 - A later rule may replace an earlier one only with `"override": true`.
 
 When no provider defines `hierarchy`, hierarchy-based behavior is disabled (`show` tree shape, hierarchy validation, parent-edge checks). `space_on_a_page` parsing still requires hierarchy and will error without it.
+
+### Multiple hierarchies
+
+A space has several hierarchies when its schema composes several schemas that each declare one. Each schema declares at most one hierarchy.
+
+- **Every `$ref`'d schema contributes its hierarchy.** Each is kept as a separate named hierarchy; levels are never merged.
+- **Naming.** `hierarchy.name` defaults to the declaring schema's file stem (`_ost_strict` for `_ost_strict.json`). Names must be unique.
+- **Main hierarchy.**
+  - If the root schema declares a hierarchy, it is the main hierarchy.
+  - If the root declares none and exactly one hierarchy is contributed, that one is the main hierarchy (for example `strict_ost`, whose hierarchy comes from `_ost_strict`).
+  - If the root declares none and several are contributed, the root must select one with `"hierarchy": { "$ref": "<schema $id>#/$metadata/hierarchy" }`, otherwise loading the schema fails.
+  - A root that both declares a hierarchy and uses `$ref` is an error.
+- **Each type belongs to at most one hierarchy.** A type claimed by two hierarchies is an error. A composing schema therefore cannot redefine the levels of a hierarchy it composes; it declares a hierarchy over its own types instead.
+- **Selections are not contributed.** A `hierarchy: { "$ref" }` selection only applies when its schema is the root, so a composed schema stays usable standalone as another space's root.
+
+```json5
+{
+  "$id": "sctx://team",
+  "oneOf": [
+    { "$ref": "sctx://_work#/$defs/goal" },
+    { "$ref": "sctx://_work#/$defs/task" },
+    { "$ref": "sctx://_skills#/$defs/skill_area" },
+    { "$ref": "sctx://_skills#/$defs/skill" }
+  ],
+  "$metadata": {
+    // _work.json and _skills.json each declare a hierarchy; select the main one.
+    "hierarchy": { "$ref": "sctx://_work#/$metadata/hierarchy" }
+  }
+}
+```
+
+How hierarchies are used:
+
+| Behaviour | Hierarchies used |
+|---|---|
+| Layering, parent-type, skip-level and orphan checks | Each hierarchy, independently. A hierarchy edge whose parent belongs to another hierarchy is an invalid parent. |
+| Relationships | Connect types across hierarchies, as before |
+| `space_on_a_page` parsing, hierarchy embedding, `template-sync` | Main hierarchy |
+| `show`, `diagram`, `render` | Main hierarchy by default; `--hierarchy <name>` selects another |
+| `resolvedParents` | Hierarchy edges carry the `hierarchy` name |
 
 ### Rule imports via `$ref`
 

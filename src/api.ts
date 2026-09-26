@@ -46,6 +46,7 @@ export type {
   FileNotInSpaceResult,
   FileValidationIssue,
   FileValidationResult,
+  Hierarchy,
   HierarchyLevel,
   ParseIssue,
   ReadSpaceResult,

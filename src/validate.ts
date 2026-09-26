@@ -232,9 +232,9 @@ export async function validateSpace(
   result.refErrors.push(...hierarchyValidation.refErrors);
   result.hierarchyViolations = [...hierarchyValidation.violations];
 
-  // Calculate orphan count (informational, not a validation error)
-  if (metadata.hierarchy) {
-    result.orphans = [...buildSpaceGraph(nodes, metadata.hierarchy.levels).orphans];
+  // Calculate orphans across every hierarchy (informational, not a validation error)
+  for (const hierarchy of metadata.hierarchies ?? []) {
+    result.orphans.push(...buildSpaceGraph(nodes, hierarchy).orphans);
   }
 
   // Load and execute rules validation if schema defines rules

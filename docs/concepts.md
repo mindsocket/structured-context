@@ -123,7 +123,7 @@ A **schema** defines the valid structure for nodes in a `space`: the fields, typ
 
 The schema handles structural validation. Cross-node and workflow checks are handled by executable `rules` defined in `$metadata.rules`.
 
-Schemas are composable: structural definitions and metadata can be sourced across `$ref` graphs, then merged deterministically (root metadata applied last, single hierarchy provider, aliases merged, rules merged by `id` with explicit override semantics).
+Schemas are composable: structural definitions and metadata can be sourced across `$ref` graphs, then merged deterministically (root metadata applied last, each declared hierarchy kept as a separate named hierarchy, aliases merged, rules merged by `id` with explicit override semantics).
 
 ### Rules
 
@@ -161,6 +161,10 @@ See [docs/rules.md](rules.md) for the rules reference, including JSONata express
 The **hierarchy** is the ordered list of node types in a space, from root to leaf. It is defined in the schema's `$metadata.hierarchy.levels` array and drives depth-based type inference (for `space on a page`), tree rendering, and structural validation. The root type has no parent; every other type has parents in the level immediately above (unless `$metadata.hierarchy.allowSkipLevels` is set).
 
 The hierarchy is modelled as a layered DAG: a non-root node may have zero parents (orphaned), one parent, or multiple parents. The `show` command renders this as an indented tree, marking repeated nodes with `(*)` where the subtree is already shown elsewhere.
+
+A space may have **several hierarchies**, one for each composed schema that declares one. Each hierarchy has a **name** (defaulting to the declaring schema's file stem), and each type belongs to at most one hierarchy. Structural validation runs per hierarchy; relationships may connect types across hierarchies.
+
+The **main hierarchy** is the one declared by the root schema; failing that, the only composed hierarchy; failing that, the one the root selects with `"hierarchy": { "$ref": ... }`. The main hierarchy drives `space on a page` parsing, hierarchy embedding, template sync, and default rendering. `show`, `diagram` and `render` take `--hierarchy <name>` to render another. See [docs/schemas.md](schemas.md#multiple-hierarchies).
 
 Each non-root level uses the shared `field`, `fieldOn`, and `multiple` edge options (see [Graph edges](#graph-edges)). Hierarchy-specific options:
 
@@ -252,9 +256,10 @@ Each entry is a `ResolvedParentRef` object:
 | `title` | `string` | The parent node's title |
 | `field` | `string` | The frontmatter field that held the wikilink |
 | `source` | `'hierarchy' \| 'relationship'` | Whether the edge came from a hierarchy level or a relationship |
+| `hierarchy` | `string` | Name of the hierarchy the edge belongs to; present only when `source` is `'hierarchy'` |
 | `selfRef` | `boolean` | Whether the edge is a same-type (self-referential) parent link |
 
-The `source` label lets downstream consumers distinguish edge types without re-inspecting the schema. Validation routes `hierarchy` edges to structural checks (parent-type rules, skip-level detection) and `relationship` edges to field reference checks (type-match, missing-target). Tree rendering and rule evaluation use the full set.
+The `source` and `hierarchy` labels let downstream consumers distinguish edge types and hierarchies without re-inspecting the schema. Validation routes `hierarchy` edges to structural checks within their own hierarchy (parent-type rules, skip-level detection) and `relationship` edges to field reference checks (type-match, missing-target). Tree rendering and rule evaluation use the full set.
 
 ### Content links
 
@@ -317,7 +322,8 @@ Each entry in `ancestors[]` or `descendants[]` includes all schema fields of the
 | Metadata field | Type | Description |
 |----------------|------|-------------|
 | `_field` | `string` | The edge field name that connects to this ancestor/descendant |
-| `_source` | `'hierarchy' \| 'relationship'` | Whether the edge came from the hierarchy or a relationship |
+| `_source` | `'hierarchy' \| 'relationship'` | Whether the edge came from a hierarchy or a relationship |
+| `_hierarchy` | `string` | Hierarchy name; present only for hierarchy edges |
 | `_selfRef` | `boolean` | Whether the edge is a same-type (self-referential) link |
 
 ### SELECT spec

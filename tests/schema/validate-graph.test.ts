@@ -3,15 +3,15 @@ import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { resolveNodeType } from '../../src/schema/schema';
 import { validateGraph, validateHierarchyStructure } from '../../src/schema/validate-graph';
 import type { BaseNode, SchemaMetadata, SpaceNode } from '../../src/types';
-import { makeLevel, makeNode, makeParentRef } from '../test-helpers';
+import { makeHierarchy, makeLevel, makeNode, makeParentRef, withHierarchy } from '../test-helpers';
 
 describe('validateGraph - selfRef field reference validation', () => {
   describe('fieldOn: child (default)', () => {
     const metaSelfRef: SchemaMetadata = {
-      hierarchy: { levels: [makeLevel('mission'), makeLevel('goal', { selfRef: true })], allowSkipLevels: false },
+      ...withHierarchy([makeLevel('mission'), makeLevel('goal', { selfRef: true })], { allowSkipLevels: false }),
     };
     const metaNoSelfRef: SchemaMetadata = {
-      hierarchy: { levels: [makeLevel('mission'), makeLevel('goal')], allowSkipLevels: false },
+      ...withHierarchy([makeLevel('mission'), makeLevel('goal')], { allowSkipLevels: false }),
     };
 
     it('allows goal.parent pointing to a goal when selfRef is true', () => {
@@ -41,13 +41,13 @@ describe('validateGraph - selfRef field reference validation', () => {
 
   describe('fieldOn: parent', () => {
     const meta: SchemaMetadata = {
-      hierarchy: {
-        levels: [
+      ...withHierarchy(
+        [
           makeLevel('mission'),
           makeLevel('goal', { selfRef: true, fieldOn: 'parent', field: 'subgoals', multiple: true }),
         ],
-        allowSkipLevels: false,
-      },
+        { allowSkipLevels: false },
+      ),
     };
 
     it('allows goal.subgoals pointing to goals (self-ref)', () => {
@@ -93,10 +93,10 @@ describe('validate-graph', () => {
   describe('hierarchy with selfRef', () => {
     const hierarchy = ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'];
     const metadata: SchemaMetadata = {
-      hierarchy: {
-        levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
-        allowSkipLevels: false,
-      },
+      ...withHierarchy(
+        hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
+        { allowSkipLevels: false },
+      ),
       typeAliases,
     };
 
@@ -159,10 +159,10 @@ describe('validate-graph', () => {
   describe('hierarchy with allowSkipLevels', () => {
     const hierarchy = ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'];
     const metadata: SchemaMetadata = {
-      hierarchy: {
-        levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
-        allowSkipLevels: true,
-      },
+      ...withHierarchy(
+        hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
+        { allowSkipLevels: true },
+      ),
       typeAliases: {},
     };
 
@@ -192,10 +192,10 @@ describe('validate-graph', () => {
   describe('edge cases', () => {
     const hierarchy = ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'];
     const metadata: SchemaMetadata = {
-      hierarchy: {
-        levels: hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
-        allowSkipLevels: false,
-      },
+      ...withHierarchy(
+        hierarchy.map((t) => makeLevel(t, { selfRef: ['goal', 'opportunity', 'solution'].includes(t) })),
+        { allowSkipLevels: false },
+      ),
       typeAliases: {},
     };
 
@@ -232,10 +232,10 @@ describe('validate-graph', () => {
   describe('violation format', () => {
     const hierarchy = ['vision', 'mission', 'goal'];
     const metadata: SchemaMetadata = {
-      hierarchy: {
-        levels: hierarchy.map((t) => makeLevel(t)),
-        allowSkipLevels: false,
-      },
+      ...withHierarchy(
+        hierarchy.map((t) => makeLevel(t)),
+        { allowSkipLevels: false },
+      ),
       typeAliases: {},
     };
 
@@ -253,5 +253,56 @@ describe('validate-graph', () => {
       expect(v.parentTitle).toBe('My Vision');
       expect(v.description).toBe('Invalid parent: goal "My Goal" cannot have vision "My Vision" as parent');
     });
+  });
+});
+
+describe('validateHierarchyStructure - multiple hierarchies', () => {
+  // "work" forbids skipping levels; "skills" allows it.
+  const work = makeHierarchy([makeLevel('goal'), makeLevel('project'), makeLevel('task')], { name: 'work' });
+  const skills = makeHierarchy([makeLevel('area'), makeLevel('skill'), makeLevel('technique')], {
+    name: 'skills',
+    allowSkipLevels: true,
+  });
+  const metadata: SchemaMetadata = { hierarchy: work, hierarchies: [work, skills] };
+
+  const validate = (baseNodes: BaseNode[]) => {
+    const { nodes } = resolveGraphEdges(baseNodes, metadata);
+    return { nodes, violations: validateHierarchyStructure(nodes, metadata) };
+  };
+
+  it('tags each hierarchy edge with its hierarchy name', () => {
+    const { nodes } = validate([
+      makeNode('Ship', 'goal'),
+      makeNode('Launch', 'project', { parent: '[[Ship]]' }),
+      makeNode('Engineering', 'area'),
+      makeNode('Testing', 'skill', { parent: '[[Engineering]]' }),
+    ]);
+    const edges = nodes.flatMap((n) => n.resolvedParents.map((r) => [n.title, r.hierarchy]));
+    expect(edges).toEqual([
+      ['Launch', 'work'],
+      ['Testing', 'skills'],
+    ]);
+  });
+
+  it("checks skip levels against each hierarchy's own setting", () => {
+    const { violations } = validate([
+      makeNode('Ship', 'goal'),
+      makeNode('Write docs', 'task', { parent: '[[Ship]]' }),
+      makeNode('Engineering', 'area'),
+      makeNode('Mocking', 'technique', { parent: '[[Engineering]]' }),
+    ]);
+    expect(violations.map((v) => v.description)).toEqual([
+      'Invalid parent: task "Write docs" cannot have goal "Ship" as parent',
+    ]);
+  });
+
+  it('rejects a parent from another hierarchy', () => {
+    const { violations } = validate([
+      makeNode('Engineering', 'area'),
+      makeNode('Launch', 'project', { parent: '[[Engineering]]' }),
+    ]);
+    expect(violations.map((v) => v.description)).toEqual([
+      'Invalid parent: project "Launch" cannot have area "Engineering" as parent',
+    ]);
   });
 });

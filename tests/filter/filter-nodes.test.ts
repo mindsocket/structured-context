@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { filterNodes } from '../../src/filter/filter-nodes';
 import { buildSpaceGraph } from '../../src/space-graph';
 import type { SpaceNode } from '../../src/types';
-import { makeLevel, makeParentRef } from '../test-helpers';
+import { makeHierarchy, makeLevel, makeParentRef } from '../test-helpers';
 
 const levels = [makeLevel('goal'), makeLevel('opportunity'), makeLevel('solution')];
 
@@ -32,7 +32,7 @@ activeOpportunity.resolvedParents = [makeParentRef('My Goal')];
 pausedOpportunity.resolvedParents = [makeParentRef('My Goal')];
 
 const allNodes = [goal, activeOpportunity, pausedOpportunity, solution1, solution2];
-const allGraph = buildSpaceGraph(allNodes, levels);
+const allGraph = buildSpaceGraph(allNodes, makeHierarchy(levels));
 
 function nodes(graph: Awaited<ReturnType<typeof filterNodes>>): SpaceNode[] {
   return [...graph.nodes.values()];

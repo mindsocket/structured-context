@@ -1,9 +1,11 @@
-import type { HierarchyLevel, ResolvedParentRef, SpaceNode } from './types';
+import type { Hierarchy, ResolvedParentRef, SpaceNode } from './types';
 
 /**
  * A navigable graph over a set of SpaceNodes.
  *
- * Built once from SpaceNode[] + hierarchy levels via buildSpaceGraph().
+ * Built once from SpaceNode[] + one selected hierarchy via buildSpaceGraph().
+ * The hierarchy-specific views (roots, orphans, hierarchyChildren, ...) cover only that hierarchy;
+ * nodes of other hierarchies' types are non-hierarchy nodes in this graph.
  * Provides typed access to nodes, edges, traversal, and classification
  * so consumers don't need to build their own indexes.
  */
@@ -20,7 +22,7 @@ export type SpaceGraph = {
   /** Non-hierarchy nodes: type not in the hierarchy levels definition. */
   readonly nonHierarchy: readonly SpaceNode[];
 
-  /** Hierarchy children map: parent title → direct children connected via hierarchy edges only. */
+  /** Hierarchy children map: parent title → direct children connected via this hierarchy's edges only. */
   readonly hierarchyChildren: ReadonlyMap<string, readonly SpaceNode[]>;
 
   /** All-edges children map: parent title → direct children connected via any edge (hierarchy + relationship). */
@@ -29,14 +31,16 @@ export type SpaceGraph = {
   /** Set of all node titles that are part of the hierarchy (roots + their descendants + orphans). */
   readonly hierarchyTitles: ReadonlySet<string>;
 
-  /** Hierarchy levels used to build this graph. */
-  readonly levels: readonly HierarchyLevel[];
+  /** The hierarchy used to build this graph, if the schema has one. */
+  readonly hierarchy: Hierarchy | undefined;
 };
 
-/** Build a SpaceGraph from a flat list of SpaceNodes and hierarchy level definitions. */
-export function buildSpaceGraph(nodes: SpaceNode[], levels: readonly HierarchyLevel[]): SpaceGraph {
+/** Build a SpaceGraph from a flat list of SpaceNodes and the hierarchy to structure it by. */
+export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undefined): SpaceGraph {
+  const levels = hierarchy?.levels ?? [];
   const hierarchyTypes = new Set(levels.map((l) => l.type));
   const rootType = levels[0]?.type;
+  const isHierarchyEdge = (r: ResolvedParentRef) => r.source === 'hierarchy' && r.hierarchy === hierarchy?.name;
 
   const nodesMap = new Map<string, SpaceNode>();
   const hierarchyChildrenMap = new Map<string, SpaceNode[]>();
@@ -61,7 +65,7 @@ export function buildSpaceGraph(nodes: SpaceNode[], levels: readonly HierarchyLe
       childrenMap.get(parentRef.title)!.push(node);
 
       // Hierarchy-only map
-      if (parentRef.source === 'hierarchy') {
+      if (isHierarchyEdge(parentRef)) {
         if (!hierarchyChildrenMap.has(parentRef.title)) hierarchyChildrenMap.set(parentRef.title, []);
         hierarchyChildrenMap.get(parentRef.title)!.push(node);
       }
@@ -78,7 +82,7 @@ export function buildSpaceGraph(nodes: SpaceNode[], levels: readonly HierarchyLe
     }
 
     // Only hierarchy-sourced parents determine structural position in the DAG
-    const hierarchyParents = node.resolvedParents.filter((r: ResolvedParentRef) => r.source === 'hierarchy');
+    const hierarchyParents = node.resolvedParents.filter(isHierarchyEdge);
 
     if (hierarchyParents.length === 0) {
       if (nodeType === rootType) {
@@ -118,6 +122,6 @@ export function buildSpaceGraph(nodes: SpaceNode[], levels: readonly HierarchyLe
     hierarchyChildren: hierarchyChildrenMap,
     children: childrenMap,
     hierarchyTitles,
-    levels,
+    hierarchy,
   };
 }

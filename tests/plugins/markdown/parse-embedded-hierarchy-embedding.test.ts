@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { extractEmbeddedNodes } from '../../../src/plugins/markdown/parse-embedded';
 import type { HierarchyLevel } from '../../../src/types';
-import { makeLevel, makeRelationship } from '../../test-helpers';
+import { makeLevel, makeRelationship, withHierarchy } from '../../test-helpers';
 
 const HIERARCHY: HierarchyLevel[] = [
   makeLevel('phase'),
@@ -23,7 +23,7 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'activity',
-      metadata: { hierarchy: { levels: HIERARCHY } },
+      metadata: { ...withHierarchy(HIERARCHY) },
     });
 
     const caps = nodes.filter((n) => n.schemaData.type === 'capability');
@@ -48,7 +48,7 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'goal',
-      metadata: { hierarchy: { levels: hierarchy } },
+      metadata: { ...withHierarchy(hierarchy) },
     });
 
     const opps = nodes.filter((n) => n.schemaData.type === 'opportunity');
@@ -67,11 +67,10 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'activity',
-      metadata: {
-        hierarchy: {
-          levels: [makeLevel('activity'), makeLevel('tool', { field: 'tools', fieldOn: 'parent', multiple: true })],
-        },
-      },
+      metadata: withHierarchy([
+        makeLevel('activity'),
+        makeLevel('tool', { field: 'tools', fieldOn: 'parent', multiple: true }),
+      ]),
     });
 
     const activity = nodes.find((n) => n.schemaData.type === 'activity');
@@ -93,7 +92,7 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'application',
-      metadata: { hierarchy: { levels: HIERARCHY } },
+      metadata: { ...withHierarchy(HIERARCHY) },
     });
 
     const app = nodes.find((n) => n.schemaData.type === 'application');
@@ -119,7 +118,7 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'application',
-      metadata: { hierarchy: { levels: capLevelWithMatchers } },
+      metadata: { ...withHierarchy(capLevelWithMatchers) },
     });
 
     const app = nodes.find((n) => n.schemaData.type === 'application');
@@ -141,7 +140,7 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'activity',
-      metadata: { hierarchy: { levels: hierarchy } },
+      metadata: { ...withHierarchy(hierarchy) },
     });
 
     const activity = nodes.find((n) => n.schemaData.type === 'activity');
@@ -173,7 +172,7 @@ describe('extractEmbeddedNodes - hierarchy embedding', () => {
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'phase',
-      metadata: { hierarchy: { levels: hierarchy } },
+      metadata: { ...withHierarchy(hierarchy) },
     });
 
     const app = nodes.find((n) => n.schemaData.type === 'application');
@@ -203,7 +202,7 @@ Some paragraph content here.
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'goal',
-      metadata: { hierarchy: { levels: hierarchy } },
+      metadata: { ...withHierarchy(hierarchy) },
     });
 
     // The opportunity heading is flushed as a node when paragraph content follows
@@ -221,7 +220,7 @@ Some paragraph content here.
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'goal',
-      metadata: { hierarchy: { levels: [makeLevel('goal'), makeLevel('opportunity')] } },
+      metadata: { ...withHierarchy([makeLevel('goal'), makeLevel('opportunity')]) },
     });
 
     const opps = nodes.filter((n) => n.schemaData.type === 'opportunity');
@@ -250,7 +249,7 @@ Some paragraph content here.
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'goal',
-      metadata: { hierarchy: { levels: hierarchy }, relationships },
+      metadata: { ...withHierarchy(hierarchy), relationships },
     });
 
     const opps = nodes.filter((n) => n.schemaData.type === 'opportunity');

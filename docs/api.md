@@ -11,7 +11,7 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `loadConfig()` | Load the resolved config (spaces, schemas) from the standard config locations. |
 | `createSpaceContext(spaceName, config)` | Build a `SpaceContext` for a named space. Throws `SpaceNotFoundError` on an unknown name. |
 | `readSpace(context)` | Read a space into a flat `ReadSpaceResult` (`nodes`, `parseIssues`, `diagnostics`, `source`). |
-| `loadSpaceGraph(spaceName, config, options?)` | Read, assemble, and optionally filter a space into a navigable `SpaceGraph`. |
+| `loadSpaceGraph(spaceName, config, options?)` | Read, assemble, and optionally filter a space into a navigable `SpaceGraph`. `options.hierarchy` names the hierarchy that structures the graph (default: the main hierarchy). |
 | `assembleSpaceGraph(context, options?)` | Assemble (and optionally filter) a graph from a context you already hold — reuses the context instead of rebuilding it. |
 | `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. |
 | `validateFile(filePath, config)` | Validate a single file within its space. |

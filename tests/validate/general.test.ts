@@ -6,7 +6,7 @@ import { bundledSchemasDir, createValidator, loadMetadata } from '../../src/sche
 import { validateGraph } from '../../src/schema/validate-graph';
 import type { BaseNode, SpaceNode, UnresolvedRef } from '../../src/types';
 import { makePluginContext } from '../helpers/context';
-import { makeLevel } from '../test-helpers';
+import { makeLevel, withHierarchy } from '../test-helpers';
 
 const DEFAULT_SCHEMA_PATH = join(bundledSchemasDir, 'strategy_general.json');
 const VALID_DIR = join(import.meta.dir, '../fixtures/general/valid-ost');
@@ -136,7 +136,7 @@ describe('Schema validation', () => {
       ];
 
       const { nodes: nodes1, unresolvedRefs: refs1 } = resolveGraphEdges(baseNodes, {
-        hierarchy: { levels: [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')] },
+        ...withHierarchy([makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]),
       });
 
       expect(nodes1.find((n) => n.label === 'Another Goal')?.schemaData.parent).toBe('[[anchor_vision#^mission]]');
@@ -172,7 +172,7 @@ describe('Schema validation', () => {
       ];
 
       const { nodes: nodes2, unresolvedRefs: refs2 } = resolveGraphEdges(baseNodes, {
-        hierarchy: { levels: [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')] },
+        ...withHierarchy([makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]),
       });
 
       const { refErrors } = validateGraph(nodes2, metadata, refs2);
@@ -216,7 +216,7 @@ describe('Schema validation', () => {
       ];
 
       const { nodes: nodes3, unresolvedRefs: refs3 } = resolveGraphEdges(baseNodes, {
-        hierarchy: { levels: [makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')] },
+        ...withHierarchy([makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]),
       });
 
       expect(nodes3.find((n) => n.label === 'solution_page.md')?.resolvedParents).toHaveLength(0);

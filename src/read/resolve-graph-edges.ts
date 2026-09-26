@@ -33,7 +33,8 @@ function getRefs(rawField: unknown, multiple: boolean): string[] {
  * @param nodesByType Map of node type to nodes
  * @param targetIndex Map of link targets to nodes
  * @param edge The edge definition (child type, parent type, field, fieldOn, multiple)
- * @param source Whether this edge comes from hierarchy.levels or relationships
+ * @param source Whether this edge comes from hierarchy levels or relationships
+ * @param hierarchy Name of the hierarchy the edge belongs to (hierarchy edges only)
  * @param selfRef Whether child and parent are the same node type
  * @param unresolvedRefs Array to push broken/invalid link entries into
  * @param typeAliases Optional type aliases for resolution
@@ -43,6 +44,7 @@ function resolveEdge(
   targetIndex: Map<string, SpaceNode | null>,
   edge: EdgeDefinition,
   source: ResolvedParentRef['source'],
+  hierarchy: string | undefined,
   selfRef: boolean,
   unresolvedRefs: UnresolvedRef[],
   typeAliases?: Record<string, string>,
@@ -55,7 +57,14 @@ function resolveEdge(
   function pushParentRef(childNode: SpaceNode, parentTitle: string): void {
     // Deduplicate by (field, title) — same parent via different fields is intentional
     if (!childNode.resolvedParents.some((r) => r.field === field && r.title === parentTitle)) {
-      childNode.resolvedParents.push({ title: parentTitle, field, fieldOn, source, selfRef });
+      childNode.resolvedParents.push({
+        title: parentTitle,
+        field,
+        fieldOn,
+        source,
+        ...(hierarchy !== undefined ? { hierarchy } : {}),
+        selfRef,
+      });
     }
   }
 
@@ -178,7 +187,7 @@ function classifyContentLink(link: ContentLink, targetIndex: Map<string, SpaceNo
 
 /**
  * Enrich parsed nodes into SpaceNodes by applying type alias resolution and resolving
- * parent links using the hierarchy levels and relationships from schema metadata.
+ * parent links using the levels of every hierarchy and the relationships from schema metadata.
  *
  * Returns the enriched nodes and any unresolved refs (broken/invalid wikilinks).
  */
@@ -186,7 +195,7 @@ export function resolveGraphEdges(
   nodes: BaseNode[],
   metadata: SchemaMetadata,
 ): { nodes: SpaceNode[]; unresolvedRefs: UnresolvedRef[] } {
-  const levels = metadata.hierarchy?.levels ?? [];
+  const hierarchies = metadata.hierarchies ?? [];
   const relationships = metadata.relationships ?? [];
   const typeAliases = metadata.typeAliases;
   const unresolvedRefs: UnresolvedRef[] = [];
@@ -210,54 +219,65 @@ export function resolveGraphEdges(
     nodesByType.get(type)!.push(node);
   }
 
-  // 1. Process hierarchy levels
-  for (let i = 0; i < levels.length; i++) {
-    const level = levels[i]!;
+  // 1. Process the levels of each hierarchy
+  for (const { name, levels } of hierarchies) {
+    for (let i = 0; i < levels.length; i++) {
+      const level = levels[i]!;
 
-    // Regular relationship (child type → parent type)
-    if (i > 0) {
-      const parentLevel = levels[i - 1]!;
-      resolveEdge(
-        nodesByType,
-        targetIndex,
-        {
-          type: level.type,
-          parent: parentLevel.type,
-          field: level.field,
-          fieldOn: level.fieldOn,
-          multiple: level.multiple,
-        },
-        'hierarchy',
-        false,
-        unresolvedRefs,
-        typeAliases,
-      );
-    }
+      // Regular relationship (child type → parent type)
+      if (i > 0) {
+        const parentLevel = levels[i - 1]!;
+        resolveEdge(
+          nodesByType,
+          targetIndex,
+          {
+            type: level.type,
+            parent: parentLevel.type,
+            field: level.field,
+            fieldOn: level.fieldOn,
+            multiple: level.multiple,
+          },
+          'hierarchy',
+          name,
+          false,
+          unresolvedRefs,
+          typeAliases,
+        );
+      }
 
-    // Same-type relationship (child type → same type) via primary field
-    if (level.selfRef) {
-      resolveEdge(
-        nodesByType,
-        targetIndex,
-        { type: level.type, parent: level.type, field: level.field, fieldOn: level.fieldOn, multiple: level.multiple },
-        'hierarchy',
-        true,
-        unresolvedRefs,
-        typeAliases,
-      );
-    }
+      // Same-type relationship (child type → same type) via primary field
+      if (level.selfRef) {
+        resolveEdge(
+          nodesByType,
+          targetIndex,
+          {
+            type: level.type,
+            parent: level.type,
+            field: level.field,
+            fieldOn: level.fieldOn,
+            multiple: level.multiple,
+          },
+          'hierarchy',
+          name,
+          true,
+          unresolvedRefs,
+          typeAliases,
+        );
+      }
 
-    // Same-type relationship via explicit selfRefField
-    if (level.selfRefField) {
-      resolveEdge(
-        nodesByType,
-        targetIndex,
-        { type: level.type, parent: level.type, field: level.selfRefField, fieldOn: 'child', multiple: false },
-        'hierarchy',
-        true,
-        unresolvedRefs,
-        typeAliases,
-      );
+      // Same-type relationship via explicit selfRefField
+      if (level.selfRefField) {
+        resolveEdge(
+          nodesByType,
+          targetIndex,
+          { type: level.type, parent: level.type, field: level.selfRefField, fieldOn: 'child', multiple: false },
+          'hierarchy',
+          name,
+          true,
+          unresolvedRefs,
+          typeAliases,
+        );
+      }
     }
   }
 
@@ -270,7 +290,16 @@ export function resolveGraphEdges(
       fieldOn: rel.fieldOn,
       multiple: rel.multiple,
     };
-    resolveEdge(nodesByType, targetIndex, edge, 'relationship', rel.type === rel.parent, unresolvedRefs, typeAliases);
+    resolveEdge(
+      nodesByType,
+      targetIndex,
+      edge,
+      'relationship',
+      undefined,
+      rel.type === rel.parent,
+      unresolvedRefs,
+      typeAliases,
+    );
   }
 
   // 3. Resolve content links — classify each raw ContentLink into a ResolvedContentLink.

@@ -8,7 +8,7 @@ import { buildFormatRegistry } from './registry';
 export async function executeRender(
   formatName: string,
   context: SpaceContext,
-  options: { filter?: string; data?: Record<string, unknown> },
+  options: { filter?: string; hierarchy?: string; data?: Record<string, unknown> },
 ): Promise<string> {
   const pluginMap: Record<string, Record<string, unknown>> = context.space?.plugins ?? {};
   const loaded = await loadPlugins(pluginMap, context.configDir);
@@ -22,7 +22,7 @@ export async function executeRender(
     );
   }
 
-  const graph = await assembleSpaceGraph(context, { filter: options.filter });
+  const graph = await assembleSpaceGraph(context, { filter: options.filter, hierarchy: options.hierarchy });
 
   const shortName = shortenPluginName(entry.plugin.plugin.name);
   const pluginContext = {
