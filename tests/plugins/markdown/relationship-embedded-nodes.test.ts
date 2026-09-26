@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { extractEmbeddedNodes } from '../../../src/plugins/markdown/parse-embedded';
-import { makeLevel, makeRelationship } from '../../test-helpers';
+import { makeLevel, makeRelationship, withHierarchy } from '../../test-helpers';
 
 describe('Embedded nodes with parent-side relationships', () => {
   it('should create child nodes when heading anchor matches relationship type', () => {
@@ -15,7 +15,7 @@ describe('Embedded nodes with parent-side relationships', () => {
       pageTitle: 'Test Solution',
       pageType: 'Solutions',
       metadata: {
-        hierarchy: { levels: ['Phases', 'Activities', 'Capabilities', 'Tools'].map((t) => makeLevel(t)) },
+        ...withHierarchy(['Phases', 'Activities', 'Capabilities', 'Tools'].map((t) => makeLevel(t))),
         relationships: [
           makeRelationship('Solutions', 'Applications', {
             field: 'applications',

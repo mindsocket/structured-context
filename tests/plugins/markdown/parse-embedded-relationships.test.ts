@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { extractEmbeddedNodes } from '../../../src/plugins/markdown/parse-embedded';
 import type { Relationship } from '../../../src/types';
-import { makeLevel } from '../../test-helpers';
+import { makeLevel, withHierarchy } from '../../test-helpers';
 
 describe('extractEmbeddedNodes - relationships', () => {
   const hierarchy = ['vision', 'mission', 'goal', 'opportunity', 'solution', 'experiment'];
@@ -33,7 +33,7 @@ describe('extractEmbeddedNodes - relationships', () => {
 
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'opportunity',
-      metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+      metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
     });
 
     const opp = nodes.find((n) => n.schemaData.type === 'opportunity');
@@ -57,7 +57,7 @@ describe('extractEmbeddedNodes - relationships', () => {
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'opportunity',
-      metadata: { hierarchy: { levels: [...hierarchy, 'assumption'].map((t) => makeLevel(t)) }, relationships: [] },
+      metadata: { ...withHierarchy([...hierarchy, 'assumption'].map((t) => makeLevel(t))), relationships: [] },
     });
 
     const assumptions = nodes.filter((n) => n.schemaData.type === 'assumption');
@@ -86,7 +86,7 @@ Our users are sad.
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'opportunity',
-      metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+      metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
     });
 
     const probNodes = nodes.filter((n) => n.schemaData.type === 'problem_statement');
@@ -118,7 +118,7 @@ Our users are sad.
 `;
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'opportunity',
-      metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+      metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
     });
 
     const solutions = nodes.filter((n) => n.schemaData.type === 'solution');
@@ -154,7 +154,7 @@ Our users are sad.
 
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'opportunity',
-      metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+      metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
     });
 
     const assumptions = nodes.filter((n) => n.schemaData.type === 'assumption');
@@ -188,7 +188,7 @@ Our users are sad.
 
     const { nodes } = extractEmbeddedNodes(body, {
       pageType: 'opportunity',
-      metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+      metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
     });
 
     const assumptions = nodes.filter((n) => n.schemaData.type === 'assumption');
@@ -221,7 +221,7 @@ Our users are sad.
       expect(() =>
         extractEmbeddedNodes(body, {
           pageType: 'opportunity',
-          metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+          metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
         }),
       ).toThrow(/Cannot append child link to field 'solutions'.*field exists but is not an array/);
     });
@@ -254,7 +254,7 @@ Our users are sad.
       expect(() =>
         extractEmbeddedNodes(body, {
           pageType: 'opportunity',
-          metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+          metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
         }),
       ).toThrow(/Cannot append child link to field 'assumptions'.*field exists but is not an array/);
     });
@@ -283,7 +283,7 @@ Our users are sad.
       expect(() =>
         extractEmbeddedNodes(body, {
           pageType: 'opportunity',
-          metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+          metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
         }),
       ).toThrow(/Cannot append child link to field 'count'.*field exists but is not an array/);
     });
@@ -312,7 +312,7 @@ Our users are sad.
 
       const { nodes } = extractEmbeddedNodes(body, {
         pageType: 'opportunity',
-        metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+        metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
       });
 
       const opportunity = nodes.find((n) => n.schemaData.type === 'opportunity');
@@ -350,7 +350,7 @@ Our users are sad.
 
       const { nodes } = extractEmbeddedNodes(body, {
         pageType: 'opportunity',
-        metadata: { hierarchy: { levels: hierarchy.map((t) => makeLevel(t)) }, relationships },
+        metadata: { ...withHierarchy(hierarchy.map((t) => makeLevel(t))), relationships },
       });
 
       const opportunity = nodes.find((n) => n.schemaData.type === 'opportunity');

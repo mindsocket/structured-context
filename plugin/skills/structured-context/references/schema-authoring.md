@@ -70,7 +70,10 @@ Rules are a flat array. Each rule's `category` (`validation`, `coherence`, `work
 
 Across `$ref` graphs:
 - metadata providers are traversed DFS, root metadata applied last
-- zero or one provider may define `hierarchy`
+- each schema declares at most one `hierarchy`; every composed schema's hierarchy is kept as a separate named hierarchy (`hierarchy.name`, default: the declaring file's stem)
+- each type belongs to at most one hierarchy — a composing schema cannot redefine a composed hierarchy's levels
+- main hierarchy: the root's own; else the only composed one; else the root must select one with `"hierarchy": { "$ref": "<schema $id>#/$metadata/hierarchy" }` (declaring and selecting at once is an error)
+- the main hierarchy drives `space_on_a_page` parsing, embedding, `template-sync` and default rendering; validation runs per hierarchy
 - `aliases` shallow-merge (later wins)
 - `rules` merge by `id`
 - duplicate rule IDs with different payloads error unless later rule sets `override: true`
@@ -173,7 +176,7 @@ Each node also carries convenience fields for common queries:
 - `resolvedParentTitle` — title of the first resolved parent (or `undefined`)
 - `resolvedParentTitles` — array of all resolved parent titles
 
-`resolvedParents` on the raw node is an array of `ResolvedParentRef` objects (`{ title, field, source, selfRef }`); use the convenience fields for simple title-matching.
+`resolvedParents` on the raw node is an array of `ResolvedParentRef` objects (`{ title, field, source, hierarchy?, selfRef }`, where `hierarchy` names the hierarchy of a hierarchy edge); use the convenience fields for simple title-matching.
 
 ```jsonata
 $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])

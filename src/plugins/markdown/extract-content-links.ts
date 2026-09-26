@@ -121,9 +121,11 @@ export function extractLinksFromBody(body: string): ContentLink[] {
  */
 export function getEdgeFieldNames(metadata: SchemaMetadata): Set<string> {
   const fields = new Set<string>();
-  for (const level of metadata.hierarchy?.levels ?? []) {
-    fields.add(level.field);
-    if (level.selfRefField) fields.add(level.selfRefField);
+  for (const hierarchy of metadata.hierarchies ?? []) {
+    for (const level of hierarchy.levels) {
+      fields.add(level.field);
+      if (level.selfRefField) fields.add(level.selfRefField);
+    }
   }
   for (const rel of metadata.relationships ?? []) {
     fields.add(rel.field);

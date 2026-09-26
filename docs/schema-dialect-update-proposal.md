@@ -167,7 +167,7 @@ Metadata merge behavior is implicit and fragile.
 Define deterministic merge rules in this update:
 
 - Metadata sources: traverse `$ref` graph from root schema (DFS), then apply root schema metadata last.
-- `hierarchy`: exactly one provider allowed; error if multiple providers define it.
+- `hierarchy`: exactly one provider allowed; error if multiple providers define it. *(Superseded: as implemented, the last provider won; since #121 each provider's hierarchy is kept as a separate named hierarchy. See [schemas.md](schemas.md#multiple-hierarchies).)*
 - `aliases`: shallow merge by key; later provider wins.
 - `rules`: concatenate, then dedupe by `id`; later provider wins on conflict.
 - Validation: fail fast on duplicate rule ids with incompatible payload unless override is explicit.
@@ -443,7 +443,7 @@ Stage B acceptance criteria:
 ### Stage C - Composability and merge semantics
 
 - [x] Implement metadata collection across `$ref` graph (DFS) with root metadata applied last.
-- [x] Enforce single-provider hierarchy (error on multiple providers).
+- [x] ~~Enforce single-provider hierarchy (error on multiple providers).~~ Superseded by multiple named hierarchies (#121).
 - [x] Implement aliases merge (shallow merge, later provider wins).
 - [x] Implement rules merge by `id` with conflict policy:
 - [x] default conflict is error;

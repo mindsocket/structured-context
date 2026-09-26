@@ -1,0 +1,4 @@
+---
+type: skill
+parent: "[[Engineering]]"
+---

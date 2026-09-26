@@ -3,19 +3,21 @@ import { filterNodes } from './filter/filter-nodes';
 import { readSpace } from './read/read-space';
 import { createSpaceContext } from './space-context';
 import { buildSpaceGraph, type SpaceGraph } from './space-graph';
-import type { ReadSpaceResult, SpaceContext, SpaceNode } from './types';
+import type { Hierarchy, ReadSpaceResult, SchemaMetadata, SpaceContext, SpaceNode } from './types';
 
 export interface AssembleSpaceGraphOptions {
   /** Named view (resolved via space.views) or a raw filter DSL expression. */
   filter?: string;
+  /** Name of the hierarchy to structure the graph by. Defaults to the schema's main hierarchy. */
+  hierarchy?: string;
   /** Pre-loaded read result to assemble from, avoiding a re-read of the space. */
   readResult?: ReadSpaceResult;
 }
 
 /**
  * Assemble a SpaceGraph from a space context: read the space, drop nodes that
- * fail schema validation, build the hierarchy graph, and apply an optional
- * view/filter expression.
+ * fail schema validation, build the graph for the selected hierarchy (the main
+ * hierarchy by default), and apply an optional view/filter expression.
  *
  * Nodes that fail schema validation are silently excluded so the graph is
  * well-formed enough to render and traverse. This is NOT a validation pass —
@@ -34,8 +36,7 @@ export async function assembleSpaceGraph(
   const { schemaValidator } = context;
   const validNodes: SpaceNode[] = allNodes.filter((node) => schemaValidator(node.schemaData));
 
-  const levels = context.schema.metadata.hierarchy?.levels ?? [];
-  let graph = buildSpaceGraph(validNodes, levels);
+  let graph = buildSpaceGraph(validNodes, selectHierarchy(context.schema.metadata, options.hierarchy));
 
   if (options.filter) {
     const expression = context.space.views?.[options.filter]?.expression ?? options.filter;
@@ -43,6 +44,20 @@ export async function assembleSpaceGraph(
   }
 
   return graph;
+}
+
+/** Resolve a hierarchy by name, or the main hierarchy when no name is given. */
+function selectHierarchy(metadata: SchemaMetadata, name: string | undefined): Hierarchy | undefined {
+  if (name === undefined) return metadata.hierarchy;
+  const hierarchies = metadata.hierarchies ?? [];
+  const hierarchy = hierarchies.find((h) => h.name === name);
+  if (!hierarchy) {
+    const available = hierarchies.map((h) => h.name).join(', ');
+    throw new Error(
+      `Unknown hierarchy: "${name}".${available ? ` Available: ${available}` : ' The schema defines no hierarchies.'}`,
+    );
+  }
+  return hierarchy;
 }
 
 export interface LoadSpaceGraphOptions extends AssembleSpaceGraphOptions {

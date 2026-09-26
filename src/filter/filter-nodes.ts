@@ -76,5 +76,5 @@ export async function filterNodes(expression: string, graph: SpaceGraph): Promis
     matchedNodes = matched;
   }
 
-  return buildSpaceGraph(matchedNodes, graph.levels);
+  return buildSpaceGraph(matchedNodes, graph.hierarchy);
 }

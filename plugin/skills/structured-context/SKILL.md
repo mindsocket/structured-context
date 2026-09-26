@@ -108,7 +108,7 @@ When writing or editing Obsidian markdown frontmatter:
 **Rule violations on every node of a type** — the rule may be too strict or misconfigured. Use `dump` to verify
 what the rule actually sees in the `current` object, then adjust the rule in the schema.
 
-**`show`/`diagram` show only orphans and non-hierarchy types** — the schema's `$metadata.hierarchy` may not have edge configuration for the space's relationship fields. Use `schemas show --space <name>` to check the hierarchy definition. Each non-root level can define a `field` entry (overriding default `parent:` field (and optionally `fieldOn: "parent"` / `multiple: true`) to wire up the correct relationship field.
+**`show`/`diagram` show only orphans and non-hierarchy types** — the schema's `$metadata.hierarchy` may not have edge configuration for the space's relationship fields, or the nodes may belong to another hierarchy (pass `--hierarchy <name>`). Use `schemas show --space <name>` to check the hierarchy definition. Each non-root level can define a `field` entry (overriding default `parent:` field (and optionally `fieldOn: "parent"` / `multiple: true`) to wire up the correct relationship field.
 
 ## Troubleshooting Common Errors
 

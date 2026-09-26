@@ -1,17 +1,21 @@
-import type { BaseNode, HierarchyLevel, Relationship, ResolvedParentRef } from '../src/types';
+import type { BaseNode, Hierarchy, HierarchyLevel, Relationship, ResolvedParentRef } from '../src/types';
 
 /**
  * Creates a ResolvedParentRef with sensible defaults for use in tests.
  * Override any field to represent specific edge contexts.
  */
-export const makeParentRef = (title: string, overrides: Partial<ResolvedParentRef> = {}): ResolvedParentRef => ({
-  title,
-  field: 'parent',
-  source: 'hierarchy',
-  selfRef: false,
-  fieldOn: 'child',
-  ...overrides,
-});
+export const makeParentRef = (title: string, overrides: Partial<ResolvedParentRef> = {}): ResolvedParentRef => {
+  const source = overrides.source ?? 'hierarchy';
+  return {
+    title,
+    field: 'parent',
+    source,
+    ...(source === 'hierarchy' ? { hierarchy: 'main' } : {}),
+    selfRef: false,
+    fieldOn: 'child',
+    ...overrides,
+  };
+};
 
 /**
  * Creates a HierarchyLevel with defaults matching schema.loadMetadata normalization.
@@ -24,6 +28,26 @@ export const makeLevel = (type: string, overrides: Partial<HierarchyLevel> = {})
   selfRef: false,
   ...overrides,
 });
+
+/**
+ * Creates a named Hierarchy (default name 'main') from normalized levels.
+ */
+export const makeHierarchy = (levels: HierarchyLevel[], overrides: Partial<Hierarchy> = {}): Hierarchy => ({
+  name: 'main',
+  levels,
+  ...overrides,
+});
+
+/**
+ * SchemaMetadata fields for a schema whose only hierarchy is its main hierarchy.
+ */
+export const withHierarchy = (
+  levels: HierarchyLevel[],
+  overrides: Partial<Hierarchy> = {},
+): { hierarchy: Hierarchy; hierarchies: Hierarchy[] } => {
+  const hierarchy = makeHierarchy(levels, overrides);
+  return { hierarchy, hierarchies: [hierarchy] };
+};
 
 /**
  * Creates a Relationship with defaults matching schema.loadMetadata normalization.

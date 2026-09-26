@@ -14,72 +14,91 @@
       "type": "object",
       "properties": {
         "hierarchy": {
-          "type": "object",
-          "properties": {
-            "levels": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "oneOf": [
-                  {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "type": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "levels": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "oneOf": [
+                      {
                         "type": "string",
                         "minLength": 1
                       },
-                      "field": {
-                        "type": "string",
-                        "minLength": 1
-                      },
-                      "fieldOn": {
-                        "enum": ["child", "parent"]
-                      },
-                      "multiple": {
-                        "type": "boolean"
-                      },
-                      "templateFormat": {
-                        "enum": ["heading", "list", "table", "page"]
-                      },
-                      "matchers": {
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "minLength": 1
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "field": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "fieldOn": {
+                            "enum": ["child", "parent"]
+                          },
+                          "multiple": {
+                            "type": "boolean"
+                          },
+                          "templateFormat": {
+                            "enum": ["heading", "list", "table", "page"]
+                          },
+                          "matchers": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "minItems": 1
+                          },
+                          "embeddedTemplateFields": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "selfRef": {
+                            "type": "boolean"
+                          },
+                          "selfRefField": {
+                            "type": "string",
+                            "minLength": 1
+                          }
                         },
-                        "minItems": 1
-                      },
-                      "embeddedTemplateFields": {
-                        "type": "array",
-                        "items": {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      },
-                      "selfRef": {
-                        "type": "boolean"
-                      },
-                      "selfRefField": {
-                        "type": "string",
-                        "minLength": 1
+                        "required": ["type"],
+                        "additionalProperties": false
                       }
-                    },
-                    "required": ["type"],
-                    "additionalProperties": false
+                    ]
                   }
-                ]
-              }
+                },
+                "allowSkipLevels": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["levels"],
+              "additionalProperties": false
             },
-            "allowSkipLevels": {
-              "type": "boolean"
+            {
+              "type": "object",
+              "properties": {
+                "$ref": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": ["$ref"],
+              "additionalProperties": false
             }
-          },
-          "required": ["levels"],
-          "additionalProperties": false
+          ]
         },
         "relationships": {
           "type": "array",

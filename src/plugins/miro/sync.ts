@@ -29,6 +29,7 @@ export async function miroSync(context: PluginContext, graph: SpaceGraph, option
     throw new Error('No frameId in miro plugin config. Pass --new-frame "Title" to create one.');
 
   // 3. Filter to hierarchy nodes only (graph already built by caller)
+  const levels = graph.hierarchy?.levels ?? [];
   const nodes = [...graph.nodes.values()].filter((n) => graph.hierarchyTitles.has(n.title));
 
   if (nodes.length === 0) {
@@ -45,7 +46,7 @@ export async function miroSync(context: PluginContext, graph: SpaceGraph, option
 
   if (options.newFrame) {
     // Calculate layout bounds to size the frame appropriately
-    const { bounds } = layoutNewCards(nodes, new Map(), graph.levels);
+    const { bounds } = layoutNewCards(nodes, new Map(), levels);
     const frameWidth = Math.max(1600, bounds.maxX - bounds.minX);
     const frameHeight = Math.max(1200, bounds.maxY - bounds.minY);
 
@@ -182,7 +183,7 @@ export async function miroSync(context: PluginContext, graph: SpaceGraph, option
   }
 
   // Compute positions for new cards
-  const { positions: newPositions } = layoutNewCards(newNodes, existingPositions, graph.levels);
+  const { positions: newPositions } = layoutNewCards(newNodes, existingPositions, levels);
 
   // 7. Create new cards
   let createdCount = 0;
@@ -215,7 +216,7 @@ export async function miroSync(context: PluginContext, graph: SpaceGraph, option
         title: buildCardTitle(node),
         description: buildCardDescription(node),
       },
-      style: { cardTheme: getCardColor(type, graph.levels) },
+      style: { cardTheme: getCardColor(type, levels) },
       position: { x: pos.x, y: pos.y, origin: 'center' },
       parent: { id: frameId },
       geometry: { width: CARD_WIDTH },
@@ -264,7 +265,7 @@ export async function miroSync(context: PluginContext, graph: SpaceGraph, option
             title: buildCardTitle(node),
             description: buildCardDescription(node),
           },
-          style: { cardTheme: getCardColor(type, graph.levels) },
+          style: { cardTheme: getCardColor(type, levels) },
           position: { x: 0, y: 0, origin: 'center' },
           parent: { id: frameId },
           geometry: { width: CARD_WIDTH },
@@ -290,8 +291,8 @@ export async function miroSync(context: PluginContext, graph: SpaceGraph, option
   const desiredEdges = new Map<string, { parentTitle: string; childTitle: string }>();
   for (const node of nodes) {
     const childTitle = node.title;
-    for (const { title: parentTitle, source } of node.resolvedParents) {
-      if (source !== 'hierarchy') continue;
+    for (const { title: parentTitle, source, hierarchy } of node.resolvedParents) {
+      if (source !== 'hierarchy' || hierarchy !== graph.hierarchy?.name) continue;
       // Both endpoints must have verified cards on the board
       if (verifiedCardIds.has(parentTitle) && verifiedCardIds.has(childTitle)) {
         const key = `${parentTitle}\u2192${childTitle}`;

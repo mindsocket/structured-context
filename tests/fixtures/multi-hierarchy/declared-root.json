@@ -1,0 +1,54 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
+  "$id": "sctx-test://multi-hierarchy/declared-root",
+  "$metadata": {
+    "hierarchy": {
+      "name": "strategy",
+      "levels": ["vision", "mission"]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "sctx-test://multi-hierarchy/work#/$defs/goal"
+    },
+    {
+      "$ref": "sctx-test://multi-hierarchy/work#/$defs/task"
+    },
+    {
+      "$ref": "sctx-test://multi-hierarchy/skills#/$defs/skill_area"
+    },
+    {
+      "$ref": "sctx-test://multi-hierarchy/skills#/$defs/skill"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "vision"
+        },
+        "title": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "string"
+        }
+      },
+      "required": ["type", "title"]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "mission"
+        },
+        "title": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "string"
+        }
+      },
+      "required": ["type", "title"]
+    }
+  ]
+}

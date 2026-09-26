@@ -76,6 +76,7 @@ program
   .description('Generate mermaid diagram from space')
   .argument('<space-name>', 'Space name')
   .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
+  .option('--hierarchy <name>', 'Hierarchy to render (default: the main hierarchy)')
   .option('-o, --output <path>', 'Output file path (default: stdout)')
   .action((spaceName, options) => diagram(buildSpaceContext(spaceName), options));
 
@@ -84,6 +85,7 @@ program
   .description('Print space graph as a bullet list')
   .argument('<space-name>', 'Space name')
   .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
+  .option('--hierarchy <name>', 'Hierarchy to render (default: the main hierarchy)')
   .action((spaceName, options) => show(buildSpaceContext(spaceName), options));
 
 program
@@ -163,6 +165,7 @@ renderCmd
   .argument('<space-name>', 'Space name')
   .argument('<format>', 'Render format (e.g. markdown.bullets)')
   .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
+  .option('--hierarchy <name>', 'Hierarchy to render (default: the main hierarchy)')
   .option('-o, --output <path>', 'Output file path (default: stdout)')
   .action(async (spaceName: string, format: string, options) => {
     await render(buildSpaceContext(spaceName), format, options);

@@ -24,7 +24,7 @@ function makeNode(title: string, type: string, extra: Record<string, unknown> = 
 
 function buildContext(nodes: SpaceNode[]) {
   // Use an empty levels array — expand-include tests don't care about hierarchy classification
-  const graph = buildSpaceGraph(nodes, []);
+  const graph = buildSpaceGraph(nodes, undefined);
   const nodeIndex = graph.nodes;
   const childrenIndex = graph.children;
   const augmented = new Map(nodes.map((n) => [n.title, augmentNode(n, nodeIndex, childrenIndex)]));

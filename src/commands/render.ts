@@ -7,9 +7,9 @@ import type { SpaceContext } from '../types';
 export async function render(
   context: SpaceContext,
   format: string,
-  options: { filter?: string; output?: string },
+  options: { filter?: string; hierarchy?: string; output?: string },
 ): Promise<void> {
-  const result = await executeRender(format, context, { filter: options.filter });
+  const result = await executeRender(format, context, { filter: options.filter, hierarchy: options.hierarchy });
   if (options.output) {
     writeFileSync(options.output, result);
     console.error(`Written to ${options.output}`);

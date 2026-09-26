@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import type { Relationship } from '../../src/types';
-import { makeLevel, makeNode } from '../test-helpers';
+import { makeLevel, makeNode, withHierarchy } from '../test-helpers';
 
 describe('resolveGraphEdges', () => {
   describe("default behavior (fieldOn: 'child', multiple: false)", () => {
@@ -11,7 +11,7 @@ describe('resolveGraphEdges', () => {
       const phase = makeNode('Phase 1', 'Phase');
       const activity = makeNode('Activity 1', 'Activity', { parent: '[[Phase 1]]' });
 
-      const { nodes } = resolveGraphEdges([phase, activity], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([phase, activity], { ...withHierarchy(levels) });
 
       const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
       const resolvedPhase = nodes.find((n) => n.label === 'Phase 1.md')!;
@@ -24,7 +24,7 @@ describe('resolveGraphEdges', () => {
 
       const activity = makeNode('Activity 1', 'Activity', { parent: '[[Nonexistent Phase]]' });
 
-      const { nodes, unresolvedRefs } = resolveGraphEdges([activity], { hierarchy: { levels } });
+      const { nodes, unresolvedRefs } = resolveGraphEdges([activity], { ...withHierarchy(levels) });
 
       const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
       expect(resolvedActivity.resolvedParents).toEqual([]);
@@ -50,7 +50,7 @@ describe('resolveGraphEdges', () => {
       const reqB = makeNode('Req B', 'Requirement');
       const tool = makeNode('Tool X', 'Tool', { fulfills: ['[[Req A]]', '[[Req B]]'] });
 
-      const { nodes } = resolveGraphEdges([reqA, reqB, tool], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([reqA, reqB, tool], { ...withHierarchy(levels) });
 
       const resolvedTool = nodes.find((n) => n.label === 'Tool X.md')!;
       expect(resolvedTool.resolvedParents.map((r) => r.title)).toContain('Req A');
@@ -64,7 +64,7 @@ describe('resolveGraphEdges', () => {
       const req = makeNode('Req A', 'Requirement');
       const tool = makeNode('Tool X', 'Tool', { fulfills: ['[[Req A]]', 42, null] });
 
-      const { nodes } = resolveGraphEdges([req, tool], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([req, tool], { ...withHierarchy(levels) });
 
       const resolvedTool = nodes.find((n) => n.label === 'Tool X.md')!;
       expect(resolvedTool.resolvedParents.map((r) => r.title)).toEqual(['Req A']);
@@ -75,7 +75,7 @@ describe('resolveGraphEdges', () => {
 
       const tool = makeNode('Tool X', 'Tool', { fulfills: '[[Req A]]' }); // string, not array
 
-      const { nodes, unresolvedRefs } = resolveGraphEdges([tool], { hierarchy: { levels } });
+      const { nodes, unresolvedRefs } = resolveGraphEdges([tool], { ...withHierarchy(levels) });
 
       const resolvedTool = nodes.find((n) => n.label === 'Tool X.md')!;
       expect(resolvedTool.resolvedParents).toEqual([]);
@@ -102,7 +102,7 @@ describe('resolveGraphEdges', () => {
       const reqA = makeNode('Req A', 'Requirement');
       const reqB = makeNode('Req B', 'Requirement');
 
-      const { nodes } = resolveGraphEdges([activity, reqA, reqB], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([activity, reqA, reqB], { ...withHierarchy(levels) });
 
       const resolvedReqA = nodes.find((n) => n.label === 'Req A.md')!;
       const resolvedReqB = nodes.find((n) => n.label === 'Req B.md')!;
@@ -126,7 +126,7 @@ describe('resolveGraphEdges', () => {
       });
       const sharedReq = makeNode('Shared Req', 'Requirement');
 
-      const { nodes } = resolveGraphEdges([activity1, activity2, sharedReq], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([activity1, activity2, sharedReq], { ...withHierarchy(levels) });
 
       const resolvedSharedReq = nodes.find((n) => n.label === 'Shared Req.md')!;
       expect(resolvedSharedReq.resolvedParents.map((r) => r.title)).toContain('Activity 1');
@@ -153,7 +153,7 @@ describe('resolveGraphEdges', () => {
       const reqB = makeNode('Req B', 'Requirement');
       const tool = makeNode('Tool X', 'Tool', { fulfills: ['[[Req A]]'] });
 
-      const { nodes } = resolveGraphEdges([phase, activity, reqA, reqB, tool], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([phase, activity, reqA, reqB, tool], { ...withHierarchy(levels) });
 
       const r = (label: string) => nodes.find((n) => n.label === label)!;
       expect(r('Activity 1.md').resolvedParents.map((p) => p.title)).toEqual(['Phase 1']);
@@ -171,7 +171,7 @@ describe('resolveGraphEdges', () => {
       const phase = makeNode('Phase 1', 'Phase', { parent: '[[Activity 1]]' });
       const activity = makeNode('Activity 1', 'Activity', { parent: '[[Phase 1]]' });
 
-      const { nodes } = resolveGraphEdges([phase, activity], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([phase, activity], { ...withHierarchy(levels) });
 
       const resolvedPhase = nodes.find((n) => n.label === 'Phase 1.md')!;
       const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
@@ -187,7 +187,7 @@ describe('resolveGraphEdges', () => {
 
       const activity = makeNode('Activity 1', 'Activity', { parent: '[[Ghost Phase]]' });
 
-      const { nodes, unresolvedRefs } = resolveGraphEdges([activity], { hierarchy: { levels } });
+      const { nodes, unresolvedRefs } = resolveGraphEdges([activity], { ...withHierarchy(levels) });
 
       const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
       expect(resolvedActivity.resolvedParents).toEqual([]);
@@ -218,7 +218,7 @@ describe('resolveGraphEdges', () => {
       const project = makeNode('Project A', 'project');
       const task = makeNode('Task 1', 'task', { parent: '[[Project A]]' });
 
-      const { nodes } = resolveGraphEdges([project, task], { hierarchy: { levels }, relationships });
+      const { nodes } = resolveGraphEdges([project, task], { ...withHierarchy(levels), relationships });
 
       const resolvedTask = nodes.find((n) => n.label === 'Task 1.md')!;
       const ref = resolvedTask.resolvedParents.find((r) => r.title === 'Project A');
@@ -242,7 +242,7 @@ describe('resolveGraphEdges', () => {
       const project = makeNode('Project A', 'project');
       const resource = makeNode('Resource 1', 'resource', { parent: '[[Project A]]' });
 
-      const { nodes } = resolveGraphEdges([project, resource], { hierarchy: { levels }, relationships });
+      const { nodes } = resolveGraphEdges([project, resource], { ...withHierarchy(levels), relationships });
 
       const resolvedResource = nodes.find((n) => n.label === 'Resource 1.md')!;
       const ref = resolvedResource.resolvedParents.find((r) => r.title === 'Project A');
@@ -264,7 +264,7 @@ describe('resolveGraphEdges', () => {
       const coreCapability = makeNode('Core Capability', 'Capability');
       const subCapability = makeNode('Sub Capability', 'Capability', { parent: '[[Core Capability]]' });
 
-      const { nodes } = resolveGraphEdges([activity, coreCapability, subCapability], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([activity, coreCapability, subCapability], { ...withHierarchy(levels) });
 
       const resolvedCore = nodes.find((n) => n.label === 'Core Capability.md')!;
       const resolvedSub = nodes.find((n) => n.label === 'Sub Capability.md')!;
@@ -295,7 +295,7 @@ describe('resolveGraphEdges', () => {
       const toolB = makeNode('Tool B', 'Tool', { partOf: '[[Tool A]]' });
       const toolC = makeNode('Tool C', 'Tool', { partOf: '[[Tool B]]' });
 
-      const { nodes } = resolveGraphEdges([activity, toolA, toolB, toolC], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([activity, toolA, toolB, toolC], { ...withHierarchy(levels) });
 
       const rTool = (name: string) => nodes.find((n) => n.label === `${name}.md`)!;
 
@@ -320,7 +320,7 @@ describe('resolveGraphEdges', () => {
       const objective1 = makeNode('Objective 1', 'Objective', { parent: '[[Goal 1]]' });
       const objective2 = makeNode('Objective 2', 'Objective', { parent: '[[Objective 1]]' });
 
-      const { nodes } = resolveGraphEdges([goal, objective1, objective2], { hierarchy: { levels } });
+      const { nodes } = resolveGraphEdges([goal, objective1, objective2], { ...withHierarchy(levels) });
 
       const rObj = (name: string) => nodes.find((n) => n.label === `${name}.md`)!;
 
@@ -348,7 +348,7 @@ describe('resolveGraphEdges', () => {
         parent: '[[Nonexistent Parent]]', // selfRefField target that doesn't exist
       });
 
-      const { nodes, unresolvedRefs } = resolveGraphEdges([activity, capabilityA], { hierarchy: { levels } });
+      const { nodes, unresolvedRefs } = resolveGraphEdges([activity, capabilityA], { ...withHierarchy(levels) });
 
       const resolvedCapA = nodes.find((n) => n.label === 'Capability A.md')!;
 

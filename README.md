@@ -184,7 +184,7 @@ Bare wikilink items (`- [[Existing Node]]`) in any embedding section populate a 
 With `fieldOn: "parent"`, embedded child nodes (parsed from a matching heading's list or table) are appended as wikilinks to the parent's `field` array, rather than receiving a `parent` field. This matches schemas where the content model naturally lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`).
 
 Metadata is composable across `$ref` graphs:
-- `hierarchy`: multiple schema files may define a hierarchy; **last one wins** (root schema overrides partials)
+- `hierarchy`: each schema file declares at most one hierarchy, and every declared hierarchy is kept as a separate named hierarchy (see [Multiple hierarchies](#multiple-hierarchies))
 - `aliases` are shallow-merged (later wins)
 - `rules` merge by `id`; conflicts error unless the later rule sets `override: true`
 - each rule's `category` supplies its default severity (`validation` → `error`, `coherence`/`workflow` → `warning`, `best-practice` → `info`); an optional `severity` field overrides it
@@ -192,6 +192,24 @@ Metadata is composable across `$ref` graphs:
 - `relationships` are collected from all files
 
 If no file defines `hierarchy`, hierarchy-specific checks are skipped.
+
+#### Multiple hierarchies
+
+A space can have several hierarchies by composing schemas that each declare one. For example, a root schema might compose a work hierarchy (`goal → task`) and a skills hierarchy (`skill_area → skill`).
+
+- **Naming**: a hierarchy's `name` defaults to the declaring schema's file stem (e.g. `_skills` for `_skills.json`). Set `"name"` in `$metadata.hierarchy` to override it.
+- **Main hierarchy**: if the root schema declares a hierarchy, it is the main one. If the root declares none and exactly one is composed, that one is the main hierarchy. If several are composed, the root must select one:
+
+  ```json5
+  "$metadata": {
+    "hierarchy": { "$ref": "sctx://_work#/$metadata/hierarchy" }
+  }
+  ```
+
+  A root may either declare a hierarchy or select one with `$ref`, not both.
+- **Each type belongs to at most one hierarchy.** A type in two hierarchies is an error, so a composing schema cannot redefine a composed hierarchy's levels.
+- **Validation** (layering, parent types, skip levels, orphans) runs per hierarchy. Relationships can connect types across hierarchies.
+- The main hierarchy drives `space_on_a_page` parsing, hierarchy embedding, `template-sync`, and the default `show`/`diagram`/`render` output. Use `--hierarchy <name>` to render another one.
 
 **Customizing Schemas:**
 - **Partial schemas**: Files starting with an underscore (like `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`) are loaded and used to resolve references (using `$ref`).
@@ -224,10 +242,10 @@ Validates markdown files against the JSON schema:
 ### Show space tree
 
 ```bash
-sctx show <space> [--filter <view-or-expression>]
+sctx show <space> [--filter <view-or-expression>] [--hierarchy <name>]
 ```
 
-Prints the space as an indented hierarchy tree. Hierarchy roots are listed first, followed by orphans (nodes in the hierarchy but with no resolved parent) and non-hierarchy nodes.
+Prints the space as an indented hierarchy tree. Hierarchy roots are listed first, followed by orphans (nodes in the hierarchy but with no resolved parent) and non-hierarchy nodes. The main hierarchy is shown by default; `--hierarchy <name>` selects another (see [Multiple hierarchies](#multiple-hierarchies)). `diagram` and `render` accept the same option.
 
 When a node appears under multiple parents (DAG hierarchy), it is printed in full under its first parent. Subsequent appearances with children show a `(*)` marker indicating the subtree is omitted.
 
@@ -259,6 +277,7 @@ The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression
 - **`ancestors[]`** — flat array of ancestor nodes, nearest first, deduplicated. Each entry includes all schema fields of the ancestor node, plus:
   - `_field` — the edge field name that connects to the ancestor
   - `_source` — `'hierarchy'` or `'relationship'`
+  - `_hierarchy` — the hierarchy name, for hierarchy edges
   - `_selfRef` — whether the edge is a same-type (self-referential) link
 - **`descendants[]`** — same structure, for descendant nodes
 
@@ -309,7 +328,7 @@ SELECT relationships(assumption) WHERE resolvedType='opportunity'
 ### Generate Mermaid diagram
 
 ```bash
-sctx diagram <space> [--output path/to/output.mmd]
+sctx diagram <space> [--output path/to/output.mmd] [--hierarchy <name>]
 ```
 
 Generates a Mermaid `graph TD` diagram from validated space nodes:
@@ -326,7 +345,7 @@ sctx schemas show <schema-file> [--mermaid-erd] [--space <name>]
 
 Generates a Mermaid Entity Relationship Diagram from a schema:
 - Shows all entity types and their properties
-- Displays parent-child relationships based on hierarchy metadata
+- Displays parent-child relationships based on the levels of each hierarchy
 - Useful for visualizing schema structure during development
 
 Example:

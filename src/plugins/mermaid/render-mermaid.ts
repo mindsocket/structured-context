@@ -21,7 +21,8 @@ function safeNodeId(id: string): string {
 }
 
 export function renderMermaid(graph: SpaceGraph): string {
-  const { hierarchyRoots, orphans, hierarchyChildren: children, hierarchyTitles: hierarchyNodeSet, levels } = graph;
+  const { hierarchyRoots, orphans, hierarchyChildren: children, hierarchyTitles: hierarchyNodeSet } = graph;
+  const levels = graph.hierarchy?.levels ?? [];
 
   let mmd = 'graph TD\n';
 

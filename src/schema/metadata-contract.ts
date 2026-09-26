@@ -59,12 +59,29 @@ const RULE_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-const RULE_REF_SCHEMA = {
+const REF_SCHEMA = {
   type: 'object',
   properties: {
     $ref: { type: 'string', minLength: 1 },
   },
   required: ['$ref'],
+  additionalProperties: false,
+} as const;
+
+const HIERARCHY_SCHEMA = {
+  type: 'object',
+  properties: {
+    name: { type: 'string', minLength: 1 },
+    levels: {
+      type: 'array',
+      minItems: 1,
+      items: {
+        oneOf: [{ type: 'string', minLength: 1 }, HIERARCHY_LEVEL_SCHEMA],
+      },
+    },
+    allowSkipLevels: { type: 'boolean' },
+  },
+  required: ['levels'],
   additionalProperties: false,
 } as const;
 
@@ -83,20 +100,9 @@ const RELATIONSHIP_SCHEMA = {
 export const METADATA_SCHEMA = {
   type: 'object',
   properties: {
+    // Either declares this schema's hierarchy, or (root schema only) selects a contributed one via $ref.
     hierarchy: {
-      type: 'object',
-      properties: {
-        levels: {
-          type: 'array',
-          minItems: 1,
-          items: {
-            oneOf: [{ type: 'string', minLength: 1 }, HIERARCHY_LEVEL_SCHEMA],
-          },
-        },
-        allowSkipLevels: { type: 'boolean' },
-      },
-      required: ['levels'],
-      additionalProperties: false,
+      oneOf: [HIERARCHY_SCHEMA, REF_SCHEMA],
     },
     relationships: {
       type: 'array',
@@ -109,7 +115,7 @@ export const METADATA_SCHEMA = {
     rules: {
       type: 'array',
       items: {
-        oneOf: [RULE_SCHEMA, RULE_REF_SCHEMA],
+        oneOf: [RULE_SCHEMA, REF_SCHEMA],
       },
     },
   },
@@ -129,10 +135,11 @@ export const DIALECT_META_SCHEMA = {
 } as const;
 
 export type MetadataContract = FromSchema<typeof METADATA_SCHEMA>;
+export type MetadataContractHierarchy = FromSchema<typeof HIERARCHY_SCHEMA>;
 export type MetadataContractHierarchyLevel = FromSchema<typeof HIERARCHY_LEVEL_SCHEMA>;
 export type MetadataContractRelationship = FromSchema<typeof RELATIONSHIP_SCHEMA>;
 export type SharedEdgeFields = FromSchema<typeof EDGE_SCHEMA>;
 export type SharedEmbeddingFields = FromSchema<typeof EMBEDDING_SCHEMA>;
 export type Rule = FromSchema<typeof RULE_SCHEMA>;
-export type RuleRef = FromSchema<typeof RULE_REF_SCHEMA>;
-export type RuleEntry = Rule | RuleRef;
+export type MetadataRef = FromSchema<typeof REF_SCHEMA>;
+export type RuleEntry = Rule | MetadataRef;
