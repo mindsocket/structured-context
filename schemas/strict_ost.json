@@ -6,6 +6,7 @@
   // and at producttalk.org.
   // Structure: outcome → opportunity → solution → assumption test
   "description": "Validates frontmatter for space node files following the canonical 4-level OST structure: outcome → opportunity → solution → assumption test",
+  "$metadata": { "imports": ["sctx://_ost_strict"] },
   "oneOf": [
     {
       "type": "object",

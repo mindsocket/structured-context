@@ -3,7 +3,7 @@
   "$id": "sctx://_strategy_general",
   // Shared entity definitions for strategy-general schemas.
   // Provides a hierarchy, aliases, relationships, and entity type $defs.
-  // Composing schemas contribute this hierarchy alongside any others they compose.
+  // Schemas that import this partial get its metadata; a $ref to its $defs alone brings none.
   "$metadata": {
     "hierarchy": {
       "levels": [

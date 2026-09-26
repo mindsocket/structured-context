@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
   "title": "structured-context schema dialect",
-  "description": "Extends JSON Schema Draft-07 with top-level $metadata for hierarchy and rule metadata.",
+  "description": "Extends JSON Schema Draft-07 with top-level $metadata for imports, hierarchy, relationships, aliases and rules.",
   "type": "object",
   "allOf": [
     {
@@ -13,6 +13,13 @@
     "$metadata": {
       "type": "object",
       "properties": {
+        "imports": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "hierarchy": {
           "oneOf": [
             {
@@ -21,6 +28,9 @@
                 "name": {
                   "type": "string",
                   "minLength": 1
+                },
+                "override": {
+                  "type": "boolean"
                 },
                 "levels": {
                   "type": "array",
@@ -140,6 +150,9 @@
                   "type": "string",
                   "minLength": 1
                 }
+              },
+              "override": {
+                "type": "boolean"
               }
             },
             "required": ["parent", "type"],
@@ -149,61 +162,64 @@
         "aliases": {
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "rules": {
-          "type": "array",
-          "items": {
             "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
               {
                 "type": "object",
                 "properties": {
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "category": {
-                    "enum": ["validation", "coherence", "workflow", "best-practice"]
-                  },
-                  "severity": {
-                    "enum": ["error", "warning", "info"]
-                  },
-                  "description": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "check": {
-                    "type": "string",
-                    "minLength": 1
-                  },
                   "type": {
                     "type": "string",
                     "minLength": 1
-                  },
-                  "scope": {
-                    "enum": ["global"]
                   },
                   "override": {
                     "type": "boolean"
                   }
                 },
-                "required": ["id", "category", "description", "check"],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "$ref": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "required": ["$ref"],
+                "required": ["type"],
                 "additionalProperties": false
               }
             ]
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "category": {
+                "enum": ["validation", "coherence", "workflow", "best-practice"]
+              },
+              "severity": {
+                "enum": ["error", "warning", "info"]
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1
+              },
+              "check": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scope": {
+                "enum": ["global"]
+              },
+              "override": {
+                "type": "boolean"
+              }
+            },
+            "required": ["id", "category", "description", "check"],
+            "additionalProperties": false
           }
         }
       },

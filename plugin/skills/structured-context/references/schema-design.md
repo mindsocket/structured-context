@@ -41,8 +41,8 @@ For a mixed graph (some hierarchical, some lateral entities), put the main chain
 and include lateral types in `oneOf` without hierarchy constraints.
 
 If the content has a second, independent tree (e.g. a skills tree alongside a work hierarchy), declare
-each tree's hierarchy in its own partial and compose both. Each type may belong to only one hierarchy;
-if several are composed, the root selects the main one with
+each tree's hierarchy in its own partial and list both in `$metadata.imports`. Each type may belong to only one hierarchy;
+if several are imported, the root selects the main one with
 `"hierarchy": { "$ref": "<partial $id>#/$metadata/hierarchy" }`. Relationships can link the trees.
 
 ### 2a. Adjacent Relationships vs Primary Hierarchy

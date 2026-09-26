@@ -26,9 +26,9 @@ Issue #28 opened the door to reorganize schema metadata, rules, and composition 
 - Top-level `"$metadata"` is the shipped keyword.
 - Hierarchy shape is `"$metadata.hierarchy.levels"` with optional `allowSkipLevels`.
 - Rules are a flat `"$metadata.rules"` array with per-rule `category`.
-- Metadata is composed across `$ref` graph (DFS, root last) with deterministic merge semantics.
+- Metadata is composed across `$ref` graph (DFS, root last) with deterministic merge semantics. *(Superseded by #121: metadata is composed only through explicit `$metadata.imports`; `$ref` is validation-only. See [schemas.md](schemas.md#composition-and-merge-semantics).)*
 - Rule conflict policy is error by default; explicit `override: true` enables replacement.
-- `$metadata.rules` supports `$ref` imports for specific rules and rule sets.
+- `$metadata.rules` supports `$ref` imports for specific rules and rule sets. *(Removed by #121: import a rules-only schema via `$metadata.imports` instead.)*
 - Metadata contract source is `src/metadata-contract.ts` (`json-schema-to-ts` types), with generated metaschema artifact in `schemas/generated/_ost_tools_schema_meta.json`.
 
 ## Decision Areas and Recommendations

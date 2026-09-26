@@ -72,6 +72,7 @@ const HIERARCHY_SCHEMA = {
   type: 'object',
   properties: {
     name: { type: 'string', minLength: 1 },
+    override: { type: 'boolean' },
     levels: {
       type: 'array',
       minItems: 1,
@@ -92,15 +93,37 @@ const RELATIONSHIP_SCHEMA = {
     type: { type: 'string', minLength: 1 },
     ...EDGE_PROPS,
     ...EMBEDDING_PROPS,
+    override: { type: 'boolean' },
   },
   required: ['parent', 'type'],
   additionalProperties: false,
 } as const;
 
+/** An alias target: a type name, or `{ type, override: true }` to replace an imported alias. */
+const ALIAS_SCHEMA = {
+  oneOf: [
+    { type: 'string', minLength: 1 },
+    {
+      type: 'object',
+      properties: {
+        type: { type: 'string', minLength: 1 },
+        override: { type: 'boolean' },
+      },
+      required: ['type'],
+      additionalProperties: false,
+    },
+  ],
+} as const;
+
 export const METADATA_SCHEMA = {
   type: 'object',
   properties: {
-    // Either declares this schema's hierarchy, or (root schema only) selects a contributed one via $ref.
+    // $ids of schemas whose metadata (and their imports' metadata) is merged into this schema's.
+    imports: {
+      type: 'array',
+      items: { type: 'string', minLength: 1 },
+    },
+    // Either declares this schema's hierarchy, or (root schema only) selects an imported one via $ref.
     hierarchy: {
       oneOf: [HIERARCHY_SCHEMA, REF_SCHEMA],
     },
@@ -110,13 +133,11 @@ export const METADATA_SCHEMA = {
     },
     aliases: {
       type: 'object',
-      additionalProperties: { type: 'string', minLength: 1 },
+      additionalProperties: ALIAS_SCHEMA,
     },
     rules: {
       type: 'array',
-      items: {
-        oneOf: [RULE_SCHEMA, REF_SCHEMA],
-      },
+      items: RULE_SCHEMA,
     },
   },
   additionalProperties: false,
@@ -126,7 +147,8 @@ export const DIALECT_META_SCHEMA = {
   $schema: 'http://json-schema.org/draft-07/schema#',
   $id: SCHEMA_META_ID,
   title: 'structured-context schema dialect',
-  description: 'Extends JSON Schema Draft-07 with top-level $metadata for hierarchy and rule metadata.',
+  description:
+    'Extends JSON Schema Draft-07 with top-level $metadata for imports, hierarchy, relationships, aliases and rules.',
   type: 'object',
   allOf: [{ $ref: 'http://json-schema.org/draft-07/schema#' }],
   properties: {
@@ -142,4 +164,3 @@ export type SharedEdgeFields = FromSchema<typeof EDGE_SCHEMA>;
 export type SharedEmbeddingFields = FromSchema<typeof EMBEDDING_SCHEMA>;
 export type Rule = FromSchema<typeof RULE_SCHEMA>;
 export type MetadataRef = FromSchema<typeof REF_SCHEMA>;
-export type RuleEntry = Rule | MetadataRef;

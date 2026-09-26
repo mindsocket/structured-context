@@ -183,38 +183,43 @@ Bare wikilink items (`- [[Existing Node]]`) in any embedding section populate a 
 
 With `fieldOn: "parent"`, embedded child nodes (parsed from a matching heading's list or table) are appended as wikilinks to the parent's `field` array, rather than receiving a `parent` field. This matches schemas where the content model naturally lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`).
 
-Metadata is composable across `$ref` graphs:
-- `hierarchy`: each schema file declares at most one hierarchy, and every declared hierarchy is kept as a separate named hierarchy (see [Multiple hierarchies](#multiple-hierarchies))
-- `aliases` are shallow-merged (later wins)
-- `rules` merge by `id`; conflicts error unless the later rule sets `override: true`
-- each rule's `category` supplies its default severity (`validation` → `error`, `coherence`/`workflow` → `warning`, `best-practice` → `info`); an optional `severity` field overrides it
-- `$metadata.rules` supports `$ref` imports for reusable rule packs
-- `relationships` are collected from all files
+`$ref` reuses JSON Schema definitions for validation only; it brings no metadata. Metadata is composed only through explicit imports:
+
+```json5
+"$metadata": { "imports": ["sctx://_strategy_general"] }
+```
+
+- An import brings the whole schema's `$metadata`, and is transitive (the imported schema's own imports come too).
+- Merge order: imports in order, depth-first, then the schema's own metadata last.
+- One rule for every key: a duplicate rule `id`, alias, relationship (same `parent`/`type`/`field`) or hierarchy `name` is an error unless the later entry sets `override: true` (for an alias, write the value as `{ "type": "goal", "override": true }`).
+- `hierarchy`: each schema file declares at most one hierarchy, and every imported hierarchy is kept as a separate named hierarchy (see [Multiple hierarchies](#multiple-hierarchies))
+- Each rule's `category` supplies its default severity (`validation` → `error`, `coherence`/`workflow` → `warning`, `best-practice` → `info`); an optional `severity` field overrides it.
 
 If no file defines `hierarchy`, hierarchy-specific checks are skipped.
 
 #### Multiple hierarchies
 
-A space can have several hierarchies by composing schemas that each declare one. For example, a root schema might compose a work hierarchy (`goal → task`) and a skills hierarchy (`skill_area → skill`).
+A space can have several hierarchies by importing schemas that each declare one. For example, a root schema might import a work hierarchy (`goal → task`) and a skills hierarchy (`skill_area → skill`).
 
 - **Naming**: a hierarchy's `name` defaults to the declaring schema's file stem (e.g. `_skills` for `_skills.json`). Set `"name"` in `$metadata.hierarchy` to override it.
-- **Main hierarchy**: if the root schema declares a hierarchy, it is the main one. If the root declares none and exactly one is composed, that one is the main hierarchy. If several are composed, the root must select one:
+- **Main hierarchy**: if the root schema declares a hierarchy, it is the main one. If the root declares none and exactly one is imported, that one is the main hierarchy. If several are imported, the root must select one:
 
   ```json5
   "$metadata": {
+    "imports": ["sctx://_work", "sctx://_skills"],
     "hierarchy": { "$ref": "sctx://_work#/$metadata/hierarchy" }
   }
   ```
 
   A root may either declare a hierarchy or select one with `$ref`, not both.
-- **Each type belongs to at most one hierarchy.** A type in two hierarchies is an error, so a composing schema cannot redefine a composed hierarchy's levels.
+- **Each type belongs to at most one hierarchy.** A type in two hierarchies is an error. To change an imported hierarchy's levels, declare a hierarchy with the same `name` and `"override": true`.
 - **Validation** (layering, parent types, skip levels, orphans) runs per hierarchy. Relationships can connect types across hierarchies.
 - The main hierarchy drives `space_on_a_page` parsing, hierarchy embedding, `template-sync`, and the default `show`/`diagram`/`render` output. Use `--hierarchy <name>` to render another one.
 
 **Customizing Schemas:**
 - **Partial schemas**: Files starting with an underscore (like `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`) are loaded and used to resolve references (using `$ref`).
 - **Partials as entity libraries**: Partials can define reusable entity types in `$defs` that composing schemas reference via `$ref`. Bundled partials like `_strategy_general` and `_knowledge_wiki` provide common entity sets for strategy and wiki content.
-- **Partials can carry metadata**: Unlike plain JSON Schema, partials may include `$metadata` (hierarchy, aliases, relationships, rules). This makes them self-contained units that bundle both type definitions and behavioral metadata.
+- **Partials can carry metadata**: Unlike plain JSON Schema, partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets that metadata only by listing the partial in `$metadata.imports`.
 - **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "http://json-schema.org/draft-07/schema#"` so it validates standalone as plain JSON Schema.
 - **Loading priority**: Partial schemas are loaded from both the default schema directory and the directory of your specified target schema.
 - **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).

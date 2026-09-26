@@ -46,7 +46,7 @@ Main types:
 - `solution`
 - `assumption_test`
 
-This schema composes shared structural defs and strict metadata/rules from partials.
+This schema reuses shared structural defs from partials via `$ref` and imports its hierarchy and rules from `_ost_strict` via `$metadata.imports`.
 
 ## Custom format annotations
 
@@ -120,12 +120,14 @@ Top-level metadata shape:
 
 | Field | Type | Notes |
 |---|---|---|
+| `imports` | `string[]` | Optional; `$id`s of schemas whose metadata is merged into this one. See [Composition and merge semantics](#composition-and-merge-semantics) |
 | `hierarchy` | object | Optional; declares this schema's hierarchy, or (root schema only) selects the main hierarchy with `{ "$ref": "<schema $id>#/$metadata/hierarchy" }`. See [Multiple hierarchies](#multiple-hierarchies) |
 | `hierarchy.name` | `string` | Optional short name; defaults to the declaring schema's file stem |
+| `hierarchy.override` | `boolean` | Optional; replaces an imported hierarchy with the same name |
 | `hierarchy.levels` | `(string \| HierarchyLevel)[]` | Ordered root→leaf types |
 | `hierarchy.allowSkipLevels` | `boolean` | Optional; allows parent to be any ancestor level |
-| `relationships` | `Relationship[]` | Optional; defines related node links outside the primary hierarchy |
-| `aliases` | `Record<string, string>` | Optional type alias map |
+| `relationships` | `Relationship[]` | Optional; defines related node links outside the primary hierarchy. A relationship may set `override: true` |
+| `aliases` | `Record<string, string \| { type, override }>` | Optional type alias map. Use `{ "type": "goal", "override": true }` to replace an imported alias |
 | `rules` | `Rule[]` | Optional flat rule array |
 
 ### Relationships
@@ -253,34 +255,48 @@ With this config, an application page may include `### capability` with wikilink
 
 ## Composition and merge semantics
 
-Metadata is composed across the `$ref` graph with deterministic behavior:
+`$ref` and `$defs` are for **validation only**: a `$ref` to another schema (or to one of its `$defs`) reuses its JSON Schema definitions but brings none of its `$metadata`.
 
-1. Traverse external `$ref` graph in DFS order.
-2. Apply root schema metadata last.
+Metadata travels only through **`$metadata.imports`**, a list of schema `$id`s:
 
-Merge rules:
-- `hierarchy`: not merged. Each declared hierarchy is kept as a separate named hierarchy (see below).
-- `aliases`: shallow merged; later file wins per key.
-- `relationships`: collected from all files; order preserved.
-- `rules`: merged by `id`.
-- Duplicate rule `id` with different payload errors by default.
-- A later rule may replace an earlier one only with `"override": true`.
+```json5
+"$metadata": {
+  "imports": ["sctx://_strategy_general"],
+  "rules": [ /* this schema's own rules */ ]
+}
+```
+
+- An import brings the imported schema's whole `$metadata` (hierarchy, relationships, aliases, rules).
+- Imports are transitive: an imported schema's own imports come too.
+- Merge order: imports in the order listed, depth-first, then the schema's own metadata last. Each schema is merged at most once.
+- An unresolvable import `$id` is an error.
+
+One merge rule applies to every key. **A duplicate is an error unless the later entry sets `"override": true`**, in which case it replaces the earlier entry.
+
+| Key | Identity | How to mark `override` |
+|---|---|---|
+| `rules` | `id` | `"override": true` on the rule |
+| `relationships` | `parent` + `type` + `field` (default `"parent"`) | `"override": true` on the relationship |
+| `aliases` | alias name | `{ "type": "<target>", "override": true }` as the alias value |
+| `hierarchy` | `name` | `"override": true` on the hierarchy declaration |
+
+Overriding a hierarchy by name is how a schema replaces the levels of an imported hierarchy (declare it with the same `name` and `"override": true`).
 
 When no provider defines `hierarchy`, hierarchy-based behavior is disabled (`show` tree shape, hierarchy validation, parent-edge checks). `space_on_a_page` parsing still requires hierarchy and will error without it.
 
 ### Multiple hierarchies
 
-A space has several hierarchies when its schema composes several schemas that each declare one. Each schema declares at most one hierarchy.
+A space has several hierarchies when its schema imports several schemas that each declare one. Each schema declares at most one hierarchy.
 
-- **Every `$ref`'d schema contributes its hierarchy.** Each is kept as a separate named hierarchy; levels are never merged.
-- **Naming.** `hierarchy.name` defaults to the declaring schema's file stem (`_ost_strict` for `_ost_strict.json`). Names must be unique.
+- **Every imported schema contributes its hierarchy.** Each is kept as a separate named hierarchy; levels are never merged.
+- **Naming.** `hierarchy.name` defaults to the declaring schema's file stem (`_ost_strict` for `_ost_strict.json`). A duplicate name is an error unless the later hierarchy sets `"override": true`.
 - **Main hierarchy.**
   - If the root schema declares a hierarchy, it is the main hierarchy.
-  - If the root declares none and exactly one hierarchy is contributed, that one is the main hierarchy (for example `strict_ost`, whose hierarchy comes from `_ost_strict`).
-  - If the root declares none and several are contributed, the root must select one with `"hierarchy": { "$ref": "<schema $id>#/$metadata/hierarchy" }`, otherwise loading the schema fails.
+  - If the root declares none and exactly one hierarchy is imported, that one is the main hierarchy (for example `strict_ost`, which imports `_ost_strict`).
+  - If the root declares none and several are imported, the root must select one with `"hierarchy": { "$ref": "<schema $id>#/$metadata/hierarchy" }`, otherwise loading the schema fails.
   - A root that both declares a hierarchy and uses `$ref` is an error.
-- **Each type belongs to at most one hierarchy.** A type claimed by two hierarchies is an error. A composing schema therefore cannot redefine the levels of a hierarchy it composes; it declares a hierarchy over its own types instead.
-- **Selections are not contributed.** A `hierarchy: { "$ref" }` selection only applies when its schema is the root, so a composed schema stays usable standalone as another space's root.
+- **Each type belongs to at most one hierarchy.** A type claimed by two hierarchies is an error. To change an imported hierarchy's levels, override it by name.
+- **Selections are not imported.** A `hierarchy: { "$ref" }` selection only applies when its schema is the root, so an imported schema stays usable standalone as another space's root.
 
 ```json5
 {
@@ -293,6 +309,7 @@ A space has several hierarchies when its schema composes several schemas that ea
   ],
   "$metadata": {
     // _work.json and _skills.json each declare a hierarchy; select the main one.
+    "imports": ["sctx://_work", "sctx://_skills"],
     "hierarchy": { "$ref": "sctx://_work#/$metadata/hierarchy" }
   }
 }
@@ -307,23 +324,6 @@ How hierarchies are used:
 | `space_on_a_page` parsing, hierarchy embedding, `template-sync` | Main hierarchy |
 | `show`, `diagram`, `render` | Main hierarchy by default; `--hierarchy <name>` selects another |
 | `resolvedParents` | Hierarchy edges carry the `hierarchy` name |
-
-### Rule imports via `$ref`
-
-Inside `$metadata.rules`, entries can be inline rules or `$ref` imports:
-
-```json5
-"rules": [
-  { "$ref": "sctx://my-pack#/$defs/workflowRule" },
-  { "$ref": "sctx://my-pack#/$defs/ruleSet" }
-]
-```
-
-Import targets may be:
-- a single rule object
-- an object containing `rules: []`
-
-Imported rules are normalized into one executable flat list before validation.
 
 ### Override example
 
@@ -351,8 +351,8 @@ Imported rules are normalized into one executable flat list before validation.
 - Local partial `$id` values must not collide with bundled IDs.
 - `$ref` resolution is transitive across files.
 - Partials with no `$metadata` should prefer `$schema: "http://json-schema.org/draft-07/schema#"` so they validate standalone as plain JSON Schema fragments.
-- **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference these via `$ref` rather than redefining common entity types.
-- **Partials can carry metadata**: Partials may include `$metadata` (hierarchy, aliases, relationships, rules). This makes them self-contained units that bundle both type definitions and behavioral metadata.
+- **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference their entity types via `$ref` rather than redefining them.
+- **Partials can carry metadata**: Partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets it only by listing the partial in `$metadata.imports`; `$ref` alone brings none.
 
 ## Editor expectations
 
