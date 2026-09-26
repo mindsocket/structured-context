@@ -49,7 +49,7 @@ If those are misconfigured for your content, output will appear flatter than exp
 **`--filter`** accepts either a named view from the space config (`views` key) or an inline filter
 expression. Only matching nodes are shown in the tree.
 
-**`--hierarchy`** names the hierarchy to render when the schema composes several (default: the main
+**`--hierarchy`** names the hierarchy to render when the schema imports several (default: the main
 hierarchy). `schemas show --space <name>` lists the hierarchy names. `diagram` and `render` accept it too.
 
 ```bash

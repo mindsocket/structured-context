@@ -1,19 +1,15 @@
 {
   "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
-  "$id": "sctx-test://multi-hierarchy/selected-root",
+  "$id": "sctx-test://multi-hierarchy/hierarchy-override-root",
   "$metadata": {
-    "imports": ["sctx-test://multi-hierarchy/work", "sctx-test://multi-hierarchy/skills"],
+    "imports": ["sctx-test://multi-hierarchy/skills"],
     "hierarchy": {
-      "$ref": "sctx-test://multi-hierarchy/work#/$metadata/hierarchy"
+      "name": "_skills-pack",
+      "override": true,
+      "levels": ["skill_area", "skill"]
     }
   },
   "oneOf": [
-    {
-      "$ref": "sctx-test://multi-hierarchy/work#/$defs/goal"
-    },
-    {
-      "$ref": "sctx-test://multi-hierarchy/work#/$defs/task"
-    },
     {
       "$ref": "sctx-test://multi-hierarchy/skills#/$defs/skill_area"
     },

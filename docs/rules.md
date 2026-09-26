@@ -107,28 +107,21 @@ Inside `nodes[...]`, bare names refer to each candidate node. Use `$$` to refere
 $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
 ```
 
-## Rule imports (`$ref`)
+## Reusing rules
 
-`$metadata.rules` can include `$ref` entries that import:
-- one rule
-- a rule-set object with `rules: []`
-
-Example:
+To share rules, put them in a schema's `$metadata.rules` and list that schema's `$id` in `$metadata.imports`. An import brings the whole schema's metadata, including its own imports:
 
 ```json5
-"rules": [
-  { "$ref": "sctx://rule-pack#/$defs/workflowRule" },
-  { "$ref": "sctx://rule-pack#/$defs/coreRuleSet" }
-]
+"$metadata": {
+  "imports": ["sctx://_rule-pack"]
+}
 ```
-
-Imported entries are normalized into the same flat runtime list.
 
 ## Merge and conflict behavior
 
-When metadata is composed across `$ref`:
+When metadata is merged from imports (imports in order, then the schema's own metadata):
 - Rules are merged by `id`.
-- Different payloads for the same `id` are an error by default.
+- A duplicate `id` is an error.
 - A later rule may replace an earlier one only with `override: true`.
 
 Example override:

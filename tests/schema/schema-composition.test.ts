@@ -6,7 +6,8 @@ const FIXTURES_DIR = join(import.meta.dir, '..', 'fixtures/schema-composition');
 const MULTI_DIR = join(import.meta.dir, '..', 'fixtures/multi-hierarchy');
 
 describe('schema composition metadata', () => {
-  it('merges metadata across $ref graph in DFS order and applies root metadata last', () => {
+  it('merges transitive imports depth-first in order and applies root metadata last', () => {
+    // root imports pack-a (which imports leaf) then pack-b; root overrides pack-b's "goal" alias.
     const metadata = loadMetadata(join(FIXTURES_DIR, 'merge-root.json'));
 
     expect(metadata.hierarchy?.levels.map((level) => level.type)).toEqual(['vision', 'goal']);
@@ -27,8 +28,38 @@ describe('schema composition metadata', () => {
 
   it('fails conflicting rule IDs without explicit override', () => {
     expect(() => loadMetadata(join(FIXTURES_DIR, 'conflict-root.json'))).toThrow(
-      'Conflicting rule "active-outcome-count"',
+      'Duplicate rule "active-outcome-count" found in "sctx-test://schema-composition/conflict/pack-a" and "sctx-test://schema-composition/conflict/pack-b"',
     );
+  });
+
+  it('brings no metadata through $ref without an import', () => {
+    const metadata = loadMetadata(join(MULTI_DIR, 'ref-only-root.json'));
+    expect(metadata).toEqual({
+      hierarchy: undefined,
+      hierarchies: undefined,
+      typeAliases: undefined,
+      rules: undefined,
+      relationships: undefined,
+    });
+  });
+
+  it('fails on a duplicate alias without override', () => {
+    expect(() => loadMetadata(join(FIXTURES_DIR, 'duplicate-alias-root.json'))).toThrow(
+      'Duplicate alias "outcome" found in "sctx-test://schema-composition/duplicate/pack"',
+    );
+  });
+
+  it('fails on a duplicate relationship (same parent, type and field) without override', () => {
+    expect(() => loadMetadata(join(FIXTURES_DIR, 'duplicate-relationship-root.json'))).toThrow(
+      'Duplicate relationship "goal → task" (field "parent") found in "sctx-test://schema-composition/duplicate/pack"',
+    );
+  });
+
+  it('replaces an imported relationship marked override', () => {
+    const metadata = loadMetadata(join(FIXTURES_DIR, 'relationship-override-root.json'));
+    expect(metadata.relationships).toEqual([
+      { parent: 'goal', type: 'task', matchers: ['Work'], field: 'parent', fieldOn: 'child', multiple: false },
+    ]);
   });
 
   it('allows later rule override when override=true', () => {
@@ -42,23 +73,7 @@ describe('schema composition metadata', () => {
     expect((metadata.rules?.[0] as Record<string, unknown>).override).toBeUndefined();
   });
 
-  it('imports specific rules and rule sets via $ref targets', () => {
-    const metadata = loadMetadata(join(FIXTURES_DIR, 'rule-import-root.json'));
-
-    expect(metadata.rules?.map((rule) => rule.id)).toEqual([
-      'workflow-rule',
-      'coherence-rule',
-      'validation-rule',
-      'local-rule',
-      'local-set-rule',
-    ]);
-  });
-
-  it('compiles schemas that use rule import refs in $metadata.rules', () => {
-    expect(() => createValidator(join(FIXTURES_DIR, 'compile/rule-import-root.json'))).not.toThrow();
-  });
-
-  it('compiles schemas where only one metadata provider defines hierarchy', () => {
+  it('compiles schemas that import metadata', () => {
     expect(() => createValidator(join(FIXTURES_DIR, 'merge-root.json'))).not.toThrow();
   });
 });
@@ -69,7 +84,7 @@ describe('schema composition hierarchies', () => {
     hierarchies: metadata.hierarchies?.map((h) => [h.name, h.levels.map((l) => l.type)]),
   });
 
-  it('keeps each composed hierarchy separate and uses the root-declared one as main', () => {
+  it('keeps each imported hierarchy separate and uses the root-declared one as main', () => {
     const metadata = loadMetadata(join(MULTI_DIR, 'declared-root.json'));
     expect(summarize(metadata)).toEqual({
       main: 'strategy',
@@ -81,12 +96,21 @@ describe('schema composition hierarchies', () => {
     });
   });
 
-  it('uses a single contributed hierarchy as the implicit main hierarchy', () => {
+  it('uses a single imported hierarchy as the implicit main hierarchy', () => {
     const metadata = loadMetadata(join(MULTI_DIR, 'single-contributed-root.json'));
     expect(summarize(metadata)).toEqual({
       main: '_skills-pack',
       hierarchies: [['_skills-pack', ['skill_area', 'skill']]],
     });
+  });
+
+  it('lets a root replace an imported hierarchy of the same name with override', () => {
+    const metadata = loadMetadata(join(MULTI_DIR, 'hierarchy-override-root.json'));
+    expect(summarize(metadata)).toEqual({
+      main: '_skills-pack',
+      hierarchies: [['_skills-pack', ['skill_area', 'skill']]],
+    });
+    expect(metadata.hierarchy?.levels[1]?.selfRef).toBe(false);
   });
 
   it('names a hierarchy after its declaring schema file stem by default', () => {
@@ -105,9 +129,9 @@ describe('schema composition hierarchies', () => {
     });
   });
 
-  it('fails when several hierarchies are contributed and none is selected', () => {
+  it('fails when several hierarchies are imported and none is selected', () => {
     expect(() => loadMetadata(join(MULTI_DIR, 'unselected-root.json'))).toThrow(
-      'composes multiple hierarchies ("work", "_skills-pack") but selects none as its main hierarchy',
+      'imports multiple hierarchies ("work", "_skills-pack") but selects none as its main hierarchy',
     );
   });
 

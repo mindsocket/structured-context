@@ -68,30 +68,23 @@ Rules are a flat array. Each rule's `category` (`validation`, `coherence`, `work
 
 ## Metadata composition semantics
 
-Across `$ref` graphs:
-- metadata providers are traversed DFS, root metadata applied last
-- each schema declares at most one `hierarchy`; every composed schema's hierarchy is kept as a separate named hierarchy (`hierarchy.name`, default: the declaring file's stem)
-- each type belongs to at most one hierarchy — a composing schema cannot redefine a composed hierarchy's levels
-- main hierarchy: the root's own; else the only composed one; else the root must select one with `"hierarchy": { "$ref": "<schema $id>#/$metadata/hierarchy" }` (declaring and selecting at once is an error)
-- the main hierarchy drives `space_on_a_page` parsing, embedding, `template-sync` and default rendering; validation runs per hierarchy
-- `aliases` shallow-merge (later wins)
-- `rules` merge by `id`
-- duplicate rule IDs with different payloads error unless later rule sets `override: true`
-
-## Rule imports in `$metadata.rules`
-
-Rule entries may be inline or `$ref` imports:
+`$ref`/`$defs` are validation-only: a `$ref` brings no metadata. Metadata travels only via `$metadata.imports` (schema `$id`s):
 
 ```json5
-"rules": [
-  { "$ref": "sctx://my-rule-pack#/$defs/workflowRule" },
-  { "$ref": "sctx://my-rule-pack#/$defs/ruleSet" }
-]
+"$metadata": { "imports": ["sctx://_strategy_general"] }
 ```
 
-Import targets can be:
-- single rule object
-- object with `rules: []`
+- an import brings the whole schema's metadata and is transitive; merge order is imports in order (depth-first), then the schema's own metadata
+- one merge rule for every key: a duplicate is an error unless the later entry sets `override: true`
+  - rules by `id` (`"override": true` on the rule)
+  - relationships by `parent` + `type` + `field` (`"override": true` on the relationship)
+  - aliases by name (value `{ "type": "goal", "override": true }`)
+  - hierarchies by `name` (`"override": true` on the hierarchy — how you change an imported hierarchy's levels)
+- each schema declares at most one `hierarchy`; every imported hierarchy is kept as a separate named hierarchy (`hierarchy.name`, default: the declaring file's stem)
+- each type belongs to at most one hierarchy
+- main hierarchy: the root's own; else the only imported one; else the root must select one with `"hierarchy": { "$ref": "<schema $id>#/$metadata/hierarchy" }` (declaring and selecting at once is an error)
+- the main hierarchy drives `space_on_a_page` parsing, embedding, `template-sync` and default rendering; validation runs per hierarchy
+- to share rules, put them in a schema and import it (there are no `$ref` entries in `$metadata.rules`)
 
 ## `fieldMap` in config
 

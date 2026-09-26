@@ -123,7 +123,7 @@ A **schema** defines the valid structure for nodes in a `space`: the fields, typ
 
 The schema handles structural validation. Cross-node and workflow checks are handled by executable `rules` defined in `$metadata.rules`.
 
-Schemas are composable: structural definitions and metadata can be sourced across `$ref` graphs, then merged deterministically (root metadata applied last, each declared hierarchy kept as a separate named hierarchy, aliases merged, rules merged by `id` with explicit override semantics).
+Schemas are composable. Structural definitions are reused with `$ref` (validation only). Metadata is reused only by listing schema `$id`s in `$metadata.imports`: imports merge transitively, in order, with the schema's own metadata last. Hierarchies, relationships, aliases and rules all follow one rule — a duplicate is an error unless the later entry sets `override: true` — and each declared hierarchy is kept as a separate named hierarchy.
 
 ### Rules
 
@@ -162,9 +162,9 @@ The **hierarchy** is the ordered list of node types in a space, from root to lea
 
 The hierarchy is modelled as a layered DAG: a non-root node may have zero parents (orphaned), one parent, or multiple parents. The `show` command renders this as an indented tree, marking repeated nodes with `(*)` where the subtree is already shown elsewhere.
 
-A space may have **several hierarchies**, one for each composed schema that declares one. Each hierarchy has a **name** (defaulting to the declaring schema's file stem), and each type belongs to at most one hierarchy. Structural validation runs per hierarchy; relationships may connect types across hierarchies.
+A space may have **several hierarchies**, one for each imported schema that declares one. Each hierarchy has a **name** (defaulting to the declaring schema's file stem), and each type belongs to at most one hierarchy. Structural validation runs per hierarchy; relationships may connect types across hierarchies.
 
-The **main hierarchy** is the one declared by the root schema; failing that, the only composed hierarchy; failing that, the one the root selects with `"hierarchy": { "$ref": ... }`. The main hierarchy drives `space on a page` parsing, hierarchy embedding, template sync, and default rendering. `show`, `diagram` and `render` take `--hierarchy <name>` to render another. See [docs/schemas.md](schemas.md#multiple-hierarchies).
+The **main hierarchy** is the one declared by the root schema; failing that, the only imported hierarchy; failing that, the one the root selects with `"hierarchy": { "$ref": ... }`. The main hierarchy drives `space on a page` parsing, hierarchy embedding, template sync, and default rendering. `show`, `diagram` and `render` take `--hierarchy <name>` to render another. See [docs/schemas.md](schemas.md#multiple-hierarchies).
 
 Each non-root level uses the shared `field`, `fieldOn`, and `multiple` edge options (see [Graph edges](#graph-edges)). Hierarchy-specific options:
 

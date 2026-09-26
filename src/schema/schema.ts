@@ -1,17 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isDeepStrictEqual } from 'node:util';
 import Ajv, { type AnySchemaObject, type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
-import type {
-  Hierarchy,
-  HierarchyLevel,
-  RuleCategory,
-  RuleSeverity,
-  SchemaMetadata,
-  SchemaWithMetadata,
-} from '../types';
+import type { Hierarchy, HierarchyLevel, SchemaMetadata, SchemaWithMetadata } from '../types';
 import {
   DIALECT_META_SCHEMA,
   METADATA_SCHEMA,
@@ -20,7 +12,6 @@ import {
   type MetadataContractRelationship,
   type MetadataRef,
   type Rule,
-  type RuleEntry,
   SCHEMA_META_ID,
 } from './metadata-contract';
 import { isObject, mergeVariantProperties, resolveJsonPointer } from './schema-refs';
@@ -139,10 +130,6 @@ interface MetadataProvider {
   metadata: MetadataContract;
 }
 
-const RULE_CATEGORIES = new Set<RuleCategory>(['validation', 'coherence', 'workflow', 'best-practice']);
-const RULE_SEVERITIES = new Set<RuleSeverity>(['error', 'warning', 'info']);
-const RULE_ALLOWED_KEYS = new Set(['id', 'category', 'severity', 'description', 'check', 'type', 'scope', 'override']);
-
 function readTopLevelMetadata(schema: AnySchemaObject): MetadataContract | undefined {
   const metadata = schema.$metadata;
   if (!isObject(metadata)) return undefined;
@@ -191,62 +178,35 @@ function resolveMetadataRef(
   };
 }
 
-function collectExternalRefIdsInOrder(schema: unknown): string[] {
-  const refs: string[] = [];
-  const seen = new Set<string>();
-
-  const walk = (value: unknown): void => {
-    if (!isObject(value)) return;
-    for (const [key, child] of Object.entries(value)) {
-      if (key === '$ref' && typeof child === 'string' && !child.startsWith('#')) {
-        const schemaId = child.split('#', 1)[0] ?? child;
-        if (!seen.has(schemaId)) {
-          seen.add(schemaId);
-          refs.push(schemaId);
-        }
-        continue;
-      }
-      walk(child);
-    }
-  };
-
-  walk(schema);
-  return refs;
-}
-
+/**
+ * Collect metadata providers in merge order: each schema's `$metadata.imports` depth-first, in
+ * order, then the schema's own metadata. Each schema contributes at most once. `$ref` does not
+ * import metadata.
+ */
 function collectMetadataProviders(
   rootSchema: AnySchemaObject,
   schemaRefRegistry: Map<string, AnySchemaObject>,
 ): MetadataProvider[] {
   const providers: MetadataProvider[] = [];
-  const visitedSchemaIds = new Set<string>();
+  const rootSchemaId = typeof rootSchema.$id === 'string' ? rootSchema.$id : '(root schema)';
+  const visitedSchemaIds = new Set<string>([rootSchemaId]);
 
-  const walk = (schema: AnySchemaObject): void => {
-    const refs = collectExternalRefIdsInOrder(schema);
-    for (const schemaId of refs) {
-      if (visitedSchemaIds.has(schemaId)) continue;
-      visitedSchemaIds.add(schemaId);
-
-      const referencedSchema = schemaRefRegistry.get(schemaId);
-      if (!referencedSchema) continue;
-
-      walk(referencedSchema);
-
-      const metadata = readTopLevelMetadata(referencedSchema);
-      if (metadata) {
-        providers.push({ schemaId, schema: referencedSchema, metadata });
+  const walk = (schema: AnySchemaObject, schemaId: string): void => {
+    const metadata = readTopLevelMetadata(schema);
+    if (!metadata) return;
+    for (const importId of metadata.imports ?? []) {
+      if (visitedSchemaIds.has(importId)) continue;
+      visitedSchemaIds.add(importId);
+      const importedSchema = schemaRefRegistry.get(importId);
+      if (!importedSchema) {
+        throw new Error(`Cannot resolve import "${importId}" in schema "${schemaId}".`);
       }
+      walk(importedSchema, importId);
     }
+    providers.push({ schemaId, schema, metadata });
   };
 
-  walk(rootSchema);
-
-  const rootMetadata = readTopLevelMetadata(rootSchema);
-  if (rootMetadata) {
-    const rootSchemaId = typeof rootSchema.$id === 'string' ? rootSchema.$id : '(root schema)';
-    providers.push({ schemaId: rootSchemaId, schema: rootSchema, metadata: rootMetadata });
-  }
-
+  walk(rootSchema, rootSchemaId);
   return providers;
 }
 
@@ -255,181 +215,95 @@ function isRefEntry(value: unknown): value is MetadataRef {
   return typeof value.$ref === 'string' && value.$ref.length > 0 && Object.keys(value).length === 1;
 }
 
-function isMetadataRule(value: unknown): value is Rule {
-  if (!isObject(value)) return false;
-  const record = value as Record<string, unknown>;
+type Merged<T> = Map<string, { providerId: string; value: T }>;
 
-  if (typeof record.id !== 'string' || record.id.length === 0) return false;
-  if (typeof record.category !== 'string' || !RULE_CATEGORIES.has(record.category as RuleCategory)) return false;
-  if (typeof record.description !== 'string' || record.description.length === 0) return false;
-  if (typeof record.check !== 'string' || record.check.length === 0) return false;
-
-  if ('type' in record && (typeof record.type !== 'string' || record.type.length === 0)) return false;
-  if ('severity' in record && !RULE_SEVERITIES.has(record.severity as RuleSeverity)) return false;
-  if ('scope' in record && record.scope !== 'global') return false;
-  if ('override' in record && typeof record.override !== 'boolean') return false;
-
-  for (const key of Object.keys(record)) {
-    if (!RULE_ALLOWED_KEYS.has(key)) return false;
-  }
-
-  return true;
-}
-
-function resolveRuleEntries(
-  ruleEntry: RuleEntry,
-  provider: MetadataProvider,
-  schemaRefRegistry: Map<string, AnySchemaObject>,
-  stack: Set<string>,
-): Rule[] {
-  if (isMetadataRule(ruleEntry)) {
-    return [ruleEntry];
-  }
-
-  if (!isRefEntry(ruleEntry)) {
-    throw new Error(`Invalid rule entry in metadata from "${provider.schemaId}".`);
-  }
-
-  const target = resolveMetadataRef(ruleEntry.$ref, provider.schema, schemaRefRegistry);
-  if (stack.has(target.refKey)) {
+/**
+ * The single metadata merge rule: a duplicate key is an error unless the later entry sets
+ * `override: true`, in which case it replaces the earlier one (keeping its position).
+ */
+function mergeEntry<T>(
+  merged: Merged<T>,
+  key: string,
+  label: string,
+  value: T,
+  override: boolean | undefined,
+  providerId: string,
+): void {
+  const existing = merged.get(key);
+  if (existing && override !== true) {
     throw new Error(
-      `Cyclic rule import detected while loading metadata from "${provider.schemaId}": ${[...stack, target.refKey].join(
-        ' -> ',
-      )}`,
+      `Duplicate ${label} found in "${existing.providerId}" and "${providerId}". Set "override": true on the later one to replace it.`,
     );
   }
-
-  stack.add(target.refKey);
-  try {
-    const value = target.value;
-
-    const resolveArray = (arr: unknown[]): Rule[] => {
-      const resolvedRules: Rule[] = [];
-      for (const child of arr) {
-        if (!isObject(child)) {
-          throw new Error(
-            `Invalid rule import target for "${ruleEntry.$ref}" from "${provider.schemaId}". Rule sets must contain objects.`,
-          );
-        }
-        resolvedRules.push(
-          ...resolveRuleEntries(
-            child as RuleEntry,
-            { ...provider, schema: target.rootSchema },
-            schemaRefRegistry,
-            stack,
-          ),
-        );
-      }
-      return resolvedRules;
-    };
-
-    if (Array.isArray(value)) {
-      return resolveArray(value);
-    }
-
-    if (isObject(value) && 'rules' in value) {
-      const nestedRules = value.rules;
-      if (!Array.isArray(nestedRules)) {
-        throw new Error(
-          `Invalid rule import target for "${ruleEntry.$ref}" from "${provider.schemaId}". "rules" must be an array.`,
-        );
-      }
-      return resolveArray(nestedRules);
-    }
-
-    if (isObject(value)) {
-      return resolveRuleEntries(
-        value as RuleEntry,
-        { ...provider, schema: target.rootSchema },
-        schemaRefRegistry,
-        stack,
-      );
-    }
-
-    throw new Error(
-      `Invalid rule import target for "${ruleEntry.$ref}" from "${provider.schemaId}". Expected a rule object or rule set.`,
-    );
-  } finally {
-    stack.delete(target.refKey);
-  }
+  merged.set(key, { providerId, value });
 }
 
-function normalizeRule(rule: Rule): Rule {
-  const { override, ...normalized } = rule;
-  return normalized;
-}
-
-function areRulesEquivalent(left: Rule, right: Rule): boolean {
-  return isDeepStrictEqual(normalizeRule(left), normalizeRule(right));
+function values<T>(merged: Merged<T>): T[] {
+  return [...merged.values()].map(({ value }) => value);
 }
 
 function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string, AnySchemaObject>): SchemaMetadata {
   const metadataProviders = collectMetadataProviders(schema, schemaRefRegistry);
 
-  // Each declared hierarchy is kept as a separate named hierarchy, keyed by its declaring object
-  // so a root `hierarchy: { $ref }` selection can be matched to it.
-  const hierarchies = new Map<MetadataContractHierarchy, Hierarchy>();
-  let mainHierarchy: Hierarchy | undefined;
+  // Hierarchies are merged by name; the declaring object is kept so a root `hierarchy: { $ref }`
+  // selection can be matched to it.
+  const mergedHierarchies: Merged<{ declared: MetadataContractHierarchy; hierarchy: Hierarchy }> = new Map();
+  let rootHierarchy: MetadataContractHierarchy | undefined;
   let mainSelection: MetadataRef | undefined;
-  const mergedAliases: Record<string, string> = {};
-  const mergedRules = new Map<string, { providerId: string; rule: Rule }>();
-  const mergedRelationships: MetadataContractRelationship[] = [];
+  const mergedAliases: Merged<string> = new Map();
+  const mergedRules: Merged<Rule> = new Map();
+  const mergedRelationships: Merged<MetadataContractRelationship> = new Map();
 
   for (const provider of metadataProviders) {
-    const declaredHierarchy = provider.metadata.hierarchy;
+    const { schemaId, metadata } = provider;
+    const declaredHierarchy = metadata.hierarchy;
     const isRoot = provider.schema === schema;
     if (isRefEntry(declaredHierarchy)) {
-      // A hierarchy selection only applies when its schema is the root; composed schemas contribute
+      // A hierarchy selection only applies when its schema is the root; imported schemas contribute
       // their declared hierarchies, not their selections.
       if (isRoot) mainSelection = declaredHierarchy;
     } else if (declaredHierarchy) {
       const hierarchy = normalizeHierarchy(declaredHierarchy, provider);
-      hierarchies.set(declaredHierarchy, hierarchy);
-      if (isRoot) mainHierarchy = hierarchy;
+      const label = `hierarchy "${hierarchy.name}"`;
+      mergeEntry(
+        mergedHierarchies,
+        hierarchy.name,
+        label,
+        { declared: declaredHierarchy, hierarchy },
+        declaredHierarchy.override,
+        schemaId,
+      );
+      if (isRoot) rootHierarchy = declaredHierarchy;
     }
 
-    if (provider.metadata.aliases) {
-      Object.assign(mergedAliases, provider.metadata.aliases);
+    for (const [alias, target] of Object.entries(metadata.aliases ?? {})) {
+      const [type, override] = typeof target === 'string' ? [target, false] : [target.type, target.override];
+      mergeEntry(mergedAliases, alias, `alias "${alias}"`, type, override, schemaId);
     }
 
-    if (provider.metadata.relationships) {
-      mergedRelationships.push(...provider.metadata.relationships);
+    for (const rel of metadata.relationships ?? []) {
+      const field = rel.field ?? 'parent';
+      const label = `relationship "${rel.parent} → ${rel.type}" (field "${field}")`;
+      mergeEntry(mergedRelationships, `${rel.parent}\0${rel.type}\0${field}`, label, rel, rel.override, schemaId);
     }
 
-    if (provider.metadata.rules) {
-      for (const entry of provider.metadata.rules) {
-        const resolvedRules = resolveRuleEntries(entry, provider, schemaRefRegistry, new Set());
-        for (const incomingRule of resolvedRules) {
-          const existingRule = mergedRules.get(incomingRule.id);
-          if (!existingRule) {
-            mergedRules.set(incomingRule.id, { providerId: provider.schemaId, rule: incomingRule });
-            continue;
-          }
-
-          if (incomingRule.override === true) {
-            mergedRules.set(incomingRule.id, { providerId: provider.schemaId, rule: incomingRule });
-            continue;
-          }
-
-          if (!areRulesEquivalent(existingRule.rule, incomingRule)) {
-            throw new Error(
-              `Conflicting rule "${incomingRule.id}" found in "${existingRule.providerId}" and "${provider.schemaId}". Set "override": true on the later rule to replace it.`,
-            );
-          }
-        }
-      }
+    for (const rule of metadata.rules ?? []) {
+      mergeEntry(mergedRules, rule.id, `rule "${rule.id}"`, rule, rule.override, schemaId);
     }
   }
 
-  const allHierarchies = [...hierarchies.values()];
-  validateHierarchyComposition(allHierarchies);
+  const merged = values(mergedHierarchies);
+  const allHierarchies = merged.map(({ hierarchy }) => hierarchy);
+  validateHierarchyTypes(allHierarchies);
+  const findDeclared = (declared: unknown) => merged.find((entry) => entry.declared === declared)?.hierarchy;
 
+  let mainHierarchy = rootHierarchy ? findDeclared(rootHierarchy) : undefined;
   if (mainSelection) {
     const target = resolveMetadataRef(mainSelection.$ref, schema, schemaRefRegistry);
-    mainHierarchy = hierarchies.get(target.value as MetadataContractHierarchy);
+    mainHierarchy = findDeclared(target.value);
     if (!mainHierarchy) {
       throw new Error(
-        `Hierarchy $ref "${mainSelection.$ref}" does not point to a hierarchy declared by a composed schema. Expected a ref like "<schema $id>#/$metadata/hierarchy".`,
+        `Hierarchy $ref "${mainSelection.$ref}" does not point to a hierarchy declared by an imported schema. Expected a ref like "<schema $id>#/$metadata/hierarchy".`,
       );
     }
   } else if (!mainHierarchy && allHierarchies.length === 1) {
@@ -437,29 +311,33 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
   } else if (!mainHierarchy && allHierarchies.length > 1) {
     const rootSchemaId = typeof schema.$id === 'string' ? schema.$id : '(root schema)';
     throw new Error(
-      `Schema "${rootSchemaId}" composes multiple hierarchies (${allHierarchies.map((h) => `"${h.name}"`).join(', ')}) but selects none as its main hierarchy. Declare one, or select one with "hierarchy": { "$ref": "<schema $id>#/$metadata/hierarchy" }.`,
+      `Schema "${rootSchemaId}" imports multiple hierarchies (${allHierarchies.map((h) => `"${h.name}"`).join(', ')}) but selects none as its main hierarchy. Declare one, or select one with "hierarchy": { "$ref": "<schema $id>#/$metadata/hierarchy" }.`,
     );
   }
+
+  const typeAliases = Object.fromEntries([...mergedAliases].map(([alias, { value }]) => [alias, value]));
+  const rules = values(mergedRules).map(({ override, ...rule }) => rule);
+  const relationships = values(mergedRelationships);
 
   // Collect valid type names from the schema's oneOf list for validation
   const validTypeNames = extractSchemaTypeNames(schema as SchemaWithMetadata, schemaRefRegistry);
 
-  // Validate and filter metadata references against valid type names
-  validateMetadataReferences({ allHierarchies, mergedAliases, mergedRules, mergedRelationships }, validTypeNames);
+  // Validate metadata references against valid type names
+  validateMetadataReferences({ allHierarchies, typeAliases, rules }, validTypeNames);
 
   // Filter relationships to only include those where both parent and child types are valid
-  const filteredRelationships = mergedRelationships.filter((rel) => {
+  const filteredRelationships = relationships.filter((rel) => {
     return validTypeNames.has(rel.parent) && validTypeNames.has(rel.type);
   });
 
   return {
     hierarchy: mainHierarchy,
     hierarchies: allHierarchies.length > 0 ? allHierarchies : undefined,
-    typeAliases: Object.keys(mergedAliases).length > 0 ? mergedAliases : undefined,
-    rules: mergedRules.size > 0 ? [...mergedRules.values()].map(({ rule }) => normalizeRule(rule)) : undefined,
+    typeAliases: Object.keys(typeAliases).length > 0 ? typeAliases : undefined,
+    rules: rules.length > 0 ? rules : undefined,
     relationships:
       filteredRelationships.length > 0
-        ? filteredRelationships.map((rel) => ({
+        ? filteredRelationships.map(({ override, ...rel }) => ({
             ...rel,
             field: rel.field ?? 'parent',
             fieldOn: rel.fieldOn === 'parent' ? 'parent' : ('child' as const),
@@ -495,15 +373,10 @@ function normalizeHierarchy(declared: MetadataContractHierarchy, provider: Metad
   };
 }
 
-/** Hierarchy names must be unique, and each type may belong to at most one hierarchy. */
-function validateHierarchyComposition(hierarchies: Hierarchy[]): void {
-  const names = new Set<string>();
+/** Each type may belong to at most one hierarchy. */
+function validateHierarchyTypes(hierarchies: Hierarchy[]): void {
   const typeOwners = new Map<string, string>();
   for (const hierarchy of hierarchies) {
-    if (names.has(hierarchy.name)) {
-      throw new Error(`Duplicate hierarchy name "${hierarchy.name}". Set a unique "name" on one of the hierarchies.`);
-    }
-    names.add(hierarchy.name);
     for (const { type } of hierarchy.levels) {
       const owner = typeOwners.get(type);
       if (owner !== undefined && owner !== hierarchy.name) {
@@ -518,9 +391,8 @@ function validateHierarchyComposition(hierarchies: Hierarchy[]): void {
 
 interface MetadataForValidation {
   allHierarchies: Hierarchy[];
-  mergedAliases: Record<string, string>;
-  mergedRules: Map<string, { providerId: string; rule: Rule }>;
-  mergedRelationships: MetadataContractRelationship[];
+  typeAliases: Record<string, string>;
+  rules: Rule[];
 }
 
 function validateMetadataReferences(metadata: MetadataForValidation, validTypes: Set<string>): void {
@@ -541,7 +413,7 @@ function validateMetadataReferences(metadata: MetadataForValidation, validTypes:
   }
 
   // Validate alias targets (the values)
-  for (const [alias, target] of Object.entries(metadata.mergedAliases)) {
+  for (const [alias, target] of Object.entries(metadata.typeAliases)) {
     if (!validTypes.has(target)) {
       errors.push(`Alias "${alias}" → "${target}" references type "${target}" which is not in the schema's oneOf list`);
     }
@@ -550,7 +422,7 @@ function validateMetadataReferences(metadata: MetadataForValidation, validTypes:
   // Note: relationships are filtered (not validated) - see extractMetadata
 
   // Validate rule types
-  for (const { rule } of metadata.mergedRules.values()) {
+  for (const rule of metadata.rules) {
     if (rule.type && !validTypes.has(rule.type)) {
       errors.push(`Rule "${rule.id}" has type "${rule.type}" which is not in the schema's oneOf list`);
     }
