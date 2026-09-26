@@ -56,10 +56,8 @@ jobs:
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
-        env:
-          ANTHROPIC_BASE_URL: https://api.z.ai/api/anthropic
         with:
-          claude_code_oauth_token: ${{ secrets.Z_ANTHROPIC_AUTH_TOKEN }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           path_to_bun_executable: ${{ steps.bun-info.outputs.path }}
 
           # This is an optional setting that allows Claude to read CI results on PRs
