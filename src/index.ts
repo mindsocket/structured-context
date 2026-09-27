@@ -92,7 +92,9 @@ program
   .command('dump')
   .description('Dump parsed space nodes as JSON')
   .argument('<space-name>', 'Space name')
-  .action((spaceName) => dump(buildSpaceContext(spaceName)));
+  .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
+  .option('--hierarchy <name>', 'Hierarchy used to evaluate --filter (default: the main hierarchy)')
+  .action((spaceName, options) => dump(buildSpaceContext(spaceName), options));
 
 program
   .command('miro-sync')
