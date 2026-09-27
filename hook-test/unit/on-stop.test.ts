@@ -1,26 +1,33 @@
 /**
  * Unit tests for plugin/scripts/on-stop.ts
  *
- * Tests call runOnStop() directly — no Claude process involved.
- * State files are written manually to set up each scenario.
+ * Tests call the hooks directly — no Claude process involved. Each test takes a baseline with
+ * the prompt hook, changes files the way Claude would, then runs the Stop hook.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runOnPrompt } from '../../plugin/scripts/on-prompt';
 import { runOnStop } from '../../plugin/scripts/on-stop';
+import { loadState, stateFilePath } from '../../plugin/scripts/state';
 import { type IsolatedFixtures, isolateFixtures } from '../fixture-utils';
 
 const SCTX_BIN = join(import.meta.dir, '../../src/index.ts');
 
+const validWithParent = (parent: string) =>
+  `---\ntype: mission\nparent: "[[${parent}]]"\nstatus: identified\n---\n\n# Test Title\n`;
+const validWithContentLink = `${validWithParent('Root')}\nSee [[Missing Note]].\n`;
+
 let fixtures: IsolatedFixtures;
 let stateDir: string;
+let sessionId: string;
 
 beforeEach(() => {
   fixtures = isolateFixtures();
   stateDir = join(tmpdir(), `ost-on-stop-state-${crypto.randomUUID()}`);
-  mkdirSync(stateDir, { recursive: true });
+  sessionId = crypto.randomUUID();
 });
 
 afterEach(() => {
@@ -28,168 +35,136 @@ afterEach(() => {
   rmSync(stateDir, { recursive: true, force: true });
 });
 
-const opts = () => ({
-  stateDir,
-  sctxBin: SCTX_BIN,
-  configPath: fixtures.configPath,
-});
-
-function writeStateFile(sessionId: string, entries: object[]): string {
-  const file = join(stateDir, `sctx-hook-${sessionId}.jsonl`);
-  writeFileSync(file, `${entries.map((e) => JSON.stringify(e)).join('\n')}\n`);
-  return file;
-}
-
-function stateEntry(file: string, tool: 'Edit' | 'Write', errors: object | null = null, timestamp = Date.now()) {
-  return { session_id: 'test', timestamp, tool, file, errors };
-}
+const opts = () => ({ stateDir, sctxBin: SCTX_BIN, configPath: fixtures.configPath });
+const prompt = () => runOnPrompt({ session_id: sessionId, cwd: fixtures.fixtureDir }, opts());
+const stop = (stop_hook_active = false) => runOnStop({ session_id: sessionId, stop_hook_active }, opts());
+const write = (file: string, content: string) => writeFileSync(join(fixtures.vaultDir, file), content);
 
 describe('No-op cases', () => {
-  it('returns no errors when state file does not exist', async () => {
-    const result = await runOnStop({ session_id: crypto.randomUUID() }, opts());
-    expect(result).toEqual({ hasNewErrors: false });
+  it('returns no errors when there is no state', async () => {
+    expect(await stop()).toEqual({ hasNewErrors: false });
   });
 
-  it('returns no errors when stop_hook_active is true (loop guard)', async () => {
-    const sessionId = crypto.randomUUID();
-    writeStateFile(sessionId, [stateEntry(join(fixtures.vaultDir, 'valid.md'), 'Edit', {})]);
+  it('returns no errors and keeps the baseline when stop_hook_active is true (loop guard)', async () => {
+    await prompt();
+    write('valid.md', validWithParent('Ghost Node'));
 
-    const result = await runOnStop({ session_id: sessionId, stop_hook_active: true }, opts());
-    expect(result).toEqual({ hasNewErrors: false });
+    expect(await stop(true)).toEqual({ hasNewErrors: false });
+    expect(Object.keys(loadState(stateFilePath(sessionId, opts())).baseline)).toEqual(['test-space']);
+  });
+
+  it('returns no errors when nothing changed', async () => {
+    await prompt();
+    expect(await stop()).toEqual({ hasNewErrors: false });
   });
 });
 
-describe('Write entries', () => {
-  it('returns no errors for a new file that is still valid', async () => {
-    const sessionId = crypto.randomUUID();
-    writeStateFile(sessionId, [stateEntry(join(fixtures.vaultDir, 'valid.md'), 'Write', null)]);
+describe('Errors', () => {
+  it('reports an error introduced by an edit', async () => {
+    await prompt();
+    write('valid.md', validWithParent('Ghost Node'));
 
-    const result = await runOnStop({ session_id: sessionId }, opts());
-    expect(result.hasNewErrors).toBe(false);
-  });
-
-  it('returns errors for a new file that has validation errors', async () => {
-    const sessionId = crypto.randomUUID();
-    writeStateFile(sessionId, [stateEntry(join(fixtures.vaultDir, 'broken.md'), 'Write', null)]);
-
-    const result = await runOnStop({ session_id: sessionId }, opts());
+    const result = await stop();
     expect(result.hasNewErrors).toBe(true);
     expect(result.errorMessage).toContain('structured-context: new validation errors');
-    expect(result.errorMessage).toContain('broken-link');
-  });
-});
-
-describe('Edit entries', () => {
-  it('returns no errors when the file still has the same errors as the baseline', async () => {
-    const sessionId = crypto.randomUUID();
-    // broken.md already has broken-link error — baseline captures it
-    const baseline = { 'broken-link:[[Nonexistent Node]]': { kind: 'broken-link', message: 'test' } };
-    writeStateFile(sessionId, [stateEntry(join(fixtures.vaultDir, 'broken.md'), 'Edit', baseline)]);
-
-    const result = await runOnStop({ session_id: sessionId }, opts());
-    expect(result.hasNewErrors).toBe(false);
-  });
-
-  it('returns errors when a new error is introduced by an edit', async () => {
-    const sessionId = crypto.randomUUID();
-    // valid.md had no errors at baseline, but now we point it at a broken parent
-    const validPath = join(fixtures.vaultDir, 'valid.md');
-    writeStateFile(sessionId, [stateEntry(validPath, 'Edit', {})]);
-
-    // Simulate the edit: change parent to a non-existent node
-    writeFileSync(validPath, '---\ntype: mission\nparent: "[[Ghost Node]]"\nstatus: identified\n---\n\n# Test Title\n');
-
-    const result = await runOnStop({ session_id: sessionId }, opts());
-    expect(result.hasNewErrors).toBe(true);
-    expect(result.errorMessage).toContain('broken-link');
+    expect(result.errorMessage).toContain('valid.md (space: test-space)');
     expect(result.errorMessage).toContain('Ghost Node');
   });
 
+  it('does not report errors a file already had', async () => {
+    await prompt();
+    write(
+      'broken.md',
+      '---\ntype: mission\nparent: "[[Nonexistent Node]]"\nstatus: identified\n---\n\n# Still Broken\n',
+    );
+
+    expect((await stop()).hasNewErrors).toBe(false);
+  });
+
   it('returns no errors when a pre-existing error is fixed', async () => {
-    const sessionId = crypto.randomUUID();
-    const brokenPath = join(fixtures.vaultDir, 'broken.md');
-    const baseline = { 'broken-link:[[Nonexistent Node]]': { kind: 'broken-link', message: 'test' } };
-    writeStateFile(sessionId, [stateEntry(brokenPath, 'Edit', baseline)]);
+    await prompt();
+    write('broken.md', '---\ntype: mission\nparent: "[[Root]]"\nstatus: identified\n---\n\n# Broken Note\n');
 
-    // Fix the file
-    writeFileSync(brokenPath, '---\ntype: mission\nparent: "[[Root]]"\nstatus: identified\n---\n\n# Broken Note\n');
+    expect((await stop()).hasNewErrors).toBe(false);
+  });
 
-    const result = await runOnStop({ session_id: sessionId }, opts());
-    expect(result.hasNewErrors).toBe(false);
+  it('reports every issue in a new file', async () => {
+    await prompt();
+    write('new-note.md', validWithParent('Ghost Node').replace('Test Title', 'New Note'));
+
+    const result = await stop();
+    expect(result.hasNewErrors).toBe(true);
+    expect(result.errorMessage).toContain('new-note.md');
+  });
+
+  it('reports breakage in a file that was not edited', async () => {
+    await prompt();
+    // Renaming Root.md (e.g. with `mv` in Bash) breaks valid.md's parent link
+    renameSync(join(fixtures.vaultDir, 'Root.md'), join(fixtures.vaultDir, 'Renamed Root.md'));
+
+    const result = await stop();
+    expect(result.hasNewErrors).toBe(true);
+    expect(result.errorMessage).toContain('valid.md (space: test-space)');
+    expect(result.errorMessage).toContain('[[Root]]');
+  });
+
+  it('reports errors from edits made before an interrupted turn', async () => {
+    await prompt();
+    write('valid.md', validWithParent('Ghost Node'));
+    // The turn is interrupted, so Stop never runs before the next prompt
+    await prompt();
+
+    const result = await stop();
+    expect(result.hasNewErrors).toBe(true);
+    expect(result.errorMessage).toContain('Ghost Node');
+  });
+
+  it('reports an issue once when overlapping spaces both contain the file', async () => {
+    writeFileSync(
+      fixtures.configPath,
+      JSON.stringify({
+        spaces: [
+          { name: 'test-space', path: fixtures.vaultDir, schema: 'strategy_general.json' },
+          { name: 'overlap', path: fixtures.vaultDir, schema: 'strategy_general.json' },
+        ],
+      }),
+    );
+    await prompt();
+    write('valid.md', validWithParent('Ghost Node'));
+
+    const result = await stop();
+    expect(result.errorMessage!.match(/valid\.md \(space:/g)).toHaveLength(1);
   });
 });
 
-describe('Multiple files', () => {
-  it('reports errors only for the file that introduced them', async () => {
-    const sessionId = crypto.randomUUID();
-    const validPath = join(fixtures.vaultDir, 'valid.md');
-    const brokenPath = join(fixtures.vaultDir, 'broken.md');
+describe('State', () => {
+  it('clears the baseline and keeps the results for the next prompt', async () => {
+    await prompt();
+    write('valid.md', validWithParent('Ghost Node'));
 
-    // valid.md: clean edit, no new errors
-    // broken.md: had broken-link at baseline, still has it
-    const baseline = { 'broken-link:[[Nonexistent Node]]': { kind: 'broken-link', message: 'test' } };
-    writeStateFile(sessionId, [stateEntry(validPath, 'Edit', {}), stateEntry(brokenPath, 'Edit', baseline)]);
+    await stop();
 
-    const result = await runOnStop({ session_id: sessionId }, opts());
-    expect(result.hasNewErrors).toBe(false);
+    const { baseline, latest } = loadState(stateFilePath(sessionId, opts()));
+    expect(baseline).toEqual({});
+    expect(latest['test-space']!.issues['valid.md']).toContain('broken-link:[[Ghost Node]]');
   });
 
-  it('uses only the latest entry per file when there are duplicates', async () => {
-    const sessionId = crypto.randomUUID();
-    const validPath = join(fixtures.vaultDir, 'valid.md');
+  it('does not report the same error again at the next Stop', async () => {
+    await prompt();
+    write('valid.md', validWithParent('Ghost Node'));
+    await stop();
 
-    // Two entries for same file: first has no baseline errors (clean), second was the most recent edit
-    const entries = [
-      stateEntry(validPath, 'Edit', {}, Date.now() - 1000),
-      stateEntry(validPath, 'Edit', {}, Date.now()),
-    ];
-    writeStateFile(sessionId, entries);
-
-    const result = await runOnStop({ session_id: sessionId }, opts());
-    expect(result.hasNewErrors).toBe(false);
-  });
-});
-
-describe('State file lifecycle', () => {
-  it('deletes the state file after running, regardless of result', async () => {
-    const sessionId = crypto.randomUUID();
-    const stateFile = writeStateFile(sessionId, [stateEntry(join(fixtures.vaultDir, 'valid.md'), 'Edit', {})]);
-
-    await runOnStop({ session_id: sessionId }, opts());
-
-    expect(existsSync(stateFile)).toBe(false);
-  });
-
-  it('deletes the state file even when new errors are found', async () => {
-    const sessionId = crypto.randomUUID();
-    const stateFile = writeStateFile(sessionId, [stateEntry(join(fixtures.vaultDir, 'broken.md'), 'Write', null)]);
-
-    await runOnStop({ session_id: sessionId }, opts());
-
-    expect(existsSync(stateFile)).toBe(false);
-  });
-
-  it('skips files that no longer exist without crashing', async () => {
-    const sessionId = crypto.randomUUID();
-    writeStateFile(sessionId, [stateEntry(join(fixtures.vaultDir, 'deleted.md'), 'Edit', {})]);
-
-    const result = await runOnStop({ session_id: sessionId }, opts());
-    expect(result.hasNewErrors).toBe(false);
+    await prompt();
+    expect((await stop()).hasNewErrors).toBe(false);
   });
 });
 
 describe('Warnings', () => {
-  const validWithContentLink =
-    '---\ntype: mission\nparent: "[[Root]]"\nstatus: identified\n---\n\n# Test Title\n\nSee [[Missing Note]].\n';
-  const contentLinkWarning = { 'content-link:Missing Note': { kind: 'content-link', message: 'test' } };
-
   it('reports a new warning without blocking', async () => {
-    const sessionId = crypto.randomUUID();
-    const validPath = join(fixtures.vaultDir, 'valid.md');
-    writeStateFile(sessionId, [{ ...stateEntry(validPath, 'Edit', {}), warnings: {} }]);
-    writeFileSync(validPath, validWithContentLink);
+    await prompt();
+    write('valid.md', validWithContentLink);
 
-    const result = await runOnStop({ session_id: sessionId }, opts());
+    const result = await stop();
     expect(result.hasNewErrors).toBe(false);
     expect(result.errorMessage).toBeUndefined();
     expect(result.warningMessage).toContain('structured-context: new validation warnings');
@@ -197,22 +172,18 @@ describe('Warnings', () => {
   });
 
   it('does not report warnings already present in the baseline', async () => {
-    const sessionId = crypto.randomUUID();
-    const validPath = join(fixtures.vaultDir, 'valid.md');
-    writeFileSync(validPath, validWithContentLink);
-    writeStateFile(sessionId, [{ ...stateEntry(validPath, 'Edit', {}), warnings: contentLinkWarning }]);
+    write('valid.md', validWithContentLink);
+    await prompt();
+    write('valid.md', `${validWithContentLink}\nMore text.\n`);
 
-    const result = await runOnStop({ session_id: sessionId }, opts());
-    expect(result).toEqual({ hasNewErrors: false });
+    expect(await stop()).toEqual({ hasNewErrors: false });
   });
 
   it('reports both errors and warnings when both are new', async () => {
-    const sessionId = crypto.randomUUID();
-    const validPath = join(fixtures.vaultDir, 'valid.md');
-    writeStateFile(sessionId, [stateEntry(validPath, 'Write', null)]);
-    writeFileSync(validPath, validWithContentLink.replace('[[Root]]', '[[Ghost Node]]'));
+    await prompt();
+    write('valid.md', validWithContentLink.replace('[[Root]]', '[[Ghost Node]]'));
 
-    const result = await runOnStop({ session_id: sessionId }, opts());
+    const result = await stop();
     expect(result.hasNewErrors).toBe(true);
     expect(result.errorMessage).toContain('Ghost Node');
     expect(result.warningMessage).toContain('Missing Note');

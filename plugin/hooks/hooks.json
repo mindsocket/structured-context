@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/on-prompt.ts",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit",
@@ -8,13 +19,13 @@
             "if": "Write(*.md)",
             "type": "command",
             "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/pre-edit.ts",
-            "timeout": 30
+            "timeout": 60
           },
           {
             "if": "Edit(*.md)",
             "type": "command",
             "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/pre-edit.ts",
-            "timeout": 30
+            "timeout": 60
           }
         ]
       }
@@ -26,6 +37,16 @@
             "type": "command",
             "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/on-stop.ts",
             "timeout": 60
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/on-session-end.ts"
           }
         ]
       }

@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { createRequire } from 'node:module';
+import { format } from 'node:util';
 import { Command } from 'commander';
 import { diagram } from './commands/diagram';
 import { docs } from './commands/docs';
@@ -17,6 +18,12 @@ import { loadConfig, setConfigPath } from './config';
 import { CLI_NAME } from './constants';
 import { createSpaceContext, SpaceNotFoundError } from './space-context';
 import type { SpaceContext } from './types';
+
+// Once node:process is loaded (vfile, via unified, loads it), Bun's console.log drops piped output
+// past 64KB when the reader is slow. process.stdout.write delivers all of it before exit.
+console.log = (...args: unknown[]) => {
+  process.stdout.write(`${format(...args)}\n`);
+};
 
 export function buildSpaceContext(spaceName: string): SpaceContext {
   try {
@@ -51,8 +58,7 @@ program
   .argument('<path>', 'Path to the file to validate')
   .option('--json', 'Output results as JSON (machine-readable, for hooks)')
   .action(async (filePath, options) => {
-    const exitCode = await validateFileCommand(filePath, { json: options.json });
-    process.exit(exitCode);
+    process.exitCode = await validateFileCommand(filePath, { json: options.json });
   });
 
 program
@@ -66,8 +72,8 @@ program
     if (options.watch) {
       await watchValidate(context);
     } else {
-      const exitCode = await validate(context, { json: options.json });
-      process.exit(exitCode);
+      // exitCode rather than process.exit(): exiting straight away can cut off large piped output
+      process.exitCode = await validate(context, { json: options.json });
     }
   });
 
@@ -125,7 +131,8 @@ const spacesCmd = new Command('spaces').description('List configured spaces');
 spacesCmd
   .command('list', { isDefault: true })
   .description('List all configured spaces and their paths')
-  .action(listSpaces);
+  .option('--json', 'Output as JSON: config files, and each space with its path and schema')
+  .action((options) => listSpaces(options));
 program.addCommand(spacesCmd);
 
 const schemasCmd = new Command('schemas').alias('schema').description('List and inspect schemas');

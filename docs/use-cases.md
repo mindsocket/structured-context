@@ -18,8 +18,8 @@ A catalog of use cases for structured-context, covering both direct CLI usage an
 | Use case | Description | Status | Coverage |
 |---|---|---|---|
 | **Validate content** | Verify that space content conforms to schema, link integrity, rules, and hierarchy | | |
-| — Validate a space | Check all files in a space in one pass | done | `sctx validate` · `/validate-space` command |
-| — Validate a single file | Validate one file in context of its space | done | `sctx validate-file` · auto-validation hook on `.md` save |
+| — Validate a space | Check all files in a space in one pass | done | `sctx validate` · `/validate-space` command · plugin hooks report issues introduced during a Claude turn |
+| — Validate a single file | Validate one file in context of its space | done | `sctx validate-file` · `validateFile` API, e.g. for validation on save in an editor |
 | — Watch for changes | Continuously re-validate as files are edited | done | `sctx validate --watch` |
 | **Resolve validation errors** | Investigate and fix schema, link, or rule violations once identified | agent | structured-context skill (troubleshooting guide; `dump` for rule debugging) |
 
@@ -60,7 +60,7 @@ A catalog of use cases for structured-context, covering both direct CLI usage an
 
 | Use case | Description | Status | Coverage |
 |---|---|---|---|
-| **Author new content compliantly** | Create or edit nodes in Obsidian while staying schema-conformant | partial | Validation hook on `.md` save; schema-driven templates; structured-context skill for inline guidance |
+| **Author new content compliantly** | Create or edit nodes in Obsidian while staying schema-conformant | partial | Plugin hooks report issues introduced during a Claude turn; schema-driven templates; structured-context skill for inline guidance |
 | **Discover and curate inputs** | Identify new information (research, signals, events) to add to a space and integrate it | none | — |
 
 ---
@@ -91,4 +91,4 @@ A catalog of use cases for structured-context, covering both direct CLI usage an
 | Use case | Description | Status | Coverage |
 |---|---|---|---|
 | **Automate workflow rituals** | Run planning, review, or triage workflows against space content on a schedule or trigger | none | — |
-| **Automate gardening and hygiene** | Scheduled or triggered cleanup: link repair, status updates, orphan triage | partial | `validate --watch` for live feedback; hooks for save-time checks; manual agent-driven triage |
+| **Automate gardening and hygiene** | Scheduled or triggered cleanup: link repair, status updates, orphan triage | partial | `validate --watch` for live feedback; plugin hooks report issues introduced during a Claude turn; manual agent-driven triage |
