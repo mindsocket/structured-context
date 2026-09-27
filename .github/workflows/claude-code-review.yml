@@ -71,12 +71,12 @@ jobs:
             exit 0
           fi
           DENIALS=$(jq -s -r '
-            [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | {id, name, input}] as $uses
-            | [.[] | select(.type == "system" and .subtype == "permission_denied")][]
+            [.[]? | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | {id, name, input}] as $uses
+            | [.[]? | select(.type == "system" and .subtype == "permission_denied")][]?
             | . as $d
-            | ($uses[] | select(.id == $d.tool_use_id)) as $u
-            | "- **\($u.name)**: `\($u.input.command // $u.input.description // ($u.input | tostring))`"
-          ' "$LOG_FILE" 2>/dev/null)
+            | ($uses[]? | select(.id == $d.tool_use_id)) as $u
+            | "- **\($u.name // "unknown")**: `\($u.input.command // $u.input.description // ($u.input | tostring))`"
+          ' "$LOG_FILE" 2>/dev/null) || true
           if [ -n "$DENIALS" ]; then
             {
               echo "## ⚠️ Tool permission denials"
