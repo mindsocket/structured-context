@@ -4,7 +4,9 @@
 # mask a problem nor block a good push.
 #
 # The checks run in a detached worktree at HEAD, created in a temp directory, with
-# node_modules symlinked from the main checkout.
+# node_modules symlinked in. A linked worktree nested inside the main checkout (e.g.
+# .claude/worktrees/*) has no node_modules of its own, so fall back to the main
+# checkout's.
 #
 # Lefthook does not forward git's pre-push stdin, so the pushed ref is taken as
 # HEAD. Pushing a ref other than the current branch checks HEAD instead.
@@ -27,7 +29,16 @@ if ! git worktree add --detach "$wt" HEAD >/dev/null 2>&1; then
   exit 0
 fi
 
-ln -s "$root/node_modules" "$wt/node_modules"
+modules="$root/node_modules"
+if [ ! -d "$modules" ]; then
+  main_root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+  modules="$main_root/node_modules"
+fi
+if [ ! -d "$modules" ]; then
+  echo "no node_modules found (run bun install); skipping checks"
+  exit 0
+fi
+ln -s "$modules" "$wt/node_modules"
 cd "$wt" || exit 1
 
 status=0
