@@ -1,14 +1,31 @@
+# Lefthook hides unstaged changes during pre-commit, so the whole-project typecheck
+# sees the content being committed, not the working tree.
+#
+# piped runs the commands in order: sync-plugin-version may stage plugin.json, and
+# biome and the typecheck run after it. {staged_files} is still computed before any
+# command runs, so sync-plugin-version formats plugin.json itself.
 pre-commit:
+  piped: true
   commands:
     sync-plugin-version:
+      priority: 1
       glob: "{package.json,plugin/**}"
       run: bash scripts/sync-plugin-version.sh
     biome:
+      priority: 2
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
       run: bunx @biomejs/biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
       stage_fixed: true
+    typecheck:
+      priority: 3
+      glob: "*.{ts,tsx}"
+      run: bun run typecheck
 
+# Pre-push checks the commits being pushed, not the working tree. See
+# check-pushed-tree.sh.
 pre-push:
   commands:
     check-plugin-version:
       run: bash scripts/sync-plugin-version.sh --check
+    pushed-tree:
+      run: bash scripts/git-hooks/check-pushed-tree.sh
