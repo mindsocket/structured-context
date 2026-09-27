@@ -1,14 +1,23 @@
 import { basename, resolve } from 'node:path';
-import { configPath, loadConfig } from '../config';
+import { configPath, getConfigSourceFiles, loadConfig } from '../config';
 
 function renderConfigValue(v: unknown): string {
   if (typeof v === 'object' && v !== null) return JSON.stringify(v);
   return String(v);
 }
 
-export function listSpaces(): void {
+export function listSpaces(options: { json?: boolean } = {}): void {
   const path = resolve(configPath());
   const config = loadConfig();
+  if (options.json) {
+    const spaces = config.spaces.map((space) => ({
+      name: space.name,
+      path: space.path,
+      schema: space.schema ?? config.schema,
+    }));
+    console.log(JSON.stringify({ configFiles: [...getConfigSourceFiles()], spaces }));
+    return;
+  }
   console.log(`Config: ${path}\n`);
   for (const space of config.spaces) {
     console.log(`${space.name}`);

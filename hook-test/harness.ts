@@ -6,11 +6,13 @@
  * can inspect them after the run without relying on in-process buffering.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import { runOnPrompt } from '../plugin/scripts/on-prompt';
 import { runOnStop } from '../plugin/scripts/on-stop';
 import { runPreEdit } from '../plugin/scripts/pre-edit';
+import { loadState, type SessionState, stateFilePath } from '../plugin/scripts/state';
 
 const SCTX_BIN = join(import.meta.dir, '..', 'src', 'index.ts');
 
@@ -33,11 +35,8 @@ export interface RunClaudeResult {
   outputDir: string;
   /** Directory where hook state files live during the session */
   stateDir: string;
-  /**
-   * State entries captured by the PreToolUse hook before the Stop hook deletes the file.
-   * Each entry describes an Edit or Write operation on a .md file in a configured space.
-   */
-  stateEntries: object[];
+  /** Session state as the Stop hook found it, before it cleared the baselines */
+  stateAtStop: SessionState;
   /** All SDK messages written as JSONL */
   messagesFile: string;
 }
@@ -53,7 +52,7 @@ export async function runClaude(options: RunClaudeOptions): Promise<RunClaudeRes
 
   const hookOpts = { stateDir, sctxBin: SCTX_BIN, configPath };
   let stopResult: { hasNewErrors: boolean; errorMessage?: string } = { hasNewErrors: false };
-  let capturedStateEntries: object[] = [];
+  let stateAtStop: SessionState = { baseline: {}, latest: {} };
   let actualSessionId = 'unknown';
   const messages: object[] = [];
 
@@ -64,7 +63,19 @@ export async function runClaude(options: RunClaudeOptions): Promise<RunClaudeRes
         cwd: fixtureDir,
         additionalDirectories: [fixtureDir],
         permissionMode: 'acceptEdits',
+        // Without this, the SDK loads ~/.claude settings and CLAUDE.md
+        settingSources: [],
         hooks: {
+          UserPromptSubmit: [
+            {
+              hooks: [
+                async (input) => {
+                  await runOnPrompt({ session_id: input.session_id, cwd: input.cwd }, hookOpts);
+                  return {};
+                },
+              ],
+            },
+          ],
           PreToolUse: [
             {
               matcher: 'Write|Edit',
@@ -87,15 +98,7 @@ export async function runClaude(options: RunClaudeOptions): Promise<RunClaudeRes
             {
               hooks: [
                 async (input) => {
-                  // Capture state entries before runOnStop deletes the state file
-                  const stateFile = join(stateDir, `sctx-hook-${input.session_id}.jsonl`);
-                  if (existsSync(stateFile)) {
-                    capturedStateEntries = readFileSync(stateFile, 'utf-8')
-                      .trim()
-                      .split('\n')
-                      .filter(Boolean)
-                      .map((l) => JSON.parse(l));
-                  }
+                  stateAtStop = loadState(stateFilePath(input.session_id, hookOpts));
 
                   stopResult = await runOnStop(
                     {
@@ -144,7 +147,7 @@ export async function runClaude(options: RunClaudeOptions): Promise<RunClaudeRes
     sessionId: actualSessionId,
     outputDir,
     stateDir,
-    stateEntries: capturedStateEntries,
+    stateAtStop,
     messagesFile,
   };
 }
