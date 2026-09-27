@@ -5,7 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runPreEdit } from '../../plugin/scripts/pre-edit';
@@ -90,6 +90,23 @@ describe('Edit operations', () => {
     expect(entries).toHaveLength(1);
     const errors = (entries[0] as { errors: Record<string, unknown> }).errors;
     expect(Object.keys(errors)).toContain('broken-link:[[Nonexistent Node]]');
+  });
+
+  it('records pre-existing warnings as a separate baseline', async () => {
+    const sessionId = crypto.randomUUID();
+    const filePath = join(fixtures.vaultDir, 'valid.md');
+    writeFileSync(
+      filePath,
+      '---\ntype: mission\nparent: "[[Root]]"\nstatus: identified\n---\n\n# Test Title\n\nSee [[Missing Note]].\n',
+    );
+
+    await runPreEdit({ tool_name: 'Edit', tool_input: { file_path: filePath }, session_id: sessionId }, opts());
+
+    const entries = readState(sessionId);
+    expect(entries).toHaveLength(1);
+    expect((entries[0] as { errors: object }).errors).toEqual({});
+    const warnings = (entries[0] as { warnings: Record<string, unknown> }).warnings;
+    expect(Object.keys(warnings)).toContain('content-link:Missing Note');
   });
 
   it('does not write a state entry for a .md file not in any space', async () => {
