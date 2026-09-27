@@ -60,7 +60,7 @@ A catalog of use cases for structured-context, covering both direct CLI usage an
 
 | Use case | Description | Status | Coverage |
 |---|---|---|---|
-| **Author new content compliantly** | Create or edit nodes in Obsidian while staying schema-conformant | partial | Validation hook on `.md` save; schema-driven templates; structured-context skill for inline guidance |
+| **Author new content compliantly** | Create or edit nodes in Obsidian while staying schema-conformant | partial | Plugin hooks report issues introduced during a Claude turn; schema-driven templates; structured-context skill for inline guidance |
 | **Discover and curate inputs** | Identify new information (research, signals, events) to add to a space and integrate it | none | — |
 
 ---
@@ -91,4 +91,4 @@ A catalog of use cases for structured-context, covering both direct CLI usage an
 | Use case | Description | Status | Coverage |
 |---|---|---|---|
 | **Automate workflow rituals** | Run planning, review, or triage workflows against space content on a schedule or trigger | none | — |
-| **Automate gardening and hygiene** | Scheduled or triggered cleanup: link repair, status updates, orphan triage | partial | `validate --watch` for live feedback; hooks for save-time checks; manual agent-driven triage |
+| **Automate gardening and hygiene** | Scheduled or triggered cleanup: link repair, status updates, orphan triage | partial | `validate --watch` for live feedback; plugin hooks report issues introduced during a Claude turn; manual agent-driven triage |
