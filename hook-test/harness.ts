@@ -63,6 +63,8 @@ export async function runClaude(options: RunClaudeOptions): Promise<RunClaudeRes
         cwd: fixtureDir,
         additionalDirectories: [fixtureDir],
         permissionMode: 'acceptEdits',
+        // Without this, the SDK loads ~/.claude settings and CLAUDE.md
+        settingSources: [],
         hooks: {
           UserPromptSubmit: [
             {
