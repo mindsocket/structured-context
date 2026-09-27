@@ -2,7 +2,7 @@
 /**
  * PreToolUse hook for Write and Edit on *.md files.
  * Write (new files): records the filename with no baseline errors.
- * Edit (existing files): validates before the edit and records baseline errors.
+ * Edit (existing files): validates before the edit and records baseline errors and warnings.
  * Appends one JSONL line to a per-session state file for the Stop hook to analyse.
  */
 
@@ -31,11 +31,13 @@ interface HookState {
   tool: 'Write' | 'Edit';
   file: string;
   errors: object | null;
+  warnings: object | null;
 }
 
 interface ValidationResult {
   inSpace?: boolean;
   errors?: object;
+  warnings?: object;
 }
 
 export async function runPreEdit(input: PreEditInput, options?: PreEditOptions): Promise<void> {
@@ -58,6 +60,7 @@ export async function runPreEdit(input: PreEditInput, options?: PreEditOptions):
       tool: 'Write',
       file: FILE_PATH,
       errors: null,
+      warnings: null,
     };
     mkdirSync(STATE_DIR, { recursive: true });
     appendFileSync(STATE_FILE, `${JSON.stringify(entry)}\n`);
@@ -83,13 +86,13 @@ export async function runPreEdit(input: PreEditInput, options?: PreEditOptions):
     return;
   }
 
-  const ERRORS = result.errors ?? {};
   const entry: HookState = {
     session_id: SESSION_ID,
     timestamp: TIMESTAMP,
     tool: 'Edit',
     file: FILE_PATH,
-    errors: ERRORS,
+    errors: result.errors ?? {},
+    warnings: result.warnings ?? {},
   };
   mkdirSync(STATE_DIR, { recursive: true });
   appendFileSync(STATE_FILE, `${JSON.stringify(entry)}\n`);

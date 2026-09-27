@@ -177,3 +177,44 @@ describe('State file lifecycle', () => {
     expect(result.hasNewErrors).toBe(false);
   });
 });
+
+describe('Warnings', () => {
+  const validWithContentLink =
+    '---\ntype: mission\nparent: "[[Root]]"\nstatus: identified\n---\n\n# Test Title\n\nSee [[Missing Note]].\n';
+  const contentLinkWarning = { 'content-link:Missing Note': { kind: 'content-link', message: 'test' } };
+
+  it('reports a new warning without blocking', async () => {
+    const sessionId = crypto.randomUUID();
+    const validPath = join(fixtures.vaultDir, 'valid.md');
+    writeStateFile(sessionId, [{ ...stateEntry(validPath, 'Edit', {}), warnings: {} }]);
+    writeFileSync(validPath, validWithContentLink);
+
+    const result = await runOnStop({ session_id: sessionId }, opts());
+    expect(result.hasNewErrors).toBe(false);
+    expect(result.errorMessage).toBeUndefined();
+    expect(result.warningMessage).toContain('structured-context: new validation warnings');
+    expect(result.warningMessage).toContain('Missing Note');
+  });
+
+  it('does not report warnings already present in the baseline', async () => {
+    const sessionId = crypto.randomUUID();
+    const validPath = join(fixtures.vaultDir, 'valid.md');
+    writeFileSync(validPath, validWithContentLink);
+    writeStateFile(sessionId, [{ ...stateEntry(validPath, 'Edit', {}), warnings: contentLinkWarning }]);
+
+    const result = await runOnStop({ session_id: sessionId }, opts());
+    expect(result).toEqual({ hasNewErrors: false });
+  });
+
+  it('reports both errors and warnings when both are new', async () => {
+    const sessionId = crypto.randomUUID();
+    const validPath = join(fixtures.vaultDir, 'valid.md');
+    writeStateFile(sessionId, [stateEntry(validPath, 'Write', null)]);
+    writeFileSync(validPath, validWithContentLink.replace('[[Root]]', '[[Ghost Node]]'));
+
+    const result = await runOnStop({ session_id: sessionId }, opts());
+    expect(result.hasNewErrors).toBe(true);
+    expect(result.errorMessage).toContain('Ghost Node');
+    expect(result.warningMessage).toContain('Missing Note');
+  });
+});
