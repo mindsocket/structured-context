@@ -36,7 +36,7 @@ export function isolateFixtures(): IsolatedFixtures {
   cpSync(BASE_FIXTURES, fixtureDir, { recursive: true });
 
   // Rewrite config.json: replace relative vault path with absolute path
-  const config = { spaces: [{ name: 'test-space', path: vaultDir }] };
+  const config = { spaces: [{ name: 'test-space', path: vaultDir, schema: 'strategy_general.json' }] };
   writeFileSync(configPath, JSON.stringify(config, null, 2));
 
   return {
