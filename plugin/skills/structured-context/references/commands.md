@@ -85,19 +85,27 @@ The SELECT spec is a comma-separated list of directives that expand the result s
 ## dump
 
 ```bash
-sctx dump <space>
+sctx dump <space> [--filter <view-or-expression>] [--hierarchy <name>]
 ```
 
-Outputs the full parsed node data as JSON, including resolved fields:
-- `resolvedType` — canonical type after alias resolution
-- `resolvedParentTitle` — parent title after link resolution
+Outputs `{ nodes, source, diagnostics }` as strict JSON. Each node includes resolved fields:
+- `label` — source identifier; the same key `validate --json` uses for its `errors` map
+- `title`, `resolvedType` — canonical title and type after alias resolution
+- `resolvedParents` — parent refs after link resolution, with the edge field and source
+
+Unfiltered output includes schema-invalid nodes. `--filter` works the same as in `show`/`render`
+(named view or inline expression, evaluated over the schema-valid graph).
 
 Use this to debug rule violations ("why is this rule firing?"), verify `fieldMap` remapping
 is working, or inspect what JSONata expressions see at evaluation time.
 
 ```bash
 # Pipe through jq to inspect a specific node
-sctx dump <space> | jq '.[] | select(.title == "My Node Title")'
+sctx dump <space> | jq '.nodes[] | select(.title == "My Node Title")'
+
+# Join nodes with their validation errors
+sctx validate <space> --json > v.json
+sctx dump <space> | jq --slurpfile v v.json '.nodes[] | {label, resolvedType, errors: $v[0].errors[.label]}'
 ```
 
 ## diagram
