@@ -1,12 +1,11 @@
 #!/usr/bin/env bun
 /**
  * PreToolUse hook for Write and Edit on *.md files.
- * Write of a new file: records the filename with no baseline errors.
- * Edit, or Write over an existing file: validates before the change and records baseline errors and warnings.
- * Appends one JSONL line to a per-session state file for the Stop hook to analyse.
+ * Fallback for spaces the prompt hook didn't cover (outside the session's directory): the first
+ * edit to such a space this turn baselines the whole space before the change.
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { contains, type HookOptions, listSpaces, loadState, recordBaselines, saveState, stateFilePath } from './state';
 
 export interface PreEditInput {
   tool_name?: string;
@@ -16,103 +15,23 @@ export interface PreEditInput {
   session_id?: string;
 }
 
-export interface PreEditOptions {
-  /** Overrides SCTX_STATE_DIR env var */
-  stateDir?: string;
-  /** Path to structured-context entry point. When set, uses `bun run <path>` instead of `bunx structured-context`. */
-  sctxBin?: string;
-  /** Path to config file. When set, passed as SCTX_CONFIG to validate-file subprocess. */
-  configPath?: string;
-}
-
-interface HookState {
-  session_id: string;
-  timestamp: number;
-  tool: 'Write' | 'Edit';
-  file: string;
-  errors: object | null;
-  warnings: object | null;
-}
-
-interface ValidationResult {
-  inSpace?: boolean;
-  errors?: object;
-  warnings?: object;
-}
-
-function alreadyTracked(stateFile: string, filePath: string): boolean {
-  if (!existsSync(stateFile)) return false;
-  return readFileSync(stateFile, 'utf-8')
-    .split('\n')
-    .some((line) => line && (JSON.parse(line) as HookState).file === filePath);
-}
-
-export async function runPreEdit(input: PreEditInput, options?: PreEditOptions): Promise<void> {
-  const TOOL = input.tool_name ?? '';
+export async function runPreEdit(input: PreEditInput, options?: HookOptions): Promise<void> {
   const FILE_PATH = input.tool_input?.file_path;
-  const SESSION_ID = input.session_id ?? 'unknown';
+  if (!FILE_PATH) return;
 
-  if (!FILE_PATH) {
-    return;
+  const STATE_FILE = stateFilePath(input.session_id, options);
+  const state = loadState(STATE_FILE);
+  if (Object.values(state.baseline).some((snap) => contains(snap.path, FILE_PATH))) return;
+
+  const { configFiles, spaces } = await listSpaces(options);
+  const containing = spaces.filter((space) => contains(space.path, FILE_PATH));
+  if (await recordBaselines(state, containing, configFiles, options)) {
+    saveState(STATE_FILE, state);
   }
-
-  const STATE_DIR = options?.stateDir ?? process.env.SCTX_STATE_DIR ?? '/tmp';
-  const STATE_FILE = `${STATE_DIR}/sctx-hook-${SESSION_ID}.jsonl`;
-  const TIMESTAMP = Date.now();
-
-  // The Stop hook compares against a file's first baseline this session, so later edits need none
-  if (alreadyTracked(STATE_FILE, FILE_PATH)) {
-    return;
-  }
-
-  if (TOOL === 'Write' && !existsSync(FILE_PATH)) {
-    const entry: HookState = {
-      session_id: SESSION_ID,
-      timestamp: TIMESTAMP,
-      tool: 'Write',
-      file: FILE_PATH,
-      errors: null,
-      warnings: null,
-    };
-    mkdirSync(STATE_DIR, { recursive: true });
-    appendFileSync(STATE_FILE, `${JSON.stringify(entry)}\n`);
-    return;
-  }
-
-  // Edit or overwrite — validate current state as pre-edit baseline
-  const BIN = options?.sctxBin ?? process.env.SCTX_BIN;
-  const env: Record<string, string | undefined> = { ...process.env };
-  if (options?.configPath) {
-    env.SCTX_CONFIG = options.configPath;
-  }
-
-  const proc = BIN
-    ? Bun.$`bun run ${[BIN]} validate-file ${[FILE_PATH]} --json`.env(env).quiet().nothrow()
-    : Bun.$`bunx structured-context validate-file ${[FILE_PATH]} --json`.env(env).quiet().nothrow();
-
-  const resultText = await proc.text();
-  const result = resultText ? (JSON.parse(resultText) as ValidationResult) : {};
-  const IN_SPACE = result.inSpace ?? false;
-
-  if (IN_SPACE !== true) {
-    return;
-  }
-
-  const entry: HookState = {
-    session_id: SESSION_ID,
-    timestamp: TIMESTAMP,
-    tool: 'Edit',
-    file: FILE_PATH,
-    errors: result.errors ?? {},
-    warnings: result.warnings ?? {},
-  };
-  mkdirSync(STATE_DIR, { recursive: true });
-  appendFileSync(STATE_FILE, `${JSON.stringify(entry)}\n`);
 }
 
 async function main() {
-  const INPUT_TEXT = await Bun.stdin.text();
-  const INPUT = JSON.parse(INPUT_TEXT) as PreEditInput;
+  const INPUT = JSON.parse(await Bun.stdin.text()) as PreEditInput;
   await runPreEdit(INPUT);
 }
 

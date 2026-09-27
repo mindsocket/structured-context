@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { loadState, stateFilePath } from '../plugin/scripts/state';
 import { type IsolatedFixtures, isolateFixtures } from './fixture-utils';
 import { runClaude } from './harness';
 
@@ -30,11 +31,10 @@ function makeOutputDir(): string {
 
 describe('clean edit of valid file', () => {
   it(
-    'captures an Edit state entry, exits 0, and cleans up the state file',
+    'baselines the space when the prompt is submitted and exits 0',
     async () => {
       fixtures = isolateFixtures();
       const outputDir = makeOutputDir();
-      const validFile = join(fixtures.vaultDir, 'valid.md');
 
       const result = await runClaude({
         prompt: `Read valid.md, then change the title to "Modified Title". Only edit the file, no other output.`,
@@ -45,29 +45,25 @@ describe('clean edit of valid file', () => {
 
       expect(result.exitCode).toBe(0);
       expect(existsSync(join(outputDir, 'stop-hook-errors.txt'))).toBe(false);
-
-      const editEntry = result.stateEntries.find((e) => (e as { tool: string }).tool === 'Edit');
-      expect(editEntry).toBeDefined();
-      expect((editEntry as { file: string }).file).toBe(validFile);
-
-      // State entries captured before deletion — confirms the file was written
-      expect(result.stateEntries.length).toBeGreaterThan(0);
-      // Stop hook must delete the state file after analysis
-      expect(existsSync(join(result.stateDir, `sctx-hook-${result.sessionId}.jsonl`))).toBe(false);
+      expect(result.stateAtStop.baseline['test-space']?.path).toBe(fixtures.vaultDir);
+      // The Stop hook clears the baseline and keeps the results for the next prompt
+      const after = loadState(stateFilePath(result.sessionId, { stateDir: result.stateDir }));
+      expect(after.baseline).toEqual({});
+      expect(after.latest['test-space']).toBeDefined();
     },
     TEST_TIMEOUT,
   );
 });
 
-describe('Write hook', () => {
+describe('Write', () => {
   it(
-    'captures a state entry with null errors when Claude writes a new .md file',
+    'exits 0 when Claude writes a valid new .md file',
     async () => {
       fixtures = isolateFixtures();
       const outputDir = makeOutputDir();
 
       const result = await runClaude({
-        prompt: `Create a new file called new-note.md in the current directory with this exact content:
+        prompt: `Create a new file at the relative path vault/new-note.md (inside the current working directory) with this exact content:
 ---
 type: mission
 parent: "[[Root]]"
@@ -83,10 +79,8 @@ A new note.`,
       });
 
       expect(result.exitCode).toBe(0);
-
-      const writeEntry = result.stateEntries.find((e) => (e as { tool: string }).tool === 'Write');
-      expect(writeEntry).toBeDefined();
-      expect((writeEntry as { errors: null }).errors).toBeNull();
+      expect(existsSync(join(fixtures.vaultDir, 'new-note.md'))).toBe(true);
+      expect(result.stateAtStop.baseline['test-space']?.issues['new-note.md']).toBeUndefined();
     },
     TEST_TIMEOUT,
   );

@@ -1,17 +1,25 @@
 #!/usr/bin/env bun
+/**
+ * Stop hook: validate each space baselined this turn and report issues missing from its baseline,
+ * in any file of the space. New errors block the stop; new warnings are passed back as context.
+ */
+
+import { join } from 'node:path';
+import {
+  type HookOptions,
+  hashSpace,
+  issueKeys,
+  listSpaces,
+  loadState,
+  saveState,
+  stateFilePath,
+  type ValidationIssue,
+  validateSpace,
+} from './state';
 
 export interface OnStopInput {
   session_id?: string;
   stop_hook_active?: boolean;
-}
-
-export interface OnStopOptions {
-  /** Overrides SCTX_STATE_DIR env var */
-  stateDir?: string;
-  /** Path to structured-context entry point. When set, uses `bun run <path>` instead of `bunx structured-context`. */
-  sctxBin?: string;
-  /** Path to config file. When set, passed as SCTX_CONFIG to validate-file subprocess. */
-  configPath?: string;
 }
 
 export interface OnStopResult {
@@ -22,135 +30,82 @@ export interface OnStopResult {
   warningMessage?: string;
 }
 
-interface HookState {
-  session_id: string;
-  timestamp: number;
-  tool: 'Write' | 'Edit';
-  file: string;
-  errors: object | null;
-  /** Absent in state written by older versions of the pre-edit hook */
-  warnings?: object | null;
-}
-
-interface ValidationIssue {
-  kind: string;
-  message: string;
-  severity?: 'error' | 'warning' | 'info';
-}
-
-interface ValidationResult {
-  inSpace?: boolean;
-  label?: string;
-  space?: string;
-  errors?: Record<string, ValidationIssue>;
-  warnings?: Record<string, ValidationIssue>;
-}
-
-/** Issues in `fresh` that are not in the baseline. A Write has no baseline, so every issue is new. */
-function newIssues(
-  tool: HookState['tool'],
-  fresh: Record<string, ValidationIssue>,
-  baseline: object | null | undefined,
-): ValidationIssue[] {
-  const baselineKeys = tool === 'Write' ? new Set<string>() : new Set(Object.keys(baseline ?? {}));
-  return Object.entries(fresh)
-    .filter(([key]) => !baselineKeys.has(key))
-    .map(([, issue]) => issue);
-}
-
 function formatIssues(header: string, issues: ValidationIssue[], noun: string): string {
   const lines = issues.map((issue) => `    [${issue.kind}] ${issue.message}`).join('\n');
   return `  ${header} — ${issues.length} new ${noun}(s):\n${lines}`;
 }
 
-export async function runOnStop(input: OnStopInput, options?: OnStopOptions): Promise<OnStopResult> {
-  const SESSION_ID = input.session_id ?? 'unknown';
-  const STOP_HOOK_ACTIVE = input.stop_hook_active ?? false;
-
+export async function runOnStop(input: OnStopInput, options?: HookOptions): Promise<OnStopResult> {
   // Guard against infinite loop: stop hooks can trigger another stop cycle
-  if (STOP_HOOK_ACTIVE === true) {
+  if (input.stop_hook_active === true) {
     return { hasNewErrors: false };
   }
 
-  const STATE_DIR = options?.stateDir ?? process.env.SCTX_STATE_DIR ?? '/tmp';
-  const STATE_FILE = `${STATE_DIR}/sctx-hook-${SESSION_ID}.jsonl`;
-
-  const stateFile = Bun.file(STATE_FILE);
-  const stateFileExists = await stateFile.exists();
-  if (!stateFileExists) {
+  const STATE_FILE = stateFilePath(input.session_id, options);
+  const state = loadState(STATE_FILE);
+  if (Object.keys(state.baseline).length === 0) {
     return { hasNewErrors: false };
   }
+
+  const { configFiles, spaces } = await listSpaces(options);
 
   const newErrors: string[] = [];
   const newWarnings: string[] = [];
+  // Spaces can overlap, so report each issue in a file once
+  const reported = new Set<string>();
+  const unreported = (file: string, key: string) => {
+    const id = `${file}\0${key}`;
+    if (reported.has(id)) return false;
+    reported.add(id);
+    return true;
+  };
 
-  // Read all entries and keep the earliest per file (by timestamp): its baseline is the file's
-  // state before this session's first change, so later edits can't absorb issues earlier ones introduced
-  const lines = (await stateFile.text())
-    .trim()
-    .split('\n')
-    .filter((l) => l);
-  const entries: HookState[] = lines.map((l) => JSON.parse(l));
+  // A space whose hash still matches its baseline hasn't changed, so it needs no validation
+  const hashes = new Map(
+    spaces.filter((space) => state.baseline[space.name]).map((space) => [space.name, hashSpace(space, configFiles)]),
+  );
+  const changed = spaces.filter(
+    (space) => hashes.has(space.name) && hashes.get(space.name) !== state.baseline[space.name]!.hash,
+  );
+  const results = await Promise.all(changed.map((space) => validateSpace(space.name, options)));
 
-  const earliestByFile = new Map<string, HookState>();
-  for (const entry of entries) {
-    const existing = earliestByFile.get(entry.file);
-    if (!existing || entry.timestamp < existing.timestamp) {
-      earliestByFile.set(entry.file, entry);
-    }
-  }
+  changed.forEach((space, i) => {
+    const byFile = results[i]!;
+    const before = state.baseline[space.name]!.issues;
 
-  const BIN = options?.sctxBin ?? process.env.SCTX_BIN;
-  const env: Record<string, string | undefined> = { ...process.env };
-  if (options?.configPath) {
-    env.SCTX_CONFIG = options.configPath;
-  }
+    for (const [label, issues] of Object.entries(byFile)) {
+      const file = join(space.path, label);
+      const HEADER = label ? `${label} (space: ${space.name})` : `space ${space.name}`;
+      const known = new Set(before[label] ?? []);
 
-  for (const [FILE, entry] of earliestByFile) {
-    const { tool } = entry;
+      const fileErrors = Object.entries(issues.errors)
+        .filter(([key]) => !known.has(key) && unreported(file, key))
+        .map(([, issue]) => issue);
+      if (fileErrors.length > 0) {
+        newErrors.push(formatIssues(HEADER, fileErrors, 'error'));
+      }
 
-    const fileExists = await Bun.file(FILE).exists();
-    if (!fileExists) {
-      continue;
-    }
-
-    const proc = BIN
-      ? Bun.$`bun run ${[BIN]} validate-file ${[FILE]} --json`.env(env).quiet().nothrow()
-      : Bun.$`bunx structured-context validate-file ${[FILE]} --json`.env(env).quiet().nothrow();
-    const resultText = await proc.text();
-    const result = resultText ? (JSON.parse(resultText) as ValidationResult) : {};
-
-    const IN_SPACE = result.inSpace ?? false;
-    if (IN_SPACE !== true) {
-      continue;
-    }
-
-    const HEADER = `${result.label ?? FILE} (space: ${result.space ?? 'unknown'})`;
-
-    const fileErrors = newIssues(tool, result.errors ?? {}, entry.errors);
-    if (fileErrors.length > 0) {
-      newErrors.push(formatIssues(HEADER, fileErrors, 'error'));
+      const fileWarnings = Object.entries(issues.warnings)
+        .filter(([key]) => !known.has(key) && unreported(file, key))
+        .map(([, issue]) => issue);
+      if (fileWarnings.length > 0) {
+        newWarnings.push(formatIssues(HEADER, fileWarnings, 'warning'));
+      }
     }
 
-    // Info-level rule violations are not worth another turn from Claude
-    const fileWarnings = newIssues(tool, result.warnings ?? {}, entry.warnings).filter(
-      (issue) => issue.severity !== 'info',
-    );
-    if (fileWarnings.length > 0) {
-      newWarnings.push(formatIssues(HEADER, fileWarnings, 'warning'));
-    }
-  }
+    state.latest[space.name] = { path: space.path, hash: hashes.get(space.name)!, issues: issueKeys(byFile) };
+  });
 
-  // Clean up state file
-  await Bun.$`rm -f ${STATE_FILE}`;
+  state.baseline = {};
+  saveState(STATE_FILE, state);
 
   const warningMessage =
     newWarnings.length > 0
-      ? `structured-context: new validation warnings introduced this session - fix them with the structured-context skill if appropriate, otherwise mention them to the user:\n${newWarnings.join('\n')}`
+      ? `structured-context: new validation warnings introduced this turn - fix them with the structured-context skill if appropriate, otherwise mention them to the user:\n${newWarnings.join('\n')}`
       : undefined;
 
   if (newErrors.length > 0) {
-    const errorMessage = `structured-context: new validation errors introduced this session - use structured-context skill to resolve:\n${newErrors.join('\n')}`;
+    const errorMessage = `structured-context: new validation errors introduced this turn - use structured-context skill to resolve:\n${newErrors.join('\n')}`;
     return { hasNewErrors: true, errorMessage, ...(warningMessage && { warningMessage }) };
   }
 

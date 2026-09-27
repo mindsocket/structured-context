@@ -18,8 +18,8 @@ A catalog of use cases for structured-context, covering both direct CLI usage an
 | Use case | Description | Status | Coverage |
 |---|---|---|---|
 | **Validate content** | Verify that space content conforms to schema, link integrity, rules, and hierarchy | | |
-| — Validate a space | Check all files in a space in one pass | done | `sctx validate` · `/validate-space` command |
-| — Validate a single file | Validate one file in context of its space | done | `sctx validate-file` · auto-validation hook on `.md` save |
+| — Validate a space | Check all files in a space in one pass | done | `sctx validate` · `/validate-space` command · plugin hooks report issues introduced during a Claude turn |
+| — Validate a single file | Validate one file in context of its space | done | `sctx validate-file` |
 | — Watch for changes | Continuously re-validate as files are edited | done | `sctx validate --watch` |
 | **Resolve validation errors** | Investigate and fix schema, link, or rule violations once identified | agent | structured-context skill (troubleshooting guide; `dump` for rule debugging) |
 
