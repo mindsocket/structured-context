@@ -54,7 +54,10 @@ describe('Baselines', () => {
   });
 
   it('writes no state when no space is related to the session directory', async () => {
-    await runOnPrompt({ session_id: sessionId, cwd: tmpdir() }, opts());
+    // A sibling of the fixture dir, not tmpdir() itself: on Linux the fixture lives under tmpdir()
+    const unrelated = join(tmpdir(), `ost-on-prompt-unrelated-${crypto.randomUUID()}`);
+
+    await runOnPrompt({ session_id: sessionId, cwd: unrelated }, opts());
 
     expect(existsSync(stateFile())).toBe(false);
   });
