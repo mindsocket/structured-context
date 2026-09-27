@@ -5,10 +5,5 @@
   "homepage": "https://github.com/mindsocket/structured-context",
   "repository": "https://github.com/mindsocket/structured-context",
   "license": "MIT",
-  "keywords": [
-    "structured-context",
-    "validation",
-    "markdown",
-    "schema"
-  ]
+  "keywords": ["structured-context", "validation", "markdown", "schema"]
 }
