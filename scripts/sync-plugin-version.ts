@@ -77,6 +77,12 @@ function syncMode(): void {
   plugin.version = newVersionStr;
   writeFileSync(PLUGIN_JSON, `${JSON.stringify(plugin, null, 2)}\n`);
 
+  // JSON.stringify's layout differs from biome's (e.g. short arrays on one line). Format here because
+  // the biome pre-commit job only sees files that were staged before this script ran.
+  if (tryExec(`bunx @biomejs/biome format --write ${PLUGIN_JSON}`) === null) {
+    console.error(`sync-plugin-version: biome format failed for ${PLUGIN_JSON}`);
+  }
+
   // Stage the updated plugin.json
   tryExec(`git add ${PLUGIN_JSON}`);
 }
