@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 /**
  * PreToolUse hook for Write and Edit on *.md files.
- * Write (new files): records the filename with no baseline errors.
- * Edit (existing files): validates before the edit and records baseline errors and warnings.
+ * Write of a new file: records the filename with no baseline errors.
+ * Edit, or Write over an existing file: validates before the change and records baseline errors and warnings.
  * Appends one JSONL line to a per-session state file for the Stop hook to analyse.
  */
 
-import { appendFileSync, mkdirSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 
 export interface PreEditInput {
   tool_name?: string;
@@ -40,6 +40,13 @@ interface ValidationResult {
   warnings?: object;
 }
 
+function alreadyTracked(stateFile: string, filePath: string): boolean {
+  if (!existsSync(stateFile)) return false;
+  return readFileSync(stateFile, 'utf-8')
+    .split('\n')
+    .some((line) => line && (JSON.parse(line) as HookState).file === filePath);
+}
+
 export async function runPreEdit(input: PreEditInput, options?: PreEditOptions): Promise<void> {
   const TOOL = input.tool_name ?? '';
   const FILE_PATH = input.tool_input?.file_path;
@@ -53,7 +60,12 @@ export async function runPreEdit(input: PreEditInput, options?: PreEditOptions):
   const STATE_FILE = `${STATE_DIR}/sctx-hook-${SESSION_ID}.jsonl`;
   const TIMESTAMP = Date.now();
 
-  if (TOOL === 'Write') {
+  // The Stop hook compares against a file's first baseline this session, so later edits need none
+  if (alreadyTracked(STATE_FILE, FILE_PATH)) {
+    return;
+  }
+
+  if (TOOL === 'Write' && !existsSync(FILE_PATH)) {
     const entry: HookState = {
       session_id: SESSION_ID,
       timestamp: TIMESTAMP,
@@ -67,7 +79,7 @@ export async function runPreEdit(input: PreEditInput, options?: PreEditOptions):
     return;
   }
 
-  // Edit — validate current state as pre-edit baseline
+  // Edit or overwrite — validate current state as pre-edit baseline
   const BIN = options?.sctxBin ?? process.env.SCTX_BIN;
   const env: Record<string, string | undefined> = { ...process.env };
   if (options?.configPath) {

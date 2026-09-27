@@ -134,11 +134,11 @@ describe('Multiple files', () => {
     expect(result.hasNewErrors).toBe(false);
   });
 
-  it('uses only the latest entry per file when there are duplicates', async () => {
+  it('uses only the earliest entry per file when there are duplicates', async () => {
     const sessionId = crypto.randomUUID();
     const validPath = join(fixtures.vaultDir, 'valid.md');
 
-    // Two entries for same file: first has no baseline errors (clean), second was the most recent edit
+    // Two entries for same file: both clean, so the file is compared against its first baseline
     const entries = [
       stateEntry(validPath, 'Edit', {}, Date.now() - 1000),
       stateEntry(validPath, 'Edit', {}, Date.now()),
@@ -147,6 +147,36 @@ describe('Multiple files', () => {
 
     const result = await runOnStop({ session_id: sessionId }, opts());
     expect(result.hasNewErrors).toBe(false);
+  });
+
+  it('reports an error introduced by an earlier edit when the same file is edited again', async () => {
+    const sessionId = crypto.randomUUID();
+    const validPath = join(fixtures.vaultDir, 'valid.md');
+    // First edit starts clean and introduces a broken link; the second edit's baseline already contains it
+    const introduced = { 'broken-link:[[Ghost Node]]': { kind: 'broken-link', message: 'test' } };
+    writeStateFile(sessionId, [
+      stateEntry(validPath, 'Edit', {}, Date.now() - 1000),
+      stateEntry(validPath, 'Edit', introduced, Date.now()),
+    ]);
+    writeFileSync(validPath, '---\ntype: mission\nparent: "[[Ghost Node]]"\nstatus: identified\n---\n\n# Test Title\n');
+
+    const result = await runOnStop({ session_id: sessionId }, opts());
+    expect(result.hasNewErrors).toBe(true);
+    expect(result.errorMessage).toContain('Ghost Node');
+  });
+
+  it('treats a file as new when it was written and then edited in the same session', async () => {
+    const sessionId = crypto.randomUUID();
+    const brokenPath = join(fixtures.vaultDir, 'broken.md');
+    const baseline = { 'broken-link:[[Nonexistent Node]]': { kind: 'broken-link', message: 'test' } };
+    writeStateFile(sessionId, [
+      stateEntry(brokenPath, 'Write', null, Date.now() - 1000),
+      stateEntry(brokenPath, 'Edit', baseline, Date.now()),
+    ]);
+
+    const result = await runOnStop({ session_id: sessionId }, opts());
+    expect(result.hasNewErrors).toBe(true);
+    expect(result.errorMessage).toContain('broken-link');
   });
 });
 

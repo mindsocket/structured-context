@@ -65,6 +65,18 @@ describe('Write operations', () => {
 
     expect(existsSync(deepStateDir)).toBe(true);
   });
+
+  it('records a baseline when writing over an existing file', async () => {
+    const sessionId = crypto.randomUUID();
+    const filePath = join(fixtures.vaultDir, 'broken.md');
+
+    await runPreEdit({ tool_name: 'Write', tool_input: { file_path: filePath }, session_id: sessionId }, opts());
+
+    const entries = readState(sessionId);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ tool: 'Edit', file: filePath });
+    expect(Object.keys((entries[0] as { errors: object }).errors)).toContain('broken-link:[[Nonexistent Node]]');
+  });
 });
 
 describe('Edit operations', () => {
@@ -135,6 +147,19 @@ describe('Edit operations', () => {
     expect(entries).toHaveLength(2);
     expect(entries.map((e) => (e as { file: string }).file)).toContain(join(fixtures.vaultDir, 'valid.md'));
     expect(entries.map((e) => (e as { file: string }).file)).toContain(join(fixtures.vaultDir, 'broken.md'));
+  });
+
+  it('keeps only the first baseline when the same file is edited again', async () => {
+    const sessionId = crypto.randomUUID();
+    const filePath = join(fixtures.vaultDir, 'valid.md');
+
+    await runPreEdit({ tool_name: 'Edit', tool_input: { file_path: filePath }, session_id: sessionId }, opts());
+    writeFileSync(filePath, '---\ntype: mission\nparent: "[[Ghost Node]]"\nstatus: identified\n---\n\n# Test Title\n');
+    await runPreEdit({ tool_name: 'Edit', tool_input: { file_path: filePath }, session_id: sessionId }, opts());
+
+    const entries = readState(sessionId);
+    expect(entries).toHaveLength(1);
+    expect((entries[0] as { errors: object }).errors).toEqual({});
   });
 });
 

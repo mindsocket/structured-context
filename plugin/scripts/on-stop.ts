@@ -84,19 +84,19 @@ export async function runOnStop(input: OnStopInput, options?: OnStopOptions): Pr
   const newErrors: string[] = [];
   const newWarnings: string[] = [];
 
-  // Read all entries and keep only the latest per file (by timestamp)
+  // Read all entries and keep the earliest per file (by timestamp): its baseline is the file's
+  // state before this session's first change, so later edits can't absorb issues earlier ones introduced
   const lines = (await stateFile.text())
     .trim()
     .split('\n')
     .filter((l) => l);
   const entries: HookState[] = lines.map((l) => JSON.parse(l));
 
-  // Group by file and keep latest
-  const latestByFile = new Map<string, HookState>();
+  const earliestByFile = new Map<string, HookState>();
   for (const entry of entries) {
-    const existing = latestByFile.get(entry.file);
-    if (!existing || entry.timestamp > existing.timestamp) {
-      latestByFile.set(entry.file, entry);
+    const existing = earliestByFile.get(entry.file);
+    if (!existing || entry.timestamp < existing.timestamp) {
+      earliestByFile.set(entry.file, entry);
     }
   }
 
@@ -106,7 +106,7 @@ export async function runOnStop(input: OnStopInput, options?: OnStopOptions): Pr
     env.SCTX_CONFIG = options.configPath;
   }
 
-  for (const [FILE, entry] of latestByFile) {
+  for (const [FILE, entry] of earliestByFile) {
     const { tool } = entry;
 
     const fileExists = await Bun.file(FILE).exists();
