@@ -107,8 +107,8 @@ Schema definitions use the mapped target names.
 ## Schema file notes
 
 - Schema files are parsed as JSON5.
-- Files starting with `_` in the same directory are auto-loaded partials.
-- Local partial `$id` values must be unique and must not collide with bundled IDs.
+- Files starting with `_` in the same directory (or in a plugin's `schemasDir`) are auto-loaded partials.
+- Namespacing: Plugin schemas must use `$id: "sctx://<pluginName>/..."`. Bundled schemas reserve `sctx://<name>`. Local partial `$id` values must be unique and must not use `sctx://`.
 - If a partial has no `$metadata`, use `$schema: "http://json-schema.org/draft-07/schema#"` so it remains a standalone-valid JSON Schema fragment.
 
 ## `$ref` patterns

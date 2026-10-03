@@ -1,4 +1,5 @@
 import { type Config, resolveSchema } from './config';
+import { resolveSpacePluginSchemas } from './plugins/util';
 import { loadSchema } from './schema/schema';
 import type { SpaceContext } from './types';
 
@@ -23,6 +24,9 @@ export interface CreateSpaceContextOptions {
 /**
  * Build a SpaceContext for a named space from an already-loaded config.
  *
+ * Synchronously resolves schemas (including plugin-contributed schemas),
+ * indexes partials into the registry, and compiles the schema validator.
+ *
  * Library-safe: throws {@link SpaceNotFoundError} on an unknown space rather than
  * writing to the console or exiting the process. CLI callers that want the
  * exit-on-error behaviour should wrap this (see buildSpaceContext in index.ts).
@@ -44,8 +48,11 @@ export function createSpaceContext(
         `the config with loadConfig().`,
     );
   }
-  const resolvedSchemaPath = resolveSchema(config, space);
-  const { schema, schemaRefRegistry, schemaValidator } = loadSchema(resolvedSchemaPath);
+
+  const resolvedSchemaPath = resolveSchema(config, space, { configDir });
+  const pluginSchemas = resolveSpacePluginSchemas(space, config, configDir);
+  const { schema, schemaRefRegistry, schemaValidator } = loadSchema(resolvedSchemaPath, pluginSchemas);
+
   return {
     space,
     config,

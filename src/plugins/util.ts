@@ -1,5 +1,10 @@
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
+import type { Config, SpaceConfig } from '../config';
 import { PLUGIN_PREFIX as _PLUGIN_PREFIX } from '../constants';
+import type { PluginSchemaSource } from '../schema/schema';
 import type { SpaceGraph } from '../space-graph';
 import type { BaseNode, ParseIssue, SpaceContext } from '../types';
 
@@ -80,7 +85,153 @@ export type StructuredContextPlugin = {
   /** JSON Schema used to validate the plugin's config block. Fields with `format: 'path'`
    * are resolved relative to the config directory by `resolveConfigPaths` in the loader. */
   configSchema: AnySchemaObject;
+  /** Optional directory containing JSON schemas contributed by this plugin. */
+  schemasDir?: string;
   parse?: ParseHook;
   templateSync?: TemplateSyncHook;
   render?: RenderHook;
 };
+
+/**
+ * Synchronously locate the root directory of an external plugin.
+ * Resolution order:
+ * 1. Config-adjacent: {configDir}/plugins/{name} or {configDir}/plugins/sctx-{name}
+ * 2. Node module: resolve from configDir using standard module resolution
+ */
+export function resolvePluginDir(pluginName: string, configDir: string): string | undefined {
+  const normalized = normalizePluginName(pluginName);
+  const short = shortenPluginName(pluginName);
+
+  for (const candidate of [normalized, short]) {
+    const localDir = resolve(configDir, CONFIG_PLUGINS_DIR, candidate);
+    if (existsSync(localDir)) {
+      try {
+        if (statSync(localDir).isDirectory()) {
+          return localDir;
+        }
+      } catch {}
+    }
+  }
+
+  // Node module resolution from configDir
+  for (const candidate of [normalized, short]) {
+    try {
+      const req = createRequire(join(configDir, 'package.json'));
+      const pkgPath = req.resolve(`${candidate}/package.json`);
+      return dirname(pkgPath);
+    } catch {
+      const nmCandidate = resolve(configDir, 'node_modules', candidate);
+      if (existsSync(nmCandidate)) {
+        try {
+          if (statSync(nmCandidate).isDirectory()) {
+            return nmCandidate;
+          }
+        } catch {}
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Synchronously locate the schemas directory for a plugin.
+ * Convention:
+ * 1. package.json "sctx": { "schemas": "..." }
+ * 2. Convention: <pluginDir>/schemas
+ * 3. Fallback for test fixtures: {configDir}/plugins/schemas
+ */
+export function resolvePluginSchemasDir(pluginName: string, configDir: string): string | undefined {
+  const dir = resolvePluginDir(pluginName, configDir);
+  if (dir) {
+    // 1. package.json sctx.schemas
+    const pkgJsonPath = join(dir, 'package.json');
+    if (existsSync(pkgJsonPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf8'));
+        if (pkg.sctx?.schemas && typeof pkg.sctx.schemas === 'string') {
+          const customSchemas = resolve(dir, pkg.sctx.schemas);
+          if (existsSync(customSchemas) && statSync(customSchemas).isDirectory()) {
+            return customSchemas;
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Convention: <pluginDir>/schemas
+    const conventionDir = join(dir, 'schemas');
+    if (existsSync(conventionDir)) {
+      try {
+        if (statSync(conventionDir).isDirectory()) {
+          return conventionDir;
+        }
+      } catch {}
+    }
+  }
+
+  // 3. Check config-adjacent plugins/schemas as fallback (e.g. test fixtures)
+  const fallbackSchemas = resolve(configDir, CONFIG_PLUGINS_DIR, 'schemas');
+  if (existsSync(fallbackSchemas)) {
+    try {
+      if (statSync(fallbackSchemas).isDirectory()) {
+        return fallbackSchemas;
+      }
+    } catch {}
+  }
+
+  return undefined;
+}
+
+/**
+ * Synchronously collect all plugin schema sources available to a space.
+ */
+export function resolveSpacePluginSchemas(
+  space: SpaceConfig | undefined,
+  config: Config,
+  configDir: string,
+): PluginSchemaSource[] {
+  const pluginSources: PluginSchemaSource[] = [];
+  const seenPlugins = new Set<string>();
+
+  const maybeAddPlugin = (name: string) => {
+    const shortName = shortenPluginName(name);
+    if (seenPlugins.has(shortName)) return;
+    seenPlugins.add(shortName);
+
+    const schemasDir = resolvePluginSchemasDir(name, configDir);
+    if (schemasDir) {
+      pluginSources.push({
+        pluginName: shortName,
+        schemasDir,
+      });
+    }
+  };
+
+  // 1. Plugin referenced by space.schema prefix if any (e.g. sctx-wardley-mapping/wardley_map.json)
+  const rawSchema = space?.schema ?? config.schema;
+  if (rawSchema && !isAbsolute(rawSchema) && !rawSchema.startsWith('.')) {
+    const normalized = rawSchema.replace(/\\/g, '/');
+    const slashIdx = normalized.indexOf('/');
+    if (slashIdx !== -1) {
+      const prefix = normalized.slice(0, slashIdx);
+      maybeAddPlugin(prefix);
+    }
+  }
+
+  // 2. Plugins configured on space
+  if (space?.plugins) {
+    for (const name of Object.keys(space.plugins)) {
+      maybeAddPlugin(name);
+    }
+  }
+
+  // 3. Plugins configured globally
+  const globalPlugins = (config as { plugins?: Record<string, unknown> }).plugins;
+  if (globalPlugins) {
+    for (const name of Object.keys(globalPlugins)) {
+      maybeAddPlugin(name);
+    }
+  }
+
+  return pluginSources;
+}

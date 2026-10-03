@@ -84,7 +84,7 @@ program
   .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
   .option('--hierarchy <name>', 'Hierarchy to render (default: the main hierarchy)')
   .option('-o, --output <path>', 'Output file path (default: stdout)')
-  .action((spaceName, options) => diagram(buildSpaceContext(spaceName), options));
+  .action(async (spaceName, options) => diagram(buildSpaceContext(spaceName), options));
 
 program
   .command('show')
@@ -92,7 +92,7 @@ program
   .argument('<space-name>', 'Space name')
   .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
   .option('--hierarchy <name>', 'Hierarchy to render (default: the main hierarchy)')
-  .action((spaceName, options) => show(buildSpaceContext(spaceName), options));
+  .action(async (spaceName, options) => show(buildSpaceContext(spaceName), options));
 
 program
   .command('dump')
@@ -100,7 +100,7 @@ program
   .argument('<space-name>', 'Space name')
   .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
   .option('--hierarchy <name>', 'Hierarchy used to evaluate --filter (default: the main hierarchy)')
-  .action((spaceName, options) => dump(buildSpaceContext(spaceName), options));
+  .action(async (spaceName, options) => dump(buildSpaceContext(spaceName), options));
 
 program
   .command('miro-sync')
@@ -109,7 +109,7 @@ program
   .option('--new-frame <title>', 'Create a new frame on the board and sync into it')
   .option('--dry-run', 'Show what would change without touching Miro')
   .option('-v, --verbose', 'Detailed output')
-  .action((spaceName, options) => miroSyncCommand(buildSpaceContext(spaceName), options));
+  .action(async (spaceName, options) => miroSyncCommand(buildSpaceContext(spaceName), options));
 
 program
   .command('template-sync')
@@ -117,9 +117,9 @@ program
   .argument('<space-name>', 'Space name')
   .option('--create-missing', 'Create missing template files for schema types')
   .option('--dry-run', 'Preview changes without writing files')
-  .action((spaceName, options) => {
+  .action(async (spaceName, options) => {
     const context = buildSpaceContext(spaceName);
-    templateSync(context, options);
+    await templateSync(context, options);
   });
 
 program
@@ -139,7 +139,7 @@ const schemasCmd = new Command('schemas').alias('schema').description('List and 
 schemasCmd
   .command('list', { isDefault: true })
   .description('List available schemas')
-  .action(() => listSchemas());
+  .action(async () => await listSchemas());
 schemasCmd
   .command('show')
   .description('Show schema structure (or raw JSON with --raw, or Mermaid ERD with --mermaid-erd)')
@@ -147,12 +147,13 @@ schemasCmd
   .option('--space <name>', 'Resolve schema from space config')
   .option('--raw', 'Output raw JSON file content')
   .option('--mermaid-erd', 'Output Mermaid Entity Relationship Diagram')
-  .action((file, options) =>
-    showSchema(file, {
-      space: options.space,
-      raw: options.raw ?? false,
-      mermaidErd: options.mermaidErd ?? false,
-    }),
+  .action(
+    async (file, options) =>
+      await showSchema(file, {
+        space: options.space,
+        raw: options.raw ?? false,
+        mermaidErd: options.mermaidErd ?? false,
+      }),
   );
 program.addCommand(schemasCmd);
 

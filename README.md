@@ -221,9 +221,10 @@ A space can have several hierarchies by importing schemas that each declare one.
 - **Partials as entity libraries**: Partials can define reusable entity types in `$defs` that composing schemas reference via `$ref`. Bundled partials like `_strategy_general` and `_knowledge_wiki` provide common entity sets for strategy and wiki content.
 - **Partials can carry metadata**: Unlike plain JSON Schema, partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets that metadata only by listing the partial in `$metadata.imports`.
 - **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "http://json-schema.org/draft-07/schema#"` so it validates standalone as plain JSON Schema.
-- **Loading priority**: Partial schemas are loaded from both the default schema directory and the directory of your specified target schema.
+- **Loading priority**: Partial schemas are loaded from the default schema directory, configured plugins (`schemas/`), and the directory of your specified target schema.
 - **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).
-- **Unique IDs**: To encourage clean namespacing, local partial schemas **must** have unique `$id`s that do not collide with the default schemas. If a collision is detected, validation will fail with an error.
+- **Unique IDs**: To encourage clean namespacing, schemas from plugins must use `sctx://<pluginName>/...`, core schemas use `sctx://<name>`, and local partial schemas **must** have unique `$id`s that do not collide with bundled or plugin schemas.
+- **Plugin-contributed schemas**: External plugins can contribute schemas via `<pluginRoot>/schemas/` (or `"sctx": { "schemas": "..." }` in `package.json`). Spaces can reference them using `sctx-plugin/schema.json` or `plugin/schema.json`, or by simple filename if the plugin is declared in `plugins`. Schemas resolve statically without executing plugin JavaScript code.
 
 Schema resolution order: space config `schema` > global config `schema`. Schema resolution fails if none is configured.
 

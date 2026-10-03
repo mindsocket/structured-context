@@ -3,6 +3,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv, { type AnySchemaObject, type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
+import { shortenPluginName } from '../plugins/util';
 import type { Hierarchy, HierarchyLevel, SchemaMetadata, SchemaWithMetadata } from '../types';
 import {
   DIALECT_META_SCHEMA,
@@ -54,13 +55,22 @@ function buildSchemaRegistry(dir: string, targetFile?: string): Map<string, AnyS
   return schemaRefRegistry;
 }
 
+export type PluginSchemaSource = {
+  pluginName: string;
+  schemasDir: string;
+};
+
 /**
- * Build the full two-layer registry for a schema path:
+ * Build the full multi-layer registry for a schema path:
  * - Layer 1: bundled schemas/ dir (partials only, as fallback)
- * - Layer 2: schema's own dir (partials + target file)
- * Throws if a layer 2 schema reuses an $id reserved by layer 1.
+ * - Layer 2: plugin schema dirs (partials + target file if schemaPath is in this plugin's schemasDir)
+ * - Layer 3: schema's own dir (partials + target file)
+ * Throws if a lower-precedence schema collides with a reserved $id or violates namespace rules.
  */
-export function buildFullRegistry(schemaPath: string): Map<string, AnySchemaObject> {
+export function buildFullRegistry(
+  schemaPath: string,
+  pluginSchemas?: PluginSchemaSource[],
+): Map<string, AnySchemaObject> {
   const absPath = resolve(schemaPath);
   const targetFile = basename(absPath);
   const targetDir = dirname(absPath);
@@ -72,14 +82,54 @@ export function buildFullRegistry(schemaPath: string): Map<string, AnySchemaObje
     schemaRefRegistry.set(id, schema);
   }
 
-  // Layer 2: schema's own dir (partials + target file)
-  if (targetDir !== bundledSchemasDir) {
-    const bundledIds = new Set(schemaRefRegistry.keys());
-    bundledIds.add(SCHEMA_META_ID);
+  const bundledIds = new Set(schemaRefRegistry.keys());
+  bundledIds.add(SCHEMA_META_ID);
+
+  // Layer 2: plugin schema dirs
+  const pluginIds = new Map<string, string>(); // id -> pluginName
+  if (pluginSchemas) {
+    for (const { schemasDir, pluginName } of pluginSchemas) {
+      if (!existsSync(schemasDir)) continue;
+      const isTargetDir = resolve(schemasDir) === targetDir;
+      const shortName = shortenPluginName(pluginName);
+
+      for (const [id, schema] of buildSchemaRegistry(schemasDir, isTargetDir ? targetFile : undefined)) {
+        if (bundledIds.has(id)) {
+          throw new Error(
+            `Schema collision: schema in plugin "${pluginName}" (${schemasDir}) uses $id "${id}" which is reserved by a default schema. Please use a unique $id for plugin schemas.`,
+          );
+        }
+        const existingPlugin = pluginIds.get(id);
+        if (existingPlugin) {
+          throw new Error(
+            `Schema collision: schema in plugin "${pluginName}" (${schemasDir}) uses $id "${id}" which is already defined by plugin "${existingPlugin}".`,
+          );
+        }
+        if (id.startsWith('sctx://') && !id.startsWith(`sctx://${shortName}/`)) {
+          throw new Error(
+            `Schema namespace violation: schema in plugin "${pluginName}" uses $id "${id}". Plugin schemas using the sctx:// URI scheme must start with "sctx://${shortName}/".`,
+          );
+        }
+        schemaRefRegistry.set(id, schema);
+        pluginIds.set(id, pluginName);
+      }
+    }
+  }
+
+  // Layer 3: schema's own dir (partials + target file)
+  const isPluginDir = pluginSchemas?.some((p) => resolve(p.schemasDir) === targetDir);
+  if (targetDir !== bundledSchemasDir && !isPluginDir) {
+    const reservedIds = new Set(schemaRefRegistry.keys());
+    reservedIds.add(SCHEMA_META_ID);
     for (const [id, schema] of buildSchemaRegistry(targetDir, targetFile)) {
-      if (bundledIds.has(id)) {
+      if (reservedIds.has(id)) {
         throw new Error(
           `Schema collision: partial schema in ${targetDir} uses $id "${id}" which is reserved by a default schema. Please use a unique $id for local partials.`,
+        );
+      }
+      if (id.startsWith('sctx://')) {
+        throw new Error(
+          `Schema namespace violation: local schema in "${targetDir}" uses $id "${id}". The sctx:// URI scheme is reserved for bundled and plugin schemas.`,
         );
       }
       schemaRefRegistry.set(id, schema);
@@ -116,8 +166,8 @@ function compileValidator(
   return ajv.compile(targetSchema);
 }
 
-export function createValidator(schemaPath: string): ValidateFunction {
-  return compileValidator(readRawSchema(schemaPath), buildFullRegistry(schemaPath));
+export function createValidator(schemaPath: string, pluginSchemas?: PluginSchemaSource[]): ValidateFunction {
+  return compileValidator(readRawSchema(schemaPath), buildFullRegistry(schemaPath, pluginSchemas));
 }
 
 export function resolveNodeType(type: string, typeAliases: Record<string, string> | undefined): string {
@@ -474,8 +524,8 @@ export function extractSchemaTypeNames(
   return new Set(extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type));
 }
 
-export function loadMetadata(schemaPath: string): SchemaMetadata {
-  return extractMetadata(readRawSchema(schemaPath), buildFullRegistry(schemaPath));
+export function loadMetadata(schemaPath: string, pluginSchemas?: PluginSchemaSource[]): SchemaMetadata {
+  return extractMetadata(readRawSchema(schemaPath), buildFullRegistry(schemaPath, pluginSchemas));
 }
 
 export interface LoadedSchema {
@@ -484,9 +534,9 @@ export interface LoadedSchema {
   schemaValidator: ValidateFunction;
 }
 
-export function loadSchema(schemaPath: string): LoadedSchema {
+export function loadSchema(schemaPath: string, pluginSchemas?: PluginSchemaSource[]): LoadedSchema {
   const rawSchema = readRawSchema(schemaPath);
-  const schemaRefRegistry = buildFullRegistry(schemaPath);
+  const schemaRefRegistry = buildFullRegistry(schemaPath, pluginSchemas);
   const schema = {
     ...rawSchema,
     metadata: extractMetadata(rawSchema, schemaRefRegistry),
