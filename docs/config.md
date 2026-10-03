@@ -26,6 +26,12 @@ A space is a named directory or single file registered in the config. Example:
 }
 ```
 
+**`schema`** — the schema used to validate nodes in the space. Can be:
+- A bundled schema name (e.g. `strategy_general.json`, `strict_ost.json`)
+- A local path relative to the config file (e.g. `./schemas/custom.json`) or absolute path
+- A plugin schema prefixed with the plugin name (e.g. `sctx-wardley-mapping/wardley_map.json` or `wardley-mapping/wardley_map.json`). Specifying a plugin-prefixed schema automatically loads that plugin for the space.
+- A simple filename (e.g. `wardley_map.json`) provided by a plugin explicitly declared under `plugins`.
+
 **`includeSpacesFrom`** — import space definitions from other config files. Useful for aggregating spaces from multiple projects into a central config. Duplicate space names are not allowed.
 
 A config must define at least one of `spaces` or `includeSpacesFrom`. When using `includeSpacesFrom` alone, `spaces` can be omitted entirely.
@@ -52,6 +58,8 @@ Use `plugins` to load parse plugins that read spaces from non-markdown sources. 
 ```
 
 All plugin names must start with `sctx-` (the prefix is optional in config and normalised on load). The special name `markdown` refers to the built-in markdown plugin. External plugins are resolved in order: config-adjacent (`{configDir}/plugins/{name}`), then npm. Each plugin must export a `configSchema` JSON Schema; config is validated against it on load. Fields annotated `format: 'path'` in a plugin's `configSchema` are resolved relative to the config file directory.
+
+Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` directory (or `"sctx": { "schemas": "..." }` in `package.json`). If a space specifies a plugin-prefixed schema (e.g. `"sctx-wardley-mapping/wardley_map.json"`), schemas are resolved statically without executing plugin code, and the plugin's code hooks are loaded when parsing or rendering.
 
 ## Markdown plugin config
 

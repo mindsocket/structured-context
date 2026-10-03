@@ -1,10 +1,25 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
-import { loadConfig, resolveSchema } from '../config';
-import { bundledSchemasDir, type EntityInfo, extractEntityInfo, loadSchema, readRawSchema } from '../schema/schema';
+import { loadConfig } from '../config';
+import { discoverPlugins } from '../plugins/loader';
+import {
+  normalizePluginName,
+  resolvePluginSchemasDir,
+  resolveSpacePluginSchemas,
+  shortenPluginName,
+} from '../plugins/util';
+import {
+  bundledSchemasDir,
+  type EntityInfo,
+  extractEntityInfo,
+  loadSchema,
+  type PluginSchemaSource,
+  readRawSchema,
+} from '../schema/schema';
 import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
 import { DEFAULT_SEVERITY_BY_CATEGORY } from '../schema/validate-rules';
+import { createSpaceContext } from '../space-context';
 import type { Rule, RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
 
 function isBundledPath(schemaPath: string): boolean {
@@ -138,7 +153,11 @@ function showMetadata(metadata: SchemaMetadata): void {
   }
 }
 
-function showRegistry(schemaPath: string, schemaRefRegistry: Map<string, AnySchemaObject>): void {
+function showRegistry(
+  schemaPath: string,
+  schemaRefRegistry: Map<string, AnySchemaObject>,
+  pluginSchemas?: PluginSchemaSource[],
+): void {
   const bundledIds = new Set<string>();
   if (existsSync(bundledSchemasDir)) {
     for (const file of readdirSync(bundledSchemasDir).filter((f) => f.endsWith('.json'))) {
@@ -146,9 +165,20 @@ function showRegistry(schemaPath: string, schemaRefRegistry: Map<string, AnySche
       if (typeof s.$id === 'string') bundledIds.add(s.$id);
     }
   }
+  const pluginIds = new Set<string>();
+  if (pluginSchemas) {
+    for (const { schemasDir } of pluginSchemas) {
+      if (!existsSync(schemasDir)) continue;
+      for (const file of readdirSync(schemasDir).filter((f) => f.endsWith('.json'))) {
+        const s = readRawSchema(join(schemasDir, file));
+        if (typeof s.$id === 'string') pluginIds.add(s.$id);
+      }
+    }
+  }
   console.log(`\nRegistry (${schemaPath}):`);
   for (const [id] of schemaRefRegistry) {
-    console.log(`  [${bundledIds.has(id) ? 'bundled' : 'local'}]  ${id}`);
+    const origin = bundledIds.has(id) ? 'bundled' : pluginIds.has(id) ? 'plugin' : 'local';
+    console.log(`  [${origin}]  ${id}`);
   }
 }
 
@@ -197,7 +227,7 @@ function generateMermaidErd(metadata: SchemaMetadata, entities: EntityInfo[]): s
   return mmd;
 }
 
-export function listSchemas(): void {
+export async function listSchemas(): Promise<void> {
   const config = loadConfig();
 
   // List all schemas known to config
@@ -211,6 +241,24 @@ export function listSchemas(): void {
         const schema = readRawSchema(join(bundledSchemasDir, file));
         const id = typeof schema.$id === 'string' ? schema.$id : '(no $id)';
         console.log(`  ${file}${file.startsWith('_') ? '  [partial]' : ''}  (${id})`);
+      }
+    }
+  }
+
+  // List schemas provided by discovered plugins
+  const plugins = await discoverPlugins();
+  for (const p of plugins) {
+    if (p.schemasDir && existsSync(p.schemasDir)) {
+      const files = readdirSync(p.schemasDir)
+        .filter((f) => f.endsWith('.json'))
+        .sort();
+      if (files.length > 0) {
+        console.log(`\nPlugin schemas (${p.name}):`);
+        for (const file of files) {
+          const schema = readRawSchema(join(p.schemasDir, file));
+          const id = typeof schema.$id === 'string' ? schema.$id : '(no $id)';
+          console.log(`  ${file}${file.startsWith('_') ? '  [partial]' : ''}  (${id})`);
+        }
       }
     }
   }
@@ -238,27 +286,76 @@ export function listSchemas(): void {
   }
 }
 
-export function showSchema(
+export async function showSchema(
   file: string | undefined,
   options: { space?: string; raw: boolean; mermaidErd?: boolean },
-): void {
+): Promise<void> {
   const config = loadConfig();
 
   let schemaPath: string;
+  let schema: SchemaWithMetadata | undefined;
+  let schemaRefRegistry: Map<string, AnySchemaObject> | undefined;
+  let pluginSchemas: PluginSchemaSource[] | undefined;
+
   if (options.space) {
     const space = config.spaces.find((s) => s.name === options.space);
     if (!space) {
       console.error(`Error: Unknown space "${options.space}"`);
       process.exit(1);
     }
-    schemaPath = resolveSchema(config, space);
+    const context = createSpaceContext(options.space, config);
+    schemaPath = context.resolvedSchemaPath;
+    schema = context.schema;
+    schemaRefRegistry = context.schemaRefRegistry;
+    pluginSchemas = resolveSpacePluginSchemas(context.space, config, context.configDir);
   } else if (!file) {
     console.error('Error: specify a file argument or use --space');
     process.exit(1);
   } else if (file.startsWith('/') || file.startsWith('./')) {
     schemaPath = file;
   } else {
-    schemaPath = join(bundledSchemasDir, file.endsWith('.json') ? file : `${file}.json`);
+    // Check discovered plugins
+    const discovered = await discoverPlugins();
+    pluginSchemas = discovered
+      .filter((p) => p.schemasDir)
+      .map((p) => ({ pluginName: shortenPluginName(p.name), schemasDir: p.schemasDir! }));
+
+    let candidatePath: string | undefined;
+    if (file.includes('/')) {
+      const slashIdx = file.indexOf('/');
+      const prefix = file.slice(0, slashIdx);
+      const subPath = file.slice(slashIdx + 1);
+      const norm = normalizePluginName(prefix);
+      const short = shortenPluginName(prefix);
+      const pluginDir = resolvePluginSchemasDir(prefix, process.cwd());
+      if (pluginDir) {
+        candidatePath = resolve(pluginDir, subPath.endsWith('.json') ? subPath : `${subPath}.json`);
+        if (!pluginSchemas.some((ps) => ps.pluginName === short)) {
+          pluginSchemas.push({ pluginName: short, schemasDir: pluginDir });
+        }
+      } else {
+        const match = discovered.find((p) => (p.name === norm || p.name === short) && p.schemasDir);
+        if (match?.schemasDir) {
+          candidatePath = resolve(match.schemasDir, subPath.endsWith('.json') ? subPath : `${subPath}.json`);
+        }
+      }
+    } else {
+      for (const p of discovered) {
+        if (p.schemasDir) {
+          const c = resolve(p.schemasDir, file.endsWith('.json') ? file : `${file}.json`);
+          if (existsSync(c)) {
+            candidatePath = c;
+            break;
+          }
+        }
+      }
+    }
+
+    if (candidatePath && existsSync(candidatePath)) {
+      schemaPath = candidatePath;
+    } else {
+      schemaPath = join(bundledSchemasDir, file.endsWith('.json') ? file : `${file}.json`);
+    }
   }
 
   if (!existsSync(schemaPath)) {
@@ -279,7 +376,11 @@ export function showSchema(
     return;
   }
 
-  const { schema, schemaRefRegistry } = loadSchema(schemaPath);
+  if (!schema || !schemaRefRegistry) {
+    const loaded = loadSchema(schemaPath, pluginSchemas);
+    schema = loaded.schema;
+    schemaRefRegistry = loaded.schemaRefRegistry;
+  }
 
   // Handle --mermaid-erd: generate ERD and exit
   if (options.mermaidErd) {
@@ -311,5 +412,5 @@ export function showSchema(
     }
   }
 
-  showRegistry(schemaPath, schemaRefRegistry);
+  showRegistry(schemaPath, schemaRefRegistry, pluginSchemas);
 }

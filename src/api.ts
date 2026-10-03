@@ -20,7 +20,7 @@
 
 export type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
 export type { Config, SpaceConfig } from './config';
-export { loadConfig, setConfigPath } from './config';
+export { loadConfig, resolveSchema, resolveSchemaPath, setConfigPath } from './config';
 export { PLUGIN_PREFIX } from './constants';
 export { assembleSpaceGraph, loadSpaceGraph } from './load-space-graph';
 export type {
@@ -34,9 +34,10 @@ export type {
   TemplateSyncHook,
   TemplateSyncOptions,
 } from './plugins/util';
+export { resolvePluginDir, resolvePluginSchemasDir, resolveSpacePluginSchemas } from './plugins/util';
 export { readSpace } from './read/read-space';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
-export { bundledSchemasDir, loadSchema, setBundledSchemasDir } from './schema/schema';
+export { bundledSchemasDir, loadSchema, type PluginSchemaSource, setBundledSchemasDir } from './schema/schema';
 export { createSpaceContext, SpaceNotFoundError } from './space-context';
 export type { SpaceGraph } from './space-graph';
 export type {

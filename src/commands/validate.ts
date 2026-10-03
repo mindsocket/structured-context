@@ -1,6 +1,7 @@
 import { dirname } from 'node:path';
 import chokidar from 'chokidar';
 import { getConfigSourceFiles } from '../config';
+import { resolveSpacePluginSchemas } from '../plugins/util';
 import { bundledSchemasDir } from '../schema/schema';
 import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
 import { formatErrors, validateSpace } from '../validate';
@@ -211,6 +212,12 @@ export async function watchValidate(context: SpaceContext): Promise<never> {
   const schemaDirs = [bundledSchemasDir];
   if (schemaDir !== bundledSchemasDir) {
     schemaDirs.push(schemaDir);
+  }
+  const pluginSources = resolveSpacePluginSchemas(context.space, context.config, context.configDir);
+  for (const ps of pluginSources) {
+    if (!schemaDirs.includes(ps.schemasDir)) {
+      schemaDirs.push(ps.schemasDir);
+    }
   }
 
   console.log(`👀 Watching for changes...`);

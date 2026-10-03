@@ -20,6 +20,11 @@ Set `schema` in the space config entry:
 }
 ```
 
+A schema can be specified as:
+- **Bundled schema**: simple filename like `strategy_general.json` or `strict_ost.json`.
+- **Local file**: relative path starting with `./` or `../` (resolved against config file directory), or absolute path.
+- **Plugin schema**: prefixed with the plugin name, e.g. `sctx-wardley-mapping/wardley_map.json` or `wardley-mapping/wardley_map.json`. When prefixed, structured-context automatically loads the plugin for that space. Alternatively, if the plugin is already declared under `plugins`, the simple filename (e.g. `wardley_map.json`) resolves directly from that plugin.
+
 Resolution order: space `schema` > global `schema`. Schema resolution fails if none is configured.
 
 ## Bundled schemas
@@ -347,12 +352,24 @@ How hierarchies are used:
 ## Partials and `$ref`
 
 - Files starting with `_` are auto-loaded partials.
-- Both bundled partials and local schema-directory partials are registered.
-- Local partial `$id` values must not collide with bundled IDs.
+- Bundled partials, local schema-directory partials, and partials from loaded plugins are all registered.
+- Local partial `$id` values must not collide with bundled IDs or plugin IDs.
 - `$ref` resolution is transitive across files.
 - Partials with no `$metadata` should prefer `$schema: "http://json-schema.org/draft-07/schema#"` so they validate standalone as plain JSON Schema fragments.
 - **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference their entity types via `$ref` rather than redefining them.
 - **Partials can carry metadata**: Partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets it only by listing the partial in `$metadata.imports`; `$ref` alone brings none.
+
+## Plugin-contributed schemas
+
+Plugins contribute schemas and partials by standard directory convention: placing schema files in `<pluginRoot>/schemas/` (or declaring `"sctx": { "schemas": "./path" }` in `package.json`).
+
+Because schemas are resolved statically by convention from the filesystem, structured-context does not need to execute plugin JavaScript code during schema validation, context creation, or schema inspection.
+
+When a space uses a plugin schema:
+- **Registry registration**: All partials (`_*`) in the plugin's `schemas/` directory are automatically indexed in the schema registry.
+- **Namespace conventions**: Schemas contributed by a plugin must use the URI namespace `sctx://<pluginName>/...` for their `$id` (e.g. `sctx://wardley-mapping/_wardley_base`). The prefix must match the plugin's short name (without the `sctx-` prefix). The top-level `sctx://<name>` namespace is reserved exclusively for core bundled schemas, and local user schemas are forbidden from using the `sctx://` URI scheme.
+- **Collision protection**: If two plugins attempt to register schemas with the same `$id`, or if a plugin schema collides with a core bundled schema, schema loading throws a clear validation error.
+- **Imports and $ref**: Plugin schemas can `$ref` or `$metadata.imports` bundled schemas (e.g. `sctx://_sctx_base`) as well as other partials within their own namespace. Schema composition rules from #122 apply.
 
 ## Editor expectations
 

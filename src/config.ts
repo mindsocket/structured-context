@@ -4,7 +4,12 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv from 'ajv';
 import JSON5 from 'json5';
 import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
-import { normalizePluginName, shortenPluginName } from './plugins/util';
+import {
+  normalizePluginName,
+  resolvePluginSchemasDir,
+  resolveSpacePluginSchemas,
+  shortenPluginName,
+} from './plugins/util';
 import { bundledSchemasDir } from './schema/schema';
 
 const CONFIG_SCHEMA = {
@@ -116,12 +121,10 @@ function resolveRelativePaths(config: Config, configDir: string): Config {
   };
   const relSchema = (p: string | undefined): string | undefined => {
     if (!p || isAbsolute(p) || isUrl(p)) return p;
-    if (!p.includes('/') && !p.includes('\\')) {
-      const localPath = resolve(configDir, p);
-      if (existsSync(localPath)) return localPath;
-      return join(bundledSchemasDir, p);
+    if (p.startsWith('./') || p.startsWith('../')) {
+      return resolve(configDir, p);
     }
-    return resolve(configDir, p);
+    return p;
   };
   return {
     ...config,
@@ -195,11 +198,102 @@ export function getSpaceConfig(name: string, config: Config): SpaceConfig {
   return space;
 }
 
+/**
+ * Resolve a schema identifier or path to an absolute file path.
+ *
+ * Precedence:
+ * 1. Absolute path or URL → used directly.
+ * 2. Explicit relative path (./... or ../...) → resolved relative to configDir.
+ * 3. Plugin-qualified path (e.g. "sctx-wardley-mapping/wardley_map.json" or "wardley-mapping/wardley_map.json"):
+ *    resolved against the matching loaded plugin's schemasDir.
+ * 4. Simple filename without directory (e.g. "wardley_map.json" or "strategy_general.json"):
+ *    - configDir/filename if it exists
+ *    - plugin.schemasDir/filename for any loaded plugin with schemasDir
+ *    - bundledSchemasDir/filename if it exists
+ *    - fallback: configDir/filename
+ */
+export function resolveSchemaPath(
+  rawSchema: string | undefined,
+  configDir: string,
+  space?: SpaceConfig,
+  config?: Config,
+): string {
+  if (!rawSchema) {
+    throw new Error('No schema configured. Set "schema" in the space config or at the top level of the config file.');
+  }
+
+  if (isAbsolute(rawSchema) || isUrl(rawSchema)) {
+    return rawSchema;
+  }
+
+  if (rawSchema.startsWith('./') || rawSchema.startsWith('../')) {
+    return resolve(configDir, rawSchema);
+  }
+
+  if (rawSchema.includes('/') || rawSchema.includes('\\')) {
+    const normalizedSlash = rawSchema.replace(/\\/g, '/');
+    const slashIdx = normalizedSlash.indexOf('/');
+    const prefix = normalizedSlash.slice(0, slashIdx);
+    const subPath = normalizedSlash.slice(slashIdx + 1);
+
+    const pluginSchemasDir = resolvePluginSchemasDir(prefix, configDir);
+    if (pluginSchemasDir) {
+      const candidate = resolve(pluginSchemasDir, subPath);
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+
+    // Check if relative to configDir exists
+    const localCandidate = resolve(configDir, rawSchema);
+    if (existsSync(localCandidate)) {
+      return localCandidate;
+    }
+
+    // If plugin schemas dir was found, return candidate under it
+    if (pluginSchemasDir) {
+      return resolve(pluginSchemasDir, subPath);
+    }
+
+    return localCandidate;
+  }
+
+  // Simple filename without directory:
+  // 1. configDir/filename
+  const localCandidate = resolve(configDir, rawSchema);
+  if (existsSync(localCandidate)) {
+    return localCandidate;
+  }
+
+  // 2. Plugin schemas from declared space / config plugins
+  if (space || config) {
+    const pluginSources = resolveSpacePluginSchemas(space, config ?? { spaces: [] }, configDir);
+    for (const source of pluginSources) {
+      const pluginCandidate = resolve(source.schemasDir, rawSchema);
+      if (existsSync(pluginCandidate)) {
+        return pluginCandidate;
+      }
+    }
+  }
+
+  // 3. Bundled schemas
+  const bundledCandidate = join(bundledSchemasDir, rawSchema);
+  if (existsSync(bundledCandidate)) {
+    return bundledCandidate;
+  }
+
+  return localCandidate;
+}
+
 /** Resolve schema path: CLI arg > space-level config > global config. Throws if none configured. */
-export function resolveSchema(config: Config, space?: SpaceConfig): string {
+export function resolveSchema(config: Config, space?: SpaceConfig, options?: { configDir?: string }): string {
   const schema = space?.schema ?? config.schema;
   if (!schema) {
     throw new Error('No schema configured. Set "schema" in the space config or at the top level of the config file.');
+  }
+  const configDir = options?.configDir ?? space?.sourceDir;
+  if (configDir) {
+    return resolveSchemaPath(schema, configDir, space, config);
   }
   return schema;
 }
