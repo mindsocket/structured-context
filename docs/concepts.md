@@ -111,7 +111,7 @@ A `space node`'s resolved type (`resolvedType`) is its canonical type after alia
 
 ## Typed page
 
-A **typed page** is a markdown file whose frontmatter declares a `space node` type (e.g. `type: goal`). The file itself represents one node, and its body may additionally contain `embedded nodes`.
+A **typed page** is a markdown file whose frontmatter declares a `space node` type (e.g. `type: goal`). The file itself represents one node, and its body may additionally contain `embedded nodes`. Body content appearing before any embedded headings (or the entire body when no embedded headings are present) is preserved as the page node's `content`.
 
 Typed pages are distinct from `space on a page` files: a typed page *is* a `space node`; a `space_on_a_page` file is merely a container.
 

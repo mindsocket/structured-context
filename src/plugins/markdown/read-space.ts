@@ -133,22 +133,36 @@ export async function readSpaceDirectory(
     const fileBase = basename(file, '.md');
     const title = (data.title as string) ?? fileBase;
 
-    nodes.push({
+    const pageNode: BaseNode = {
       label: file,
       title,
       schemaData: { title, ...data },
       linkTargets: [title, fileBase],
       type: pageType,
+      ...(data.content !== undefined ? { content: data.content as string } : {}),
       contentLinks: [...extractLinksFromFrontmatter(data, edgeFields), ...extractLinksFromBody(parsed.content)],
-    });
+    };
 
     if (!ON_A_PAGE_TYPES.includes(pageType)) {
-      const { nodes: embedded, terminatedHeadings } = extractEmbeddedNodes(parsed.content, {
+      const {
+        nodes: embedded,
+        preambleContent,
+        preambleFields,
+        terminatedHeadings,
+      } = extractEmbeddedNodes(parsed.content, {
         pageTitle: fileBase,
         pageType,
         metadata,
         fieldMap,
       });
+      if (preambleFields) {
+        Object.assign(pageNode.schemaData, preambleFields);
+      }
+      if (preambleContent) {
+        pageNode.schemaData.content = preambleContent;
+        pageNode.content = preambleContent;
+      }
+      nodes.push(pageNode);
       nodes.push(...embedded);
       for (const heading of terminatedHeadings) {
         parseIssues.push({
@@ -158,6 +172,8 @@ export async function readSpaceDirectory(
           message: 'Ignored headings detected beyond end of hierarchy.',
         });
       }
+    } else {
+      nodes.push(pageNode);
     }
   }
 
