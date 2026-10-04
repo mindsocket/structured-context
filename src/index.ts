@@ -171,12 +171,25 @@ renderCmd
     const context = spaceName ? buildSpaceContext(spaceName) : undefined;
     await renderList(context);
   });
+function parseDataOptions(val: string, prev: Record<string, string> = {}): Record<string, string> {
+  const eqIdx = val.indexOf('=');
+  if (eqIdx >= 0) {
+    prev[val.slice(0, eqIdx).trim()] = val.slice(eqIdx + 1).trim();
+  } else {
+    prev[val.trim()] = 'true';
+  }
+  return prev;
+}
+
 renderCmd
   .argument('<space-name>', 'Space name')
-  .argument('<format>', 'Render format (e.g. markdown.bullets)')
+  .argument('<format>', 'Render format (e.g. markdown.bullets, markdown.directory)')
   .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
   .option('--hierarchy <name>', 'Hierarchy to render (default: the main hierarchy)')
-  .option('-o, --output <path>', 'Output file path (default: stdout)')
+  .option('-o, --output <path>', 'Output file or directory path (default: stdout)')
+  .option('--out <path>', 'Output directory or file path')
+  .option('-f, --force', 'Overwrite existing files when writing to disk')
+  .option('-d, --data <key=value...>', 'Format-specific key=value options', parseDataOptions)
   .action(async (spaceName: string, format: string, options) => {
     await render(buildSpaceContext(spaceName), format, options);
   });

@@ -6,6 +6,9 @@ export async function show(context: SpaceContext, options?: { filter?: string; h
     filter: options?.filter,
     hierarchy: options?.hierarchy,
   });
+  if (typeof result !== 'string') {
+    throw new Error('Expected string output from markdown.bullets renderer');
+  }
   process.stdout.write(result);
   if (!result.endsWith('\n')) process.stdout.write('\n');
 }

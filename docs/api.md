@@ -91,3 +91,24 @@ defined the space. A hand-assembled `Config` has no such file, so you must pass 
 `configDir` to anchor them (`createSpaceContext`, `loadSpaceGraph`, and `validateFile` all accept it).
 Omitting it throws rather than silently guessing the working directory — prefer absolute paths so the
 anchor never matters.
+
+## Plugin render hooks
+
+Plugins declare render formats via `render.formats` and implement `render(context, graph, options)`. The hook may return a single string or multi-file output:
+
+```ts
+import type { RenderHook, RenderResult, RenderMultiFileOutput } from 'structured-context/api';
+
+const myRenderHook: RenderHook = {
+  formats: [{ name: 'my-format', description: 'Outputs multiple files' }],
+  render(context, graph, options) {
+    return {
+      files: [
+        { path: 'section-1.md', content: '...' },
+        { path: 'subfolder/section-2.md', content: '...' },
+      ],
+    };
+  },
+};
+```
+

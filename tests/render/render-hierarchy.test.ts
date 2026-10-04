@@ -8,7 +8,7 @@ const context = makeSpaceContext(join(MULTI_DIR, 'space'), join(MULTI_DIR, 'sele
 
 describe('rendering a selected hierarchy', () => {
   it('renders the main hierarchy by default', async () => {
-    const [tree, other] = (await executeRender('markdown.bullets', context, {})).split('\n\n');
+    const [tree, other] = ((await executeRender('markdown.bullets', context, {})) as string).split('\n\n');
     expect(tree).toBe(['- goal: Ship v2', '  - task: Write docs'].join('\n'));
     expect(other?.split('\n').sort()).toEqual([
       '  - skill: Testing',
@@ -18,7 +18,7 @@ describe('rendering a selected hierarchy', () => {
   });
 
   it('renders the hierarchy named by the hierarchy option', async () => {
-    const output = await executeRender('markdown.bullets', context, { hierarchy: '_skills-pack' });
+    const output = (await executeRender('markdown.bullets', context, { hierarchy: '_skills-pack' })) as string;
     const [tree, other] = output.split('\n\n');
     expect(tree).toBe(['- skill_area: Engineering', '  - skill: Testing'].join('\n'));
     expect(other?.split('\n').sort()).toEqual([

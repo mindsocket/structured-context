@@ -10,6 +10,9 @@ export async function diagram(
     filter: options.filter,
     hierarchy: options.hierarchy,
   });
+  if (typeof result !== 'string') {
+    throw new Error('Expected string output from mermaid diagram renderer');
+  }
   if (options.output) {
     writeFileSync(options.output, result);
     console.log(`Mermaid diagram written to ${options.output}`);
