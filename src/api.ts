@@ -58,6 +58,7 @@ export type {
   RuleViolation,
   SchemaMetadata,
   SchemaWithMetadata,
+  SourceLocation,
   SpaceContext,
   SpaceNode,
   UnresolvedRef,

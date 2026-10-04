@@ -41,6 +41,11 @@ describe('readSpaceDirectory', () => {
       expect(learn?.schemaData.content).toBeUndefined();
     });
 
+    it('attaches source location to file-based nodes', () => {
+      const vision = result.nodes.find((n) => n.label === 'Personal Vision.md');
+      expect(vision?.source).toEqual({ file: 'Personal Vision.md', line: 1 });
+    });
+
     it('reports no-frontmatter.md as a warning with type no-type', () => {
       const issue = result.parseIssues.find((i) => i.file === 'no-frontmatter.md');
       expect(issue).toBeDefined();
@@ -138,6 +143,13 @@ describe('readSpaceDirectory', () => {
       expect(node?.schemaData.parent).toBe('[[vision_page#^embgoal]]');
       expect(node?.resolvedParents[0]?.title).toBe('Embedded Goal');
     });
+
+    it('attaches containing file and line/column source location to embedded nodes', () => {
+      const mission = resolvedNodes.find((n) => n.label === 'Embedded Mission');
+      const goal = resolvedNodes.find((n) => n.label === 'Embedded Goal');
+      expect(mission?.source).toEqual({ file: 'vision_page.md', line: 9, column: 1 });
+      expect(goal?.source).toEqual({ file: 'vision_page.md', line: 13, column: 1 });
+    });
   });
 
   describe('anchor-implied type inference', () => {
@@ -198,6 +210,8 @@ describe('readSpaceDirectory', () => {
       expect(issue?.severity).toBe('error');
       expect(issue?.type).toBe('parse');
       expect(issue?.message).toBeTruthy();
+      expect(issue?.line).toBe(2);
+      expect(issue?.column).toBe(7);
     });
 
     it('continues parsing other files after a YAML error', async () => {

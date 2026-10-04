@@ -93,6 +93,8 @@ A **space node** (or **node** for short) is a single entity in a `space` — a n
 
 Node types are defined by the schema in use and may vary across schemas. Examples from the default schema: `vision`, `mission`, `goal`, `opportunity`, `solution`. The tooling is not prescriptive about which types exist — schemas are designed to be extended and replaced.
 
+Each node retains its physical `source` location (`file`, and `line` / `column` where available) so that validation diagnostics, edge errors, and downstream tooling pinpoint the exact location in the vault.
+
 > `space_on_a_page` and `dashboard` are not `space node` types — they are `tooling types`.
 
 ### Embedded node
