@@ -173,3 +173,73 @@ describe('buildTargetIndex', () => {
     });
   });
 });
+
+describe('formatWikilink', () => {
+  const { formatWikilink } = require('../../src/read/wikilink-utils');
+
+  it('formats simple target', () => {
+    expect(formatWikilink('My Goal')).toBe('[[My Goal]]');
+  });
+
+  it('formats target with alias', () => {
+    expect(formatWikilink('My Goal', 'Custom Display')).toBe('[[My Goal|Custom Display]]');
+  });
+
+  it('omits alias if it matches target', () => {
+    expect(formatWikilink('My Goal', 'My Goal')).toBe('[[My Goal]]');
+  });
+
+  it('trims whitespace', () => {
+    expect(formatWikilink('  My Goal  ', '  Custom  ')).toBe('[[My Goal|Custom]]');
+  });
+});
+
+describe('parseWikilink', () => {
+  const { parseWikilink } = require('../../src/read/wikilink-utils');
+
+  it('parses simple wikilink', () => {
+    expect(parseWikilink('[[Target]]')).toEqual({ target: 'Target', displayText: undefined });
+  });
+
+  it('parses wikilink with alias', () => {
+    expect(parseWikilink('[[Target|Display Alias]]')).toEqual({
+      target: 'Target',
+      displayText: 'Display Alias',
+    });
+  });
+
+  it('parses wikilink with heading anchor', () => {
+    expect(parseWikilink('[[Target#Heading]]')).toEqual({
+      target: 'Target',
+      anchor: 'Heading',
+      displayText: undefined,
+    });
+  });
+
+  it('parses wikilink with block anchor and alias', () => {
+    expect(parseWikilink('[[Target#^block|Alias]]')).toEqual({
+      target: 'Target',
+      anchor: '^block',
+      displayText: 'Alias',
+    });
+  });
+
+  it('parses unbracketed string', () => {
+    expect(parseWikilink('Target#Heading')).toEqual({
+      target: 'Target',
+      anchor: 'Heading',
+      displayText: undefined,
+    });
+  });
+});
+
+describe('public api re-exports', () => {
+  it('exports expected symbols from api', async () => {
+    const api = await import('../../src/api');
+    expect(typeof api.buildSpaceGraph).toBe('function');
+    expect(typeof api.buildTargetIndex).toBe('function');
+    expect(typeof api.wikilinkToTarget).toBe('function');
+    expect(typeof api.formatWikilink).toBe('function');
+    expect(typeof api.parseWikilink).toBe('function');
+  });
+});
