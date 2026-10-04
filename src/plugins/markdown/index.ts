@@ -4,6 +4,7 @@ import type { ParseResult, PluginContext, StructuredContextPlugin } from '../uti
 import { PLUGIN_PREFIX } from '../util';
 import { readSpaceDirectory, readSpaceOnAPage } from './read-space';
 import { renderBullets } from './render-bullets';
+import { renderMarkdownDirectory } from './render-directory';
 import { templateSync } from './template-sync';
 
 const TYPE_INFERENCE_CONFIG_SCHEMA = {
@@ -45,9 +46,13 @@ export const markdownPlugin: StructuredContextPlugin = {
   parse,
   templateSync,
   render: {
-    formats: [{ name: 'bullets', description: 'Indented bullet list' }],
-    render(_context, graph, { format }) {
+    formats: [
+      { name: 'bullets', description: 'Indented bullet list' },
+      { name: 'directory', description: 'Markdown space directory with one file per node' },
+    ],
+    render(context, graph, { format, data }) {
       if (format === 'bullets') return renderBullets(graph);
+      if (format === 'directory') return renderMarkdownDirectory(context, graph, { format, data });
       throw new Error(`Unknown markdown render format: "${format}"`);
     },
   },

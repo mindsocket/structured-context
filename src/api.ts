@@ -27,14 +27,22 @@ export type {
   ParseHook,
   ParseResult,
   PluginContext,
+  RenderFileOutput,
   RenderFormat,
   RenderHook,
+  RenderMultiFileOutput,
   RenderOptions,
+  RenderResult,
   StructuredContextPlugin,
   TemplateSyncHook,
   TemplateSyncOptions,
 } from './plugins/util';
-export { resolvePluginDir, resolvePluginSchemasDir, resolveSpacePluginSchemas } from './plugins/util';
+export {
+  isRenderMultiFileOutput,
+  resolvePluginDir,
+  resolvePluginSchemasDir,
+  resolveSpacePluginSchemas,
+} from './plugins/util';
 export { readSpace } from './read/read-space';
 export {
   buildTargetIndex,

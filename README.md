@@ -245,6 +245,17 @@ Validates markdown files against the JSON schema:
 - Skips files without frontmatter or without a `type` field
 - Reports validation results with counts and per-file errors
 
+### Render space
+
+```bash
+sctx render <space> <format> [--out <dir-or-file>] [--force] [--filter <view>] [--hierarchy <name>] [--data key=value]
+```
+
+Renders a space in a plugin-provided format. Use `sctx render list [space]` to list available formats.
+
+- `markdown.bullets` — Indented bullet list tree (outputs to stdout or `--out <file>`).
+- `markdown.directory` — Markdown space directory with one file per node. Writes to `--out <dir>` (refuses to overwrite existing files unless `--force` is passed). Flat directory by default, or organized into per-type subfolders with `--data folders=type` or when configured with `typeInference.folderMap`. Without `--out`, prints a summary of files to be written.
+
 ### Show space tree
 
 ```bash

@@ -1,4 +1,4 @@
-import { shortenPluginName } from '@/plugins/util';
+import { type RenderResult, shortenPluginName } from '@/plugins/util';
 import { updateSpaceField } from '../config';
 import { assembleSpaceGraph } from '../load-space-graph';
 import { loadPlugins } from '../plugins/loader';
@@ -9,7 +9,7 @@ export async function executeRender(
   formatName: string,
   context: SpaceContext,
   options: { filter?: string; hierarchy?: string; data?: Record<string, unknown> },
-): Promise<string> {
+): Promise<RenderResult> {
   const pluginMap: Record<string, Record<string, unknown>> = context.space?.plugins ?? {};
   const loaded = await loadPlugins(pluginMap, context.configDir);
   const registry = buildFormatRegistry(loaded);
