@@ -4,12 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import matter from 'gray-matter';
 import { render } from '../../src/commands/render';
-import { markdownPlugin } from '../../src/plugins/markdown';
 import { renderMarkdownDirectory, sanitizeFilename } from '../../src/plugins/markdown/render-directory';
 import type { PluginContext } from '../../src/plugins/util';
 import { buildSpaceGraph } from '../../src/space-graph';
-import { makeHierarchy, makeLevel, makeNode, makeSpaceNode } from '../../src/testing';
-import type { SpaceContext, SpaceNode } from '../../src/types';
+import { makeHierarchy, makeLevel, makeSpaceNode } from '../../src/testing';
+import type { SpaceNode } from '../../src/types';
 import { makePluginContext, makeSpaceContext } from '../helpers/context';
 
 describe('sanitizeFilename', () => {
