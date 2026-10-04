@@ -201,7 +201,9 @@ export function defaultNodeType(stack: StackEntry[], hierarchy: readonly string[
 function appendContent(node: BaseNode, text: string): void {
   if (!text) return;
   const existing = node.schemaData.content as string | undefined;
-  node.schemaData.content = existing ? `${existing}\n${text}` : text;
+  const updated = existing ? `${existing}\n${text}` : text;
+  node.schemaData.content = updated;
+  node.content = updated;
 }
 
 function processListItem(
@@ -267,6 +269,7 @@ function processListItem(
       schemaData,
       linkTargets,
       type,
+      ...(schemaData.content !== undefined ? { content: schemaData.content as string } : {}),
       contentLinks: [],
     };
     nodes.push(newNode);
@@ -325,6 +328,8 @@ export interface ExtractEmbeddedResult {
   nodes: BaseNode[];
   preambleNodeCount: number;
   terminatedHeadings: string[];
+  preambleContent?: string;
+  preambleFields?: Record<string, unknown>;
 }
 
 /**
@@ -362,7 +367,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       : [];
 
   type ParseState = 'preamble' | 'active' | 'done';
-  let parseState: ParseState = 'preamble';
+  let parseState: ParseState = isOnAPageMode ? 'preamble' : 'active';
 
   let preambleNodeCount = 0;
   const terminatedHeadings: string[] = [];
@@ -621,6 +626,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         schemaData,
         linkTargets,
         type,
+        ...(schemaData.content !== undefined ? { content: schemaData.content as string } : {}),
         contentLinks: [],
       };
 
@@ -852,5 +858,13 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     }
   }
 
-  return { nodes, preambleNodeCount, terminatedHeadings };
+  const preambleContent = rootNode.schemaData.content as string | undefined;
+  const { type: _rootType, content: _rootContent, ...preambleFields } = rootNode.schemaData;
+  return {
+    nodes,
+    preambleNodeCount,
+    terminatedHeadings,
+    preambleContent,
+    preambleFields: Object.keys(preambleFields).length > 0 ? preambleFields : undefined,
+  };
 }

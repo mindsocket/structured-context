@@ -29,6 +29,18 @@ describe('readSpaceDirectory', () => {
       expect(vision?.schemaData.title).toBe('Personal Vision');
     });
 
+    it('preserves body content on file-based nodes', () => {
+      const vision = result.nodes.find((n) => n.label === 'Personal Vision.md');
+      expect(vision?.content).toBe('Vision body content here.');
+      expect(vision?.schemaData.content).toBe('Vision body content here.');
+    });
+
+    it('leaves content undefined when file has no body text', () => {
+      const learn = result.nodes.find((n) => n.label === 'Learn TypeScript.md');
+      expect(learn?.content).toBeUndefined();
+      expect(learn?.schemaData.content).toBeUndefined();
+    });
+
     it('reports no-frontmatter.md as a warning with type no-type', () => {
       const issue = result.parseIssues.find((i) => i.file === 'no-frontmatter.md');
       expect(issue).toBeDefined();
@@ -77,18 +89,22 @@ describe('readSpaceDirectory', () => {
       ({ nodes: resolvedNodes } = resolveGraphEdges(result.nodes, metadata));
     });
 
-    it('includes vision_page.md as its own node', () => {
+    it('includes vision_page.md as its own node with preamble body content', () => {
       const node = resolvedNodes.find((n) => n.label === 'vision_page.md');
       expect(node).toBeDefined();
       expect(node?.schemaData.type).toBe('vision');
       expect(node?.schemaData.title).toBe('vision_page');
+      expect(node?.content).toBe('The vision body content.');
+      expect(node?.schemaData.content).toBe('The vision body content.');
     });
 
-    it('extracts embedded mission with plain title', () => {
+    it('extracts embedded mission with plain title and body content', () => {
       const node = resolvedNodes.find((n) => n.label === 'Embedded Mission');
       expect(node).toBeDefined();
       expect(node?.schemaData.type).toBe('mission');
       expect(node?.schemaData.title).toBe('Embedded Mission');
+      expect(node?.content).toBe('The mission body content.');
+      expect(node?.schemaData.content).toBe('The mission body content.');
     });
 
     it('embedded mission parent points to the containing page', () => {
@@ -103,10 +119,12 @@ describe('readSpaceDirectory', () => {
       expect(node?.linkTargets).toContain('vision_page#[type mission] Embedded Mission embmission');
     });
 
-    it('extracts nested embedded goal with plain title', () => {
+    it('extracts nested embedded goal with plain title and body content', () => {
       const node = resolvedNodes.find((n) => n.label === 'Embedded Goal');
       expect(node).toBeDefined();
       expect(node?.schemaData.type).toBe('goal');
+      expect(node?.content).toBe('The goal body content.');
+      expect(node?.schemaData.content).toBe('The goal body content.');
     });
 
     it('embedded goal parent is stored as an implied section target and resolved to title', () => {
