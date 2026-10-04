@@ -86,6 +86,7 @@ function resolveEdge(
         field,
         reason: 'invalid_shape',
         message: `Field "${field}" must be a wikilink string, got ${typeof rawField}`,
+        source: ownerNode.source,
       });
       return false;
     }
@@ -102,6 +103,7 @@ function resolveEdge(
         field,
         reason: 'not_found',
         message: `Link target "${target}" in field "${field}" not found`,
+        source: ownerNode.source,
       });
       return null;
     }
@@ -112,6 +114,7 @@ function resolveEdge(
         field,
         reason: 'ambiguous',
         message: `Link target "${target}" in field "${field}" is ambiguous (matches multiple nodes)`,
+        source: ownerNode.source,
       });
       return null;
     }

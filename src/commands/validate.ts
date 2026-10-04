@@ -135,15 +135,18 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   if (result.parseIssues.length > 0) {
     console.log(`\nExcluded during parsing:`);
     for (const issue of result.parseIssues) {
+      const loc =
+        issue.line !== undefined ? `:${issue.line}${issue.column !== undefined ? `:${issue.column}` : ''}` : '';
       const detail = issue.message ? ` - ${issue.message}` : '';
-      console.log(`   ${issue.file}: ${issue.severity} - ${issue.type}${detail}`);
+      console.log(`   ${issue.file}${loc}: ${issue.severity} - ${issue.type}${detail}`);
     }
   }
 
   if (result.nodeErrors.length > 0) {
     console.log(`\nSchema validation errors:`);
-    result.nodeErrors.forEach(({ file, errors, nodeData }) => {
-      console.log(`\n   ${file}:`);
+    result.nodeErrors.forEach(({ file, line, errors, nodeData }) => {
+      const loc = line !== undefined ? `:${line}` : '';
+      console.log(`\n   ${file}${loc}:`);
       const formatted = formatErrors(errors, schema, schemaRefRegistry, nodeData);
       formatted.forEach(({ message }) => {
         console.log(`      ${message}`);
@@ -153,8 +156,9 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
 
   if (result.refErrors.length > 0) {
     console.log(`\nBroken links:`);
-    result.refErrors.forEach(({ file, parent, error }) => {
-      console.log(`   ${file}: ${parent} → ${error}`);
+    result.refErrors.forEach(({ file, line, parent, error }) => {
+      const loc = line !== undefined ? `:${line}` : '';
+      console.log(`   ${file}${loc}: ${parent} → ${error}`);
     });
   }
 

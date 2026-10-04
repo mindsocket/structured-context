@@ -218,6 +218,8 @@ function processListItem(
   pendingType?: string,
   parentFieldAppend?: { node: BaseNode; field: string },
   activeNodeFieldAppend?: { node: BaseNode; field: string },
+  file?: string,
+  lineOffset?: number,
 ): void {
   const firstPara = item.children.find((c) => c.type === 'paragraph') as Paragraph | undefined;
 
@@ -262,6 +264,12 @@ function processListItem(
     if (parentRef && !parentFieldAppend) schemaData.parent = parentRef;
     if (summary) schemaData.summary = summary;
 
+    const line = item.position?.start.line ? item.position.start.line + (lineOffset ?? 0) : undefined;
+    const column = item.position?.start.column;
+    const source = file
+      ? { file, ...(line !== undefined ? { line } : {}), ...(column !== undefined ? { column } : {}) }
+      : undefined;
+
     const linkTargets = buildLinkTargets(title);
     const newNode: BaseNode = {
       label: makeLabel(title),
@@ -271,6 +279,7 @@ function processListItem(
       type,
       ...(schemaData.content !== undefined ? { content: schemaData.content as string } : {}),
       contentLinks: [],
+      ...(source ? { source } : {}),
     };
     nodes.push(newNode);
 
@@ -292,6 +301,10 @@ function processListItem(
             typeAliases,
             fieldMap,
             pendingType,
+            undefined,
+            undefined,
+            file,
+            lineOffset,
           );
         }
       }
@@ -322,6 +335,10 @@ export interface ExtractEmbeddedOptions {
    * Example: { "record_type": "type" } renames `record_type` to `type` in extracted data.
    */
   fieldMap?: Record<string, string>;
+  /** File path of the containing document, for populating node.source. */
+  file?: string;
+  /** Line offset of the body within the source file (e.g. frontmatter lines). */
+  lineOffset?: number;
 }
 
 export interface ExtractEmbeddedResult {
@@ -619,6 +636,12 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       };
       if (parentRef) schemaData.parent = parentRef;
 
+      const line = heading.position?.start.line ? heading.position.start.line + (options.lineOffset ?? 0) : undefined;
+      const column = heading.position?.start.column;
+      const source = options.file
+        ? { file: options.file, ...(line !== undefined ? { line } : {}), ...(column !== undefined ? { column } : {}) }
+        : undefined;
+
       const linkTargets = buildHeadingLinkTargets(rawText, title, anchor);
       const headingNode: BaseNode = {
         label: makeLabel(title),
@@ -628,6 +651,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         type,
         ...(schemaData.content !== undefined ? { content: schemaData.content as string } : {}),
         contentLinks: [],
+        ...(source ? { source } : {}),
       };
 
       // Push to stack BEFORE resolving semantic parent — stack[-2] is the correct parent.
@@ -689,6 +713,8 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             definition.type,
             parentFieldAppendArg,
             activeNodeFieldAppendArg,
+            options.file,
+            options.lineOffset,
           );
         }
         grouping = null;
@@ -703,6 +729,11 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             buildListItemLinkTargets,
             typeAliases,
             fieldMap,
+            undefined,
+            undefined,
+            undefined,
+            options.file,
+            options.lineOffset,
           );
         }
       }
@@ -791,6 +822,16 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
               }
             }
 
+            const line = row.position?.start.line ? row.position.start.line + (options.lineOffset ?? 0) : undefined;
+            const column = row.position?.start.column;
+            const source = options.file
+              ? {
+                  file: options.file,
+                  ...(line !== undefined ? { line } : {}),
+                  ...(column !== undefined ? { column } : {}),
+                }
+              : undefined;
+
             const linkTargets = buildListItemLinkTargets(title);
             const rowNode: BaseNode = {
               label: makeLabel(title),
@@ -799,6 +840,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
               linkTargets,
               type: rowTypeStr,
               contentLinks: [],
+              ...(source ? { source } : {}),
             };
             nodes.push(rowNode);
 

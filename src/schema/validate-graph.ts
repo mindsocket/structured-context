@@ -3,7 +3,7 @@ import type { GraphViolation, Hierarchy, SchemaMetadata, SpaceNode, UnresolvedRe
 
 export interface GraphValidationResult {
   violations: GraphViolation[];
-  refErrors: Array<{ file: string; parent: string; error: string }>;
+  refErrors: Array<{ file: string; line?: number; parent: string; error: string }>;
 }
 
 /**
@@ -15,7 +15,12 @@ export function validateGraph(
   metadata: SchemaMetadata,
   unresolvedRefs: UnresolvedRef[] = [],
 ): GraphValidationResult {
-  const refErrors = unresolvedRefs.map((u) => ({ file: u.label, parent: u.ref, error: u.message }));
+  const refErrors = unresolvedRefs.map((u) => ({
+    file: u.source?.file ?? u.label,
+    ...(u.source?.line !== undefined ? { line: u.source.line } : {}),
+    parent: u.ref,
+    error: u.message,
+  }));
   const violations = validateHierarchyStructure(nodes, metadata);
   return { violations, refErrors };
 }

@@ -41,10 +41,16 @@ export function readSpaceOnAPage(context: PluginContext): ParseResult {
   }
 
   const pageTitle = basename(filePath, '.md');
+  const fmMatch = raw.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
+  const lineOffset = fmMatch ? (fmMatch[0].match(/\n/g) || []).length : 0;
+  const fileName = basename(filePath);
+
   const { nodes, preambleNodeCount, terminatedHeadings } = extractEmbeddedNodes(body, {
     pageTitle,
     pageType: 'space_on_a_page',
     metadata,
+    file: fileName,
+    lineOffset,
   });
 
   const parseIssues: ParseIssue[] = terminatedHeadings.map((heading) => ({
@@ -100,17 +106,28 @@ export async function readSpaceDirectory(
       // Clear the cache after any parse error to avoid stale state.
       // See: https://github.com/jonschlinkert/gray-matter/issues/166
       (matter as unknown as { clearCache: () => void }).clearCache();
+      const yamlErr = err as { mark?: { line: number; column: number } };
+      const line = yamlErr.mark ? yamlErr.mark.line + 1 : undefined;
+      const column = yamlErr.mark ? yamlErr.mark.column + 1 : undefined;
       parseIssues.push({
         file,
         severity: 'error',
         type: 'parse',
         message: err instanceof Error ? err.message : String(err),
+        ...(line !== undefined ? { line } : {}),
+        ...(column !== undefined ? { column } : {}),
       });
       continue;
     }
 
     if (!parsed.data || Object.keys(parsed.data).length === 0) {
-      parseIssues.push({ file, severity: 'warning', type: 'no-type', message: 'No front-matter or type specified' });
+      parseIssues.push({
+        file,
+        severity: 'warning',
+        type: 'no-type',
+        message: 'No front-matter or type specified',
+        line: 1,
+      });
       continue;
     }
 
@@ -121,7 +138,7 @@ export async function readSpaceDirectory(
     }
 
     if (!data.type) {
-      parseIssues.push({ file, severity: 'warning', type: 'no-type' });
+      parseIssues.push({ file, severity: 'warning', type: 'no-type', line: 1 });
       continue;
     }
 
@@ -132,6 +149,8 @@ export async function readSpaceDirectory(
     const pageType = data.type as string;
     const fileBase = basename(file, '.md');
     const title = (data.title as string) ?? fileBase;
+    const fmMatch = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
+    const lineOffset = fmMatch ? (fmMatch[0].match(/\n/g) || []).length : 0;
 
     const pageNode: BaseNode = {
       label: file,
@@ -139,6 +158,7 @@ export async function readSpaceDirectory(
       schemaData: { title, ...data },
       linkTargets: [title, fileBase],
       type: pageType,
+      source: { file, line: 1 },
       ...(data.content !== undefined ? { content: data.content as string } : {}),
       contentLinks: [...extractLinksFromFrontmatter(data, edgeFields), ...extractLinksFromBody(parsed.content)],
     };
@@ -154,6 +174,8 @@ export async function readSpaceDirectory(
         pageType,
         metadata,
         fieldMap,
+        file,
+        lineOffset,
       });
       if (preambleFields) {
         Object.assign(pageNode.schemaData, preambleFields);

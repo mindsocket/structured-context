@@ -29,8 +29,8 @@ export interface FormattedError {
 export interface ValidationResult {
   validCount: number;
   nodeErrorCount: number;
-  nodeErrors: Array<{ file: string; errors: ErrorObject[]; nodeData: Record<string, unknown> }>;
-  refErrors: Array<{ file: string; parent: string; error: string }>;
+  nodeErrors: Array<{ file: string; line?: number; errors: ErrorObject[]; nodeData: Record<string, unknown> }>;
+  refErrors: Array<{ file: string; line?: number; parent: string; error: string }>;
   duplicateErrors: Array<{ title: string; files: string[] }>;
   /** All rule violations with their effective severity. Only `error` severity fails validation. */
   ruleViolations: RuleViolation[];
@@ -182,7 +182,8 @@ export async function validateSpace(
     if (nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType)) {
       result.nodeErrorCount++;
       result.nodeErrors.push({
-        file: node.label,
+        file: node.source?.file ?? node.label,
+        ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
         errors: [
           {
             instancePath: '/type',
@@ -205,7 +206,8 @@ export async function validateSpace(
     } else {
       result.nodeErrorCount++;
       result.nodeErrors.push({
-        file: node.label,
+        file: node.source?.file ?? node.label,
+        ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
         errors: schemaValidator.errors || [],
         nodeData: node.schemaData as Record<string, unknown>,
       });
@@ -322,6 +324,8 @@ export async function validateFile(
       errors[`schema:type:${validTypes.join(',')}`] = {
         kind: 'schema',
         message: `Invalid type "${nodeType}". Valid types are: ${validTypes.sort().join(', ')}`,
+        ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
+        ...(node.source?.column !== undefined ? { column: node.source.column } : {}),
       };
       continue;
     }
@@ -335,7 +339,12 @@ export async function validateFile(
         node.schemaData as Record<string, unknown>,
       );
       for (const { message, dedupeKey } of formatted) {
-        errors[`schema:${dedupeKey}`] = { kind: 'schema', message };
+        errors[`schema:${dedupeKey}`] = {
+          kind: 'schema',
+          message,
+          ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
+          ...(node.source?.column !== undefined ? { column: node.source.column } : {}),
+        };
       }
     }
   }

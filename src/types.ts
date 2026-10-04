@@ -57,6 +57,15 @@ export type ResolvedParentRef = {
   fieldOn: 'child' | 'parent';
 };
 
+export type SourceLocation = {
+  /** File path relative to the space root. */
+  file: string;
+  /** 1-indexed starting line number in the source file, if available. */
+  line?: number;
+  /** 1-indexed starting column number in the source file, if available. */
+  column?: number;
+};
+
 export type UnresolvedRef = {
   /** Source identifier of the node containing the broken link. */
   label: string;
@@ -67,6 +76,8 @@ export type UnresolvedRef = {
   reason: 'not_found' | 'ambiguous' | 'invalid_shape';
   /** Human-readable message matching validate-graph output format. */
   message: string;
+  /** Source location of the node containing the broken link, if available. */
+  source?: SourceLocation;
 };
 
 /**
@@ -130,6 +141,8 @@ export type BaseNode = {
    * Populated by plugins that support content link extraction; absent if not populated.
    */
   contentLinks?: ContentLink[];
+  /** Source location of the node definition in the filesystem. */
+  source?: SourceLocation;
 };
 
 /**
@@ -163,6 +176,10 @@ export type ParseIssue = {
   type: 'no-type' | 'parse' | string;
   /** Human-readable detail. */
   message?: string;
+  /** 1-indexed line number in source file, if available. */
+  line?: number;
+  /** 1-indexed column number in source file, if available. */
+  column?: number;
 };
 
 /** Rule categories for organizing executable validation rules */
@@ -251,6 +268,10 @@ export interface FileValidationIssue {
   message: string;
   /** Present for rule violations (`kind: 'rule'`). */
   severity?: RuleSeverity;
+  /** 1-indexed line number in source file, if available. */
+  line?: number;
+  /** 1-indexed column number in source file, if available. */
+  column?: number;
 }
 
 export interface FileValidationResult {
