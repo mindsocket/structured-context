@@ -1,5 +1,55 @@
 import type { BaseNode } from '../types';
 
+export interface ParsedWikilink {
+  target: string;
+  anchor?: string;
+  displayText?: string;
+}
+
+/**
+ * Format a wikilink string.
+ * formatWikilink('My Goal') -> '[[My Goal]]'
+ * formatWikilink('My Goal', 'Custom Display') -> '[[My Goal|Custom Display]]'
+ */
+export function formatWikilink(target: string, alias?: string): string {
+  const trimmedTarget = target.trim();
+  const trimmedAlias = alias?.trim();
+  if (trimmedAlias && trimmedAlias !== trimmedTarget) {
+    return `[[${trimmedTarget}|${trimmedAlias}]]`;
+  }
+  return `[[${trimmedTarget}]]`;
+}
+
+/**
+ * Parse a wikilink or link inner string into target, anchor, and displayText.
+ * Handles: [[target]], [[target#anchor]], [[target|alias]], [[target#anchor|alias]]
+ * Also handles bare forms without enclosing brackets.
+ */
+export function parseWikilink(wikilink: string): ParsedWikilink {
+  const cleaned = wikilink.replace(/^"|"$/g, '').trim();
+  const inner = cleaned.startsWith('[[') && cleaned.endsWith(']]') ? cleaned.slice(2, -2).trim() : cleaned;
+
+  // Alias: [[target|alias]] or [[target#anchor|alias]]
+  const pipeIdx = inner.indexOf('|');
+  let core = inner;
+  let displayText: string | undefined;
+  if (pipeIdx >= 0) {
+    core = inner.slice(0, pipeIdx);
+    const alias = inner.slice(pipeIdx + 1).trim();
+    if (alias) displayText = alias;
+  }
+
+  // Anchor: [[target#anchor]] or [[target#^block]]
+  const hashIdx = core.indexOf('#');
+  if (hashIdx >= 0) {
+    const target = core.slice(0, hashIdx).trim();
+    const anchor = core.slice(hashIdx + 1).trim() || undefined;
+    return { target, anchor, displayText };
+  }
+
+  return { target: core.trim(), displayText };
+}
+
 /**
  * Extract the lookup key from a wikilink string such as:
  *   [[Personal Vision]]                → "Personal Vision"

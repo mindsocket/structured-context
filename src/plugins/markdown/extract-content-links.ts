@@ -3,33 +3,8 @@ import { toString as mdastToString } from 'mdast-util-to-string';
 import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
+import { parseWikilink } from '../../read/wikilink-utils';
 import type { ContentLink, SchemaMetadata } from '../../types';
-
-/**
- * Parse an Obsidian wikilink inner string into its components.
- * Handles: [[target]], [[target#anchor]], [[target|alias]], [[target#anchor|alias]]
- */
-function parseWikilinkInner(inner: string): { target: string; anchor?: string; displayText?: string } {
-  // Alias: [[target|alias]] or [[target#anchor|alias]]
-  const pipeIdx = inner.indexOf('|');
-  let core = inner;
-  let displayText: string | undefined;
-  if (pipeIdx >= 0) {
-    core = inner.slice(0, pipeIdx);
-    const alias = inner.slice(pipeIdx + 1).trim();
-    if (alias) displayText = alias;
-  }
-
-  // Anchor: [[target#anchor]] or [[target#^block]]
-  const hashIdx = core.indexOf('#');
-  if (hashIdx >= 0) {
-    const target = core.slice(0, hashIdx).trim();
-    const anchor = core.slice(hashIdx + 1).trim() || undefined;
-    return { target, anchor, displayText };
-  }
-
-  return { target: core.trim(), displayText };
-}
 
 /**
  * Extract wikilinks (and Obsidian embed wikilinks) from a plain text string.
@@ -41,7 +16,7 @@ function extractWikilinksFromText(text: string): ContentLink[] {
   for (const match of text.matchAll(/(!?)\[\[([^\]]+)\]\]/g)) {
     const isEmbed = match[1] === '!';
     const inner = match[2]!;
-    const { target, anchor, displayText } = parseWikilinkInner(inner);
+    const { target, anchor, displayText } = parseWikilink(inner);
     if (!target) continue;
 
     links.push({

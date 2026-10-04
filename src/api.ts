@@ -36,10 +36,17 @@ export type {
 } from './plugins/util';
 export { resolvePluginDir, resolvePluginSchemasDir, resolveSpacePluginSchemas } from './plugins/util';
 export { readSpace } from './read/read-space';
+export {
+  buildTargetIndex,
+  formatWikilink,
+  type ParsedWikilink,
+  parseWikilink,
+  wikilinkToTarget,
+} from './read/wikilink-utils';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
 export { bundledSchemasDir, loadSchema, type PluginSchemaSource, setBundledSchemasDir } from './schema/schema';
 export { createSpaceContext, SpaceNotFoundError } from './space-context';
-export type { SpaceGraph } from './space-graph';
+export { buildSpaceGraph, type SpaceGraph } from './space-graph';
 export type {
   BaseNode,
   ContentLink,
