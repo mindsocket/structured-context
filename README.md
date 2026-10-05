@@ -186,7 +186,7 @@ With `fieldOn: "parent"`, embedded child nodes (parsed from a matching heading's
 `$ref` reuses JSON Schema definitions for validation only; it brings no metadata. Metadata is composed only through explicit imports:
 
 ```json5
-"$metadata": { "imports": ["sctx://_strategy_general"] }
+"$metadata": { "imports": ["sctx://core/_strategy_general"] }
 ```
 
 - An import brings the whole schema's `$metadata`, and is transitive (the imported schema's own imports come too).
@@ -223,7 +223,7 @@ A space can have several hierarchies by importing schemas that each declare one.
 - **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "http://json-schema.org/draft-07/schema#"` so it validates standalone as plain JSON Schema.
 - **Loading priority**: Partial schemas are loaded from the default schema directory, configured plugins (`schemas/`), and the directory of your specified target schema.
 - **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).
-- **Unique IDs**: To encourage clean namespacing, schemas from plugins must use `sctx://<pluginName>/...`, core schemas use `sctx://<name>`, and local partial schemas **must** have unique `$id`s that do not collide with bundled or plugin schemas.
+- **`$id` namespaces**: All `$id`s use `sctx://`. Bundled schemas are `sctx://core/<name>`, plugin schemas `sctx://<pluginName>/<name>`, and local schemas a single name, `sctx://<name>`. Collisions are errors. Legacy bundled ids (`sctx://<name>`, e.g. `sctx://_sctx_base`) resolve to `sctx://core/` with a deprecation warning until 1.0. See [docs/schemas.md](docs/schemas.md#schema-id-namespaces).
 - **Plugin-contributed schemas**: External plugins can contribute schemas via `<pluginRoot>/schemas/` (or `"sctx": { "schemas": "..." }` in `package.json`). Spaces can reference them using `sctx-plugin/schema.json` or `plugin/schema.json`, or by simple filename if the plugin is declared in `plugins`. Schemas resolve statically without executing plugin JavaScript code.
 
 Schema resolution order: space config `schema` > global config `schema`. Schema resolution fails if none is configured.

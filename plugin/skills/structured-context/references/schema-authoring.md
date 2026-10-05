@@ -71,7 +71,7 @@ Rules are a flat array. Each rule's `category` (`validation`, `coherence`, `work
 `$ref`/`$defs` are validation-only: a `$ref` brings no metadata. Metadata travels only via `$metadata.imports` (schema `$id`s):
 
 ```json5
-"$metadata": { "imports": ["sctx://_strategy_general"] }
+"$metadata": { "imports": ["sctx://core/_strategy_general"] }
 ```
 
 - an import brings the whole schema's metadata and is transitive; merge order is imports in order (depth-first), then the schema's own metadata
@@ -108,7 +108,7 @@ Schema definitions use the mapped target names.
 
 - Schema files are parsed as JSON5.
 - Files starting with `_` in the same directory (or in a plugin's `schemasDir`) are auto-loaded partials.
-- Namespacing: Plugin schemas must use `$id: "sctx://<pluginName>/..."`. Bundled schemas reserve `sctx://<name>`. Local partial `$id` values must be unique and must not use `sctx://`.
+- Namespacing: every `$id` uses `sctx://`. Local schemas use a single name, `sctx://<name>` (no path). Bundled schemas are `sctx://core/<name>`; plugin schemas are `sctx://<pluginShortName>/<name>`. Reference bundled partials as `sctx://core/_sctx_base` etc. (the old `sctx://_sctx_base` form still resolves with a deprecation warning until 1.0, and can't be used as a local `$id`).
 - If a partial has no `$metadata`, use `$schema: "http://json-schema.org/draft-07/schema#"` so it remains a standalone-valid JSON Schema fragment.
 
 ## `$ref` patterns
@@ -143,13 +143,13 @@ Each entity type entry should have:
   "type": "object",
   "description": "A specific, scoped explanation of what this entity type represents and when to use it.",
   "allOf": [
-    { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }
+    { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }
     // add other partials only if appropriate to the domain of this schema
   ],
   "properties": {
     "type": { "const": "opportunity" },
     "summary": {
-      "$ref": "sctx://_sctx_base#/$defs/summary"
+      "$ref": "sctx://core/_sctx_base#/$defs/summary"
     },    // add domain-specific properties here
   },
   "required": ["type", "status"],

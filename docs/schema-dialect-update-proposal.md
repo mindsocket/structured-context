@@ -297,7 +297,7 @@ Use a mixed strategy:
 
 - Keep `$schema` as a resolvable HTTPS URL to the generated metaschema:
   - `https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json`
-- Keep bundled schema/partial `$id` values in the internal `sctx://...` namespace for stable CLI registry resolution.
+- Keep bundled schema/partial `$id` values in the internal `sctx://...` namespace for stable CLI registry resolution (now `sctx://core/...`; see `docs/schemas.md`).
 - Document that editor-side mappings (`json.schemas`) are optional conveniences and not a correctness mechanism.
 
 Notes:

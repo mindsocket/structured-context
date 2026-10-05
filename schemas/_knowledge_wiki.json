@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
-  "$id": "sctx://_knowledge_wiki",
+  "$id": "sctx://core/_knowledge_wiki",
   // Shared entity definitions for knowledge wiki schemas.
   // Provides aliases, relationships, rules, and entity type $defs.
   // This partial has no hierarchy — wiki entities are flat with no required parent links.
@@ -65,18 +65,18 @@
     "source": {
       "type": "object",
       "description": "A processed summary of a raw source (article, paper, book, video, thread, podcast, etc.). Captures key information from the source in structured form with provenance.",
-      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "source" },
         "summary": {
-          "$ref": "sctx://_sctx_base#/$defs/summary"
+          "$ref": "sctx://core/_sctx_base#/$defs/summary"
         },
         "url": {
           "type": "string",
           "description": "URL of the original source"
         },
         "local_copy": {
-          "$ref": "sctx://_sctx_base#/$defs/wikilink",
+          "$ref": "sctx://core/_sctx_base#/$defs/wikilink",
           "description": "Wikilink to a local copy of the source (e.g. a saved PDF or clipped note)"
         },
         "author": {
@@ -98,7 +98,7 @@
         },
         "sources": {
           "type": "array",
-          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://core/_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to other source pages that this one references or extends"
         }
       },
@@ -117,20 +117,20 @@
     "concept": {
       "type": "object",
       "description": "A concept page — defines and frames a specific idea, mechanism, or domain term. May draw from multiple sources. The building blocks of the wiki's knowledge graph.",
-      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "concept" },
         "summary": {
-          "$ref": "sctx://_sctx_base#/$defs/summary"
+          "$ref": "sctx://core/_sctx_base#/$defs/summary"
         },
         "sources": {
           "type": "array",
-          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://core/_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to source pages that contributed to this concept"
         },
         "related": {
           "type": "array",
-          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://core/_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to related concept or synthesis pages"
         }
       },
@@ -147,20 +147,20 @@
     "entity": {
       "type": "object",
       "description": "A concrete entity — a person, organisation, product, model, or other named thing. The building blocks of the wiki's knowledge graph alongside concepts. Entities are distinct from concepts: a concept frames an idea or mechanism; an entity is a specific, identifiable thing in the world.",
-      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "entity" },
         "summary": {
-          "$ref": "sctx://_sctx_base#/$defs/summary"
+          "$ref": "sctx://core/_sctx_base#/$defs/summary"
         },
         "sources": {
           "type": "array",
-          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://core/_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to source pages that contributed to this entity page"
         },
         "related": {
           "type": "array",
-          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://core/_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to related entity, concept, or synthesis pages"
         }
       },
@@ -177,20 +177,20 @@
     "synthesis": {
       "type": "object",
       "description": "A synthesis page — connects multiple concepts and sources into a coherent model, framework, or thesis. The highest-value pages in a knowledge wiki. Must reference contributing sources.",
-      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "synthesis" },
         "summary": {
-          "$ref": "sctx://_sctx_base#/$defs/summary"
+          "$ref": "sctx://core/_sctx_base#/$defs/summary"
         },
         "sources": {
           "type": "array",
-          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://core/_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to source pages this synthesis draws from"
         },
         "concepts": {
           "type": "array",
-          "items": { "$ref": "sctx://_sctx_base#/$defs/wikilink" },
+          "items": { "$ref": "sctx://core/_sctx_base#/$defs/wikilink" },
           "description": "Wikilinks to concept pages this synthesis connects"
         }
       },
@@ -208,7 +208,7 @@
     "note": {
       "type": "object",
       "description": "Personal notes, journal entries, talk notes, or rough thoughts not drawn from an external URL.",
-      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "note" },
         "date": {
@@ -230,7 +230,7 @@
     "index": {
       "type": "object",
       "description": "The wiki index — a catalog of all pages with links, summaries, and metadata. Updated by the agent on ingest. Used as the primary navigation entry point.",
-      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "index" }
       },

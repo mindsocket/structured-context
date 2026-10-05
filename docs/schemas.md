@@ -66,7 +66,7 @@ This schema reuses shared structural defs from partials via `$ref` and imports i
 `path` and `wikilink` are also available as shared `$ref` definitions in `_sctx_base.json`:
 
 ```json
-{ "$ref": "sctx://_sctx_base#/$defs/wikilink" }
+{ "$ref": "sctx://core/_sctx_base#/$defs/wikilink" }
 ```
 
 Using `format` directly is more concise when the full definition isn't needed:
@@ -266,7 +266,7 @@ Metadata travels only through **`$metadata.imports`**, a list of schema `$id`s:
 
 ```json5
 "$metadata": {
-  "imports": ["sctx://_strategy_general"],
+  "imports": ["sctx://core/_strategy_general"],
   "rules": [ /* this schema's own rules */ ]
 }
 ```
@@ -349,11 +349,25 @@ How hierarchies are used:
 }
 ```
 
+## Schema `$id` namespaces
+
+Every schema `$id` uses the `sctx://` scheme. The shape of the `$id` says where the schema comes from:
+
+| `$id` shape | Source | Example |
+|---|---|---|
+| `sctx://core/<name>` | Bundled with structured-context | `sctx://core/_sctx_base` |
+| `sctx://<plugin>/<name>` | Contributed by a plugin (its short name, without `sctx-`) | `sctx://wardley-mapping/_wardley` |
+| `sctx://<name>` | Local to a space's schema directory — a single name, no path | `sctx://team` |
+
+- Two schemas loaded for the same space may not share an `$id`; a collision is an error naming both sources.
+- `core` is reserved: no plugin may use it as its namespace.
+- **Legacy bundled ids:** before 1.0, bundled schemas used `sctx://<name>` (e.g. `sctx://_sctx_base`, `sctx://strategy_general`). References to those ids in `$ref` and `$metadata.imports` still resolve to their `sctx://core/` equivalents with a deprecation warning, and local schemas may not use them as their own `$id`. The aliases will be removed in 1.0.
+
 ## Partials and `$ref`
 
 - Files starting with `_` are auto-loaded partials.
 - Bundled partials, local schema-directory partials, and partials from loaded plugins are all registered.
-- Local partial `$id` values must not collide with bundled IDs or plugin IDs.
+- `$id` values follow the [namespace rules](#schema-id-namespaces) and must not collide across bundled, plugin and local schemas.
 - `$ref` resolution is transitive across files.
 - Partials with no `$metadata` should prefer `$schema: "http://json-schema.org/draft-07/schema#"` so they validate standalone as plain JSON Schema fragments.
 - **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference their entity types via `$ref` rather than redefining them.
@@ -367,16 +381,16 @@ Because schemas are resolved statically by convention from the filesystem, struc
 
 When a space uses a plugin schema:
 - **Registry registration**: All partials (`_*`) in the plugin's `schemas/` directory are automatically indexed in the schema registry.
-- **Namespace conventions**: Schemas contributed by a plugin must use the URI namespace `sctx://<pluginName>/...` for their `$id` (e.g. `sctx://wardley-mapping/_wardley_base`). The prefix must match the plugin's short name (without the `sctx-` prefix). The top-level `sctx://<name>` namespace is reserved exclusively for core bundled schemas, and local user schemas are forbidden from using the `sctx://` URI scheme.
-- **Collision protection**: If two plugins attempt to register schemas with the same `$id`, or if a plugin schema collides with a core bundled schema, schema loading throws a clear validation error.
-- **Imports and $ref**: Plugin schemas can `$ref` or `$metadata.imports` bundled schemas (e.g. `sctx://_sctx_base`) as well as other partials within their own namespace. Schema composition rules from #122 apply.
+- **Namespace conventions**: Schemas contributed by a plugin must use `sctx://<pluginName>/...` for their `$id` (e.g. `sctx://wardley-mapping/_wardley`), where the prefix is the plugin's short name (without the `sctx-` prefix). See [Schema `$id` namespaces](#schema-id-namespaces).
+- **Collision protection**: If two plugins register schemas with the same `$id`, or a plugin or local schema collides with a bundled schema, schema loading throws an error.
+- **Imports and $ref**: Plugin schemas can `$ref` or `$metadata.imports` bundled schemas (e.g. `sctx://core/_sctx_base`) as well as other partials within their own namespace. Schema composition rules from #122 apply.
 
 ## Editor expectations
 
 Use the shipped metaschema URL in `$schema` for best cross-tool behavior.
 
 Notes:
-- Custom `$id` values like `sctx://...` are still supported by the CLI registry.
+- `sctx://` `$id`s are resolved by the CLI registry (see [Schema `$id` namespaces](#schema-id-namespaces)).
 - Some generic editors may not resolve custom URI schemes for `$ref`; CLI behavior is authoritative.
 - Do not rely on editor-only mappings for runtime correctness.
 

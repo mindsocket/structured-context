@@ -28,7 +28,7 @@ describe('schema composition metadata', () => {
 
   it('fails conflicting rule IDs without explicit override', () => {
     expect(() => loadMetadata(join(FIXTURES_DIR, 'conflict-root.json'))).toThrow(
-      'Duplicate rule "active-outcome-count" found in "sctx-test://schema-composition/conflict/pack-a" and "sctx-test://schema-composition/conflict/pack-b"',
+      'Duplicate rule "active-outcome-count" found in "sctx://schema-composition.conflict.pack-a" and "sctx://schema-composition.conflict.pack-b"',
     );
   });
 
@@ -45,13 +45,13 @@ describe('schema composition metadata', () => {
 
   it('fails on a duplicate alias without override', () => {
     expect(() => loadMetadata(join(FIXTURES_DIR, 'duplicate-alias-root.json'))).toThrow(
-      'Duplicate alias "outcome" found in "sctx-test://schema-composition/duplicate/pack"',
+      'Duplicate alias "outcome" found in "sctx://schema-composition.duplicate.pack"',
     );
   });
 
   it('fails on a duplicate relationship (same parent, type and field) without override', () => {
     expect(() => loadMetadata(join(FIXTURES_DIR, 'duplicate-relationship-root.json'))).toThrow(
-      'Duplicate relationship "goal → task" (field "parent") found in "sctx-test://schema-composition/duplicate/pack"',
+      'Duplicate relationship "goal → task" (field "parent") found in "sctx://schema-composition.duplicate.pack"',
     );
   });
 

@@ -1,10 +1,10 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "test://root",
+  "$id": "sctx://root",
   "oneOf": [
     {
       "type": "object",
-      "allOf": [{ "$ref": "test://mid#/$defs/midProps" }],
+      "allOf": [{ "$ref": "sctx://mid#/$defs/midProps" }],
       "properties": {
         "type": { "const": "thing" }
       },
