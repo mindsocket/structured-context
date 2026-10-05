@@ -16,7 +16,7 @@ import { validate, watchValidate } from './commands/validate';
 import { validateFileCommand } from './commands/validate-file';
 import { loadConfig, setConfigPath } from './config';
 import { CLI_NAME } from './constants';
-import { createSpaceContext, SpaceNotFoundError } from './space-context';
+import { createSpaceContext } from './space-context';
 import type { SpaceContext } from './types';
 
 // Once node:process is loaded (vfile, via unified, loads it), Bun's console.log drops piped output
@@ -29,11 +29,9 @@ export function buildSpaceContext(spaceName: string): SpaceContext {
   try {
     return createSpaceContext(spaceName, loadConfig());
   } catch (err) {
-    if (err instanceof SpaceNotFoundError) {
-      console.error(`Error: ${err.message}`);
-      process.exit(1);
-    }
-    throw err;
+    // Config and schema loading errors (unknown space, invalid config, schema $id problems, ...) are user-facing.
+    console.error(`Error: ${err instanceof Error ? err.message : err}`);
+    process.exit(1);
   }
 }
 
