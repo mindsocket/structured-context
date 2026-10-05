@@ -35,7 +35,7 @@ describe('Smoke: schemas command', () => {
     const result = run('schemas', 'show', 'strategy_general');
     expect(result.exitCode).toBe(0);
     const out = new TextDecoder().decode(result.stdout);
-    expect(out).toContain('sctx://strategy_general');
+    expect(out).toContain('sctx://core/strategy_general');
     expect(out).toContain('Registry');
   });
 

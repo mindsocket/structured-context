@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "test://mid",
+  "$id": "sctx://mid",
   "$defs": {
     "mood": {
       "type": "string",
@@ -8,10 +8,10 @@
     },
     "midProps": {
       "type": "object",
-      "allOf": [{ "$ref": "test://leaf#/$defs/leafProps" }],
+      "allOf": [{ "$ref": "sctx://leaf#/$defs/leafProps" }],
       "properties": {
         "mood": { "$ref": "#/$defs/mood" },
-        "status": { "$ref": "sctx://_sctx_base#/$defs/status" }
+        "status": { "$ref": "sctx://core/_sctx_base#/$defs/status" }
       },
       "required": ["mood", "status"]
     }

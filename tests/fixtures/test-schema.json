@@ -1,5 +1,5 @@
 {
-  "$id": "test://test-schema",
+  "$id": "sctx://test-schema",
   "description": "Minimal schema for unit and integration tests. Extend with additional types as test coverage requires new scenarios.",
   "oneOf": [
     {

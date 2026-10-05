@@ -3,6 +3,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv, { type AnySchemaObject, type ValidateFunction } from 'ajv';
 import JSON5 from 'json5';
+import { SCHEMA_URI_SCHEME } from '../constants';
 import { shortenPluginName } from '../plugins/util';
 import type { Hierarchy, HierarchyLevel, SchemaMetadata, SchemaWithMetadata } from '../types';
 import {
@@ -32,8 +33,108 @@ const schemaFileStems = new WeakMap<AnySchemaObject, string>();
 
 export function readRawSchema(schemaPath: string): AnySchemaObject {
   const schema = JSON5.parse(readFileSync(resolve(schemaPath), 'utf-8')) as AnySchemaObject;
+  rewriteLegacyCoreRefs(schema, schemaPath);
   schemaFileStems.set(schema, basename(schemaPath, extname(schemaPath)));
   return schema;
+}
+
+/**
+ * Schema `$id` namespaces. Every `$id` uses the `sctx://` scheme, and its shape says where the schema comes from:
+ * - `sctx://core/<name>` — bundled with structured-context
+ * - `sctx://<plugin>/<name>` — contributed by a plugin, prefixed with the plugin's short name
+ * - `sctx://<name>` — local to a space's schema directory (a single segment, no path)
+ */
+const SCTX_SCHEME = `${SCHEMA_URI_SCHEME}://`;
+export const CORE_SCHEMA_PREFIX = `${SCTX_SCHEME}core/`;
+
+/**
+ * Bundled schema `$id`s from before the `sctx://core/` namespace. References to them keep resolving
+ * (with a deprecation warning) until 1.0, and local schemas may not claim them.
+ */
+const LEGACY_CORE_IDS = new Set(
+  [
+    '_sctx_base',
+    '_ost_strict',
+    '_strategy_general',
+    '_knowledge_wiki',
+    'strict_ost',
+    'strategy_general',
+    'knowledge_wiki',
+  ].map((name) => `${SCTX_SCHEME}${name}`),
+);
+const warnedLegacyIds = new Set<string>();
+
+function upgradeLegacyCoreRef(ref: string, schemaPath: string): string {
+  const hashIndex = ref.indexOf('#');
+  const id = hashIndex === -1 ? ref : ref.slice(0, hashIndex);
+  if (!LEGACY_CORE_IDS.has(id)) return ref;
+  const upgraded = `${CORE_SCHEMA_PREFIX}${id.slice(SCTX_SCHEME.length)}`;
+  if (!warnedLegacyIds.has(id)) {
+    warnedLegacyIds.add(id);
+    console.warn(
+      `Warning: "${id}" is deprecated and will stop resolving in 1.0; use "${upgraded}" instead (referenced in ${schemaPath}).`,
+    );
+  }
+  return hashIndex === -1 ? upgraded : `${upgraded}${ref.slice(hashIndex)}`;
+}
+
+/** Rewrite references to legacy bundled `$id`s (in `$ref` and `$metadata.imports`) to their `sctx://core/` form. */
+function rewriteLegacyCoreRefs(node: unknown, schemaPath: string): void {
+  if (Array.isArray(node)) {
+    for (const item of node) rewriteLegacyCoreRefs(item, schemaPath);
+    return;
+  }
+  if (!isObject(node)) return;
+  if (typeof node.$ref === 'string') node.$ref = upgradeLegacyCoreRef(node.$ref, schemaPath);
+  if (isObject(node.$metadata) && Array.isArray(node.$metadata.imports)) {
+    node.$metadata.imports = node.$metadata.imports.map((entry: unknown) =>
+      typeof entry === 'string' ? upgradeLegacyCoreRef(entry, schemaPath) : entry,
+    );
+  }
+  for (const value of Object.values(node)) rewriteLegacyCoreRefs(value, schemaPath);
+}
+
+type SchemaSource =
+  | { kind: 'core' }
+  | { kind: 'plugin'; pluginName: string; shortName: string }
+  | { kind: 'local'; dir: string };
+
+/** Throw if `id` doesn't belong to the namespace of the source it was loaded from. */
+function assertIdNamespace(id: string, source: SchemaSource): void {
+  if (source.kind === 'core') {
+    if (id !== SCHEMA_META_ID && !id.startsWith(CORE_SCHEMA_PREFIX)) {
+      throw new Error(`Bundled schema $id "${id}" must start with "${CORE_SCHEMA_PREFIX}".`);
+    }
+    return;
+  }
+  const where =
+    source.kind === 'plugin' ? `schema in plugin "${source.pluginName}"` : `local schema in "${source.dir}"`;
+  const expected = source.kind === 'plugin' ? `"${SCTX_SCHEME}${source.shortName}/<name>"` : `"${SCTX_SCHEME}<name>"`;
+  if (!id.startsWith(SCTX_SCHEME)) {
+    throw new Error(`Schema namespace violation: ${where} uses $id "${id}". Use the form ${expected}.`);
+  }
+  const segments = id.slice(SCTX_SCHEME.length).split('/');
+  if (source.kind === 'plugin') {
+    if (source.shortName === 'core') {
+      throw new Error(
+        `Schema namespace violation: plugin "${source.pluginName}" can't contribute schemas; "core" is reserved for bundled schemas.`,
+      );
+    }
+    if (segments.length < 2 || segments[0] !== source.shortName) {
+      throw new Error(`Schema namespace violation: ${where} uses $id "${id}". Use the form ${expected}.`);
+    }
+    return;
+  }
+  if (segments.length !== 1) {
+    throw new Error(
+      `Schema namespace violation: ${where} uses $id "${id}". Local schema $ids are a single name, ${expected}; "${SCTX_SCHEME}<prefix>/..." is reserved for bundled ("core") and plugin schemas.`,
+    );
+  }
+  if (LEGACY_CORE_IDS.has(id)) {
+    throw new Error(
+      `Schema namespace violation: ${where} uses $id "${id}", which is reserved as an alias for "${CORE_SCHEMA_PREFIX}${segments[0]}" until 1.0. Choose another name.`,
+    );
+  }
 }
 
 /**
@@ -79,6 +180,7 @@ export function buildFullRegistry(
 
   // Layer 1: bundled schemas/ dir (partials only)
   for (const [id, schema] of buildSchemaRegistry(bundledSchemasDir)) {
+    assertIdNamespace(id, { kind: 'core' });
     schemaRefRegistry.set(id, schema);
   }
 
@@ -105,11 +207,7 @@ export function buildFullRegistry(
             `Schema collision: schema in plugin "${pluginName}" (${schemasDir}) uses $id "${id}" which is already defined by plugin "${existingPlugin}".`,
           );
         }
-        if (id.startsWith('sctx://') && !id.startsWith(`sctx://${shortName}/`)) {
-          throw new Error(
-            `Schema namespace violation: schema in plugin "${pluginName}" uses $id "${id}". Plugin schemas using the sctx:// URI scheme must start with "sctx://${shortName}/".`,
-          );
-        }
+        assertIdNamespace(id, { kind: 'plugin', pluginName, shortName });
         schemaRefRegistry.set(id, schema);
         pluginIds.set(id, pluginName);
       }
@@ -124,14 +222,10 @@ export function buildFullRegistry(
     for (const [id, schema] of buildSchemaRegistry(targetDir, targetFile)) {
       if (reservedIds.has(id)) {
         throw new Error(
-          `Schema collision: partial schema in ${targetDir} uses $id "${id}" which is reserved by a default schema. Please use a unique $id for local partials.`,
+          `Schema collision: local schema in ${targetDir} uses $id "${id}", which is already defined by a bundled or plugin schema. Choose another name.`,
         );
       }
-      if (id.startsWith('sctx://')) {
-        throw new Error(
-          `Schema namespace violation: local schema in "${targetDir}" uses $id "${id}". The sctx:// URI scheme is reserved for bundled and plugin schemas.`,
-        );
-      }
+      assertIdNamespace(id, { kind: 'local', dir: targetDir });
       schemaRefRegistry.set(id, schema);
     }
   }

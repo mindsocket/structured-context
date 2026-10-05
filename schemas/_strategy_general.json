@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
-  "$id": "sctx://_strategy_general",
+  "$id": "sctx://core/_strategy_general",
   // Shared entity definitions for strategy-general schemas.
   // Provides a hierarchy, aliases, relationships, and entity type $defs.
   // Schemas that import this partial get its metadata; a $ref to its $defs alone brings none.
@@ -45,7 +45,7 @@
   "$defs": {
     "dashboard": {
       "type": "object",
-      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "dashboard" }
       },
@@ -54,7 +54,7 @@
     },
     "ost_on_a_page": {
       "type": "object",
-      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "enum": ["ost_on_a_page", "space_on_a_page"] }
       },
@@ -64,8 +64,8 @@
     "vision": {
       "type": "object",
       "allOf": [
-        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+        { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "vision" }
@@ -83,9 +83,9 @@
     "mission": {
       "type": "object",
       "allOf": [
-        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+        { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "mission" }
@@ -103,13 +103,13 @@
     "goal": {
       "type": "object",
       "allOf": [
-        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+        { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "enum": ["goal", "outcome"] },
-        "priority": { "$ref": "sctx://_sctx_base#/$defs/priority" }
+        "priority": { "$ref": "sctx://core/_sctx_base#/$defs/priority" }
       },
       "required": ["type"],
       "additionalProperties": true,
@@ -125,16 +125,16 @@
     "opportunity": {
       "type": "object",
       "allOf": [
-        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+        { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "opportunity" },
-        "priority": { "$ref": "sctx://_sctx_base#/$defs/priority" },
-        "impact": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
-        "feasibility": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
-        "resources": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
+        "priority": { "$ref": "sctx://core/_sctx_base#/$defs/priority" },
+        "impact": { "$ref": "sctx://core/_sctx_base#/$defs/assessment" },
+        "feasibility": { "$ref": "sctx://core/_sctx_base#/$defs/assessment" },
+        "resources": { "$ref": "sctx://core/_sctx_base#/$defs/assessment" },
         "timeline": {
           "type": "string",
           "description": "Timeline estimate (e.g., S-M, M-L)"
@@ -158,16 +158,16 @@
     "solution": {
       "type": "object",
       "allOf": [
-        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+        { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "solution" },
-        "priority": { "$ref": "sctx://_sctx_base#/$defs/priority" },
-        "impact": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
-        "feasibility": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
-        "resources": { "$ref": "sctx://_sctx_base#/$defs/assessment" },
+        "priority": { "$ref": "sctx://core/_sctx_base#/$defs/priority" },
+        "impact": { "$ref": "sctx://core/_sctx_base#/$defs/assessment" },
+        "feasibility": { "$ref": "sctx://core/_sctx_base#/$defs/assessment" },
+        "resources": { "$ref": "sctx://core/_sctx_base#/$defs/assessment" },
         "timeline": {
           "type": "string",
           "description": "Timeline estimate (e.g., S-M, M-L)"
@@ -191,9 +191,9 @@
     "experiment": {
       "type": "object",
       "allOf": [
-        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+        { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "enum": ["experiment", "assumption_test", "test"] }
@@ -216,9 +216,9 @@
     "assumption": {
       "type": "object",
       "allOf": [
-        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+        { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "assumption" },
@@ -242,9 +242,9 @@
     "problem_statement": {
       "type": "object",
       "allOf": [
-        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/parentNodeProps" },
-        { "$ref": "sctx://_sctx_base#/$defs/ostEntityProps" }
+        { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
       ],
       "properties": {
         "type": { "const": "problem_statement" }

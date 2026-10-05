@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { type Config, resolveSchemaPath } from '../../src/config';
-import { buildFullRegistry } from '../../src/schema/schema';
+import { SCHEMA_META_ID } from '../../src/schema/metadata-contract';
+import { buildFullRegistry, createValidator, readRawSchema } from '../../src/schema/schema';
 import { createSpaceContext } from '../../src/space-context';
 
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
@@ -18,7 +19,7 @@ describe('Plugin-contributed schemas', () => {
 
       expect(registry.has('sctx://schema-plugin/_test_partial')).toBe(true);
       expect(registry.has('sctx://schema-plugin/plugin_schema')).toBe(true);
-      expect(registry.has('sctx://_sctx_base')).toBe(true);
+      expect(registry.has('sctx://core/_sctx_base')).toBe(true);
     });
 
     it('throws error when plugin schema collides with bundled schema $id', () => {
@@ -29,7 +30,7 @@ describe('Plugin-contributed schemas', () => {
           join(tempDir, '_colliding.json'),
           JSON.stringify({
             $schema: 'https://json-schema.org/draft-07/schema#',
-            $id: 'sctx://_sctx_base',
+            $id: 'sctx://core/_sctx_base',
           }),
         );
         const targetPath = join(PLUGIN_SCHEMAS_DIR, 'plugin_schema.json');
@@ -87,30 +88,110 @@ describe('Plugin-contributed schemas', () => {
         );
         const targetPath = join(PLUGIN_SCHEMAS_DIR, 'plugin_schema.json');
         expect(() => buildFullRegistry(targetPath, [{ pluginName: 'sctx-my-plugin', schemasDir: tempDir }])).toThrow(
-          /Schema namespace violation: schema in plugin "sctx-my-plugin".*sctx:\/\/my-plugin\//,
+          /Schema namespace violation: schema in plugin "sctx-my-plugin".*sctx:\/\/my-plugin\/<name>/,
         );
       } finally {
         if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
       }
     });
 
-    it('rejects local schema trying to declare an sctx:// $id', () => {
-      const tempDir = join(import.meta.dir, '../fixtures/tmp-local-sctx-ns');
+    function withLocalSchema(dirName: string, schema: Record<string, unknown>, run: (target: string) => void): void {
+      const tempDir = join(import.meta.dir, `../fixtures/${dirName}`);
       mkdirSync(tempDir, { recursive: true });
       try {
-        const localTarget = join(tempDir, 'custom.json');
-        writeFileSync(
-          localTarget,
-          JSON.stringify({
-            $schema: 'https://json-schema.org/draft-07/schema#',
-            $id: 'sctx://my-custom/custom',
-          }),
+        const target = join(tempDir, 'custom.json');
+        writeFileSync(target, JSON.stringify({ $schema: 'https://json-schema.org/draft-07/schema#', ...schema }));
+        run(target);
+      } finally {
+        if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+      }
+    }
+
+    it('accepts a local schema with a single-segment sctx:// $id', () => {
+      withLocalSchema('tmp-local-flat', { $id: 'sctx://custom' }, (target) => {
+        expect(buildFullRegistry(target).has('sctx://custom')).toBe(true);
+      });
+    });
+
+    it('rejects a local schema $id with a path prefix', () => {
+      withLocalSchema('tmp-local-path', { $id: 'sctx://my-custom/custom' }, (target) => {
+        expect(() => buildFullRegistry(target)).toThrow(
+          /Schema namespace violation: local schema in ".*" uses \$id "sctx:\/\/my-custom\/custom".*single name/,
         );
-        expect(() => buildFullRegistry(localTarget)).toThrow(
-          /Schema namespace violation: local schema in ".*" uses \$id "sctx:\/\/my-custom\/custom"/,
+      });
+    });
+
+    it('rejects a local schema $id outside the sctx:// scheme', () => {
+      withLocalSchema('tmp-local-scheme', { $id: 'custom://custom' }, (target) => {
+        expect(() => buildFullRegistry(target)).toThrow(/Schema namespace violation: local schema .*"sctx:\/\/<name>"/);
+      });
+    });
+
+    it('rejects a local schema claiming a legacy bundled $id', () => {
+      withLocalSchema('tmp-local-legacy', { $id: 'sctx://strategy_general' }, (target) => {
+        expect(() => buildFullRegistry(target)).toThrow(/reserved as an alias for "sctx:\/\/core\/strategy_general"/);
+      });
+    });
+
+    it('rejects plugin schemas outside the sctx:// scheme', () => {
+      const tempDir = join(import.meta.dir, '../fixtures/tmp-plugin-scheme');
+      mkdirSync(tempDir, { recursive: true });
+      try {
+        writeFileSync(join(tempDir, '_other.json'), JSON.stringify({ $id: 'other://my-plugin/_other' }));
+        const targetPath = join(PLUGIN_SCHEMAS_DIR, 'plugin_schema.json');
+        expect(() => buildFullRegistry(targetPath, [{ pluginName: 'sctx-my-plugin', schemasDir: tempDir }])).toThrow(
+          /Schema namespace violation: schema in plugin "sctx-my-plugin".*sctx:\/\/my-plugin\/<name>/,
         );
       } finally {
         if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('reserves the core namespace for bundled schemas', () => {
+      const tempDir = join(import.meta.dir, '../fixtures/tmp-plugin-core');
+      mkdirSync(tempDir, { recursive: true });
+      try {
+        writeFileSync(join(tempDir, '_extra.json'), JSON.stringify({ $id: 'sctx://core/_extra' }));
+        const targetPath = join(PLUGIN_SCHEMAS_DIR, 'plugin_schema.json');
+        expect(() => buildFullRegistry(targetPath, [{ pluginName: 'sctx-core', schemasDir: tempDir }])).toThrow(
+          /"core" is reserved for bundled schemas/,
+        );
+      } finally {
+        if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('registers every bundled schema under sctx://core/', () => {
+      withLocalSchema('tmp-local-bundled-ids', { $id: 'sctx://custom' }, (target) => {
+        const bundled = [...buildFullRegistry(target).keys()].filter((id) => id !== 'sctx://custom');
+        expect(bundled.length).toBeGreaterThan(0);
+        for (const id of bundled) expect(id.startsWith('sctx://core/')).toBe(true);
+      });
+    });
+
+    it('resolves legacy bundled $id references via sctx://core/ with a deprecation warning', () => {
+      const warn = spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        withLocalSchema(
+          'tmp-local-legacy-ref',
+          {
+            $schema: SCHEMA_META_ID,
+            $id: 'sctx://legacy_ref',
+            $metadata: { imports: ['sctx://_knowledge_wiki'] },
+            allOf: [{ $ref: 'sctx://_sctx_base#/$defs/baseNodeProps' }],
+          },
+          (target) => {
+            const schema = readRawSchema(target);
+            expect(schema.$metadata.imports).toEqual(['sctx://core/_knowledge_wiki']);
+            expect(schema.allOf[0].$ref).toBe('sctx://core/_sctx_base#/$defs/baseNodeProps');
+            createValidator(target);
+          },
+        );
+        expect(warn.mock.calls.some(([message]) => String(message).includes('"sctx://_sctx_base" is deprecated'))).toBe(
+          true,
+        );
+      } finally {
+        warn.mockRestore();
       }
     });
   });

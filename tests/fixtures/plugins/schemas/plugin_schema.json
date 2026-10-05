@@ -8,7 +8,7 @@
     {
       "type": "object",
       "allOf": [
-        { "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" },
+        { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://schema-plugin/_test_partial#/$defs/pluginProps" }
       ],
       "properties": {
@@ -18,7 +18,7 @@
     },
     {
       "type": "object",
-      "allOf": [{ "$ref": "sctx://_sctx_base#/$defs/baseNodeProps" }],
+      "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "plugin_leaf" }
       },
