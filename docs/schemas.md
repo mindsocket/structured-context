@@ -376,7 +376,7 @@ Every schema `$id` uses the `sctx://` scheme. The shape of the `$id` says where 
 - `$id` values follow the [namespace rules](#schema-id-namespaces) and must not collide across bundled, plugin and local schemas.
 - `$ref` resolution is transitive across files.
 - Partials with no `$metadata` should prefer `$schema: "https://json-schema.org/draft/2020-12/schema"` so they validate standalone as plain JSON Schema fragments.
-- **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference their entity types via `$ref` rather than redefining them.
+- **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, `_okf.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference their entity types via `$ref` rather than redefining them.
 - **Partials can carry metadata**: Partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets it only by listing the partial in `$metadata.imports`; `$ref` alone brings none.
 
 ## Plugin-contributed schemas

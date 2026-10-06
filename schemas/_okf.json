@@ -1,0 +1,176 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/latest/_structured_context_schema_meta.json",
+  "$id": "sctx://core/_okf",
+  // Open Knowledge Format v0.2 frontmatter families: core, provenance, trust, lifecycle, attested computation.
+  // OKF §4.1: consumers MUST NOT reject unknown fields, so every object here allows additional properties.
+  // Concept types are not registered centrally (§4.1), so there is deliberately no oneOf over `type` consts:
+  // type checking would reject every type not listed. `Attested Computation` is handled with if/then instead.
+  // index.md and log.md are reserved bundle files without a `type`; they are reported as excluded during parsing.
+  "$metadata": {
+    "rules": [
+      {
+        "id": "okf-description",
+        "category": "best-practice",
+        "severity": "warning",
+        "description": "Concepts should have a one-line description (used by index generators and search snippets)",
+        "check": "$exists(current.description) and $length(current.description) > 0"
+      },
+      {
+        "id": "okf-stale-after-generated",
+        "category": "coherence",
+        "severity": "error",
+        "description": "stale_after must be later than generated.at",
+        "check": "$not($exists(current.stale_after)) or $not($exists(current.generated.at)) or $toMillis(current.stale_after) > $toMillis(current.generated.at)"
+      },
+      {
+        "id": "okf-usage-count-window",
+        "category": "coherence",
+        "severity": "warning",
+        "description": "A source's usage_count is only meaningful within a usage_window (on the source or shared at the top level)",
+        "check": "$not($exists(current.sources)) or $count(current.sources[$exists(usage_count) and $not($exists(usage_window)) and $not($exists($$.current.usage_window))]) = 0"
+      },
+      {
+        // Body content is plain text (headings are not kept), so a `# Computation` section can't be told apart
+        // from other body text: any body counts.
+        "id": "okf-computation-present",
+        "category": "validation",
+        "severity": "error",
+        "type": "Attested Computation",
+        "description": "An Attested Computation needs its computation: a `computation` path or a body `# Computation` section",
+        "check": "$exists(current.computation) or $exists(current.content)"
+      }
+    ]
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 datetime with an explicit UTC offset, e.g. 2026-06-30T14:00:00Z (§5)"
+    },
+    "actor": {
+      "type": "string",
+      "minLength": 1,
+      "description": "<producer>/<version> for agents, human:<id> for people, process:<id> for automated processes (§7)"
+    },
+    "usageWindow": {
+      "type": "object",
+      "properties": {
+        "from": { "$ref": "#/$defs/timestamp" },
+        "to": { "$ref": "#/$defs/timestamp" }
+      },
+      "required": ["from", "to"]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Followable artifact (URL or path) or a scope descriptor"
+        },
+        "id": { "type": "string", "description": "Stable key for footnote attribution" },
+        "title": { "type": "string" },
+        "author": { "$ref": "#/$defs/actor" },
+        "usage_count": { "type": "integer", "minimum": 0 },
+        "last_modified": { "$ref": "#/$defs/timestamp" },
+        "usage_window": { "$ref": "#/$defs/usageWindow" }
+      },
+      "required": ["resource"]
+    },
+    "generated": {
+      "type": "object",
+      "properties": {
+        "by": { "$ref": "#/$defs/actor" },
+        "at": { "$ref": "#/$defs/timestamp" }
+      },
+      "required": ["by"]
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "by": { "$ref": "#/$defs/actor" },
+        "at": { "$ref": "#/$defs/timestamp" }
+      },
+      "required": ["by", "at"]
+    },
+    "okfProps": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Kind of concept; unregistered and open-ended (§4.1)"
+        },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "resource": { "type": "string", "minLength": 1, "description": "URI or path of the underlying asset" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+        "usage_window": { "$ref": "#/$defs/usageWindow" },
+        "generated": { "$ref": "#/$defs/generated" },
+        "verified": {
+          "description": "One verification event, or a list of them (§5.2: a bare mapping is a one-element list)",
+          "anyOf": [
+            { "$ref": "#/$defs/verification" },
+            { "type": "array", "items": { "$ref": "#/$defs/verification" } }
+          ]
+        },
+        "status": { "type": "string", "enum": ["draft", "stable", "deprecated"], "default": "stable" },
+        "stale_after": { "$ref": "#/$defs/timestamp" }
+      },
+      "required": ["type"]
+    },
+    "concept": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/okfProps" },
+        {
+          "if": { "properties": { "type": { "const": "Attested Computation" } }, "required": ["type"] },
+          "then": { "$ref": "#/$defs/attestedComputation" }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "attestedComputation": {
+      "type": "object",
+      "properties": {
+        "runtime": {
+          "type": "string",
+          "minLength": 1,
+          "description": "How to run the computation; defines what `parameters` mean (§10.2)"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "type": { "type": "string", "minLength": 1 },
+              "required": { "type": "boolean" }
+            },
+            "required": ["name", "type"]
+          }
+        },
+        "computation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path to a file holding the computation, instead of the body fence"
+        },
+        "executor": {
+          "type": "object",
+          "properties": {
+            "resource": { "type": "string", "minLength": 1 },
+            "receipt": { "type": "array", "items": { "type": "string" }, "description": "Fields a run must return" }
+          },
+          "required": ["resource"]
+        },
+        "attester": {
+          "type": "object",
+          "properties": { "resource": { "type": "string", "minLength": 1 } },
+          "required": ["resource"]
+        }
+      },
+      "required": ["runtime"]
+    }
+  }
+}
