@@ -62,4 +62,14 @@ describe('dates and format validation', () => {
       expect(validateNode({ type: 'note', title: 'Test', updated: value })).toBe(false);
     });
   });
+
+  describe('format: "date-or-date-time" schema validation', () => {
+    it.each(['2026-03-31', '2026-03-31T09:15:00Z', '2026-03-31T09:15:00+10:00'])('accepts %s', (value) => {
+      expect(validateNode({ type: 'note', title: 'Test', when: value })).toBe(true);
+    });
+
+    it.each(['2026-03-31T09:15:00', '31/03/2026', 'today'])('rejects %s', (value) => {
+      expect(validateNode({ type: 'note', title: 'Test', when: value })).toBe(false);
+    });
+  });
 });

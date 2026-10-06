@@ -61,6 +61,7 @@ This schema reuses shared structural defs from partials via `$ref` and imports i
 |--------|-----------|---------|
 | `date` | ISO 8601 date (`YYYY-MM-DD`) | `"2026-03-31"` |
 | `date-time` | ISO 8601 datetime with a UTC offset (`Z` or `±HH:MM`) | `"2026-03-31T09:15:00+10:00"` |
+| `date-or-date-time` | Either of the above | `"2026-03-31"`, `"2026-03-31T09:15:00Z"` |
 | `path` | Non-empty filesystem path — absolute, relative, or a plain name | `"notes"`, `"./subdir/file.md"`, `"/abs/path"` |
 | `wikilink` | Obsidian wikilink syntax (`[[...]]`) | `"[[Parent Node]]"` |
 
@@ -85,7 +86,7 @@ published_date: 2026-03-31          # "2026-03-31"
 updated: 2026-06-20T22:53:05+10:00  # "2026-06-20T22:53:05+10:00", offset kept
 ```
 
-Validate them with `format: "date"` or `format: "date-time"`, and compare them in rules with JSONata's `$toMillis()` (see [Rules](rules.md#dates-and-times)).
+Validate them with `format: "date"` or `format: "date-time"` when a field needs one precision, or `format: "date-or-date-time"` to accept either, and compare them in rules with JSONata's `$toMillis()` (see [Rules](rules.md#dates-and-times)).
 
 ## Metadata dialect
 
