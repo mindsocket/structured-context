@@ -4,7 +4,7 @@
   "oneOf": [
     {
       "type": "object",
-      "description": "A simple note type with an optional date field for testing date coercion and format validation.",
+      "description": "A simple note type with an optional date and datetime fields for testing date handling and format validation.",
       "properties": {
         "type": { "const": "note" },
         "title": { "type": "string" },
@@ -12,6 +12,11 @@
           "type": "string",
           "format": "date",
           "description": "ISO 8601 date (YYYY-MM-DD)"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 datetime with a UTC offset"
         },
         "path": {
           "type": "string",

@@ -240,6 +240,9 @@ function compileValidator(
   const ajv = new Ajv2020();
   ajv.addFormat('path', (value: string) => value.length > 0 && !value.includes('\0'));
   ajv.addFormat('date', (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value));
+  ajv.addFormat('date-time', (value: string) =>
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.test(value),
+  );
   ajv.addFormat('wikilink', (value: string) => /^\[\[.+\]\]$/.test(value));
   ajv.addKeyword({
     keyword: '$metadata',

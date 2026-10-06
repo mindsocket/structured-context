@@ -1,4 +1,6 @@
 import { posix } from 'node:path';
+import * as jsYaml from 'js-yaml';
+import { CORE_SCHEMA, type DumpOptions, dump, load, type Type } from 'js-yaml';
 import type { TypeInferenceConfig } from '.';
 
 export function inferTypeFromPath(
@@ -51,24 +53,37 @@ export function inferTypeFromPath(
   return undefined;
 }
 
+// js-yaml exports its built-in types at runtime, but @types/js-yaml does not declare them.
+const types = (jsYaml as unknown as { types: Record<'merge' | 'binary' | 'omap' | 'pairs' | 'set', Type> }).types;
+
 /**
- * Coerce Date objects in frontmatter/YAML data to ISO date strings (YYYY-MM-DD).
- * gray-matter and js-yaml parse unquoted ISO dates (e.g. `date: 2026-03-31`) as
- * JavaScript Date objects, which are not valid JSON and fail string type validation.
+ * YAML schema for frontmatter and embedded YAML blocks: js-yaml's default schema without the
+ * `timestamp` type. Dates and datetimes stay as the strings written (e.g. `2026-03-31`,
+ * `2026-06-20T22:53:05+10:00`) rather than becoming Date objects, which lose precision and offset
+ * and are not valid JSON.
  */
-export function coerceDates(data: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (value instanceof Date) {
-      result[key] = value.toISOString().slice(0, 10);
-    } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      result[key] = coerceDates(value as Record<string, unknown>);
-    } else {
-      result[key] = value;
-    }
-  }
-  return result;
+export const YAML_SCHEMA = CORE_SCHEMA.extend({
+  implicit: [types.merge],
+  explicit: [types.binary, types.omap, types.pairs, types.set],
+});
+
+export function parseYaml(text: string): unknown {
+  return load(text, { schema: YAML_SCHEMA });
 }
+
+export function dumpYaml(data: unknown, options?: DumpOptions): string {
+  return dump(data, { ...options, schema: YAML_SCHEMA });
+}
+
+/**
+ * gray-matter options using YAML_SCHEMA. Passing options also bypasses gray-matter's parse cache,
+ * which is corrupted by a caught parse error (https://github.com/jonschlinkert/gray-matter/issues/166).
+ */
+export const MATTER_OPTIONS = {
+  engines: {
+    yaml: { parse: (text: string) => parseYaml(text) as object, stringify: (data: object) => dumpYaml(data) },
+  },
+};
 
 /**
  * Apply field remapping to a data object.

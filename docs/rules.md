@@ -145,3 +145,14 @@ $count(current.sources) >= 1
 $count(nodes[resolvedType='outcome' and status='active']) <= 1
 current.status != 'active' or $exists(parent) = false or parent.status = 'active'
 ```
+
+### Dates and times
+
+Dates and datetimes reach rules as ISO 8601 strings. Convert with `$toMillis()` to compare them, including date against datetime, and use `$millis()` for the current time:
+
+```jsonata
+$not($exists(current.due)) or $toMillis(current.due) > $millis()
+$toMillis(current.stale_after) > $toMillis(current.generated.at)
+```
+
+A datetime without an offset (`2026-07-01T00:00:00`) is read in the machine's local time zone, so require an offset with `format: "date-time"` when results must not depend on where validation runs. A value `$toMillis()` cannot parse makes the rule fail.

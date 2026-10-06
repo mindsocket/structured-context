@@ -60,6 +60,7 @@ This schema reuses shared structural defs from partials via `$ref` and imports i
 | Format | Validates | Example |
 |--------|-----------|---------|
 | `date` | ISO 8601 date (`YYYY-MM-DD`) | `"2026-03-31"` |
+| `date-time` | ISO 8601 datetime with a UTC offset (`Z` or `±HH:MM`) | `"2026-03-31T09:15:00+10:00"` |
 | `path` | Non-empty filesystem path — absolute, relative, or a plain name | `"notes"`, `"./subdir/file.md"`, `"/abs/path"` |
 | `wikilink` | Obsidian wikilink syntax (`[[...]]`) | `"[[Parent Node]]"` |
 
@@ -75,15 +76,16 @@ Using `format` directly is more concise when the full definition isn't needed:
 { "type": "string", "format": "wikilink" }
 ```
 
-### Date coercion
+### Dates and datetimes
 
-YAML parsers (gray-matter, js-yaml) coerce unquoted ISO dates to JavaScript `Date` objects:
+The markdown plugin reads frontmatter and embedded YAML blocks without YAML's timestamp type, so unquoted dates and datetimes stay as the strings written, at any depth (including inside lists):
 
 ```yaml
-published_date: 2026-03-31   # parsed as a Date object by gray-matter
+published_date: 2026-03-31          # "2026-03-31"
+updated: 2026-06-20T22:53:05+10:00  # "2026-06-20T22:53:05+10:00", offset kept
 ```
 
-The markdown plugin automatically coerces `Date` objects to `YYYY-MM-DD` strings before validation, so unquoted dates in frontmatter and embedded YAML blocks work correctly with `format: "date"` fields.
+Validate them with `format: "date"` or `format: "date-time"`, and compare them in rules with JSONata's `$toMillis()` (see [Rules](rules.md#dates-and-times)).
 
 ## Metadata dialect
 
