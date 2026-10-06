@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import Ajv from 'ajv';
+import Ajv2020 from 'ajv/dist/2020';
 import JSON5 from 'json5';
 import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
 import {
@@ -144,7 +144,7 @@ function _loadConfig(path: string): Config {
   }
 
   const config = JSON5.parse(readFileSync(path, 'utf-8'));
-  const ajv = new Ajv();
+  const ajv = new Ajv2020();
   const validate = ajv.compile(CONFIG_SCHEMA);
 
   if (!validate(config)) {

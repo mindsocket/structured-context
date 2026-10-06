@@ -1,19 +1,43 @@
 import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { DIALECT_META_SCHEMA } from '../src/schema/metadata-contract';
+import pkg from '../package.json';
+import { readNewestMetaSchema } from '../src/schema/meta-schemas';
+import { buildDialectMetaSchema, SCHEMA_META_FILE, schemaMetaId } from '../src/schema/metadata-contract';
 
-const OUTPUT_PATH = new URL('../schemas/generated/_structured_context_schema_meta.json', import.meta.url);
+const GENERATED_DIR = new URL('../schemas/generated/', import.meta.url);
 
-// Ensure the generated directory exists
-await mkdir(new URL('.', OUTPUT_PATH), { recursive: true });
+/** Compare meta-schemas ignoring `$id`, which names the folder holding the schema and so differs by design. */
+const withoutId = (schema: object) => JSON.stringify({ ...schema, $id: undefined });
 
-// Write the schema as formatted JSON
-await writeFile(OUTPUT_PATH, `${JSON.stringify(DIALECT_META_SCHEMA, null, 2)}\n`);
+/**
+ * Write the current dialect to `generated/latest/`. With `release`, also freeze it as `generated/<version>/`
+ * when it differs from the newest version folder; otherwise `latest` keeps the newest folder's `$id`.
+ */
+export async function writeMetaSchemas(generatedDir: URL, version: string, release: boolean): Promise<string[]> {
+  const newest = readNewestMetaSchema(generatedDir.pathname);
+  const current = buildDialectMetaSchema(schemaMetaId(version));
+  const changed = !newest || withoutId(newest.schema) !== withoutId(current);
+  const id = changed ? schemaMetaId(version) : schemaMetaId(newest.version);
+  const content = `${JSON.stringify({ ...current, $id: id }, null, 2)}\n`;
 
-// Format the generated file with biome
-execSync(`bunx biome check --write ${OUTPUT_PATH.pathname}`, {
-  cwd: new URL('..', import.meta.url).pathname,
-  stdio: 'inherit',
-});
+  const folders = ['latest', ...(release && changed ? [version] : [])];
+  for (const folder of folders) {
+    const dir = new URL(`${folder}/`, generatedDir);
+    if (folder !== 'latest' && existsSync(dir))
+      throw new Error(`Meta-schema folder ${folder} already exists; released versions are immutable.`);
+    await mkdir(dir, { recursive: true });
+    await writeFile(new URL(SCHEMA_META_FILE, dir), content);
+  }
+  return folders;
+}
 
-console.log(`Generated schema metadata: ${OUTPUT_PATH.pathname}`);
+if (import.meta.main) {
+  const release = process.argv.includes('--release');
+  const folders = await writeMetaSchemas(GENERATED_DIR, pkg.version, release);
+  execSync(`bunx biome check --config-path=. --write ${GENERATED_DIR.pathname}`, {
+    cwd: new URL('..', import.meta.url).pathname,
+    stdio: 'inherit',
+  });
+  console.log(`Generated schema metadata: ${folders.join(', ')}`);
+}

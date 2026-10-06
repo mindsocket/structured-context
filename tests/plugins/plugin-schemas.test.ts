@@ -29,7 +29,7 @@ describe('Plugin-contributed schemas', () => {
         writeFileSync(
           join(tempDir, '_colliding.json'),
           JSON.stringify({
-            $schema: 'https://json-schema.org/draft-07/schema#',
+            $schema: 'https://json-schema.org/draft/2020-12/schema',
             $id: 'sctx://core/_sctx_base',
           }),
         );
@@ -51,14 +51,14 @@ describe('Plugin-contributed schemas', () => {
         writeFileSync(
           join(tempDir1, '_shared.json'),
           JSON.stringify({
-            $schema: 'https://json-schema.org/draft-07/schema#',
+            $schema: 'https://json-schema.org/draft/2020-12/schema',
             $id: 'sctx://custom/_shared',
           }),
         );
         writeFileSync(
           join(tempDir2, '_shared.json'),
           JSON.stringify({
-            $schema: 'https://json-schema.org/draft-07/schema#',
+            $schema: 'https://json-schema.org/draft/2020-12/schema',
             $id: 'sctx://custom/_shared',
           }),
         );
@@ -82,7 +82,7 @@ describe('Plugin-contributed schemas', () => {
         writeFileSync(
           join(tempDir, '_invalid_ns.json'),
           JSON.stringify({
-            $schema: 'https://json-schema.org/draft-07/schema#',
+            $schema: 'https://json-schema.org/draft/2020-12/schema',
             $id: 'sctx://different-name/_invalid',
           }),
         );
@@ -100,7 +100,7 @@ describe('Plugin-contributed schemas', () => {
       mkdirSync(tempDir, { recursive: true });
       try {
         const target = join(tempDir, 'custom.json');
-        writeFileSync(target, JSON.stringify({ $schema: 'https://json-schema.org/draft-07/schema#', ...schema }));
+        writeFileSync(target, JSON.stringify({ $schema: 'https://json-schema.org/draft/2020-12/schema', ...schema }));
         run(target);
       } finally {
         if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });

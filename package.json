@@ -47,7 +47,7 @@
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "preversion": "bun run generate:schema-meta && bun run lint:fix && bun run test",
-    "version": "git add -A",
+    "version": "bun run generate:schema-meta --release && git add -A",
     "postversion": "git push --follow-tags"
   },
   "devDependencies": {
