@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import Ajv, { type AnySchemaObject } from 'ajv';
+import type { AnySchemaObject } from 'ajv';
+import Ajv2020 from 'ajv/dist/2020';
 import { getConfigSourceFiles } from '../config';
 import { builtinPlugins } from '.';
 import {
@@ -94,7 +95,7 @@ export async function loadPlugins(
   configDir: string,
 ): Promise<LoadedPlugin[]> {
   const builtinsByName = new Map(builtinPlugins.map((p) => [p.name, p]));
-  const ajv = new Ajv();
+  const ajv = new Ajv2020();
   ajv.addFormat('path', (value: string) => value.length > 0 && !value.includes('\0'));
   const loaded: LoadedPlugin[] = [];
 

@@ -1,6 +1,6 @@
 # Schema Authoring Reference
 
-Schema files use a Draft-07-based dialect with top-level `$metadata`.
+Schema files use a 2020-12-based dialect with top-level `$metadata`.
 See `~/src/structured-context/schemas/` for examples (`strategy_general.json`, `strict_ost.json`, `_ost_strict.json`).
 
 ## `$metadata` (top-level)
@@ -109,7 +109,7 @@ Schema definitions use the mapped target names.
 - Schema files are parsed as JSON5.
 - Files starting with `_` in the same directory (or in a plugin's `schemasDir`) are auto-loaded partials.
 - Namespacing: every `$id` uses `sctx://`. Local schemas use a single name, `sctx://<name>` (no path). Bundled schemas are `sctx://core/<name>`; plugin schemas are `sctx://<pluginShortName>/<name>`. Reference bundled partials as `sctx://core/_sctx_base` etc. (the old `sctx://_sctx_base` form still resolves with a deprecation warning until 1.0, and can't be used as a local `$id`).
-- If a partial has no `$metadata`, use `$schema: "http://json-schema.org/draft-07/schema#"` so it remains a standalone-valid JSON Schema fragment.
+- If a partial has no `$metadata`, use `$schema: "https://json-schema.org/draft/2020-12/schema"` so it remains a standalone-valid JSON Schema fragment.
 
 ## `$ref` patterns
 

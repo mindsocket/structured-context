@@ -1,20 +1,20 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import Ajv, { type AnySchemaObject, type ValidateFunction } from 'ajv';
+import type { AnySchemaObject, ValidateFunction } from 'ajv';
+import Ajv2020 from 'ajv/dist/2020';
 import JSON5 from 'json5';
 import { SCHEMA_URI_SCHEME } from '../constants';
 import { shortenPluginName } from '../plugins/util';
 import type { Hierarchy, HierarchyLevel, SchemaMetadata, SchemaWithMetadata } from '../types';
+import { loadMetaSchemas } from './meta-schemas';
 import {
-  DIALECT_META_SCHEMA,
   METADATA_SCHEMA,
   type MetadataContract,
   type MetadataContractHierarchy,
   type MetadataContractRelationship,
   type MetadataRef,
   type Rule,
-  SCHEMA_META_ID,
 } from './metadata-contract';
 import { isObject, mergeVariantProperties, resolveJsonPointer } from './schema-refs';
 
@@ -26,7 +26,7 @@ export function setBundledSchemasDir(dir: string): void {
   bundledSchemasDir = dir;
 }
 
-const validateMetadataContract = new Ajv().compile(METADATA_SCHEMA);
+const validateMetadataContract = new Ajv2020().compile(METADATA_SCHEMA);
 
 /** File stem of each schema read from disk — the default name of the hierarchy it declares. */
 const schemaFileStems = new WeakMap<AnySchemaObject, string>();
@@ -102,7 +102,7 @@ type SchemaSource =
 /** Throw if `id` doesn't belong to the namespace of the source it was loaded from. */
 function assertIdNamespace(id: string, source: SchemaSource): void {
   if (source.kind === 'core') {
-    if (id !== SCHEMA_META_ID && !id.startsWith(CORE_SCHEMA_PREFIX)) {
+    if (!id.startsWith(CORE_SCHEMA_PREFIX)) {
       throw new Error(`Bundled schema $id "${id}" must start with "${CORE_SCHEMA_PREFIX}".`);
     }
     return;
@@ -185,7 +185,7 @@ export function buildFullRegistry(
   }
 
   const bundledIds = new Set(schemaRefRegistry.keys());
-  bundledIds.add(SCHEMA_META_ID);
+  for (const id of loadMetaSchemas(bundledSchemasDir).keys()) bundledIds.add(id);
 
   // Layer 2: plugin schema dirs
   const pluginIds = new Map<string, string>(); // id -> pluginName
@@ -218,7 +218,7 @@ export function buildFullRegistry(
   const isPluginDir = pluginSchemas?.some((p) => resolve(p.schemasDir) === targetDir);
   if (targetDir !== bundledSchemasDir && !isPluginDir) {
     const reservedIds = new Set(schemaRefRegistry.keys());
-    reservedIds.add(SCHEMA_META_ID);
+    for (const id of loadMetaSchemas(bundledSchemasDir).keys()) reservedIds.add(id);
     for (const [id, schema] of buildSchemaRegistry(targetDir, targetFile)) {
       if (reservedIds.has(id)) {
         throw new Error(
@@ -237,7 +237,7 @@ function compileValidator(
   targetSchema: AnySchemaObject,
   schemaRefRegistry: Map<string, AnySchemaObject>,
 ): ValidateFunction {
-  const ajv = new Ajv();
+  const ajv = new Ajv2020();
   ajv.addFormat('path', (value: string) => value.length > 0 && !value.includes('\0'));
   ajv.addFormat('date', (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value));
   ajv.addFormat('wikilink', (value: string) => /^\[\[.+\]\]$/.test(value));
@@ -248,12 +248,12 @@ function compileValidator(
     valid: true,
     errors: false,
   });
-  const metaSchema = DIALECT_META_SCHEMA as unknown as AnySchemaObject;
-  ajv.addSchema(metaSchema, SCHEMA_META_ID);
+  const metaSchemas = loadMetaSchemas(bundledSchemasDir);
+  for (const schema of metaSchemas.values()) ajv.addSchema(schema);
 
   // Register all except target schema (AJV compiles targetSchema explicitly)
   for (const [id, schema] of schemaRefRegistry) {
-    if (id === targetSchema.$id || id === SCHEMA_META_ID) continue;
+    if (id === targetSchema.$id || metaSchemas.has(id)) continue;
     ajv.addSchema(schema);
   }
 

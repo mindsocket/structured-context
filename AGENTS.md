@@ -38,7 +38,7 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 - config — JSON5 file with spaces registered
 - `schemas/` — Bundled default schema files (JSON5) using the structured-context schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`).
 - `src/metadata-contract.ts` — Single source of truth for the `$metadata` contract
-- `schemas/generated/_structured_context_schema_meta.json` — Generated metaschema (generated on build or with `bun run generate:schema-meta`)
+- `schemas/generated/latest/_structured_context_schema_meta.json` — Generated metaschema for the newest dialect (generated on build or with `bun run generate:schema-meta`). `schemas/generated/<version>/` folders are frozen copies, created by the `version` script (`generate:schema-meta --release`) only when a release changes the dialect; never edit them. `src/schema/meta-schemas.ts` loads them at runtime.
 
 ## Testing
 For most development only the main unit tests need re-running regularly.

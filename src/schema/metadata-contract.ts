@@ -1,7 +1,19 @@
 import type { FromSchema } from 'json-schema-to-ts';
 
-export const SCHEMA_META_ID =
-  'https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json';
+/** The JSON Schema dialect the structured-context dialect extends. */
+export const JSON_SCHEMA_DIALECT = 'https://json-schema.org/draft/2020-12/schema';
+
+export const SCHEMA_META_BASE_URL =
+  'https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated';
+export const SCHEMA_META_FILE = '_structured_context_schema_meta.json';
+
+/** Meta-schema `$id` for a dialect version folder, e.g. `.../generated/0.12.0/_structured_context_schema_meta.json`. */
+export function schemaMetaId(folder: string): string {
+  return `${SCHEMA_META_BASE_URL}/${folder}/${SCHEMA_META_FILE}`;
+}
+
+/** The URL schemas set as `$schema` to follow the newest dialect. Resolves to the newest versioned meta-schema. */
+export const SCHEMA_META_ID = schemaMetaId('latest');
 
 /** Graph edge routing fields shared by hierarchy levels and relationships. */
 const EDGE_PROPS = {
@@ -143,18 +155,21 @@ export const METADATA_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export const DIALECT_META_SCHEMA = {
-  $schema: 'http://json-schema.org/draft-07/schema#',
-  $id: SCHEMA_META_ID,
-  title: 'structured-context schema dialect',
-  description:
-    'Extends JSON Schema Draft-07 with top-level $metadata for imports, hierarchy, relationships, aliases and rules.',
-  type: 'object',
-  allOf: [{ $ref: 'http://json-schema.org/draft-07/schema#' }],
-  properties: {
-    $metadata: METADATA_SCHEMA,
-  },
-} as const;
+/** The dialect meta-schema, published under `$id`. */
+export function buildDialectMetaSchema(id: string) {
+  return {
+    $schema: JSON_SCHEMA_DIALECT,
+    $id: id,
+    title: 'structured-context schema dialect',
+    description:
+      'Extends JSON Schema 2020-12 with top-level $metadata for imports, hierarchy, relationships, aliases and rules.',
+    type: 'object',
+    allOf: [{ $ref: JSON_SCHEMA_DIALECT }],
+    properties: {
+      $metadata: METADATA_SCHEMA,
+    },
+  } as const;
+}
 
 export type MetadataContract = FromSchema<typeof METADATA_SCHEMA>;
 export type MetadataContractHierarchy = FromSchema<typeof HIERARCHY_SCHEMA>;

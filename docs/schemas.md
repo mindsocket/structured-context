@@ -6,7 +6,7 @@ This document explains schema usage, metadata shape, and composition semantics i
 
 A **schema** defines the valid structure for nodes in a `space`: entity types, field constraints, hierarchy behavior, type aliases, and executable rules.
 
-`structured-context` uses JSON Schema Draft-07 plus a custom top-level `$metadata` keyword.
+`structured-context` uses JSON Schema 2020-12 plus a custom top-level `$metadata` keyword.
 
 ## Selecting a schema
 
@@ -87,9 +87,12 @@ The markdown plugin automatically coerces `Date` objects to `YYYY-MM-DD` strings
 
 ## Metadata dialect
 
-Schemas use this metaschema URL:
+The dialect is JSON Schema 2020-12 plus the top-level `$metadata` keyword. Schemas set `$schema` to the metaschema URL:
 
-- `https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json`
+- `https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/latest/_structured_context_schema_meta.json` follows the newest dialect.
+- `https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/<version>/_structured_context_schema_meta.json` pins the dialect to the structured-context release that first shipped it. Versioned files never change once released. Releases that don't change the dialect add no folder, so a version number only appears when the dialect changed.
+
+Because the dialect is 2020-12, keywords may sit beside `$ref`, and `unevaluatedProperties: false` can close an object composed through `allOf`.
 
 Top-level metadata shape:
 
@@ -369,7 +372,7 @@ Every schema `$id` uses the `sctx://` scheme. The shape of the `$id` says where 
 - Bundled partials, local schema-directory partials, and partials from loaded plugins are all registered.
 - `$id` values follow the [namespace rules](#schema-id-namespaces) and must not collide across bundled, plugin and local schemas.
 - `$ref` resolution is transitive across files.
-- Partials with no `$metadata` should prefer `$schema: "http://json-schema.org/draft-07/schema#"` so they validate standalone as plain JSON Schema fragments.
+- Partials with no `$metadata` should prefer `$schema: "https://json-schema.org/draft/2020-12/schema"` so they validate standalone as plain JSON Schema fragments.
 - **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference their entity types via `$ref` rather than redefining them.
 - **Partials can carry metadata**: Partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets it only by listing the partial in `$metadata.imports`; `$ref` alone brings none.
 
@@ -387,7 +390,7 @@ When a space uses a plugin schema:
 
 ## Editor expectations
 
-Use the shipped metaschema URL in `$schema` for best cross-tool behavior.
+Use the shipped metaschema URL in `$schema` for best cross-tool behavior; pin a `<version>` URL if you need the dialect to stay fixed.
 
 Notes:
 - `sctx://` `$id`s are resolved by the CLI registry (see [Schema `$id` namespaces](#schema-id-namespaces)).

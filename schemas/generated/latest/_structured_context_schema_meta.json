@@ -1,12 +1,12 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/_structured_context_schema_meta.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/0.11.0/_structured_context_schema_meta.json",
   "title": "structured-context schema dialect",
-  "description": "Extends JSON Schema Draft-07 with top-level $metadata for imports, hierarchy, relationships, aliases and rules.",
+  "description": "Extends JSON Schema 2020-12 with top-level $metadata for imports, hierarchy, relationships, aliases and rules.",
   "type": "object",
   "allOf": [
     {
-      "$ref": "http://json-schema.org/draft-07/schema#"
+      "$ref": "https://json-schema.org/draft/2020-12/schema"
     }
   ],
   "properties": {

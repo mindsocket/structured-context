@@ -108,7 +108,7 @@ Schemas define the structure and rules for the entities in a space, allowing cus
 
 Several schemas (`strict_ost`, `knowledge_wiki` and `general`) are included. The general (strategy) schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely. The knowledge wiki schema defines a flatter set of types used for knowledge bases.
 
-structured-context schemas use a metaschema based on JSON Schema Draft-07 that adds a top-level `$metadata` block:
+structured-context schemas use a metaschema based on JSON Schema 2020-12 that adds a top-level `$metadata` block:
 
 ```json5
 "$metadata": {
@@ -220,7 +220,7 @@ A space can have several hierarchies by importing schemas that each declare one.
 - **Partial schemas**: Files starting with an underscore (like `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`) are loaded and used to resolve references (using `$ref`).
 - **Partials as entity libraries**: Partials can define reusable entity types in `$defs` that composing schemas reference via `$ref`. Bundled partials like `_strategy_general` and `_knowledge_wiki` provide common entity sets for strategy and wiki content.
 - **Partials can carry metadata**: Unlike plain JSON Schema, partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets that metadata only by listing the partial in `$metadata.imports`.
-- **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "http://json-schema.org/draft-07/schema#"` so it validates standalone as plain JSON Schema.
+- **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "https://json-schema.org/draft/2020-12/schema"` so it validates standalone as plain JSON Schema.
 - **Loading priority**: Partial schemas are loaded from the default schema directory, configured plugins (`schemas/`), and the directory of your specified target schema.
 - **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).
 - **`$id` namespaces**: All `$id`s use `sctx://`. Bundled schemas are `sctx://core/<name>`, plugin schemas `sctx://<pluginName>/<name>`, and local schemas a single name, `sctx://<name>`. Collisions are errors. Legacy bundled ids (`sctx://<name>`, e.g. `sctx://_sctx_base`) resolve to `sctx://core/` with a deprecation warning until 1.0. See [docs/schemas.md](docs/schemas.md#schema-id-namespaces).
