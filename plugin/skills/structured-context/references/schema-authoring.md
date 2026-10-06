@@ -131,7 +131,7 @@ Custom string formats: `date` (`YYYY-MM-DD`), `date-time` (ISO 8601 with offset)
 Convention:
 - define reusable concepts in `$defs`
 - reference via `$ref` from `oneOf` entries
-- **always check existing schemas** (`strategy_general.json`, `strict_ost.json`, `knowledge_wiki.json`) before authoring — use them as consistency references for property names, patterns, and structure
+- **always check existing schemas** (`strategy_general.json`, `strict_ost.json`, `knowledge_wiki.json`, `okf.json`) before authoring — use them as consistency references for property names, patterns, and structure
 
 ## `oneOf` authoring pattern
 

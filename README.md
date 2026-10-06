@@ -106,7 +106,7 @@ See `config.example.json` for the full structure. The config maps space names to
 
 Schemas define the structure and rules for the entities in a space, allowing customisation and extension to different models.
 
-Several schemas (`strict_ost`, `knowledge_wiki` and `general`) are included. The general (strategy) schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely. The knowledge wiki schema defines a flatter set of types used for knowledge bases.
+Several schemas (`strict_ost`, `knowledge_wiki`, `general` and `okf`) are included. The general (strategy) schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely. The knowledge wiki schema defines a flatter set of types used for knowledge bases. The `okf` schema validates [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) bundles: any concept `type`, with provenance, trust, lifecycle and Attested Computation fields checked when present.
 
 structured-context schemas use a metaschema based on JSON Schema 2020-12 that adds a top-level `$metadata` block:
 
@@ -217,7 +217,7 @@ A space can have several hierarchies by importing schemas that each declare one.
 - The main hierarchy drives `space_on_a_page` parsing, hierarchy embedding, `template-sync`, and the default `show`/`diagram`/`render` output. Use `--hierarchy <name>` to render another one.
 
 **Customizing Schemas:**
-- **Partial schemas**: Files starting with an underscore (like `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`) are loaded and used to resolve references (using `$ref`).
+- **Partial schemas**: Files starting with an underscore (like `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, `_okf.json`) are loaded and used to resolve references (using `$ref`).
 - **Partials as entity libraries**: Partials can define reusable entity types in `$defs` that composing schemas reference via `$ref`. Bundled partials like `_strategy_general` and `_knowledge_wiki` provide common entity sets for strategy and wiki content.
 - **Partials can carry metadata**: Unlike plain JSON Schema, partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets that metadata only by listing the partial in `$metadata.imports`.
 - **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "https://json-schema.org/draft/2020-12/schema"` so it validates standalone as plain JSON Schema.

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/latest/_structured_context_schema_meta.json",
+  "$id": "sctx://core/okf",
+  "title": "Open Knowledge Format",
+  "description": "Validates the frontmatter of Open Knowledge Format (OKF v0.2) concept documents in a bundle. Any `type` is accepted and unknown fields are tolerated; `Attested Computation` concepts additionally carry the computation contract.\n\nSpecification: https://github.com/GoogleCloudPlatform/open-knowledge-format",
+  "$metadata": { "imports": ["sctx://core/_okf"] },
+  "allOf": [{ "$ref": "sctx://core/_okf" }, { "$ref": "sctx://core/_okf#/$defs/concept" }]
+}
