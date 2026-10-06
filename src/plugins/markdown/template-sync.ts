@@ -3,12 +3,11 @@ import { join } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
 import fg from 'fast-glob';
 import matter from 'gray-matter';
-import yaml from 'js-yaml';
 import type { HierarchyLevel, Relationship, SchemaWithMetadata } from '../../api';
 import { mergeVariantProperties, resolveRef } from '../../schema/schema-refs';
 import type { PluginContext, TemplateSyncOptions } from '../util';
 import type { MarkdownPluginConfig } from './index';
-import { invertFieldMap } from './util';
+import { dumpYaml, invertFieldMap, MATTER_OPTIONS } from './util';
 
 export interface TypeVariant {
   required: string[];
@@ -135,7 +134,7 @@ export function generateNewContent(
   const remappedExample = Object.fromEntries(
     Object.entries(exampleWithPlaceholders).map(([k, v]) => [toFileKey(k), v]),
   );
-  let frontmatterYaml = (yaml.dump(remappedExample, { lineWidth: -1 }) as string).trim();
+  let frontmatterYaml = dumpYaml(remappedExample, { lineWidth: -1 }).trim();
 
   // Append property descriptions as comments
   // YAML lines use file field names; look up properties using canonical key.
@@ -279,7 +278,7 @@ export async function templateSync(context: PluginContext, options: TemplateSync
     }
     const body = content.slice(fmMatch[0].length);
 
-    const parsed = matter(content);
+    const parsed = matter(content, MATTER_OPTIONS);
     const nodeType = parsed.data.type as string | undefined;
     if (!nodeType) {
       continue;

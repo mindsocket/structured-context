@@ -3,7 +3,7 @@ import matter from 'gray-matter';
 import type { SpaceGraph } from '../../space-graph';
 import type { PluginContext, RenderMultiFileOutput, RenderOptions } from '../util';
 import { getMarkdownConfig } from './index';
-import { coerceDates, invertFieldMap } from './util';
+import { invertFieldMap, MATTER_OPTIONS } from './util';
 
 /**
  * Sanitize a node title into a valid filesystem filename.
@@ -131,12 +131,12 @@ export function renderMarkdownDirectory(
       frontmatterData[typeKey] = nodeType;
     }
 
-    const coercedData = coerceDates(sortFrontmatterKeys(frontmatterData));
+    const sortedData = sortFrontmatterKeys(frontmatterData);
     const body = (node.content ?? '').trim();
 
     let fileContent: string;
-    if (Object.keys(coercedData).length > 0) {
-      fileContent = matter.stringify(body ? `\n${body}\n` : '', coercedData);
+    if (Object.keys(sortedData).length > 0) {
+      fileContent = matter.stringify(body ? `\n${body}\n` : '', sortedData, MATTER_OPTIONS);
     } else {
       fileContent = body ? `${body}\n` : '';
     }

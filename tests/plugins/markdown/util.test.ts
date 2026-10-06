@@ -1,32 +1,44 @@
 import { describe, expect, it } from 'bun:test';
-import { coerceDates } from '../../../src/plugins/markdown/util';
+import matter from 'gray-matter';
+import { dumpYaml, MATTER_OPTIONS, parseYaml } from '../../../src/plugins/markdown/util';
 
-describe('coerceDates', () => {
-  it('converts a Date object to YYYY-MM-DD string', () => {
-    const result = coerceDates({ date: new Date('2026-03-31') });
-    expect(result.date).toBe('2026-03-31');
+describe('parseYaml', () => {
+  it('keeps dates and datetimes as the strings written, at any depth', () => {
+    const result = parseYaml(
+      [
+        'date: 2026-03-31',
+        'at: 2026-06-20T22:53:05Z',
+        'local: 2026-07-01T00:00:00+10:00',
+        'meta: { created: 2025-01-01 }',
+        'items: [2025-01-01, { at: 2025-02-01T09:00:00Z }]',
+      ].join('\n'),
+    );
+    expect(result).toEqual({
+      date: '2026-03-31',
+      at: '2026-06-20T22:53:05Z',
+      local: '2026-07-01T00:00:00+10:00',
+      meta: { created: '2025-01-01' },
+      items: ['2025-01-01', { at: '2025-02-01T09:00:00Z' }],
+    });
   });
 
-  it('leaves string values unchanged', () => {
-    const result = coerceDates({ date: '2026-03-31', title: 'hello' });
-    expect(result.date).toBe('2026-03-31');
-    expect(result.title).toBe('hello');
+  it('still resolves numbers, booleans, nulls and merge keys', () => {
+    const result = parseYaml('base: &b { x: 1 }\nm: { <<: *b, y: true }\nn: ~\nf: 1.5');
+    expect(result).toEqual({ base: { x: 1 }, m: { x: 1, y: true }, n: null, f: 1.5 });
   });
+});
 
-  it('leaves numbers and booleans unchanged', () => {
-    const result = coerceDates({ count: 3, active: true });
-    expect(result.count).toBe(3);
-    expect(result.active).toBe(true);
+describe('dumpYaml', () => {
+  it('round-trips date strings unquoted', () => {
+    const yaml = dumpYaml({ date: '2026-03-31', at: '2026-06-20T22:53:05Z' });
+    expect(yaml).toBe('date: 2026-03-31\nat: 2026-06-20T22:53:05Z\n');
+    expect(parseYaml(yaml)).toEqual({ date: '2026-03-31', at: '2026-06-20T22:53:05Z' });
   });
+});
 
-  it('recurses into nested objects', () => {
-    const result = coerceDates({ meta: { created: new Date('2025-01-01') } });
-    expect((result.meta as Record<string, unknown>).created).toBe('2025-01-01');
-  });
-
-  it('does not recurse into arrays', () => {
-    const dates = [new Date('2025-01-01')];
-    const result = coerceDates({ items: dates });
-    expect(result.items).toBe(dates);
+describe('MATTER_OPTIONS', () => {
+  it('parses frontmatter timestamps as strings', () => {
+    const { data } = matter('---\ngenerated: { at: 2026-06-20T22:53:05Z }\n---\nbody', MATTER_OPTIONS);
+    expect(data).toEqual({ generated: { at: '2026-06-20T22:53:05Z' } });
   });
 });

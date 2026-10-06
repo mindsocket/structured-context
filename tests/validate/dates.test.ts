@@ -5,12 +5,12 @@ import { createValidator } from '../../src/schema/schema';
 import { makePluginContext } from '../helpers/context';
 
 const TEST_SCHEMA_PATH = join(import.meta.dir, '../fixtures/test-schema.json');
-const VALID_DIR = join(import.meta.dir, '../fixtures/date-coercion/valid');
+const VALID_DIR = join(import.meta.dir, '../fixtures/dates/valid');
 
 const validateNode = createValidator(TEST_SCHEMA_PATH);
 
-describe('date coercion and format validation', () => {
-  describe('readSpaceDirectory with unquoted YAML date', () => {
+describe('dates and format validation', () => {
+  describe('readSpaceDirectory with unquoted YAML date and datetime', () => {
     let nodes: Awaited<ReturnType<typeof readSpaceDirectory>>['nodes'];
 
     beforeAll(async () => {
@@ -21,12 +21,12 @@ describe('date coercion and format validation', () => {
       expect(nodes).toHaveLength(1);
     });
 
-    it('coerces Date object to ISO date string', () => {
+    it('keeps the date and datetime as written', () => {
       expect(nodes[0]?.schemaData.date).toBe('2026-03-31');
-      expect(nodes[0]?.schemaData.date).toBeTypeOf('string');
+      expect(nodes[0]?.schemaData.updated).toBe('2026-03-31T09:15:00+10:00');
     });
 
-    it('coerced date passes schema validation', () => {
+    it('passes schema validation', () => {
       expect(validateNode(nodes[0]?.schemaData)).toBe(true);
     });
   });
@@ -44,8 +44,22 @@ describe('date coercion and format validation', () => {
       expect(validateNode({ type: 'note', title: 'Test', date: '2026-03-31T00:00:00Z' })).toBe(false);
     });
 
-    it('rejects a Date object (unconverted)', () => {
+    it('rejects a Date object', () => {
       expect(validateNode({ type: 'note', title: 'Test', date: new Date('2026-03-31') })).toBe(false);
+    });
+  });
+
+  describe('format: "date-time" schema validation', () => {
+    it.each([
+      '2026-03-31T09:15:00Z',
+      '2026-03-31T09:15:00.250Z',
+      '2026-03-31T09:15:00+10:00',
+    ])('accepts %s', (value) => {
+      expect(validateNode({ type: 'note', title: 'Test', updated: value })).toBe(true);
+    });
+
+    it.each(['2026-03-31', '2026-03-31T09:15:00', '2026-03-31 09:15:00Z'])('rejects %s', (value) => {
+      expect(validateNode({ type: 'note', title: 'Test', updated: value })).toBe(false);
     });
   });
 });

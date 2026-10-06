@@ -9,7 +9,7 @@ import type { ParseResult, PluginContext } from '../util';
 import type { MarkdownPluginConfig } from '.';
 import { extractLinksFromBody, extractLinksFromFrontmatter, getEdgeFieldNames } from './extract-content-links';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
-import { applyFieldMap, coerceDates, inferTypeFromPath } from './util';
+import { applyFieldMap, inferTypeFromPath, MATTER_OPTIONS } from './util';
 
 type ReadSpaceDirectoryOptions = {
   includeOnAPageFiles?: boolean;
@@ -23,7 +23,7 @@ export function readSpaceOnAPage(context: PluginContext): ParseResult {
   } = context;
   const filePath = resolve(space.path);
   const raw = readFileSync(filePath, 'utf-8');
-  const { data: frontmatter, content: body } = matter(raw);
+  const { data: frontmatter, content: body } = matter(raw, MATTER_OPTIONS);
 
   const pageType = frontmatter.type as string | undefined;
   if (pageType !== undefined && !ON_A_PAGE_TYPES.includes(pageType)) {
@@ -99,13 +99,8 @@ export async function readSpaceDirectory(
 
     let parsed: ReturnType<typeof matter>;
     try {
-      parsed = matter(content);
+      parsed = matter(content, MATTER_OPTIONS);
     } catch (err) {
-      // gray-matter caches parsed YAML and has a known bug where a caught exception
-      // corrupts its internal cache, causing subsequent parses to silently return {}.
-      // Clear the cache after any parse error to avoid stale state.
-      // See: https://github.com/jonschlinkert/gray-matter/issues/166
-      (matter as unknown as { clearCache: () => void }).clearCache();
       const yamlErr = err as { mark?: { line: number; column: number } };
       const line = yamlErr.mark ? yamlErr.mark.line + 1 : undefined;
       const column = yamlErr.mark ? yamlErr.mark.column + 1 : undefined;
@@ -131,7 +126,7 @@ export async function readSpaceDirectory(
       continue;
     }
 
-    const data = coerceDates(applyFieldMap(parsed.data, fieldMap));
+    const data = applyFieldMap(parsed.data, fieldMap);
 
     if (!data.type && typeInferenceCfg && knownTypes) {
       data.type = inferTypeFromPath(file, typeInferenceCfg, knownTypes, context.schema.metadata.typeAliases);
