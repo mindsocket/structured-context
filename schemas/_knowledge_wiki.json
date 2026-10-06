@@ -89,7 +89,7 @@
         },
         "published_date": {
           "type": "string",
-          "format": "date",
+          "format": "date-or-date-time",
           "description": "Original publication date"
         },
         "source_type": {
@@ -213,7 +213,7 @@
         "type": { "const": "note" },
         "date": {
           "type": "string",
-          "format": "date",
+          "format": "date-or-date-time",
           "description": "Date this entry was created or relates to"
         }
       },
