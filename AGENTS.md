@@ -11,6 +11,10 @@ Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCT
 
 A Claude Code plugin lives at `plugin/`. It includes skills, commands and hooks used when working with collections of Obsidian markdown content (aka a space) in a vault.
 
+The plugin version in `plugin/.claude-plugin/plugin.json` is managed by git hooks (`lefthook.yml`, `scripts/sync-plugin-version.ts`); never edit it by hand:
+- **pre-commit:** bumps the patch version for any commit touching `plugin/`, so the plugin version runs ahead of `package.json` between releases by design. It also syncs major.minor up when `package.json` moves ahead (i.e. a release).
+- **pre-push:** fails if a commit since the last tag changed `plugin/` without bumping the version.
+
 ## Definition of done
 
 There are several places that need reviewing and updating with any new feature or change added:
