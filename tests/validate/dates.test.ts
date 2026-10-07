@@ -44,6 +44,10 @@ describe('dates and format validation', () => {
       expect(validateNode({ type: 'note', title: 'Test', date: '2026-03-31T00:00:00Z' })).toBe(false);
     });
 
+    it.each(['2026-13-01', '2026-02-30', '2026-04-31'])('rejects impossible date %s', (value) => {
+      expect(validateNode({ type: 'note', title: 'Test', date: value })).toBe(false);
+    });
+
     it('rejects a Date object', () => {
       expect(validateNode({ type: 'note', title: 'Test', date: new Date('2026-03-31') })).toBe(false);
     });
@@ -58,17 +62,32 @@ describe('dates and format validation', () => {
       expect(validateNode({ type: 'note', title: 'Test', updated: value })).toBe(true);
     });
 
-    it.each(['2026-03-31', '2026-03-31T09:15:00', '2026-03-31 09:15:00Z'])('rejects %s', (value) => {
+    it.each([
+      '2026-03-31',
+      '2026-03-31T09:15:00',
+      '2026-03-31T09:15Z',
+      '2026-03-31 09:15:00Z',
+      '2026-02-31T09:15:00Z',
+      '2026-03-31T24:00:00Z',
+      '2026-03-31T09:60:00Z',
+      '2026-03-31T09:15:00+25:00',
+    ])('rejects %s', (value) => {
       expect(validateNode({ type: 'note', title: 'Test', updated: value })).toBe(false);
     });
   });
 
   describe('format: "date-or-date-time" schema validation', () => {
-    it.each(['2026-03-31', '2026-03-31T09:15:00Z', '2026-03-31T09:15:00+10:00'])('accepts %s', (value) => {
+    it.each([
+      '2026-03-31',
+      '2026-03-31T09:15:00Z',
+      '2026-03-31T09:15:00+10:00',
+      '2026-03-31T09:15:00',
+      '2026-03-31T09:15',
+    ])('accepts %s', (value) => {
       expect(validateNode({ type: 'note', title: 'Test', when: value })).toBe(true);
     });
 
-    it.each(['2026-03-31T09:15:00', '31/03/2026', 'today'])('rejects %s', (value) => {
+    it.each(['2026-02-29', '2026-03-31T25:00', '2026-03-31 09:15', '31/03/2026', 'today'])('rejects %s', (value) => {
       expect(validateNode({ type: 'note', title: 'Test', when: value })).toBe(false);
     });
   });
