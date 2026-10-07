@@ -297,7 +297,7 @@ An **anchor** is a block anchor (e.g. `^goal1`) appended to a heading in a `type
 
 ## Filter expressions
 
-A **filter expression** is a string that selects a subset of nodes from a space. Filter expressions are used with the `--filter` flag on the `show` command and in named filter views in config.
+A **filter expression** is a string that selects a subset of nodes from a space. Filter expressions are used with the `--filter` flag on the `show` and `render` commands and in named filter views in config.
 
 ### Syntax
 
@@ -312,7 +312,7 @@ Keywords (`WHERE`, `SELECT`) are case-insensitive.
 
 ### Predicate context
 
-The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression evaluated per node. Node fields (from `schemaData`) are accessible directly — e.g. `resolvedType`, `status`, `title`. Additionally, two pre-computed traversal arrays are available:
+The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression evaluated per node. Node fields (from `schemaData`) are accessible directly — e.g. `resolvedType`, `status`. `label` (relative file path, e.g. `"solutions/My Solution.md"`) and `title` are always available regardless of schema. Additionally, two pre-computed traversal arrays are available:
 
 | Field | Description |
 |-------|-------------|
@@ -327,6 +327,8 @@ Each entry in `ancestors[]` or `descendants[]` includes all schema fields of the
 | `_source` | `'hierarchy' \| 'relationship'` | Whether the edge came from a hierarchy or a relationship |
 | `_hierarchy` | `string` | Hierarchy name; present only for hierarchy edges |
 | `_selfRef` | `boolean` | Whether the edge is a same-type (self-referential) link |
+
+Dates and datetimes are the strings written in frontmatter, so compare them with `$toMillis()` rather than as strings (offsets and precision vary), e.g. `WHERE $toMillis(updated) > $toMillis('2026-03-31T00:00:00Z')`. See [Rules: dates and times](rules.md#dates-and-times).
 
 ### SELECT spec
 

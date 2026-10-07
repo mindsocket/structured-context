@@ -85,45 +85,30 @@ npx skills add https://github.com/mindsocket/structured-context/tree/main/plugin
 
 ## Concepts
 
-See [docs/concepts.md](docs/concepts.md) for the full terminology reference, including definitions of nodes, embedded nodes, spaces, schemas, rules, and more.
+See [docs/concepts.md](docs/concepts.md) (`sctx docs concepts`) for terminology: spaces, nodes, embedded nodes, schemas, hierarchies, rules and more.
 
 ## Configuration
 
-`structured-context` looks for its config file in this order:
+The config file maps space names to paths and schemas, with optional plugin settings. It is found from `--config`, then `$SCTX_CONFIG`, then `$XDG_CONFIG_HOME/structured-context/config.json` (default `~/.config/...`), then `./config.json`. Paths resolve relative to the config file, and `includeSpacesFrom` pulls in spaces from other config files.
 
-1. `--config` command line argument
-2. `$SCTX_CONFIG` env var
-3. `~/.config/structured-context/config.json` (or `$XDG_CONFIG_HOME/structured-context/config.json`)
-4. `./config.json` in the current working directory
-
-See `config.example.json` for the full structure. The config maps space names to paths, with optional additional configuration options for parsing and integrations. Paths in config files are resolved relative to the config file.
-
-**Including spaces from other configs:** Use `includeSpacesFrom` to import space definitions from other config files. This is useful for aggregating spaces from multiple projects into a central config, reducing the need to specify `--config` on CLI commands. Duplicate space names are not allowed.
-
-**Plugins and markdown plugin config:** See `sctx docs config` for the full reference including `fieldMap`, `typeInference`, `templateDir`, filter views, and plugin loading rules.
+See `config.example.json` and [docs/config.md](docs/config.md) (`sctx docs config`) for the full reference, including `fieldMap`, `typeInference`, templates, filter views and plugin loading.
 
 ### Schemas
 
-Schemas define the structure and rules for the entities in a space, allowing customisation and extension to different models.
+Schemas define the entity types, fields, hierarchy and rules for a space. Set one per space with `schema` in config. Bundled schemas:
 
-Several schemas (`strict_ost`, `knowledge_wiki`, `general` and `okf`) are included. The general (strategy) schema combines a basic vision/mission/goals hierarchy with a hierarchy loosely based on Opportunity Solution Trees. It is intentionally flexible to support rapid initial adoption. The strict OST schema has a narrower scope, and reflects Teresa Torres' specific recommendations for Opportunity Solution Trees more closely. The knowledge wiki schema defines a flatter set of types used for knowledge bases. The `okf` schema validates [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) bundles: any concept `type`, with provenance, trust, lifecycle and Attested Computation fields checked when present.
+- `strategy_general` — flexible strategy ladder (vision, mission, goals) flowing into an OST-style opportunity → solution → experiment hierarchy.
+- `strict_ost` — Teresa Torres' canonical four levels: outcome → opportunity → solution → assumption test.
+- `knowledge_wiki` — flat, LLM-maintained knowledge base of sources, concepts, entities, syntheses and notes, with provenance.
+- `okf` — [Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) v0.2 bundles: any concept type, with provenance, trust, lifecycle and Attested Computation fields checked when present.
 
-structured-context schemas use a metaschema based on JSON Schema 2020-12 that adds a top-level `$metadata` block:
+Partials (`_*.json`, e.g. `_strategy_general`, `_knowledge_wiki`) are reusable building blocks for your own schemas. Plugins can contribute further schemas.
+
+Schemas are JSON Schema 2020-12 plus a top-level `$metadata` block for hierarchy, relationships, aliases, imports and executable rules, for example:
 
 ```json5
 "$metadata": {
-  "hierarchy": {
-    "levels": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"],
-    "allowSkipLevels": false
-  },
-  "relationships": [
-    {
-      "parent": "opportunity",
-      "type": "assumption",
-      "templateFormat": "table",
-      "matchers": ["Assumptions"]
-    }
-  ],
+  "hierarchy": { "levels": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"] },
   "aliases": { "experiment": "assumption_test" },
   "rules": [
     {
@@ -137,100 +122,9 @@ structured-context schemas use a metaschema based on JSON Schema 2020-12 that ad
 }
 ```
 
-Schema hierarchy levels support DAG (multi-parent) relationships via configurable edge fields. Each entry in `$metadata.hierarchy.levels` can be a plain type name string (defaults to `parent` field on child nodes) or an object:
+See [docs/schemas.md](docs/schemas.md) (`sctx docs schema`) for the dialect, composition, multiple hierarchies and `$id` namespaces; [docs/rules.md](docs/rules.md) (`sctx docs rules`) for rules; and [docs/concepts.md](docs/concepts.md) for hierarchy embedding and relationships.
 
-```json5
-// Example fragments for hierarchy level objects:
-{ "type": "opportunity", "selfRef": true }
-{ "type": "solution", "field": "fulfills", "multiple": true }
-{ "type": "requirement", "field": "generates", "fieldOn": "parent", "multiple": true }
-{ "type": "solution", "field": "solutions", "fieldOn": "parent", "multiple": true, "selfRefField": "parent" }
-```
-
-| Property | Default | Description |
-|---|---|---|
-| `type` | required | The node type at this hierarchy level |
-| `field` | `"parent"` | Name of the edge field |
-| `fieldOn` | `"child"` | Which side holds the field: `"child"` (child points up) or `"parent"` (parent points down) |
-| `multiple` | `false` | Whether the field is an array of wikilinks (enables multi-parent DAG) |
-| `selfRef` | `false` | Whether a node of this type may reference a same-type parent |
-| `selfRefField` | _undefined_ | Optional field for same-type parent relationships (always on child-side and singular) |
-| `templateFormat` | _undefined_ | Embedding hint (`"list"`, `"table"`, `"heading"`). When set alongside `matchers`, enables hierarchy embedding in typed pages |
-| `matchers` | _undefined_ | Heading patterns (strings or `/regex/`) to match for hierarchy embedding. Case-insensitive. |
-| `embeddedTemplateFields` | _undefined_ | Column names for table stubs when `template-sync` generates templates |
-
-The `selfRefField` property enables different fields for regular vs same-type relationships. For example, requirements can list solutions via `solutions` on the requirement node, while solutions can reference parent solutions via `parent` on the solution node.
-
-**Hierarchy embedding** — when `templateFormat` and `matchers` are set on a level, typed pages may include section headings that signal embedded content for that type without explicit `[type:: x]` annotations. Two patterns:
-
-- **Child-level**: heading matches the child level's type/matchers → list or table items create child nodes.
-- **Parent-level references**: heading matches the *parent* level's type/matchers → bare wikilink items (`- [[X]]`) populate the current node's reference field rather than creating new nodes. Useful for listing parent relationships inline.
-
-Bare wikilink items (`- [[Existing Node]]`) in any embedding section populate a field rather than creating a new node.
-
-**Adjacent Relationships** (`$metadata.relationships`) define connections between types outside the primary hierarchy — such as an `activity` having many `task` nodes. They drive embedded parsing (typed headings, lists, tables) and template generation.
-
-| Property | Default | Description |
-|---|---|---|
-| `parent` | required | Parent canonical type |
-| `type` | required | Child canonical type |
-| `field` | `"parent"` | Frontmatter field holding the wikilink(s). Required when `fieldOn: "parent"`. |
-| `fieldOn` | `"child"` | `"child"`: child holds a link pointing up. `"parent"`: parent holds an array of child links. |
-| `templateFormat` | `"page"` | Hint for `template-sync`: `"table"`, `"list"`, or `"heading"` |
-| `matchers` | `[]` | Heading text to match for embedded parsing (strings or `/regex/`). Case-insensitive. |
-| `multiple` | `true` | Whether multiple children are expected |
-| `embeddedTemplateFields` | `[]` | Field names to include as table columns in templates |
-
-With `fieldOn: "parent"`, embedded child nodes (parsed from a matching heading's list or table) are appended as wikilinks to the parent's `field` array, rather than receiving a `parent` field. This matches schemas where the content model naturally lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`).
-
-`$ref` reuses JSON Schema definitions for validation only; it brings no metadata. Metadata is composed only through explicit imports:
-
-```json5
-"$metadata": { "imports": ["sctx://core/_strategy_general"] }
-```
-
-- An import brings the whole schema's `$metadata`, and is transitive (the imported schema's own imports come too).
-- Merge order: imports in order, depth-first, then the schema's own metadata last.
-- One rule for every key: a duplicate rule `id`, alias, relationship (same `parent`/`type`/`field`) or hierarchy `name` is an error unless the later entry sets `override: true` (for an alias, write the value as `{ "type": "goal", "override": true }`).
-- `hierarchy`: each schema file declares at most one hierarchy, and every imported hierarchy is kept as a separate named hierarchy (see [Multiple hierarchies](#multiple-hierarchies))
-- Each rule's `category` supplies its default severity (`validation` → `error`, `coherence`/`workflow` → `warning`, `best-practice` → `info`); an optional `severity` field overrides it.
-
-If no file defines `hierarchy`, hierarchy-specific checks are skipped.
-
-#### Multiple hierarchies
-
-A space can have several hierarchies by importing schemas that each declare one. For example, a root schema might import a work hierarchy (`goal → task`) and a skills hierarchy (`skill_area → skill`).
-
-- **Naming**: a hierarchy's `name` defaults to the declaring schema's file stem (e.g. `_skills` for `_skills.json`). Set `"name"` in `$metadata.hierarchy` to override it.
-- **Main hierarchy**: if the root schema declares a hierarchy, it is the main one. If the root declares none and exactly one is imported, that one is the main hierarchy. If several are imported, the root must select one:
-
-  ```json5
-  "$metadata": {
-    "imports": ["sctx://_work", "sctx://_skills"],
-    "hierarchy": { "$ref": "sctx://_work#/$metadata/hierarchy" }
-  }
-  ```
-
-  A root may either declare a hierarchy or select one with `$ref`, not both.
-- **Each type belongs to at most one hierarchy.** A type in two hierarchies is an error. To change an imported hierarchy's levels, declare a hierarchy with the same `name` and `"override": true`.
-- **Validation** (layering, parent types, skip levels, orphans) runs per hierarchy. Relationships can connect types across hierarchies.
-- The main hierarchy drives `space_on_a_page` parsing, hierarchy embedding, `template-sync`, and the default `show`/`diagram`/`render` output. Use `--hierarchy <name>` to render another one.
-
-**Customizing Schemas:**
-- **Partial schemas**: Files starting with an underscore (like `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, `_okf.json`) are loaded and used to resolve references (using `$ref`).
-- **Partials as entity libraries**: Partials can define reusable entity types in `$defs` that composing schemas reference via `$ref`. Bundled partials like `_strategy_general` and `_knowledge_wiki` provide common entity sets for strategy and wiki content.
-- **Partials can carry metadata**: Unlike plain JSON Schema, partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets that metadata only by listing the partial in `$metadata.imports`.
-- **No-metadata partials**: If a partial has no `$metadata`, prefer `$schema: "https://json-schema.org/draft/2020-12/schema"` so it validates standalone as plain JSON Schema.
-- **Loading priority**: Partial schemas are loaded from the default schema directory, configured plugins (`schemas/`), and the directory of your specified target schema.
-- **Transitive resolution**: `$ref` chains are resolved recursively across files/schemas (including nested `allOf` usage in partials).
-- **`$id` namespaces**: All `$id`s use `sctx://`. Bundled schemas are `sctx://core/<name>`, plugin schemas `sctx://<pluginName>/<name>`, and local schemas a single name, `sctx://<name>`. Collisions are errors. Legacy bundled ids (`sctx://<name>`, e.g. `sctx://_sctx_base`) resolve to `sctx://core/` with a deprecation warning until 1.0. See [docs/schemas.md](docs/schemas.md#schema-id-namespaces).
-- **Plugin-contributed schemas**: External plugins can contribute schemas via `<pluginRoot>/schemas/` (or `"sctx": { "schemas": "..." }` in `package.json`). Spaces can reference them using `sctx-plugin/schema.json` or `plugin/schema.json`, or by simple filename if the plugin is declared in `plugins`. Schemas resolve statically without executing plugin JavaScript code.
-
-Schema resolution order: space config `schema` > global config `schema`. Schema resolution fails if none is configured.
-
-**⚠️ Security Notice: Only use schemas and configuration files from trusted sources.**
-
-The tool executes JSONata expressions defined in schema files for rule validation. A maliciously crafted schema could make JSONata access JavaScript's prototype chain and execute arbitrary code. Only use schemas you've created or reviewed personally.
+**⚠️ Only use schemas and configuration from trusted sources:** rules are JSONata expressions, and a malicious schema can execute arbitrary code. See [docs/config.md](docs/config.md#security-notice).
 
 ## Usage
 
@@ -262,87 +156,19 @@ Renders a space in a plugin-provided format. Use `sctx render list [space]` to l
 sctx show <space> [--filter <view-or-expression>] [--hierarchy <name>]
 ```
 
-Prints the space as an indented hierarchy tree. Hierarchy roots are listed first, followed by orphans (nodes in the hierarchy but with no resolved parent) and non-hierarchy nodes. The main hierarchy is shown by default; `--hierarchy <name>` selects another (see [Multiple hierarchies](#multiple-hierarchies)). `diagram` and `render` accept the same option.
+Prints the space as an indented hierarchy tree. Hierarchy roots are listed first, followed by orphans (nodes in the hierarchy but with no resolved parent) and non-hierarchy nodes. The main hierarchy is shown by default; `--hierarchy <name>` selects another (see [Multiple hierarchies](docs/schemas.md#multiple-hierarchies)). `diagram` and `render` accept the same option.
 
 When a node appears under multiple parents (DAG hierarchy), it is printed in full under its first parent. Subsequent appearances with children show a `(*)` marker indicating the subtree is omitted.
 
-**Filtering:** The `--filter` flag accepts either a named view from the space config, or an inline filter expression. Only nodes matching the expression are shown.
+**Filtering:** `--filter` (on `show` and `render`) takes a named view from the space config or an inline expression: `WHERE {jsonata}`, optionally with `SELECT {spec}` to expand results along the graph.
 
 ```bash
-# Inline expression
 sctx show <space> --filter "WHERE resolvedType='solution' and status='active'"
-
-# Named view from config
-sctx show <space> --filter active-solutions
+sctx show <space> --filter "SELECT ancestors(opportunity) WHERE resolvedType='solution'"
+sctx show <space> --filter active-solutions   # named view
 ```
 
-See [Filter expressions](#filter-expressions) below for expression syntax.
-
-### Filter expressions
-
-Filter expressions are used with `--filter` and in config `views`. They use a `SELECT ... WHERE ...` pseudo-DSL:
-
-| Form | Meaning |
-|------|---------|
-| `WHERE {jsonata}` | Return nodes where the JSONata predicate is truthy |
-| `SELECT {spec} WHERE {jsonata}` | Filter by WHERE, then expand result via SELECT |
-| `SELECT {spec}` | Expand from all nodes via SELECT (no WHERE filter — returns all nodes, expanded per spec) |
-| `{jsonata}` | Bare JSONata, treated as a WHERE predicate (convenience shorthand) |
-
-The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression evaluated per node. Within the expression, each node's fields are accessible directly (e.g. `resolvedType`, `status`, any schema fields like `title`). Two built-in fields are always available regardless of schema: `label` (relative file path, e.g. `"solutions/My Solution.md"`) and `title` (node display name). Additionally, two pre-computed traversal arrays are available:
-
-- **`ancestors[]`** — flat array of ancestor nodes, nearest first, deduplicated. Each entry includes all schema fields of the ancestor node, plus:
-  - `_field` — the edge field name that connects to the ancestor
-  - `_source` — `'hierarchy'` or `'relationship'`
-  - `_hierarchy` — the hierarchy name, for hierarchy edges
-  - `_selfRef` — whether the edge is a same-type (self-referential) link
-- **`descendants[]`** — same structure, for descendant nodes
-
-Dates and datetimes are the strings written in frontmatter, so compare them with `$toMillis()` rather than as strings (offsets and precision vary), e.g. `WHERE $toMillis(updated) > $toMillis('2026-03-31T00:00:00Z')`. See [Rules: dates and times](docs/rules.md#dates-and-times).
-
-**SELECT spec** expands the result set by walking the graph from matched nodes. The spec is a comma-separated list of directives:
-
-| Directive | Meaning |
-|-----------|---------|
-| `ancestors` | All ancestor nodes |
-| `ancestors(type)` | Ancestors of the given resolved type |
-| `descendants` | All descendant nodes |
-| `descendants(type)` | Descendants of the given resolved type |
-| `siblings` | Nodes sharing at least one parent with matched nodes |
-| `relationships` | All nodes connected via a relationship (non-hierarchy) edge |
-| `relationships(childType)` | Relationship-connected nodes of the given child type |
-| `relationships(parentType:childType)` | As above, also filtering by parent type |
-| `relationships(parentType:field:childType)` | Fully qualified: also filtering by edge field name |
-
-Multiple directives may be combined: `SELECT ancestors(goal), siblings WHERE ...`
-
-**Examples:**
-
-```jsonata
-// All solutions
-WHERE resolvedType='solution'
-
-// Active solutions only
-WHERE resolvedType='solution' and status='active'
-
-// Solutions whose nearest opportunity ancestor is active
-WHERE resolvedType='solution' and $exists(ancestors[resolvedType='opportunity' and status='active'])
-
-// Nodes that have any ancestor goal
-WHERE $exists(ancestors[resolvedType='goal'])
-
-// Bare JSONata shorthand (no WHERE keyword)
-resolvedType='solution' and status='active'
-
-// Solutions + their opportunity ancestors
-SELECT ancestors(opportunity) WHERE resolvedType='solution'
-
-// Solutions + their siblings (other solutions under same opportunity)
-SELECT siblings WHERE resolvedType='solution' and status='active'
-
-// Opportunities + their related assumptions
-SELECT relationships(assumption) WHERE resolvedType='opportunity'
-```
+See [Filter expressions](docs/concepts.md#filter-expressions) (`sctx docs concepts`) for the full syntax.
 
 ### Generate Mermaid diagram
 
@@ -378,28 +204,9 @@ sctx schemas show strategy_general --mermaid-erd
 sctx miro-sync <space> [--new-frame <title>] [--dry-run] [--verbose]
 ```
 
-Syncs space nodes to a Miro board as cards with connectors. Requires `MIRO_TOKEN` env var and `boardId` set in the `miro` plugin config for the space.
+Syncs space nodes to a Miro board as colour-coded cards with parent→child connectors. Requires a `MIRO_TOKEN` env var and `plugins.miro.boardId` in the space config. `--new-frame` creates a frame and saves its `frameId` to config; `--dry-run` previews changes.
 
-- `--new-frame <title>` — create a new frame on the board and sync into it; auto-saves the resulting `frameId` back to the miro plugin config
-- `--dry-run` — show what would change without touching Miro
-- `--verbose` / `-v` — detailed per-card and per-connector output
-
-Configure the miro plugin in the space's config entry:
-
-```json
-{
-  "plugins": {
-    "miro": {
-      "boardId": "your-board-id",
-      "frameId": "your-frame-id"
-    }
-  }
-}
-```
-
-On subsequent runs, the cached `frameId` is used automatically. Cards are colour-coded by node type and linked by parent→child connectors. A local `.miro-cache/` directory tracks Miro IDs to enable incremental updates.
-
-Sync is one-way (OST → Miro) and scoped to a single frame. Only cards and connectors created by this tool within that frame are managed — everything else on the board is left untouched. Card content and connectors are overwritten or recreated to match the markdown source; any edits made directly in Miro to managed cards will be lost on the next sync. Existing card positions are not changed.
+Sync is one-way and scoped to one frame: only cards and connectors this tool created there are managed, and edits made in Miro to those cards are overwritten on the next sync. A local `.miro-cache/` tracks Miro IDs for incremental updates.
 
 ### Sync templates with schema
 

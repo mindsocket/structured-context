@@ -157,4 +157,4 @@ $toMillis(current.stale_after) > $toMillis(current.generated.at)
 
 A datetime without an offset (`2026-07-01T00:00:00`) is read in the machine's local time zone, so require an offset with `format: "date-time"` when results must not depend on where validation runs. `$toMillis()` also needs seconds: it cannot parse a minute-precision datetime such as `2026-07-01T09:15`, which `format: "date-or-date-time"` accepts. A value `$toMillis()` cannot parse makes the rule fail.
 
-The same applies to [filter expressions](../README.md#filter-expressions): compare dates with `$toMillis()`, not as strings.
+The same applies to [filter expressions](concepts.md#filter-expressions): compare dates with `$toMillis()`, not as strings.

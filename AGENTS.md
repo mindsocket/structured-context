@@ -1,11 +1,20 @@
 # Structured Context
 
-Tools for working with Opportunity Solution Tree structures and other product management and strategy frameworks
+Validates markdown content (knowledge bases, Opportunity Solution Trees and other product and strategy frameworks) against JSON schemas, with CLI tools around it.
+
+Before starting new work, review [docs/concepts.md](docs/concepts.md) for canonical terminology. Use and maintain the definitions there as the source of truth when naming things in code, tests, comments, and documentation.
 
 ## Development
 
-Get a list of commands: `bun run src/index.ts --help`
+- `bun run src/index.ts --help` — list CLI commands
+- `bun run typecheck` — type-check all code (`tsconfig.json`)
+- `bun run lint` — biome
+- `bun run build` — compile `src/` to `dist/` (`tsconfig.build.json`)
+- Releases go through the `/release` skill.
+
 Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or `./config.json`
+
+The lefthook pre-commit hook syncs the plugin version (below), then runs biome (`--write`, re-staged) and the typecheck.
 
 ## Claude Code Plugin
 
@@ -19,16 +28,10 @@ The plugin version in `plugin/.claude-plugin/plugin.json` is managed by git hook
 
 There are several places that need reviewing and updating with any new feature or change added:
 
-- README.md - documentation, also displayed with `sctx readme` command
+- README.md - overview, kept brief; detail belongs in docs/. Shown by `sctx docs`
 - AGENTS.md - this file
-- docs/* - includes architecture, concepts etc
+- docs/* - `sctx docs <topic>` shows concepts.md, config.md, schemas.md (`schema`) and rules.md; also architecture.md, api.md
 - plugin/* - skills, commands, hooks, and scripts; update any affected parts
-
-## Project Context
-
-This project validates data in markdown files against a JSON schema representing knowledge bases, and product and strategy frameworks, including Opportunity Solution Trees.
-
-Before starting new work, review [docs/concepts.md](docs/concepts.md) for canonical terminology. Use and maintain the definitions there as the source of truth when naming things in code, tests, comments, and documentation.
 
 ## Planning & Design Principles
 
@@ -39,9 +42,8 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 ## Key Files
 
 - `src/api.ts` — Public library entry point (`structured-context/api`). Re-exports the supported programmatic surface. Keep CLI-only concerns out of it.
-- config — JSON5 file with spaces registered
 - `schemas/` — Bundled default schema files (JSON5) using the structured-context schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`).
-- `src/metadata-contract.ts` — Single source of truth for the `$metadata` contract
+- `src/schema/metadata-contract.ts` — Single source of truth for the `$metadata` contract
 - `schemas/generated/latest/_structured_context_schema_meta.json` — Generated metaschema for the newest dialect (generated on build or with `bun run generate:schema-meta`). `schemas/generated/<version>/` folders are frozen copies, created by the `version` script (`generate:schema-meta --release`) only when a release changes the dialect; never edit them. `src/schema/meta-schemas.ts` loads them at runtime.
 
 ## Testing
@@ -50,11 +52,6 @@ For most development only the main unit tests need re-running regularly.
 - `bun run test:hook` — unit test plugin hooks (`hook-test/unit/`) - hook development only
 - `bun run test:hook:e2e` — test plugin hooks in Claude Code (`hook-test/`) - hook development only
 - `bun run test:smoke` — smoke tests run against locally configured spaces - only use when changes could affect compatibility.
-
-## Dual TypeScript Configuration
-
-- **`tsconfig.json`** — Main config for type-checking across all code - use `bun run typecheck`
-- **`tsconfig.build.json`** — Production build config (only compiles `src/` to `dist/`) - use `bun run build`
 
 ## Debugging
 
