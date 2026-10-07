@@ -233,10 +233,37 @@ export function buildFullRegistry(
   return schemaRefRegistry;
 }
 
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?(Z|[+-](\d{2}):(\d{2}))?$/;
+
+function isCalendarDate(year: string, month: string, day: string): boolean {
+  const d = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  return d.getUTCMonth() === Number(month) - 1 && d.getUTCDate() === Number(day);
+}
+
 /** ISO 8601 date, e.g. 2026-03-31. */
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
-/** ISO 8601 datetime with a UTC offset, e.g. 2026-03-31T09:15:00+10:00. */
-const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+function isDate(value: string): boolean {
+  const m = DATE_PATTERN.exec(value);
+  return m !== null && isCalendarDate(m[1]!, m[2]!, m[3]!);
+}
+
+/**
+ * ISO 8601 datetime. `strict` requires seconds and a UTC offset (e.g. 2026-03-31T09:15:00+10:00);
+ * otherwise both are optional, as in the local datetimes Obsidian writes (e.g. 2026-03-31T09:15).
+ */
+function isDateTime(value: string, strict: boolean): boolean {
+  const m = DATE_TIME_PATTERN.exec(value);
+  if (!m || !isCalendarDate(m[1]!, m[2]!, m[3]!)) return false;
+  const [, , , , hour, minute, second, , offset, offsetHour, offsetMinute] = m;
+  if (strict && (second === undefined || offset === undefined)) return false;
+  return (
+    Number(hour) < 24 &&
+    Number(minute) < 60 &&
+    Number(second ?? 0) < 60 &&
+    Number(offsetHour ?? 0) < 24 &&
+    Number(offsetMinute ?? 0) < 60
+  );
+}
 
 function compileValidator(
   targetSchema: AnySchemaObject,
@@ -244,9 +271,9 @@ function compileValidator(
 ): ValidateFunction {
   const ajv = new Ajv2020();
   ajv.addFormat('path', (value: string) => value.length > 0 && !value.includes('\0'));
-  ajv.addFormat('date', DATE);
-  ajv.addFormat('date-time', DATE_TIME);
-  ajv.addFormat('date-or-date-time', (value: string) => DATE.test(value) || DATE_TIME.test(value));
+  ajv.addFormat('date', isDate);
+  ajv.addFormat('date-time', (value: string) => isDateTime(value, true));
+  ajv.addFormat('date-or-date-time', (value: string) => isDate(value) || isDateTime(value, false));
   ajv.addFormat('wikilink', (value: string) => /^\[\[.+\]\]$/.test(value));
   ajv.addKeyword({
     keyword: '$metadata',

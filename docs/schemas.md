@@ -59,9 +59,9 @@ This schema reuses shared structural defs from partials via `$ref` and imports i
 
 | Format | Validates | Example |
 |--------|-----------|---------|
-| `date` | ISO 8601 date (`YYYY-MM-DD`) | `"2026-03-31"` |
-| `date-time` | ISO 8601 datetime with a UTC offset (`Z` or `±HH:MM`) | `"2026-03-31T09:15:00+10:00"` |
-| `date-or-date-time` | Either of the above | `"2026-03-31"`, `"2026-03-31T09:15:00Z"` |
+| `date` | ISO 8601 calendar date (`YYYY-MM-DD`) | `"2026-03-31"` |
+| `date-time` | ISO 8601 datetime with seconds and a UTC offset (`Z` or `±HH:MM`) | `"2026-03-31T09:15:00+10:00"` |
+| `date-or-date-time` | A date, or a datetime where seconds and offset are optional (as Obsidian's datetime property writes) | `"2026-03-31"`, `"2026-03-31T09:15"`, `"2026-03-31T09:15:00Z"` |
 | `path` | Non-empty filesystem path — absolute, relative, or a plain name | `"notes"`, `"./subdir/file.md"`, `"/abs/path"` |
 | `wikilink` | Obsidian wikilink syntax (`[[...]]`) | `"[[Parent Node]]"` |
 

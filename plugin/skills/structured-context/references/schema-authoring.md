@@ -126,7 +126,7 @@ Use `sctx schemas show _sctx_base.json` to inspect built-in defs.
 | `summary` | Short summary string | Any schema that needs a summary property |
 | `status` | OST lifecycle status enum | OST-domain schemas only |
 
-Custom string formats: `date` (`YYYY-MM-DD`), `date-time` (ISO 8601 with offset), `date-or-date-time` (either; prefer it unless one precision is required), `path`, `wikilink`. Frontmatter dates and datetimes arrive as the strings written.
+Custom string formats: `date` (`YYYY-MM-DD`), `date-time` (ISO 8601 with seconds and offset), `date-or-date-time` (date, or datetime with optional seconds/offset; prefer it unless one precision is required), `path`, `wikilink`. Frontmatter dates and datetimes arrive as the strings written.
 
 Convention:
 - define reusable concepts in `$defs`

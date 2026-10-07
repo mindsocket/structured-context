@@ -34,6 +34,11 @@ describe('dumpYaml', () => {
     expect(yaml).toBe('date: 2026-03-31\nat: 2026-06-20T22:53:05Z\n');
     expect(parseYaml(yaml)).toEqual({ date: '2026-03-31', at: '2026-06-20T22:53:05Z' });
   });
+
+  it('writes Date values as ISO 8601 strings, including inside lists', () => {
+    const yaml = dumpYaml({ at: new Date('2026-06-20T22:53:05Z'), list: [new Date('2026-03-31T00:00:00Z')] });
+    expect(parseYaml(yaml)).toEqual({ at: '2026-06-20T22:53:05.000Z', list: ['2026-03-31T00:00:00.000Z'] });
+  });
 });
 
 describe('MATTER_OPTIONS', () => {

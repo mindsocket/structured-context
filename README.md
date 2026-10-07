@@ -298,6 +298,8 @@ The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression
   - `_selfRef` — whether the edge is a same-type (self-referential) link
 - **`descendants[]`** — same structure, for descendant nodes
 
+Dates and datetimes are the strings written in frontmatter, so compare them with `$toMillis()` rather than as strings (offsets and precision vary), e.g. `WHERE $toMillis(updated) > $toMillis('2026-03-31T00:00:00Z')`. See [Rules: dates and times](docs/rules.md#dates-and-times).
+
 **SELECT spec** expands the result set by walking the graph from matched nodes. The spec is a comma-separated list of directives:
 
 | Directive | Meaning |

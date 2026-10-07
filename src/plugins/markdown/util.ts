@@ -1,6 +1,5 @@
 import { posix } from 'node:path';
-import * as jsYaml from 'js-yaml';
-import { CORE_SCHEMA, type DumpOptions, dump, load, type Type } from 'js-yaml';
+import { DEFAULT_SCHEMA, type DumpOptions, dump, load, Schema, type Type } from 'js-yaml';
 import type { TypeInferenceConfig } from '.';
 
 export function inferTypeFromPath(
@@ -53,8 +52,8 @@ export function inferTypeFromPath(
   return undefined;
 }
 
-// js-yaml exports its built-in types at runtime, but @types/js-yaml does not declare them.
-const types = (jsYaml as unknown as { types: Record<'merge' | 'binary' | 'omap' | 'pairs' | 'set', Type> }).types;
+// js-yaml schemas expose their type lists (and types their tag) at runtime, but @types/js-yaml does not declare them.
+const defaultTypes = DEFAULT_SCHEMA as unknown as { implicit: (Type & { tag: string })[]; explicit: Type[] };
 
 /**
  * YAML schema for frontmatter and embedded YAML blocks: js-yaml's default schema without the
@@ -62,17 +61,25 @@ const types = (jsYaml as unknown as { types: Record<'merge' | 'binary' | 'omap' 
  * `2026-06-20T22:53:05+10:00`) rather than becoming Date objects, which lose precision and offset
  * and are not valid JSON.
  */
-export const YAML_SCHEMA = CORE_SCHEMA.extend({
-  implicit: [types.merge],
-  explicit: [types.binary, types.omap, types.pairs, types.set],
+export const YAML_SCHEMA = new Schema({
+  implicit: defaultTypes.implicit.filter((type) => type.tag !== 'tag:yaml.org,2002:timestamp'),
+  explicit: defaultTypes.explicit,
 });
 
 export function parseYaml(text: string): unknown {
   return load(text, { schema: YAML_SCHEMA });
 }
 
+/** Dumps with YAML_SCHEMA. Date values (e.g. from non-markdown plugins) are written as ISO 8601 strings. */
 export function dumpYaml(data: unknown, options?: DumpOptions): string {
-  return dump(data, { ...options, schema: YAML_SCHEMA });
+  return dump(data, {
+    ...options,
+    schema: YAML_SCHEMA,
+    replacer: (key, value) => {
+      const replaced = options?.replacer ? options.replacer(key, value) : value;
+      return replaced instanceof Date ? replaced.toISOString() : replaced;
+    },
+  });
 }
 
 /**
