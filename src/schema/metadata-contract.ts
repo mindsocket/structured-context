@@ -76,6 +76,11 @@ const RULE_SCHEMA = {
     gatesDescendants: { type: 'boolean' },
   },
   required: ['id', 'category', 'description'],
+  // Semantic rules are judged per node, so they take no `check` and cannot be global; every other rule needs a `check`.
+  if: { properties: { mode: { const: 'semantic' } }, required: ['mode'] },
+  // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then`/`else` keyword, not a thenable
+  then: { not: { anyOf: [{ required: ['check'] }, { required: ['scope'] }] } },
+  else: { required: ['check'] },
   additionalProperties: false,
 } as const;
 

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/latest/_structured_context_schema_meta.json",
+  "$id": "sctx://semantic-rule-contract.no-check",
+  "$metadata": { "rules": [{ "id": "r", "category": "validation", "description": "d" }] },
+  "type": "object"
+}

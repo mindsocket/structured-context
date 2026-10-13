@@ -16,7 +16,7 @@ import { bundledSchemasDir } from './schema/schema';
 const JUDGE_CONFIG_SCHEMA = {
   type: 'object',
   properties: {
-    provider: { type: 'string', enum: ['anthropic', 'openai', 'fake'] },
+    provider: { type: 'string', enum: ['anthropic', 'openai', 'jev', 'fake'] },
     model: { type: 'string' },
     apiKey: { type: 'string' },
     endpoint: { type: 'string' },

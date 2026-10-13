@@ -246,6 +246,29 @@
               }
             },
             "required": ["id", "category", "description"],
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "semantic"
+                }
+              },
+              "required": ["mode"]
+            },
+            "then": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": ["check"]
+                  },
+                  {
+                    "required": ["scope"]
+                  }
+                ]
+              }
+            },
+            "else": {
+              "required": ["check"]
+            },
             "additionalProperties": false
           }
         }
