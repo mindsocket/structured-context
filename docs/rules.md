@@ -30,6 +30,7 @@ Rules are a flat array.
 | `type` | no | Restrict rule to nodes of this `resolvedType` |
 | `scope` | no | Use `"global"` to evaluate once for the whole space |
 | `override` | no | Only for merge conflicts: allows later duplicate `id` to replace earlier |
+| `gatesDescendants` | no | Whether a violation gates downstream checks on the node's hierarchy subtree. Defaults to `true` for rules with `error` severity, `false` for `warning` and `info`. Set explicitly to override either way. |
 
 ## Categories and severity
 
@@ -136,6 +137,52 @@ Example override:
   "check": "$count(nodes[resolvedType='outcome' and status='active']) = 1"
 }
 ```
+
+## Cascade gating
+
+When a schema uses `$metadata.hierarchy`, rule evaluation cascades top-down through the
+hierarchy tree (breadth-first from roots and orphans). A **gate** occurs when a node fails
+in a way that makes its descendants' checks untrustworthy or wasteful to run:
+
+- **Schema validation failure** on a node — always gates. The node's own rule checks are
+  suppressed too, since its data is structurally invalid.
+- **Hierarchy structure violation** on a node (e.g. an invalid parent) — always gates the
+  node's subtree, though the node's own rules still run.
+- **A rule violation with `gatesDescendants: true`** (the default for `error`-severity rules; `warning` and `info` rules don't gate unless they set `gatesDescendants: true`) — gates the node's subtree. The
+  violating node's own other rules still run (they're the same cheap deterministic layer).
+
+Gating is per-subtree: once a node is gated, its descendants inherit the same gate (the
+original blocker), rather than each generating a new one. Non-hierarchy nodes and
+`scope: "global"` rules are never gated — cascade gating only applies within the hierarchy
+DAG.
+
+This exists so that expensive or semantic downstream checks (see #114) aren't wasted
+evaluating nodes whose ancestors are already known-bad, and so noise doesn't drown out the
+actionable failure. Set `gatesDescendants: false` on an error-severity rule whose violations shouldn't suppress
+checks further down the tree, or `gatesDescendants: true` on a warning/info rule that should.
+
+### Coverage output
+
+`sctx validate` reports gating as **coverage gates**: which node's failure (schema,
+hierarchy, or a specific `ruleId`) suppressed rule evaluation, and the list of files gated
+as a result. This makes the validation "edge" visible — e.g. "this blocked goal means all
+opportunities beneath it were not evaluated" — for both human reading and agent consumption
+(JSON output via `--json`, under `coverageGates`).
+
+Use `--include-gated` to evaluate rules on gated nodes anyway (still reported as gated) —
+useful for surfacing cheap, bottom-up checks (e.g. orphan detection, content quality) that
+don't depend on an ancestor being valid.
+
+### Single-file validation
+
+`sctx validate-file <path>` applies the same gating as `sctx validate`, so a file's rule results match its entry in a full run. Rules are evaluated for the whole space and the output is restricted to the file. If the file is gated, its rule checks are skipped and a `gated:<file>` entry (kind `gated`, severity `info`) under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway. `--depth` is not supported.
+
+### Depth-limited evaluation
+
+`--depth <n>` restricts validation to hierarchy nodes within `n` breadth-first levels from
+the top (roots and orphans are depth 1). This is a manual, coarser control than cascade
+gating — intended for staged workflows (e.g. an agent fixes the top level, then requests
+the next). Excluded nodes are reported under `skippedByDepth`, separate from gated nodes.
 
 ## Common patterns
 

@@ -9,9 +9,12 @@ export { validateFile } from '../validate';
  * Loads config automatically from the environment, outputs human-readable or JSON,
  * and returns an exit code (0 = valid, 1 = errors found).
  */
-export async function validateFileCommand(filePath: string, options: { json?: boolean } = {}): Promise<number> {
+export async function validateFileCommand(
+  filePath: string,
+  options: { json?: boolean; includeGated?: boolean } = {},
+): Promise<number> {
   const config = loadConfig();
-  const result = await validateFile(filePath, config);
+  const result = await validateFile(filePath, config, { includeGated: options.includeGated });
 
   if (!result.inSpace) {
     if (options.json) {

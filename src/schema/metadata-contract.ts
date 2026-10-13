@@ -66,6 +66,8 @@ const RULE_SCHEMA = {
     type: { type: 'string', minLength: 1 },
     scope: { enum: ['global'] },
     override: { type: 'boolean' },
+    /** Whether a violation of this rule gates (suppresses) downstream checks on the node's hierarchy subtree. Defaults to true for `error` severity rules and false otherwise. */
+    gatesDescendants: { type: 'boolean' },
   },
   required: ['id', 'category', 'description', 'check'],
   additionalProperties: false,

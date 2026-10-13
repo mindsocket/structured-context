@@ -2,12 +2,14 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
 import { readSpace } from './read/read-space';
+import { computeHierarchyDepths, evaluateRulesWithGating, type GatingSeed } from './schema/gating';
 import { extractEntityInfo } from './schema/schema';
 import { validateGraph } from './schema/validate-graph';
 import { validateRules } from './schema/validate-rules';
 import { createSpaceContext } from './space-context';
 import { buildSpaceGraph } from './space-graph';
 import type {
+  CoverageGate,
   FileNotInSpaceResult,
   FileValidationIssue,
   FileValidationResult,
@@ -15,6 +17,7 @@ import type {
   ParseIssue,
   ReadSpaceResult,
   RuleViolation,
+  SchemaMetadata,
   SchemaWithMetadata,
   SpaceContext,
   SpaceNode,
@@ -39,6 +42,16 @@ export interface ValidationResult {
   parseIssues: ParseIssue[];
   /** Content links that could not be resolved to a space node. Warning only — not counted in errors. */
   unresolvedContentLinks: Array<{ file: string; target: string }>;
+  /**
+   * Cascade gates: nodes whose schema/hierarchy failure or blocking rule violation
+   * suppressed rule evaluation for themselves and/or their hierarchy subtree.
+   * See docs/rules.md for gating semantics.
+   */
+  coverageGates: CoverageGate[];
+  /** Nodes excluded from validation entirely by a `depth` limit (breadth-first from hierarchy roots). */
+  skippedByDepth: Array<{ file: string; title: string }>;
+  /** The depth limit applied, if any (undefined means the full space was validated). */
+  depthLimit?: number;
 }
 
 /**
@@ -147,18 +160,54 @@ export function formatErrors(
 }
 
 /**
+ * Evaluate a space's executable rules. With a main hierarchy, evaluation cascades: schema, hierarchy
+ * and gating-rule failures (the `seeds`) suppress rule evaluation for the failing node's subtree.
+ * Shared by `validateSpace` and `validateFile` so both report identical rule results for a node.
+ */
+async function evaluateSpaceRules(
+  nodes: SpaceNode[],
+  metadata: SchemaMetadata,
+  seeds: GatingSeed[],
+  options: { includeGated?: boolean } = {},
+): Promise<{ violations: RuleViolation[]; gates: CoverageGate[] }> {
+  if (!metadata.rules) return { violations: [], gates: [] };
+  if (!metadata.hierarchy) return { violations: await validateRules(nodes, metadata.rules), gates: [] };
+  const graph = buildSpaceGraph(nodes, metadata.hierarchy);
+  return evaluateRulesWithGating(nodes, metadata.rules, graph, seeds, options);
+}
+
+/**
  * Run full validation on a space and return a structured result.
  * Does not output to console or call process.exit.
  */
 export async function validateSpace(
   context: SpaceContext,
-  options: { readResult?: ReadSpaceResult } = {},
+  options: { readResult?: ReadSpaceResult; depth?: number; includeGated?: boolean } = {},
 ): Promise<ValidationResult> {
   const { schema, schemaRefRegistry, schemaValidator } = context;
   const metadata = schema.metadata;
 
   const readResult = options.readResult ?? (await readSpace(context));
-  const { nodes, parseIssues } = readResult;
+  const { parseIssues } = readResult;
+  let nodes = readResult.nodes;
+
+  // Depth limiting: evaluate only hierarchy nodes within N breadth-first levels from the
+  // top. Non-hierarchy nodes are unaffected — depth scoping only applies to the hierarchy DAG.
+  const skippedByDepth: Array<{ file: string; title: string }> = [];
+  if (options.depth !== undefined && metadata.hierarchy) {
+    const fullGraph = buildSpaceGraph(nodes, metadata.hierarchy);
+    const depths = computeHierarchyDepths(fullGraph);
+    const included: SpaceNode[] = [];
+    for (const node of nodes) {
+      const nodeDepth = depths.get(node.title);
+      if (nodeDepth !== undefined && nodeDepth > options.depth) {
+        skippedByDepth.push({ file: node.label, title: node.title });
+      } else {
+        included.push(node);
+      }
+    }
+    nodes = included;
+  }
 
   // Pre-extract valid types for early type validation
   const validTypes = Array.isArray(schema.oneOf) ? extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type) : [];
@@ -174,6 +223,9 @@ export async function validateSpace(
     orphans: [],
     parseIssues,
     unresolvedContentLinks: [],
+    coverageGates: [],
+    skippedByDepth,
+    depthLimit: options.depth,
   };
 
   for (const node of nodes) {
@@ -239,9 +291,19 @@ export async function validateSpace(
     result.orphans.push(...buildSpaceGraph(nodes, hierarchy).orphans);
   }
 
-  // Load and execute rules validation if schema defines rules
+  // Load and execute rules validation if schema defines rules (with cascade gating, see docs/rules.md).
   if (metadata.rules) {
-    result.ruleViolations = await validateRules(nodes, metadata.rules);
+    const seeds: GatingSeed[] = [
+      ...result.nodeErrors.map(
+        (e): GatingSeed => ({ file: e.file, title: String(e.nodeData.title ?? e.file), reason: 'schema' }),
+      ),
+      ...result.hierarchyViolations.map((v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' })),
+    ];
+    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, {
+      includeGated: options.includeGated,
+    });
+    result.ruleViolations = violations;
+    result.coverageGates = gates;
   }
 
   // Collect unresolved content links (warnings — not errors)
@@ -288,7 +350,7 @@ function resolveFileSpace(filePath: string, config: Config): { space: SpaceConfi
 export async function validateFile(
   filePath: string,
   config: Config,
-  options: { configDir?: string } = {},
+  options: { configDir?: string; includeGated?: boolean } = {},
 ): Promise<ValidateFileOutput> {
   const resolved = resolveFileSpace(filePath, config);
 
@@ -378,14 +440,43 @@ export async function validateFile(
     }
   }
 
-  // Rule violations for this node — only error severity counts as an error
+  // Rule violations for this node — only error severity counts as an error.
+  // Rules are evaluated for the whole space with the same cascade gating as `validateSpace`, then
+  // restricted to this file, so a file's rule results match its entry in a full `validate` run.
   if (metadata.rules) {
-    const ruleViolations = await validateRules(nodes, metadata.rules);
-    for (const v of ruleViolations) {
+    const seeds: GatingSeed[] = [
+      ...nodes
+        .filter((node) => {
+          const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
+          const invalidType = nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType);
+          return invalidType || !schemaValidator(node.schemaData);
+        })
+        .map((node): GatingSeed => {
+          const file = node.source?.file ?? node.label;
+          return { file, title: String(node.schemaData.title ?? file), reason: 'schema' };
+        }),
+      ...hierarchyValidation.violations.map(
+        (v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' }),
+      ),
+    ];
+    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, {
+      includeGated: options.includeGated,
+    });
+    for (const v of violations) {
       if (v.file === label) {
         const target = v.severity === 'error' ? errors : warnings;
         target[`rule:${v.ruleId}`] = { kind: 'rule', message: `[${v.ruleId}] ${v.description}`, severity: v.severity };
       }
+    }
+    // A gated file with no violations would otherwise look clean — say that its rules were not checked.
+    for (const gate of gates) {
+      if (!gate.gatedFiles.includes(label)) continue;
+      const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
+      warnings[`gated:${gate.file}`] = {
+        kind: 'gated',
+        message: `Rule checks ${options.includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.file}`,
+        severity: 'info',
+      };
     }
   }
 

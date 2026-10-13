@@ -57,8 +57,12 @@ program
   .description('Validate a single file within its space')
   .argument('<path>', 'Path to the file to validate')
   .option('--json', 'Output results as JSON (machine-readable, for hooks)')
+  .option(
+    '--include-gated',
+    'Evaluate rules even when the file is gated by an upstream schema/hierarchy/rule failure (still reported as gated)',
+  )
   .action(async (filePath, options) => {
-    process.exitCode = await validateFileCommand(filePath, { json: options.json });
+    process.exitCode = await validateFileCommand(filePath, { json: options.json, includeGated: options.includeGated });
   });
 
 program
@@ -67,13 +71,26 @@ program
   .argument('<space-name>', 'Space name')
   .option('-w, --watch', 'Watch for changes and re-run validation')
   .option('--json', 'Output results as JSON')
+  .option(
+    '--depth <n>',
+    'Evaluate only hierarchy nodes within N breadth-first levels from the top (e.g. 1 = root level only)',
+    (v) => parseInt(v, 10),
+  )
+  .option(
+    '--include-gated',
+    'Evaluate rules even on nodes gated by an upstream schema/hierarchy/rule failure (still reported as gated)',
+  )
   .action(async (spaceName, options) => {
     const context = buildSpaceContext(spaceName);
     if (options.watch) {
       await watchValidate(context);
     } else {
       // exitCode rather than process.exit(): exiting straight away can cut off large piped output
-      process.exitCode = await validate(context, { json: options.json });
+      process.exitCode = await validate(context, {
+        json: options.json,
+        depth: options.depth,
+        includeGated: options.includeGated,
+      });
     }
   });
 
