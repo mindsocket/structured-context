@@ -33,7 +33,7 @@ For expression rules, severity, gating and merge behaviour, see [Rules](rules.md
 
    with `ANTHROPIC_API_KEY` set. See [Judge configuration](config.md#judge-semantic-rules) for every field.
 
-3. **Run it**: `sctx validate <space> --semantic`.
+3. **Run it**: `sctx validate <space> --semantic`. To turn it on by default, set `semantic: true` (or `judge.autoRun`) in config; `--no-semantic` overrides that for a single run.
 
 ## Rule fields
 

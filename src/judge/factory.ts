@@ -11,6 +11,9 @@ const PROVIDER_KEY_ENV = {
   jev: 'OPENROUTER_API_KEY',
 } as const;
 
+/** The judge is misconfigured (no provider, unknown provider, missing key). Reported as a plain CLI error. */
+export class JudgeConfigError extends Error {}
+
 const PROVIDERS = ['anthropic', 'openai', 'jev', 'fake'] as const;
 
 /**
@@ -33,12 +36,12 @@ export function createJudgeProvider(
 
   const provider = config?.provider || env.SCTX_JUDGE_PROVIDER;
   if (!provider) {
-    throw new Error(
+    throw new JudgeConfigError(
       `No semantic judge provider configured. Set "judge.provider" in config.json (one of: ${PROVIDERS.join(', ')}) or SCTX_JUDGE_PROVIDER.`,
     );
   }
   if (!(PROVIDERS as readonly string[]).includes(provider)) {
-    throw new Error(`Unknown semantic judge provider "${provider}". Use one of: ${PROVIDERS.join(', ')}.`);
+    throw new JudgeConfigError(`Unknown semantic judge provider "${provider}". Use one of: ${PROVIDERS.join(', ')}.`);
   }
 
   const model = config?.model || env.SCTX_JUDGE_MODEL;
@@ -50,7 +53,7 @@ export function createJudgeProvider(
 
   // OpenAI-compatible endpoints (Ollama, vLLM, ...) may need no key.
   if (!apiKey && provider !== 'openai') {
-    throw new Error(
+    throw new JudgeConfigError(
       `Judge provider "${provider}" selected, but no API key was found. Set ${keyEnv} in the environment or "judge.apiKey" in config.json.`,
     );
   }

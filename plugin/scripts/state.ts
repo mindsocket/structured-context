@@ -132,7 +132,7 @@ export function hashSpace(space: SpaceInfo, configFiles: string[]): string {
  * Info-level rule violations are left out: they are not worth another turn from Claude.
  */
 export async function validateSpace(name: string, options?: HookOptions): Promise<Record<string, FileIssues>> {
-  const text = await sctx(['validate', name, '--json'], options);
+  const text = await sctx(['validate', name, '--json', '--no-semantic'], options);
   if (!text) return {};
   const output = JSON.parse(text) as ValidateOutput;
 

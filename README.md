@@ -131,7 +131,7 @@ See [docs/schemas.md](docs/schemas.md) (`sctx docs schema`) for the dialect, com
 ### Validate nodes
 
 ```bash
-sctx validate <space> [--watch] [--depth <n>] [--include-gated] [--semantic] [--rule-filter <dim=values>]
+sctx validate <space> [--watch] [--depth <n>] [--include-gated] [--semantic|--no-semantic] [--rule-filter <dim=values>]
 ```
 
 Validates markdown files against the JSON schema:
@@ -141,7 +141,7 @@ Validates markdown files against the JSON schema:
 - Runs executable rules (`$metadata.rules`) with **cascade gating**: a schema, hierarchy, or blocking-rule failure on a node suppresses rule evaluation for that node's hierarchy subtree. Gated checks are reported in a Coverage section so you know what wasn't evaluated and why. See [docs/rules.md](docs/rules.md#cascade-gating) for details.
 - `--depth <n>` limits evaluation to hierarchy nodes within `n` breadth-first levels from the top — useful for staged agentic fix loops (fix the top level, then request the next).
 - `--include-gated` evaluates rules even on gated nodes (still reported as gated) — for surfacing cheap bottom-up checks on request.
-- `--semantic` also evaluates `mode: semantic` rules with a model judge (Anthropic, OpenAI-compatible, or Jev); `--rule-filter` narrows which rules run. See [docs/semantic-rules.md](docs/semantic-rules.md) (`sctx docs semantic`).
+- `--semantic` also evaluates `mode: semantic` rules with a model judge (Anthropic, OpenAI-compatible, or Jev); `--no-semantic` overrides `semantic`/`judge.autoRun` in config; `--rule-filter` narrows which rules run. See [docs/semantic-rules.md](docs/semantic-rules.md) (`sctx docs semantic`).
 
 ### Render space
 

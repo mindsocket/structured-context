@@ -16,6 +16,7 @@ import { validate, watchValidate } from './commands/validate';
 import { validateFileCommand } from './commands/validate-file';
 import { loadConfig, setConfigPath } from './config';
 import { CLI_NAME } from './constants';
+import { JudgeConfigError } from './judge/factory';
 import { createSpaceContext, SpaceNotFoundError } from './space-context';
 import type { SpaceContext } from './types';
 
@@ -34,6 +35,17 @@ export function buildSpaceContext(spaceName: string): SpaceContext {
       process.exit(1);
     }
     throw err;
+  }
+}
+
+/** Run a validate command, reporting a misconfigured judge as a plain error rather than a stack trace. */
+async function reportJudgeConfigErrors(run: () => Promise<number>): Promise<number> {
+  try {
+    return await run();
+  } catch (err) {
+    if (!(err instanceof JudgeConfigError)) throw err;
+    console.error(`Error: ${err.message}`);
+    return 1;
   }
 }
 
@@ -66,14 +78,17 @@ program
     'Evaluate only matching rules; dimensions: mode, category, severity, type, id (repeatable, e.g. mode=semantic)',
     (v: string, prev: string[] = []) => [...prev, v],
   )
-  .option('--semantic', 'Evaluate semantic rules using built-in LLM judge')
+  .option('--semantic', 'Evaluate semantic rules with the configured judge')
+  .option('--no-semantic', 'Skip semantic rules even if enabled in config')
   .action(async (filePath, options) => {
-    process.exitCode = await validateFileCommand(filePath, {
-      json: options.json,
-      includeGated: options.includeGated,
-      semantic: options.semantic,
-      ruleFilter: options.ruleFilter,
-    });
+    process.exitCode = await reportJudgeConfigErrors(() =>
+      validateFileCommand(filePath, {
+        json: options.json,
+        includeGated: options.includeGated,
+        semantic: options.semantic,
+        ruleFilter: options.ruleFilter,
+      }),
+    );
   });
 
 program
@@ -96,20 +111,23 @@ program
     'Evaluate only matching rules; dimensions: mode, category, severity, type, id (repeatable, e.g. mode=semantic)',
     (v: string, prev: string[] = []) => [...prev, v],
   )
-  .option('--semantic', 'Evaluate semantic rules using built-in LLM judge')
+  .option('--semantic', 'Evaluate semantic rules with the configured judge')
+  .option('--no-semantic', 'Skip semantic rules even if enabled in config')
   .action(async (spaceName, options) => {
     const context = buildSpaceContext(spaceName);
     if (options.watch) {
       await watchValidate(context);
     } else {
       // exitCode rather than process.exit(): exiting straight away can cut off large piped output
-      process.exitCode = await validate(context, {
-        json: options.json,
-        depth: options.depth,
-        includeGated: options.includeGated,
-        semantic: options.semantic,
-        ruleFilter: options.ruleFilter,
-      });
+      process.exitCode = await reportJudgeConfigErrors(() =>
+        validate(context, {
+          json: options.json,
+          depth: options.depth,
+          includeGated: options.includeGated,
+          semantic: options.semantic,
+          ruleFilter: options.ruleFilter,
+        }),
+      );
     }
   });
 

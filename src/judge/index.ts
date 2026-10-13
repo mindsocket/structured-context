@@ -1,4 +1,4 @@
-export { createJudgeProvider } from './factory';
+export { createJudgeProvider, JudgeConfigError } from './factory';
 export { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from './prompt';
 export type { AnthropicJudgeProviderOptions } from './provider/anthropic';
 export { AnthropicJudgeProvider } from './provider/anthropic';

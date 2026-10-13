@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { createJudgeProvider } from '../../src/judge/factory';
+import { createJudgeProvider, JudgeConfigError } from '../../src/judge/factory';
 import { AnthropicJudgeProvider } from '../../src/judge/provider/anthropic';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { JevJudgeProvider } from '../../src/judge/provider/jev';
@@ -36,7 +36,7 @@ describe('createJudgeProvider factory', () => {
       OPENROUTER_API_KEY: 'r',
       OPENAI_BASE_URL: 'http://x/v1',
     };
-    expect(() => createJudgeProvider(undefined, env)).toThrow('No semantic judge provider configured');
+    expect(() => createJudgeProvider(undefined, env)).toThrow(JudgeConfigError);
     expect(() => createJudgeProvider({ model: 'm' }, env)).toThrow('No semantic judge provider configured');
   });
 
