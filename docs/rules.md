@@ -183,7 +183,7 @@ don't depend on an ancestor being valid.
 
 ### Single-file validation
 
-`sctx validate-file <path>` applies the same gating as `sctx validate`, so a file's rule results match its entry in a full run. Rules are evaluated for the whole space and the output is restricted to the file. If the file is gated, its rule checks are skipped and a `gated:<file>` entry (kind `gated`, severity `info`) under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway. `--depth` is not supported.
+`sctx validate-file <path>` applies the same gating as `sctx validate`, so a file's rule results match its entry in a full run. Expression rules are evaluated for the whole space and the output is restricted to the file. The judge is not: it is consulted only for the file's own semantic rules and for its hierarchy ancestors' semantic rules that can gate (top-down, so a failing ancestor stops the walk), so one file costs at most one call per ancestor level plus one for the file. If the file is gated, its rule checks are skipped and a `gated:<file>` entry (kind `gated`, severity `info`) under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway. `--depth` is not supported.
 
 ### Depth-limited evaluation
 

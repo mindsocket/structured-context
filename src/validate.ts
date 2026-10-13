@@ -213,7 +213,12 @@ async function evaluateSpaceRules(
   nodes: SpaceNode[],
   metadata: SchemaMetadata,
   seeds: GatingSeed[],
-  options: { includeGated?: boolean; judge?: SemanticJudgeProvider; ruleFilter?: RuleFilter } = {},
+  options: {
+    includeGated?: boolean;
+    judge?: SemanticJudgeProvider;
+    judgeTarget?: string;
+    ruleFilter?: RuleFilter;
+  } = {},
 ): Promise<SpaceRuleEvaluation> {
   const rules = metadata.rules && filterRules(metadata.rules, options.ruleFilter);
   if (!rules) return { violations: [], gates: [], semanticEvaluations: [], gatedRules: [] };
@@ -221,6 +226,7 @@ async function evaluateSpaceRules(
     const result = await validateRules(nodes, rules, {
       semantic: options.judge !== undefined,
       judgeProvider: options.judge,
+      judgeTarget: options.judgeTarget,
     });
     return {
       violations: result,
@@ -540,6 +546,7 @@ export async function validateFile(
       includeGated: options.includeGated,
       ruleFilter: options.ruleFilter,
       judge,
+      judgeTarget: label,
     });
     for (const v of violations) {
       if (v.file === label) {

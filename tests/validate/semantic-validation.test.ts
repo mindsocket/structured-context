@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Config } from '../../src/config';
 import { FakeJudgeProvider } from '../../src/judge/fake';
@@ -138,6 +140,91 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       expect(ruleError?.kind).toBe('rule');
       expect(ruleError?.message).toContain('Evidence: Opportunity is framed in solution space.');
     });
+  });
+});
+
+describe('validateFile judges only the target and its gate-capable ancestor rules', () => {
+  let dir: string;
+  let config: Config;
+  const typeSchema = (type: string, parent?: string) => ({
+    type: 'object',
+    properties: { type: { const: type }, title: { type: 'string' }, ...(parent && { parent: { type: 'string' } }) },
+    required: ['type', 'title'],
+  });
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'sctx-judge-target-'));
+    const schemaPath = join(dir, 'schema.json');
+    const rule = (id: string, type: string, severity: string) => ({
+      id,
+      type,
+      mode: 'semantic',
+      category: 'validation',
+      severity,
+      description: id,
+    });
+    writeFileSync(
+      schemaPath,
+      JSON.stringify({
+        $schema:
+          'https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/latest/_structured_context_schema_meta.json',
+        $id: 'sctx://judge-target.test',
+        $metadata: {
+          hierarchy: { levels: ['goal', 'task', 'step'] },
+          rules: [
+            rule('goal-sound', 'goal', 'error'), // gates descendants
+            rule('task-sound', 'task', 'warning'), // does not gate
+            rule('step-sound', 'step', 'warning'),
+          ],
+        },
+        oneOf: [typeSchema('goal'), typeSchema('task', 'p'), typeSchema('step', 'p')],
+      }),
+    );
+    const space = join(dir, 'space');
+    mkdirSync(space);
+    writeFileSync(join(space, 'G.md'), '---\ntype: goal\n---\n');
+    writeFileSync(join(space, 'T.md'), '---\ntype: task\nparent: "[[G]]"\n---\n');
+    writeFileSync(join(space, 'S.md'), '---\ntype: step\nparent: "[[T]]"\n---\n');
+    writeFileSync(join(space, 'Other.md'), '---\ntype: goal\n---\n');
+    config = { spaces: [{ name: 'jt', path: space, schema: schemaPath }] };
+  });
+
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  const run = (judge: FakeJudgeProvider, file: string, extra = {}) =>
+    validateFile(join(dir, 'space', file), config, {
+      semantic: true,
+      judgeProvider: judge,
+      configDir: dir,
+      ...extra,
+    }) as Promise<FileValidationResult>;
+
+  it('judges the target plus only the gate-capable rules of its ancestors', async () => {
+    const judge = new FakeJudgeProvider({ pass: true });
+    await run(judge, 'S.md');
+    const judged = judge.callHistory.map((c) => `${c.node.label}:${c.rules.map((r) => r.id).join(',')}`).sort();
+    // G's rule can gate; T's cannot and Other is unrelated.
+    expect(judged).toEqual(['G.md:goal-sound', 'S.md:step-sound']);
+  });
+
+  it('still lets a failing ancestor rule gate the target', async () => {
+    const judge = new FakeJudgeProvider({ 'goal-sound': { verdict: 'fail' } });
+    const result = await run(judge, 'S.md');
+    expect(result.warnings['rule:step-sound']).toBeUndefined();
+    expect(Object.keys(result.warnings).some((k) => k.startsWith('gated:'))).toBe(true);
+    expect(judge.callHistory.some((c) => c.node.label === 'S.md')).toBe(false);
+  });
+
+  it('with includeGated judges the target even when an ancestor fails', async () => {
+    const judge = new FakeJudgeProvider({ 'goal-sound': { verdict: 'fail' }, 'step-sound': { verdict: 'fail' } });
+    const result = await run(judge, 'S.md', { includeGated: true });
+    expect(result.warnings['rule:step-sound']).toBeDefined();
+  });
+
+  it('judges nothing when the filter excludes every semantic rule', async () => {
+    const judge = new FakeJudgeProvider({ pass: true });
+    await run(judge, 'S.md', { ruleFilter: { id: ['no-such-rule'] } });
+    expect(judge.callHistory).toHaveLength(0);
   });
 });
 

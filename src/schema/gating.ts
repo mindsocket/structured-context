@@ -54,6 +54,12 @@ export interface GatingOptions {
   includeGated?: boolean;
   /** Judge for `mode: semantic` rules. Without it, semantic rules are not evaluated. */
   judge?: SemanticJudgeProvider;
+  /**
+   * Label of the one node whose result is wanted (`validate-file`). Gating is still computed over the
+   * whole space, but the judge is only consulted for that node and for its hierarchy ancestors' gate-capable
+   * semantic rules (top-down, so a gated ancestor stops the walk). Other nodes' semantic rules are not judged.
+   */
+  judgeTarget?: string;
 }
 
 /**
@@ -149,8 +155,32 @@ export async function evaluateRulesWithGating(
 
   const perNodeRules = rules.filter((r) => r.scope !== 'global' && (r.mode !== 'semantic' || judge));
 
+  // With a judge target, only the target and its hierarchy ancestors can need judging.
+  const targetAncestors = new Set<string>();
+  if (options.judgeTarget !== undefined) {
+    const parentsOf = new Map<string, string[]>();
+    for (const [parent, children] of graph.hierarchyChildren) {
+      for (const child of children) parentsOf.set(child.title, [...(parentsOf.get(child.title) ?? []), parent]);
+    }
+    const target = nodes.find((n) => n.label === options.judgeTarget);
+    const pending = target ? [target.title] : [];
+    while (pending.length > 0) {
+      for (const parent of parentsOf.get(pending.pop()!) ?? []) {
+        if (!targetAncestors.has(parent)) {
+          targetAncestors.add(parent);
+          pending.push(parent);
+        }
+      }
+    }
+  }
+
   function applicableRules(node: SpaceNode): Rule[] {
-    return perNodeRules.filter((r) => !r.type || r.type === node.resolvedType);
+    return perNodeRules.filter((r) => {
+      if (r.type && r.type !== node.resolvedType) return false;
+      if (r.mode !== 'semantic' || options.judgeTarget === undefined || node.label === options.judgeTarget) return true;
+      // Ancestors only matter through the gates they could raise.
+      return targetAncestors.has(node.title) && ruleGatesDescendants(r);
+    });
   }
 
   async function evaluateApplicableRules(node: SpaceNode): Promise<{ blockingRuleId?: string }> {

@@ -21,6 +21,8 @@ export interface ValidateRulesOptions {
   semantic?: boolean;
   /** The semantic judge provider to use if semantic is true. */
   judgeProvider?: SemanticJudgeProvider;
+  /** Label of the only node to judge (`validate-file`); other nodes' semantic rules are skipped. */
+  judgeTarget?: string;
   /** Set of node labels that have already failed upstream structural checks. */
   gatedNodeLabels?: Set<string>;
 }
@@ -121,6 +123,7 @@ export async function validateRules(
     }
 
     for (const node of nodes) {
+      if (options.judgeTarget !== undefined && node.label !== options.judgeTarget) continue;
       const applicable = semanticRules.filter((r) => !r.type || r.type === node.resolvedType);
       if (applicable.length === 0) continue;
 
