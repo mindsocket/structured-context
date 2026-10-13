@@ -54,13 +54,12 @@ describe('dates and format validation', () => {
   });
 
   describe('format: "date-time" schema validation', () => {
-    it.each([
-      '2026-03-31T09:15:00Z',
-      '2026-03-31T09:15:00.250Z',
-      '2026-03-31T09:15:00+10:00',
-    ])('accepts %s', (value) => {
-      expect(validateNode({ type: 'note', title: 'Test', updated: value })).toBe(true);
-    });
+    it.each(['2026-03-31T09:15:00Z', '2026-03-31T09:15:00.250Z', '2026-03-31T09:15:00+10:00'])(
+      'accepts %s',
+      (value) => {
+        expect(validateNode({ type: 'note', title: 'Test', updated: value })).toBe(true);
+      },
+    );
 
     it.each([
       '2026-03-31',
