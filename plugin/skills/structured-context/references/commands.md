@@ -11,7 +11,7 @@ Then use the `sctx` command for all operations. Always pass `--config <path>` wh
 ## validate
 
 ```bash
-sctx validate <space> [--watch] [--config <path>]
+sctx validate <space> [--watch] [--config <path>] [--depth <n>] [--include-gated]
 ```
 
 Validates all `.md` files in the space against the JSON schema. For each file:
@@ -19,8 +19,16 @@ Validates all `.md` files in the space against the JSON schema. For each file:
 - Skips files with no frontmatter or no `type` field (after `fieldMap` remapping)
 - Runs JSON schema validation
 - Runs reference checks (wikilinks → known node titles)
-- Runs executable rules (JSONata expressions in `$metadata.rules`), reporting each violation with a severity (`error`, `warning`, `info`)
+- Runs executable rules (JSONata expressions in `$metadata.rules`), with cascade gating: a
+  schema, hierarchy, or blocking-rule failure on a node suppresses rule evaluation for its
+  hierarchy subtree. Gated nodes are reported in a coverage section (and `coverageGates` in
+  `--json` output) so you know what wasn't checked and why.
 - Checks hierarchy ordering
+
+`--depth <n>` restricts evaluation to hierarchy nodes within `n` breadth-first levels from
+the top — useful for fixing a space level by level (fix the top, re-run with a deeper
+`--depth`, repeat). `--include-gated` evaluates rules on gated nodes anyway, still reporting
+them as gated — use it to surface cheap bottom-up checks even when an upstream blocker fired.
 
 Exit codes: `0` = clean (warning and info rule violations don't fail), `1` = validation errors found.
 

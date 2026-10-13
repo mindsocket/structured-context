@@ -45,6 +45,7 @@ There are several places that need reviewing and updating with any new feature o
 - `schemas/` — Bundled default schema files (JSON5) using the structured-context schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`).
 - `src/schema/metadata-contract.ts` — Single source of truth for the `$metadata` contract
 - `schemas/generated/latest/_structured_context_schema_meta.json` — Generated metaschema for the newest dialect (generated on build or with `bun run generate:schema-meta`). `schemas/generated/<version>/` folders are frozen copies, created by the `version` script (`generate:schema-meta --release`) only when a release changes the dialect; never edit them. `src/schema/meta-schemas.ts` loads them at runtime.
+- `src/schema/gating.ts` — Cascade gating: computes hierarchy depth and evaluates rules with subtree gating (schema/hierarchy/blocking-rule failures suppress downstream rule checks). See [docs/rules.md](docs/rules.md#cascade-gating).
 
 ## Testing
 For most development only the main unit tests need re-running regularly.

@@ -216,6 +216,9 @@
               },
               "override": {
                 "type": "boolean"
+              },
+              "gatesDescendants": {
+                "type": "boolean"
               }
             },
             "required": ["id", "category", "description", "check"],

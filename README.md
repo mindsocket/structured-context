@@ -131,13 +131,16 @@ See [docs/schemas.md](docs/schemas.md) (`sctx docs schema`) for the dialect, com
 ### Validate nodes
 
 ```bash
-sctx validate <space> [--watch]
+sctx validate <space> [--watch] [--depth <n>] [--include-gated]
 ```
 
 Validates markdown files against the JSON schema:
 - Extracts YAML frontmatter from each `.md` file
 - Skips files without frontmatter or without a `type` field
 - Reports validation results with counts and per-file errors
+- Runs executable rules (`$metadata.rules`) with **cascade gating**: a schema, hierarchy, or blocking-rule failure on a node suppresses rule evaluation for that node's hierarchy subtree. Gated checks are reported in a Coverage section so you know what wasn't evaluated and why. See [docs/rules.md](docs/rules.md#cascade-gating) for details.
+- `--depth <n>` limits evaluation to hierarchy nodes within `n` breadth-first levels from the top — useful for staged agentic fix loops (fix the top level, then request the next).
+- `--include-gated` evaluates rules even on gated nodes (still reported as gated) — for surfacing cheap bottom-up checks on request.
 
 ### Render space
 

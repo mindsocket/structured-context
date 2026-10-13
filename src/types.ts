@@ -191,6 +191,7 @@ export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-pract
  */
 export type RuleSeverity = 'error' | 'warning' | 'info';
 
+export type { CoverageGate, GatingSeed } from './schema/gating';
 export type { Rule } from './schema/metadata-contract';
 
 export type RuleViolation = {

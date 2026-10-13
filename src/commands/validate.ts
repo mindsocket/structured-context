@@ -6,9 +6,12 @@ import { bundledSchemasDir } from '../schema/schema';
 import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
 import { formatErrors, validateSpace } from '../validate';
 
-export async function validate(context: SpaceContext, options: { json?: boolean } = {}): Promise<number> {
+export async function validate(
+  context: SpaceContext,
+  options: { json?: boolean; depth?: number; includeGated?: boolean } = {},
+): Promise<number> {
   const { schema, schemaRefRegistry } = context;
-  const result = await validateSpace(context);
+  const result = await validateSpace(context, { depth: options.depth, includeGated: options.includeGated });
   const ruleCounts: Record<RuleSeverity, number> = { error: 0, warning: 0, info: 0 };
   for (const v of result.ruleViolations) ruleCounts[v.severity]++;
 
@@ -68,6 +71,9 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
           orphanCount: result.orphans.length,
           parseIssues: result.parseIssues,
           unresolvedContentLinks: result.unresolvedContentLinks,
+          coverageGates: result.coverageGates,
+          skippedByDepth: result.skippedByDepth,
+          depthLimit: result.depthLimit,
         },
         null,
         2,
@@ -113,6 +119,11 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
   console.log(fmt('  Unresolved content links', result.unresolvedContentLinks.length, true, true));
   const parseIssueErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
   console.log(fmt('  Excluded during parsing', result.parseIssues.length, true, parseIssueErrorCount === 0));
+  if (result.depthLimit !== undefined) {
+    console.log(fmt('  Skipped by depth limit', result.skippedByDepth.length, true, true));
+  }
+  const gatedFileCount = result.coverageGates.reduce((sum, g) => sum + g.gatedFiles.length, 0);
+  console.log(fmt('  Rule checks gated (cascade)', gatedFileCount, true, true));
 
   if (result.orphans.length > 0) {
     console.log(`\nOrphans (hierarchy nodes - no parent):`);
@@ -191,6 +202,20 @@ export async function validate(context: SpaceContext, options: { json?: boolean 
     for (const v of result.hierarchyViolations) {
       console.log(`   ${v.file}: ${v.description}`);
     }
+  }
+
+  if (result.coverageGates.length > 0) {
+    console.log(`\nCoverage — rule checks gated by cascade (use --include-gated to evaluate anyway):`);
+    for (const gate of result.coverageGates) {
+      const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
+      console.log(`   ${gate.file} (${gate.nodeTitle}) — ${cause} gated ${gate.gatedFiles.length} node(s):`);
+      for (const file of gate.gatedFiles) console.log(`      ${file}`);
+    }
+  }
+
+  if (result.skippedByDepth.length > 0) {
+    console.log(`\nSkipped by depth limit (--depth ${result.depthLimit}):`);
+    for (const { file } of result.skippedByDepth) console.log(`   ${file}`);
   }
 
   console.log(`\n`);
