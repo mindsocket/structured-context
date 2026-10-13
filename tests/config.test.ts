@@ -386,4 +386,22 @@ describe('loadConfig with includeSpacesFrom', () => {
     const mainConfig = JSON5.parse(readFileSync(mainConfigPath, 'utf-8')) as Config;
     expect(mainConfig.spaces[0]!.name).toBe('main-space');
   });
+
+  it('accepts judge config with the jev provider at root and per space', () => {
+    const configPath = join(testDir, 'judge-config.json');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        judge: { provider: 'jev' },
+        semantic: true,
+        spaces: [
+          { name: 's', path: '/p', judge: { provider: 'anthropic', model: 'claude-haiku-5-5' }, semantic: false },
+        ],
+      }),
+    );
+    setConfigPath(configPath);
+    const config = loadConfig();
+    expect(config.judge?.provider).toBe('jev');
+    expect(config.spaces?.[0]?.judge?.model).toBe('claude-haiku-5-5');
+  });
 });

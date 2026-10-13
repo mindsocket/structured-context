@@ -222,19 +222,7 @@ The judge must pick exactly one verdict from `verdicts` (default `pass`/`fail`);
 
 ### Judge configuration
 
-Set `judge` at the root of `config.json` or per space (the space wins):
-
-```json
-{ "judge": { "provider": "anthropic", "model": "claude-haiku-5-5" } }
-```
-
-| Field | Description |
-|---|---|
-| `provider` | `anthropic`, `openai` (any OpenAI-compatible endpoint, including Ollama and OpenRouter chat models), `jev`, or `fake` (tests). Omitted: inferred from `ANTHROPIC_API_KEY`, then `OPENAI_API_KEY`/`OPENAI_BASE_URL`. `jev` is never inferred. |
-| `model` | Defaults: `claude-haiku-5-5` (anthropic), `gpt-4o-mini` (openai), `typesafe/jev-1.13` (jev). |
-| `endpoint` | Override the API URL. Jev defaults to OpenRouter's `https://openrouter.ai/api/alpha/decisions`. |
-| `apiKey` | Prefer environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY` (jev). `SCTX_JUDGE_*` variables override provider, model, endpoint and key. |
-| `autoRun` | Run semantic rules without `--semantic`. |
+The `judge` provider, model, endpoint and key are set in `config.json`; see [Judge configuration](config.md#judge-semantic-rules) for the fields, defaults and environment variables. Semantic evaluation is off unless `--semantic` is passed or `semantic` / `judge.autoRun` is set.
 
 ### Filtering rules
 

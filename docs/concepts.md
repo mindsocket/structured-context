@@ -151,9 +151,15 @@ Each executable rule has a **category** (`validation`, `coherence`, `workflow`, 
 
 See [docs/rules.md](rules.md) for the rules reference, including JSONata expression syntax and the full `$metadata` field reference.
 
+### Semantic rules
+
+A **semantic rule** (`mode: semantic`) checks meaning that an expression cannot, such as whether an opportunity is framed in the customer's voice. Instead of a `check` expression it carries a `rubric` and a closed set of **verdicts**.
+
+A **judge** is the model that evaluates semantic rules: a chat LLM (Anthropic, OpenAI-compatible) or a decision model (Jev). It receives a node and its rules and must answer each rule with exactly one **verdict** from that rule's `verdicts`; the rule's `failOn` verdicts are violations and all others pass. A judge may also report a confidence and probabilities. Semantic rules are opt-in (`--semantic`) because they cost money and time, and they run inside [cascade gating](#cascade-gating). See [docs/rules.md](rules.md#semantic-rules) for the rule fields and [docs/config.md](config.md#judge-semantic-rules) for judge configuration.
+
 ### Cascade gating
 
-**Cascade gating** is the mechanism by which a schema failure, hierarchy structure violation, or blocking rule violation on a node suppresses rule evaluation for that node's `hierarchy` subtree. It exists so downstream checks — especially future evaluative or LLM-judged layers — aren't run against inputs already known to be invalid.
+**Cascade gating** is the mechanism by which a schema failure, hierarchy structure violation, or blocking rule violation on a node suppresses rule evaluation for that node's `hierarchy` subtree. It exists so downstream checks — especially costly semantic (model-judged) rules — aren't run against inputs already known to be invalid.
 
 A **coverage gate** records one instance of this: the gating node, what kind of failure triggered it (`schema`, `hierarchy`, or a specific rule `id`), and the set of nodes whose rule checks were suppressed as a result. `sctx validate` reports coverage gates so both humans and agents can see the validation "edge" — where evaluation stopped and why. See [docs/rules.md](rules.md#cascade-gating) for the full model, including the per-rule `gatesDescendants` field and the `--include-gated` / `--depth` CLI options.
 

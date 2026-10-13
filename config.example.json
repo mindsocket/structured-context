@@ -17,5 +17,9 @@
       }
     }
   ],
-  "schema": "/path/to/custom/schemas/my-general-schema.json"
+  "schema": "/path/to/custom/schemas/my-general-schema.json",
+  "judge": {
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5"
+  }
 }
