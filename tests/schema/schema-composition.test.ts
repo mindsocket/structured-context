@@ -70,7 +70,7 @@ describe('schema composition metadata', () => {
       id: 'active-outcome-count',
       check: "$count(nodes[resolvedType='outcome' and status='active']) = 1",
     });
-    expect((metadata.rules?.[0] as Record<string, unknown>).override).toBeUndefined();
+    expect((metadata.rules?.[0] as Record<string, unknown> | undefined)?.override).toBeUndefined();
   });
 
   it('compiles schemas that import metadata', () => {
