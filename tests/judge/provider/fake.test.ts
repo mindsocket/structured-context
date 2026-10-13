@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
-import { FakeJudgeProvider } from '../../src/judge/fake';
-import type { SemanticJudgeInput } from '../../src/judge/types';
-import { graded, node, passFailRule } from './helpers';
+import { FakeJudgeProvider } from '../../../src/judge/provider/fake';
+import type { SemanticJudgeInput } from '../../../src/judge/types';
+import { graded, node, passFailRule } from '../helpers';
 
 const input: SemanticJudgeInput = { node, rules: [passFailRule, graded] };
 

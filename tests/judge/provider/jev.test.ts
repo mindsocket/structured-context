@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'bun:test';
-import { createJudgeProvider } from '../../src/judge/factory';
-import { JevJudgeProvider } from '../../src/judge/jev';
-import { graded, node, passFailRule } from './helpers';
+import { createJudgeProvider } from '../../../src/judge/factory';
+import { JevJudgeProvider } from '../../../src/judge/provider/jev';
+import { graded, node, passFailRule } from '../helpers';
 
 const realFetch = globalThis.fetch;
 afterEach(() => {

@@ -155,7 +155,7 @@ See [docs/rules.md](rules.md) for the rules reference, including JSONata express
 
 A **semantic rule** (`mode: semantic`) checks meaning that an expression cannot, such as whether an opportunity is framed in the customer's voice. Instead of a `check` expression it carries a `rubric` and a closed set of **verdicts**.
 
-A **judge** is the model that evaluates semantic rules: a chat LLM (Anthropic, OpenAI-compatible) or a decision model (Jev). It receives a node and its rules and must answer each rule with exactly one **verdict** from that rule's `verdicts`; the rule's `failOn` verdicts are violations and all others pass. A judge may also report a confidence and probabilities. Semantic rules are opt-in (`--semantic`) because they cost money and time, and they run inside [cascade gating](#cascade-gating). See [docs/rules.md](rules.md#semantic-rules) for the rule fields and [docs/config.md](config.md#judge-semantic-rules) for judge configuration.
+A **judge** is the model that evaluates semantic rules: a chat LLM (Anthropic, OpenAI-compatible) or a decision model (Jev). It receives a node and its rules and must answer each rule with exactly one **verdict** from that rule's `verdicts`; the rule's `failOn` verdicts are violations and all others pass. A judge may also report a confidence and probabilities. Semantic rules are opt-in (`--semantic`) because they cost money and time, and they run inside [cascade gating](#cascade-gating). See [docs/semantic-rules.md](semantic-rules.md) for the rule fields and [docs/config.md](config.md#judge-semantic-rules) for judge configuration.
 
 ### Cascade gating
 

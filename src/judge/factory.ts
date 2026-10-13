@@ -1,70 +1,66 @@
-import { AnthropicJudgeProvider } from './anthropic';
-import { FakeJudgeProvider } from './fake';
-import { JevJudgeProvider } from './jev';
-import { OpenAIJudgeProvider } from './openai';
+import { AnthropicJudgeProvider } from './provider/anthropic';
+import { FakeJudgeProvider } from './provider/fake';
+import { JevJudgeProvider } from './provider/jev';
+import { OpenAIJudgeProvider } from './provider/openai';
 import type { JudgeConfig, SemanticJudgeProvider } from './types';
 
+/** Environment variable each provider reads its API key from when none is configured. */
+const PROVIDER_KEY_ENV = {
+  anthropic: 'ANTHROPIC_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  jev: 'OPENROUTER_API_KEY',
+} as const;
+
+const PROVIDERS = ['anthropic', 'openai', 'jev', 'fake'] as const;
+
 /**
- * Instantiate a semantic judge provider based on configuration and environment variables.
+ * Instantiate a semantic judge provider.
  *
- * Precedence:
- * 1. Explicitly passed customProvider (if provided)
- * 2. config.provider or SCTX_JUDGE_PROVIDER === 'fake' -> FakeJudgeProvider
- * 3. config.provider === 'jev' -> JevJudgeProvider (OPENROUTER_API_KEY; always explicit, never auto-detected)
- * 4. config.provider === 'anthropic' or ANTHROPIC_API_KEY present -> AnthropicJudgeProvider
- * 5. config.provider === 'openai' or OPENAI_API_KEY/OPENAI_BASE_URL present -> OpenAIJudgeProvider
+ * The provider is always explicit: `judge.provider` in config or `SCTX_JUDGE_PROVIDER`. It is never
+ * inferred from whichever API keys happen to be in the environment, so a key set for another tool is
+ * never spent on judging unless the user chose that provider.
  *
- * Throws a clear, actionable error if no provider can be resolved.
+ * Once a provider is chosen, its API key comes from `judge.apiKey`, `SCTX_JUDGE_API_KEY`, or the
+ * provider's usual variable (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`).
+ * An explicitly passed `customProvider` wins over everything.
  */
 export function createJudgeProvider(
   config?: JudgeConfig,
   env: Record<string, string | undefined> = process.env,
   customProvider?: SemanticJudgeProvider,
 ): SemanticJudgeProvider {
-  if (customProvider) {
-    return customProvider;
+  if (customProvider) return customProvider;
+
+  const provider = config?.provider || env.SCTX_JUDGE_PROVIDER;
+  if (!provider) {
+    throw new Error(
+      `No semantic judge provider configured. Set "judge.provider" in config.json (one of: ${PROVIDERS.join(', ')}) or SCTX_JUDGE_PROVIDER.`,
+    );
+  }
+  if (!(PROVIDERS as readonly string[]).includes(provider)) {
+    throw new Error(`Unknown semantic judge provider "${provider}". Use one of: ${PROVIDERS.join(', ')}.`);
   }
 
-  const requestedProvider = config?.provider || env.SCTX_JUDGE_PROVIDER;
-  const apiKey = config?.apiKey || env.SCTX_JUDGE_API_KEY;
-  const endpoint = config?.endpoint || env.SCTX_JUDGE_ENDPOINT;
   const model = config?.model || env.SCTX_JUDGE_MODEL;
+  const endpoint = config?.endpoint || env.SCTX_JUDGE_ENDPOINT;
+  if (provider === 'fake') return new FakeJudgeProvider();
 
-  if (requestedProvider === 'fake') {
-    return new FakeJudgeProvider();
+  const keyEnv = PROVIDER_KEY_ENV[provider as keyof typeof PROVIDER_KEY_ENV];
+  const apiKey = config?.apiKey || env.SCTX_JUDGE_API_KEY || env[keyEnv];
+
+  // OpenAI-compatible endpoints (Ollama, vLLM, ...) may need no key.
+  if (!apiKey && provider !== 'openai') {
+    throw new Error(
+      `Judge provider "${provider}" selected, but no API key was found. Set ${keyEnv} in the environment or "judge.apiKey" in config.json.`,
+    );
   }
 
-  if (requestedProvider === 'jev') {
-    const key = apiKey || env.OPENROUTER_API_KEY;
-    if (!key) {
-      throw new Error(
-        'Jev judge provider selected, but no API key was found. Set OPENROUTER_API_KEY in the environment or configure apiKey in config.json.',
-      );
-    }
-    return new JevJudgeProvider({ apiKey: key, model, endpoint });
+  switch (provider) {
+    case 'anthropic':
+      return new AnthropicJudgeProvider({ apiKey: apiKey as string, model, endpoint });
+    case 'jev':
+      return new JevJudgeProvider({ apiKey: apiKey as string, model, endpoint });
+    default:
+      return new OpenAIJudgeProvider({ apiKey, model, endpoint });
   }
-
-  // Anthropic resolution
-  const hasAnthropicKey = Boolean(apiKey || env.ANTHROPIC_API_KEY);
-  if (requestedProvider === 'anthropic' || (!requestedProvider && hasAnthropicKey)) {
-    const resolvedKey = apiKey || env.ANTHROPIC_API_KEY;
-    if (!resolvedKey) {
-      throw new Error(
-        'Anthropic judge provider selected, but no API key was found. Set ANTHROPIC_API_KEY in the environment or configure apiKey in config.json.',
-      );
-    }
-    return new AnthropicJudgeProvider({ apiKey: resolvedKey, model, endpoint });
-  }
-
-  // OpenAI resolution
-  const hasOpenAiKey = Boolean(apiKey || env.OPENAI_API_KEY);
-  const hasOpenAiBaseUrl = Boolean(endpoint || env.OPENAI_BASE_URL || env.OPENAI_ENDPOINT);
-  if (requestedProvider === 'openai' || (!requestedProvider && (hasOpenAiKey || hasOpenAiBaseUrl))) {
-    const resolvedKey = apiKey || env.OPENAI_API_KEY;
-    return new OpenAIJudgeProvider({ apiKey: resolvedKey, model, endpoint });
-  }
-
-  throw new Error(
-    'No semantic judge provider configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY in the environment, or configure "judge" in config.json.',
-  );
 }

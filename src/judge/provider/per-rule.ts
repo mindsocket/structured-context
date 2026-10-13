@@ -1,4 +1,4 @@
-import type { SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult, SemanticRuleSpec } from './types';
+import type { SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult, SemanticRuleSpec } from '../types';
 
 /**
  * Base for providers that can only judge one rule per request (chat LLMs). `evaluate` makes one call

@@ -67,7 +67,7 @@ Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` d
 
 ## Judge (semantic rules)
 
-`judge` configures the model that evaluates `mode: semantic` [rules](rules.md#semantic-rules). Set it at the top level of the config (all spaces) or on a space (the space wins). `semantic` turns semantic evaluation on by default, at the same two levels; otherwise it runs only with `--semantic`.
+`judge` configures the model that evaluates `mode: semantic` [rules](semantic-rules.md). Set it at the top level of the config (all spaces) or on a space (the space wins). `semantic` turns semantic evaluation on by default, at the same two levels; otherwise it runs only with `--semantic`.
 
 ```json
 {
@@ -80,10 +80,10 @@ Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` d
 
 | Field | Description |
 |---|---|
-| `provider` | `anthropic`, `openai` (any OpenAI-compatible endpoint: OpenAI, Ollama, vLLM, OpenRouter chat models), `jev` (TypeSafe decision model via OpenRouter's decisions API), or `fake` (tests). If omitted, inferred from `ANTHROPIC_API_KEY`, then `OPENAI_API_KEY` / `OPENAI_BASE_URL`. `jev` is never inferred. |
+| `provider` | **Required** to judge (or set `SCTX_JUDGE_PROVIDER`). One of `anthropic`, `openai` (any OpenAI-compatible endpoint: OpenAI, Ollama, vLLM, OpenRouter chat models), `jev` (TypeSafe decision model via OpenRouter's decisions API), or `fake` (tests). Never inferred from API keys in the environment. |
 | `model` | Defaults: `claude-haiku-5-5` (anthropic), `gpt-4o-mini` (openai), `typesafe/jev-1.13` (jev). |
 | `endpoint` | Override the API URL. Jev defaults to `https://openrouter.ai/api/alpha/decisions`. |
-| `apiKey` | Prefer environment variables over storing keys in config: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY` (jev). |
+| `apiKey` | Prefer environment variables over storing keys in config. Once the provider is chosen, its key is read from `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `OPENROUTER_API_KEY` (jev). |
 | `autoRun` | Evaluate semantic rules without `--semantic`. |
 
 `SCTX_JUDGE_PROVIDER`, `SCTX_JUDGE_MODEL`, `SCTX_JUDGE_ENDPOINT` and `SCTX_JUDGE_API_KEY` override the corresponding config fields. Semantic evaluation sends node content to the configured provider.

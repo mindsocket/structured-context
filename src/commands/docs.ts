@@ -6,6 +6,7 @@ const TOPICS: Record<string, string> = {
   config: 'config.md',
   schema: 'schemas.md',
   rules: 'rules.md',
+  semantic: 'semantic-rules.md',
 };
 
 export function docs(topic?: string): void {

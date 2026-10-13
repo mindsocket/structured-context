@@ -31,7 +31,7 @@ Rules are a flat array.
 | `severity` | no | `error` \| `warning` \| `info`; overrides the category default (see [Severity](#severity)) |
 | `description` | yes | Human-readable rule intent |
 | `check` | yes, unless `mode: semantic` | JSONata expression; must evaluate to `true` |
-| `mode` | no | `expression` (default) or `semantic` (judged by a model; see [Semantic rules](#semantic-rules)) |
+| `mode` | no | `expression` (default) or `semantic` (judged by a model; see [Semantic rules](semantic-rules.md)) |
 | `rubric` | semantic only | Detailed prompt for the judge; falls back to `description` |
 | `verdicts` | semantic only | Closed set of verdicts the judge must choose from: `{ "<verdict>": "<when it applies>" }`. Default `pass` / `fail`. |
 | `failOn` | semantic only | Verdicts that count as a violation. Default `["fail"]`; required when `verdicts` is declared. At least one verdict must pass. |
@@ -164,7 +164,7 @@ original blocker), rather than each generating a new one. Non-hierarchy nodes an
 `scope: "global"` rules are never gated — cascade gating only applies within the hierarchy
 DAG.
 
-This exists so that expensive or semantic downstream checks (see [Semantic rules](#semantic-rules)) aren't wasted
+This exists so that expensive or semantic downstream checks (see [Semantic rules](semantic-rules.md)) aren't wasted
 evaluating nodes whose ancestors are already known-bad, and so noise doesn't drown out the
 actionable failure. Set `gatesDescendants: false` on an error-severity rule whose violations shouldn't suppress
 checks further down the tree, or `gatesDescendants: true` on a warning/info rule that should.
@@ -183,7 +183,7 @@ don't depend on an ancestor being valid.
 
 ### Single-file validation
 
-`sctx validate-file <path>` applies the same gating as `sctx validate`, so a file's rule results match its entry in a full run. Expression rules are evaluated for the whole space and the output is restricted to the file. The judge is not: it is consulted only for the file's own semantic rules and for its hierarchy ancestors' semantic rules that can gate (top-down, so a failing ancestor stops the walk), so one file costs at most one call per ancestor level plus one for the file. If the file is gated, its rule checks are skipped and a `gated:<file>` entry (kind `gated`, severity `info`) under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway. `--depth` is not supported.
+`sctx validate-file <path>` applies the same gating as `sctx validate`, so a file's rule results match its entry in a full run. Expression rules are evaluated for the whole space and the output is restricted to the file. Semantic rules are judged only for the file and its gating ancestors (see [Semantic rules](semantic-rules.md#single-file-validation)). If the file is gated, its rule checks are skipped and a `gated:<file>` entry (kind `gated`, severity `info`) under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway. `--depth` is not supported.
 
 ### Depth-limited evaluation
 
@@ -194,39 +194,7 @@ the next). Excluded nodes are reported under `skippedByDepth`, separate from gat
 
 ## Semantic rules
 
-A rule with `"mode": "semantic"` is judged by a model instead of a JSONata expression. Semantic rules cost money and time, so they never run unless asked: pass `--semantic` (or set `semantic: true` / `judge.autoRun` on a space or in config).
-
-```json
-{
-  "id": "opportunity-customer-voice",
-  "category": "best-practice",
-  "mode": "semantic",
-  "type": "opportunity",
-  "description": "Opportunity is framed in the customer's voice",
-  "rubric": "The opportunity reads as a customer need or pain point, not a solution in disguise or a business metric.",
-  "verdicts": {
-    "customer-need": "Clearly a customer need or pain point",
-    "vague": "A need, but too vague to act on",
-    "solution": "A solution or business goal in disguise"
-  },
-  "failOn": ["solution"]
-}
-```
-
-The judge must pick exactly one verdict from `verdicts` (default `pass`/`fail`); a verdict listed in `failOn` is a violation, everything else passes. A closed set maps directly onto decision models, which return a choice with confidence and probabilities rather than prose.
-
-- **Evaluation order.** For each node, deterministic rules run first, then all of the node's semantic rules go to the judge in one call. Providers that can only answer one question per request (chat LLMs) make one request per rule; decision models such as Jev answer all of a node's rules in a single request.
-- **Gating.** Semantic rules follow [cascade gating](#cascade-gating): they are not run on gated nodes (recorded as `gatedRules`), and a failing semantic rule gates its subtree when `gatesDescendants` is true (default for `error` severity). A judge *error* (network, unparseable output) is reported as a violation but never gates.
-- **Output.** `--json` includes `semanticEvaluations` (verdict, `pass`, confidence, evidence per node/rule) and `gatedRules`. Violations carry the judge's `evidence`; decision models without prose get a summary of the verdict distribution.
-- **Scope.** Semantic rules judge a node in isolation, plus its parent titles. (Wider scopes such as ancestors or siblings are not yet supported.)
-
-### Judge configuration
-
-The `judge` provider, model, endpoint and key are set in `config.json`; see [Judge configuration](config.md#judge-semantic-rules) for the fields, defaults and environment variables. Semantic evaluation is off unless `--semantic` is passed or `semantic` / `judge.autoRun` is set.
-
-### Filtering rules
-
-`--rule-filter <dimension>=<value>[,<value>]` (repeatable) evaluates only matching rules. Dimensions are `mode`, `category`, `severity` (effective severity), `type` and `id`; different dimensions combine with AND, values within one with OR. For example, `--semantic --rule-filter mode=semantic` runs only the judged rules, and `--rule-filter mode=expression` skips them entirely. Gating is computed from the rules that ran.
+A rule with `"mode": "semantic"` is judged by a model (an LLM or a decision model) instead of a JSONata expression. They are opt-in (`--semantic`) because they cost money and time, and they run inside [cascade gating](#cascade-gating). See [Semantic rules](semantic-rules.md) (`sctx docs semantic`) for the rule fields, judge setup and filtering.
 
 ## Common patterns
 

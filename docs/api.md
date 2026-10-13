@@ -29,7 +29,7 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 
 ## Semantic judging
 
-Semantic rules are evaluated only when `semantic: true` is passed (or configured; see [config.md](config.md#judge-semantic-rules)). The judge defaults to the configured provider; pass `judgeProvider` to inject your own.
+Semantic rules are evaluated only when `semantic: true` is passed (or configured; see [config.md](config.md#judge-semantic-rules)); the provider must be named explicitly, never inferred from the environment. The judge defaults to the configured provider; pass `judgeProvider` to inject your own.
 
 | Export | Purpose |
 | --- | --- |

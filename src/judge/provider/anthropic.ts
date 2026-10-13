@@ -1,6 +1,6 @@
+import { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from '../prompt';
+import type { SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from '../types';
 import { PerRuleJudgeProvider } from './per-rule';
-import { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from './prompt';
-import type { SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from './types';
 
 export interface AnthropicJudgeProviderOptions {
   apiKey: string;

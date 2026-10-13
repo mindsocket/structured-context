@@ -1,45 +1,56 @@
 import { describe, expect, it } from 'bun:test';
-import { AnthropicJudgeProvider } from '../../src/judge/anthropic';
 import { createJudgeProvider } from '../../src/judge/factory';
-import { FakeJudgeProvider } from '../../src/judge/fake';
-import { OpenAIJudgeProvider } from '../../src/judge/openai';
+import { AnthropicJudgeProvider } from '../../src/judge/provider/anthropic';
+import { FakeJudgeProvider } from '../../src/judge/provider/fake';
+import { JevJudgeProvider } from '../../src/judge/provider/jev';
+import { OpenAIJudgeProvider } from '../../src/judge/provider/openai';
 
 describe('createJudgeProvider factory', () => {
-  it('returns custom provider when passed directly', () => {
+  it('returns a custom provider when passed directly', () => {
     const custom = new FakeJudgeProvider();
-    const provider = createJudgeProvider(undefined, {}, custom);
-    expect(provider).toBe(custom);
+    expect(createJudgeProvider(undefined, {}, custom)).toBe(custom);
   });
 
   it('creates FakeJudgeProvider when provider is "fake"', () => {
     const provider = createJudgeProvider({ provider: 'fake' }, {});
-    expect(provider.name).toBe('fake');
     expect(provider instanceof FakeJudgeProvider).toBe(true);
   });
 
-  it('creates AnthropicJudgeProvider when ANTHROPIC_API_KEY is in env', () => {
-    const provider = createJudgeProvider(undefined, { ANTHROPIC_API_KEY: 'test-key' });
-    expect(provider.name).toBe('anthropic');
-    expect(provider instanceof AnthropicJudgeProvider).toBe(true);
+  it.each([
+    ['anthropic', 'ANTHROPIC_API_KEY', AnthropicJudgeProvider],
+    ['openai', 'OPENAI_API_KEY', OpenAIJudgeProvider],
+    ['jev', 'OPENROUTER_API_KEY', JevJudgeProvider],
+  ] as const)('creates %s from config provider with its usual env key (%s)', (provider, keyEnv, Class) => {
+    expect(createJudgeProvider({ provider }, { [keyEnv]: 'k' }) instanceof Class).toBe(true);
   });
 
-  it('creates AnthropicJudgeProvider from config apiKey', () => {
-    const provider = createJudgeProvider({ provider: 'anthropic', apiKey: 'test-key-config' }, {});
+  it('takes the provider from SCTX_JUDGE_PROVIDER and the key from config', () => {
+    const provider = createJudgeProvider({ apiKey: 'k' }, { SCTX_JUDGE_PROVIDER: 'anthropic' });
     expect(provider.name).toBe('anthropic');
   });
 
-  it('creates OpenAIJudgeProvider when OPENAI_API_KEY is in env', () => {
-    const provider = createJudgeProvider(undefined, { OPENAI_API_KEY: 'test-openai-key' });
-    expect(provider.name).toBe('openai');
+  it('never infers a provider from API keys in the environment', () => {
+    const env = {
+      ANTHROPIC_API_KEY: 'a',
+      OPENAI_API_KEY: 'o',
+      OPENROUTER_API_KEY: 'r',
+      OPENAI_BASE_URL: 'http://x/v1',
+    };
+    expect(() => createJudgeProvider(undefined, env)).toThrow('No semantic judge provider configured');
+    expect(() => createJudgeProvider({ model: 'm' }, env)).toThrow('No semantic judge provider configured');
+  });
+
+  it("does not borrow another provider's key", () => {
+    expect(() => createJudgeProvider({ provider: 'anthropic' }, { OPENAI_API_KEY: 'o' })).toThrow('ANTHROPIC_API_KEY');
+    expect(() => createJudgeProvider({ provider: 'jev' }, { ANTHROPIC_API_KEY: 'a' })).toThrow('OPENROUTER_API_KEY');
+  });
+
+  it('lets openai run without a key for local endpoints', () => {
+    const provider = createJudgeProvider({ provider: 'openai', endpoint: 'http://localhost:11434/v1' }, {});
     expect(provider instanceof OpenAIJudgeProvider).toBe(true);
   });
 
-  it('creates OpenAIJudgeProvider from OPENAI_BASE_URL (for local endpoints like Ollama)', () => {
-    const provider = createJudgeProvider(undefined, { OPENAI_BASE_URL: 'http://localhost:11434/v1' });
-    expect(provider.name).toBe('openai');
-  });
-
-  it('throws descriptive error when no provider or key is configured', () => {
-    expect(() => createJudgeProvider(undefined, {})).toThrow('No semantic judge provider configured');
+  it('rejects an unknown provider', () => {
+    expect(() => createJudgeProvider({ provider: 'gemini' as never }, {})).toThrow('Unknown semantic judge provider');
   });
 });

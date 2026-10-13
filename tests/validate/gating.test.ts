@@ -43,11 +43,14 @@ describe('validateSpace cascade gating', () => {
     expect(gate!.gatedFiles).toContain('Child Opportunity.md');
   });
 
-  it('a clean space with only non-blocking rules reports no gates', async () => {
+  it('does not gate on a non-error rule violation by default (solution-quantity is best-practice)', async () => {
+    // The fixture opportunity has only one solution below it, violating solution-quantity.
+    // That rule is info severity, so it doesn't block and the solution's own rules still run.
     const context = makeSpaceContext(VALID_DIR, SCHEMA_PATH);
     const result = await validateSpace(context);
 
     expect(result.nodeErrorCount).toBe(0);
+    expect(result.ruleViolations.some((v) => v.ruleId === 'solution-quantity')).toBe(true);
     expect(result.coverageGates).toEqual([]);
   });
 });

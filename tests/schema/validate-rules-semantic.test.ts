@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { FakeJudgeProvider } from '../../src/judge/fake';
+import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { validateRules } from '../../src/schema/validate-rules';
 import type { Rule, SpaceNode } from '../../src/types';
 import { makeParentRef } from '../test-helpers';

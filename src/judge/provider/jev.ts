@@ -1,4 +1,4 @@
-import type { SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult } from './types';
+import type { SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult } from '../types';
 
 export interface JevJudgeProviderOptions {
   apiKey: string;

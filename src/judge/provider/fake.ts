@@ -1,4 +1,4 @@
-import type { SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult, SemanticRuleSpec } from './types';
+import type { SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult, SemanticRuleSpec } from '../types';
 
 /** A fake answer: a full verdict, or the `{ pass }` shorthand mapped onto the default `pass`/`fail` verdicts. */
 export type FakeAnswer = SemanticJudgeResult | { pass: boolean; evidence?: string };

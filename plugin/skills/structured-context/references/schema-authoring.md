@@ -66,7 +66,7 @@ Relationships define how sub-entities (nodes inside other files) are parsed and 
 
 Rules are a flat array. Each rule's `category` (`validation`, `coherence`, `workflow`, `best-practice`) supplies its default severity: `validation` → `error`, `coherence` and `workflow` → `warning`, `best-practice` → `info`. Only `error` violations fail validation; warnings and info are reported only. An optional per-rule `severity` (`error` | `warning` | `info`) overrides the category default — prefer picking the right category over overriding.
 
-Rules default to `mode: "expression"` (a JSONata `check`). Set `mode: "semantic"` for rules an LLM or decision model judges against a `rubric` (falls back to `description`): they take no `check` or `scope`, may declare `verdicts` (verdict → description, default `pass`/`fail`) with a required `failOn` list, and only run with `--semantic`. Run `sctx docs rules` for the full semantic rule reference. An optional `gatesDescendants` controls whether a violation suppresses rule checks on the node's subtree (default: true for `error` severity).
+Rules default to `mode: "expression"` (a JSONata `check`). Set `mode: "semantic"` for rules an LLM or decision model judges against a `rubric` (falls back to `description`): they take no `check` or `scope`, may declare `verdicts` (verdict → description, default `pass`/`fail`) with a required `failOn` list, and only run with `--semantic`. Run `sctx docs semantic` for the full semantic rule reference. An optional `gatesDescendants` controls whether a violation suppresses rule checks on the node's subtree (default: true for `error` severity).
 
 ## Metadata composition semantics
 

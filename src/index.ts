@@ -195,7 +195,7 @@ program.addCommand(schemasCmd);
 
 program
   .command('docs [topic]')
-  .description('Show documentation (no arg: README; topics: concepts, config, schema, rules)')
+  .description('Show documentation (no arg: README; topics: concepts, config, schema, rules, semantic)')
   .action((topic?: string) => docs(topic));
 
 const renderCmd = new Command('render').description('Render a space in a given format');

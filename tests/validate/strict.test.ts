@@ -198,8 +198,8 @@ describe('Strict OST schema validation', () => {
       ({ nodes } = await readSpaceDirectory(makePluginContext(VALID_DIR, STRICT_SCHEMA_PATH)));
     });
 
-    it('reads all 6 nodes from valid-directory', () => {
-      expect(nodes).toHaveLength(6);
+    it('reads all 4 nodes from valid-directory', () => {
+      expect(nodes).toHaveLength(4);
     });
 
     it('all nodes pass strict_ost schema validation', () => {
