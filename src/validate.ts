@@ -184,7 +184,7 @@ export interface ValidateSpaceOptions {
 
 /**
  * Resolve the semantic judge for a run: none unless semantic evaluation is requested (option, else
- * space/config `semantic` or `judge.autoRun`). An injected provider wins over the configured one.
+ * space/config `semantic`). An injected provider wins over the configured one.
  */
 function resolveJudge(
   requested: boolean | undefined,
@@ -194,10 +194,7 @@ function resolveJudge(
   judgeName?: string,
 ): SemanticJudgeProvider | undefined {
   // Naming a judge on the command line asks for semantic evaluation unless it is switched off explicitly.
-  const enabled =
-    requested ??
-    (judgeName !== undefined ||
-      (space.semantic ?? space.judge?.autoRun ?? config.semantic ?? config.judge?.autoRun ?? false));
+  const enabled = requested ?? (judgeName !== undefined || (space.semantic ?? config.semantic ?? false));
   if (!enabled) return undefined;
   return createJudge((space.judge ?? config.judge) as JudgeConfig | undefined, process.env, injected, judgeName);
 }

@@ -73,7 +73,6 @@ export interface JudgeConfig {
   providers?: Record<string, JudgeProviderDefinition>;
   /** Provider for rules that name none. Needed when several providers are configured. */
   default?: string;
-  autoRun?: boolean;
 }
 
 /** Record of a completed semantic evaluation. */

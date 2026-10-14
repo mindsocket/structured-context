@@ -4,7 +4,12 @@ title: "Executable Rules"
 
 # Executable Rules
 
-Rules are JSONata expressions in schema metadata (`$metadata.rules`). They run after structural JSON Schema validation and let you enforce cross-node checks and workflow constraints.
+Rules check content after JSON Schema validation, for example cross-node checks and workflow constraints. A schema declares rules in `$metadata.rules`. There are two kinds of rule:
+
+- An **expression rule** (the default) is a JSONata `check` that must return `true`.
+- A **semantic rule** asks a model to judge a node. See [Semantic rules](semantic-rules.md).
+
+This page applies to both kinds, unless it says otherwise.
 
 For metadata structure and composition behavior, see [docs/schemas.md](schemas.md).
 
@@ -28,14 +33,12 @@ Rules are a flat array.
 |---|---|---|
 | `id` | yes | Unique rule identifier |
 | `category` | yes | `validation` \| `coherence` \| `workflow` \| `best-practice` |
-| `severity` | no | `error` \| `warning` \| `info`; overrides the category default (see [Severity](#severity)). Semantic rules may instead map verdicts to severities |
+| `severity` | no | `error` \| `warning` \| `info`; overrides the category default (see [Severity](#severity)). A semantic rule can map verdicts to severities |
 | `description` | yes | Human-readable rule intent |
 | `check` | yes, unless `mode: semantic` | JSONata expression; must evaluate to `true` |
-| `when` | no | JSONata applicability test, evaluated per node before the rule. The rule runs only where it returns `true`; elsewhere it is skipped and not reported. Not allowed with `scope: "global"` |
-| `mode` | no | `expression` (default) or `semantic` (judged by a model; see [Semantic rules](semantic-rules.md)) |
-| `rubric` | semantic only | Detailed prompt for the judge; falls back to `description` |
-| `verdicts` | semantic only | Closed set of verdicts the judge must choose from. Default `pass` / `fail`. See [Semantic rules](semantic-rules.md#rule-fields) |
-| `judge` | semantic only | Name of the configured judge provider to use; a `--judge` run override wins |
+| `when` | no | JSONata test. The rule runs only on nodes where it returns `true`. See [Conditional rules](#conditional-rules-when) |
+| `mode` | no | `expression` (default) or `semantic` |
+| `rubric`, `verdicts`, `judge` | semantic only | See [Semantic rules](semantic-rules.md#rule-fields) |
 | `type` | no | Restrict rule to nodes of this `resolvedType` |
 | `scope` | no | Use `"global"` to evaluate once for the whole space |
 | `override` | no | Only for merge conflicts: allows later duplicate `id` to replace earlier |
@@ -54,7 +57,7 @@ Categories describe a rule's intent and supply its default severity. They do not
 
 ### Severity
 
-Every rule violation is reported with a severity:
+When a rule finds a problem on a node, it reports a **violation**. Otherwise it reports nothing. Each violation has a severity:
 
 | Severity | Meaning | Fails validation |
 |---|---|---|
@@ -85,11 +88,12 @@ Prefer choosing the right category and relying on its default. Set `severity` on
 - **`sctx validate --json`** — `errors` includes only `error` severity rule violations (keyed `rule:<id>`, with a `severity` field). A `ruleViolations` array lists every violation with `file`, `ruleId`, `category`, `severity` and `description` (`file` is empty for global rules).
 - **`sctx validate-file`** — `error` severity violations appear under `errors`; `warning` and `info` violations appear under `warnings`. Rule entries carry a `severity` field.
 
-## Evaluation model
+## Which nodes a rule runs on
 
-- Rules with `scope: "global"` run once.
-- Other rules run per applicable node.
-- If `type` is set, only nodes with matching `resolvedType` are evaluated.
+- A rule with `scope: "global"` runs once for the space.
+- Other rules run once for each node.
+- `type` limits a rule to nodes with that `resolvedType`.
+- `when` limits a rule to nodes where a test returns `true`. See [Conditional rules](#conditional-rules-when).
 
 ## Expression context
 
@@ -119,7 +123,7 @@ $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
 
 ## Conditional rules (`when`)
 
-`when` is a JSONata test evaluated on each node before the rule, with the same context as `check`. The rule runs only where it returns `true`; on every other node it is skipped and not reported (it is neither passed nor gated). Use it when a rule applies to a subset of nodes that `type` cannot express:
+`when` is a JSONata test with the same context as `check`. sctx evaluates it on each node before the rule. The rule runs only where `when` returns `true`. On other nodes the rule does not run: it reports nothing and does not gate. Use `when` when `type` cannot select the nodes a rule applies to:
 
 ```json
 { "id": "ready-has-owner", "category": "workflow", "type": "task",
@@ -127,7 +131,9 @@ $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
   "when": "current.status = 'ready'", "check": "$exists(current.owner)" }
 ```
 
-A `when` that returns anything other than `true` means the rule does not apply. A `when` (or `check`) that cannot be evaluated, for example a syntax error, is not silently skipped: it is reported as an `error` violation on that node, with `Rule error:` in its description, and does not gate descendants. `when` needs a per-node rule, so it cannot be combined with `scope: "global"`.
+`when` costs almost nothing, so use it to stop an expensive rule from running where it does not apply. For a semantic rule, this saves a model call on each node that `when` excludes.
+
+If sctx cannot evaluate a `when` or a `check` (for example, because of a syntax error), it reports an `error` violation on the node, with `Rule error:` in its description. This violation does not gate descendants. A rule with `scope: "global"` cannot have `when`.
 
 ## Reusing rules
 
@@ -205,9 +211,16 @@ the top (roots and orphans are depth 1). This is a manual, coarser control than 
 gating — intended for staged workflows (e.g. an agent fixes the top level, then requests
 the next). Excluded nodes are reported under `skippedByDepth`, separate from gated nodes.
 
-## Semantic rules
+## Filtering rules
 
-A rule with `"mode": "semantic"` is judged by a model (an LLM or a decision model) instead of a JSONata expression. They are opt-in (`--semantic`) because they cost money and time, and they run inside [cascade gating](#cascade-gating). See [Semantic rules](semantic-rules.md) (`sctx docs semantic`) for the rule fields, judge setup and filtering.
+`--rule-filter <dimension>=<value>[,<value>]` runs only the rules that match. It works on `sctx validate` and `sctx validate-file`.
+
+- Dimensions: `mode`, `category`, `severity`, `type` and `id`.
+- Values in one dimension combine with OR. Repeat the option to add a dimension; dimensions combine with AND.
+- A semantic rule with a severity map matches each severity that it can report.
+- Gating comes only from the rules that ran.
+
+For example, `--rule-filter mode=expression` skips semantic rules, and `--rule-filter category=workflow,coherence --rule-filter severity=error` runs only workflow and coherence rules that can report an error.
 
 ## Common patterns
 

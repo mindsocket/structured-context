@@ -38,7 +38,6 @@ const JUDGE_CONFIG_SCHEMA = {
     endpoint: { type: 'string' },
     providers: { type: 'object', additionalProperties: JUDGE_PROVIDER_SCHEMA },
     default: { type: 'string' },
-    autoRun: { type: 'boolean' },
   },
   additionalProperties: false,
 } as const;

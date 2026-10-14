@@ -134,4 +134,4 @@ sctx docs config
 - **`references/schema-authoring.md`** — schema file structure, `$metadata`, JSONata rules (run `sctx docs schema` for schema dialect reference)
 - **`references/schema-design.md`** — process for designing a schema from existing content
 
-For CLI and config reference, use `sctx docs <topic>` (topics: `concepts`, `config`, `schema`, `rules`, `semantic`).
+For CLI and config reference, use `sctx docs <topic>` (topics: `concepts`, `config`, `schema`, `rules`, `semantic-rules`).

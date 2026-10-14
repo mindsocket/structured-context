@@ -1,103 +1,114 @@
 # Semantic Rules
 
-A semantic rule is a rule a model judges instead of a JSONata expression: "is this opportunity framed in the customer's voice?" rather than "does this field exist?". Semantic rules are **opt-in**. Nothing is sent to a model unless you pass `--semantic` (or enable it in config), and a space with no semantic rules is unaffected.
+A semantic rule asks a model to judge a node, for example "Is this opportunity a customer need, or a solution in disguise?". Use a semantic rule for a check that an expression cannot do.
 
-For expression rules, severity, gating and merge behaviour, see [Rules](rules.md).
+This page assumes you know [Rules](rules.md). Semantic rules use the same fields, severities, [`when`](rules.md#conditional-rules-when) and [cascade gating](rules.md#cascade-gating) as expression rules. This page gives only the differences.
 
 ## Quick start
 
-1. **Declare a rule** in the schema's `$metadata.rules`:
+1. Set `OPENROUTER_API_KEY` in your environment.
+2. Add a judge to `config.json`:
+
+   ```json
+   { "judge": { "type": "jev" } }
+   ```
+
+   Jev is a decision model and the recommended judge (see [Choosing a judge](#choosing-a-judge)). To use Claude instead, set `"type": "anthropic"` and `ANTHROPIC_API_KEY`.
+3. Add a rule to the schema's `$metadata.rules`:
 
    ```json
    {
-     "id": "opportunity-customer-voice",
+     "id": "opportunity-customer-need",
      "category": "best-practice",
      "mode": "semantic",
      "type": "opportunity",
-     "description": "Opportunity is framed in the customer's voice",
-     "rubric": "The opportunity reads as a customer need or pain point, not a solution in disguise or a business metric.",
-     "verdicts": {
-       "customer-need": "Clearly a customer need or pain point",
-       "vague": {
-         "description": "A need, but too vague to act on",
-         "guidance": "Say who has the need and what they are trying to do."
-       },
-       "solution": "A solution or business goal in disguise"
-     },
-     "severity": { "vague": "info", "solution": "warning" }
+     "description": "The opportunity is a customer need or pain point, not a solution or a business metric"
    }
    ```
 
-2. **Choose a judge** in `config.json`. The judge `type` is always explicit; keys in your environment are never picked up unless you name the type:
+4. Run `sctx validate <space> --semantic`.
 
-   ```json
-   { "judge": { "type": "anthropic" } }
-   ```
+## Turning semantic rules on
 
-   with `ANTHROPIC_API_KEY` set. See [Judge configuration](config.md#judge-semantic-rules) for every field.
+Semantic rules cost money and send node content to the judge's provider. Thus they run only when you ask:
 
-3. **Run it**: `sctx validate <space> --semantic`. To turn it on by default, set `semantic: true` (or `judge.autoRun`) in config; `--no-semantic` overrides that for a single run.
+- `--semantic` runs them for one run of `sctx validate` or `sctx validate-file`.
+- `"semantic": true` in [config](config.md#judge-semantic-rules) runs them on every run. Set it at the top level (all spaces) or on a space.
+- `--no-semantic` stops them for one run, and overrides config.
 
 ## Rule fields
 
-Semantic rules share `id`, `category`, `type`, `description`, `when` and `gatesDescendants` with [expression rules](rules.md#rule-shape). They differ in these fields:
-
 | Field | Required | Description |
 |---|---|---|
-| `mode` | yes | `"semantic"` (the default is `"expression"`) |
-| `rubric` | no | What the judge should assess. Falls back to `description` |
-| `verdicts` | no | The closed set of answers: `{ "<verdict>": "<description>" }`, at least two. Default `pass` / `fail` |
-| `severity` | with `verdicts` | A severity for the default `fail` verdict, or a map from verdict to severity (see below) |
-| `judge` | no | Name of the [judge provider](config.md#judge-semantic-rules) to use. Default: the configured default. A `--judge` run override replaces it |
+| `mode` | yes | `"semantic"` |
+| `rubric` | no | Tells the judge what to assess. Default: `description` |
+| `verdicts` | no | The answers the judge can give. Default: `pass` and `fail`. See [Verdicts](#verdicts) |
+| `severity` | if `verdicts` is set | The severity of each verdict. See [Severity](#severity) |
+| `judge` | no | The name of a [judge provider](#several-judges). Default: the configured default provider |
 
-A semantic rule has no `check` and cannot be `scope: "global"`; it judges one node at a time.
+A semantic rule cannot have `check` or `scope: "global"`.
 
-### Verdicts, severity and guidance
+## Verdicts
 
-The judge must choose exactly one verdict. A closed set keeps results comparable between runs and maps directly onto decision models, which return a choice with confidence and probabilities rather than prose.
+For each node, the judge gives exactly one verdict for each rule. The verdict must come from the rule's `verdicts`. A fixed set of verdicts makes results comparable between runs.
 
-- **A verdict is a classification, severity is the consequence.** `severity` as a map decides what each verdict means for the user: `error`, `warning` or `info`. A verdict left out of the map passes, and `ignore` states that explicitly: the rule ran and the verdict was recorded, but nothing is reported. At least one verdict must pass.
-- **With the default `pass` / `fail` verdicts**, `severity` may be a single value (applied to `fail`) or omitted (the category default applies), like an expression rule.
-- **A verdict's value may be a string or `{ "description", "guidance" }`.** The description tells the judge what the verdict means. The guidance is shown to the user when that verdict fires, so a failure arrives with what to do about it; it is never sent to the judge.
-- **Gating follows the verdict.** A verdict mapped to `error` gates the node's subtree (unless `gatesDescendants: false`); one mapped to `warning` or `info` does not (unless `gatesDescendants: true`).
+Each verdict has a purpose for one audience:
 
-### Running a rule only where it applies
+- The **description** tells the judge when to choose that verdict.
+- The **guidance** (optional) tells the user what to do when the judge chooses that verdict. sctx shows it with the violation. sctx does not send it to the judge.
 
-`when` is a JSONata test evaluated on each node before the rule. The rule runs only where it returns `true`, and a node where it does not is skipped silently (no judge call, nothing reported):
+A verdict is a description string, or an object with `description` and `guidance`:
 
 ```json
-{ "id": "due-soon-coherent", "category": "coherence", "mode": "semantic", "type": "task",
-  "description": "A task due within a week has a believable plan",
-  "when": "current.status = 'ready' and $toMillis(current.due) - $millis() < 604800000" }
+"verdicts": {
+  "customer-need": "A customer need or pain point",
+  "vague": {
+    "description": "A need, but too vague to act on",
+    "guidance": "Say who has the need and what they are trying to do."
+  },
+  "solution": "A solution or business goal in disguise"
+},
+"severity": { "vague": "info", "solution": "warning" }
 ```
 
-`when` works on expression rules too. It saves money on semantic rules because the cheap test runs first.
+## Severity
+
+The verdict is a classification. The severity says what the verdict means for the user.
+
+- With custom verdicts, `severity` is a map from verdict to `error`, `warning`, `info` or `ignore`.
+- A verdict with `error`, `warning` or `info` reports a violation at that severity.
+- A verdict that is not in the map reports no violation. At least one verdict must report no violation.
+- `ignore` also reports no violation. Use it to show that you chose to ignore a verdict. The verdict is still recorded in `--json` output.
+- With the default verdicts, `severity` is one value for `fail`, the same as for an expression rule.
+
+Gating uses the severity of the verdict. A verdict with `error` severity gates the node's subtree, as for any rule. `gatesDescendants` changes this, as for any rule.
 
 ## How judging works
 
-- **Order.** For each node, expression rules run first, then all of the node's semantic rules go to the judge in one call. Chat LLMs make one request per rule; decision models answer all of a node's rules in a single request.
-- **Gating.** Semantic rules follow [cascade gating](rules.md#cascade-gating). They are not judged on gated nodes (recorded as `gatedRules`). A judge *error* (network failure, unparseable output) is reported as a violation but never gates.
-- **Input.** The judge sees the node's title, type, parent titles and its schema data (the fields the parser extracted for validation, including frontmatter).
-- **Output.** `--json` includes `semanticEvaluations` (verdict, `pass`, confidence and evidence per node and rule) and `gatedRules`. Violations carry the judge's `evidence`, the `verdict` and any `guidance`.
+- **Order.** On each node, expression rules run first. Then sctx sends all of the node's semantic rules to the judge in one call.
+- **Gating.** sctx does not judge a gated node. The JSON output lists the rules it did not judge under `gatedRules`.
+- **Judge errors.** If the judge fails (for example, a network error or output that sctx cannot read), sctx reports a violation. A judge error does not gate.
+- **Input.** The judge gets the node's title, type, parent titles and schema data, including frontmatter.
+- **Output.** Violations include the verdict, the judge's evidence and any guidance. `--json` adds `semanticEvaluations`: the verdict, confidence and evidence for each node and rule.
 
-### Single-file validation
-
-`sctx validate-file <path> --semantic` computes gating over the whole space but only calls the judge for the file itself and for its hierarchy ancestors' semantic rules that can gate (top-down, so a failing ancestor stops the walk). A file costs at most one call per ancestor level plus one for the file, however large the space.
-
-### Filtering rules
-
-`--rule-filter <dimension>=<value>[,<value>]` (repeatable) evaluates only matching rules. Dimensions are `mode`, `category`, `severity`, `type` and `id`; different dimensions combine with AND, values within one with OR. A rule with a verdict map matches a `severity` filter on any severity it can report. For example, `--semantic --rule-filter mode=semantic` runs only the judged rules, and `--rule-filter mode=expression` skips them entirely. Gating is computed from the rules that ran.
+`sctx validate-file` judges only the file and the rules on its ancestors that can gate it. Thus one file costs at most one judge call for each ancestor level, plus one.
 
 ## Choosing a judge
 
-| Provider type | Use for | Notes |
+Use a decision model when you can. Its results are repeatable and cheap, and they include a confidence. Use a chat model when the rubric needs open reasoning or a written explanation.
+
+| Provider type | Model | Default key variable |
 |---|---|---|
-| `anthropic` | Claude models | Default model `claude-haiku-5-5` |
-| `openai` | Any OpenAI-compatible chat endpoint: OpenAI, Ollama, vLLM, Groq, OpenRouter chat models | Set `endpoint` for non-OpenAI servers; the key is optional for local ones |
-| `jev` | TypeSafe's Jev decision model | Closed-set answers with calibrated probabilities, one request per node. Uses an OpenRouter key |
+| `jev` | TypeSafe's Jev decision model, through OpenRouter. One request for each node | `OPENROUTER_API_KEY` |
+| `anthropic` | Claude. Default model: `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
+| `openai` | Any OpenAI-compatible chat endpoint, for example OpenAI, Ollama or vLLM. Set `endpoint` for servers other than OpenAI. Local servers do not need a key | `OPENAI_API_KEY` |
 
-Prefer a decision model when you can: results are repeatable, cheap, and come with a confidence. Use a chat LLM when the rubric needs open reasoning or evidence text.
+sctx uses only the provider type that you set. It does not choose a provider from the keys in your environment. See [Judge configuration](config.md#judge-semantic-rules) for all fields.
 
-Several providers can be configured under names, for example `decision` and `llm`. A rule picks one with `judge`, and a run can override every rule with `--judge <name>` (for instance a deeper second opinion on one file: `sctx validate-file F --rule-filter id=r --judge llm`). If a rule's choice and the run override disagree, the run wins.
+### Several judges
 
-Semantic evaluation sends node content to the configured provider. Check that is acceptable for the space before enabling it.
+You can configure several providers by name, for example `decision` and `llm`. A rule selects one with `judge`. `--judge <name>` uses one provider for every rule in a run, and implies `--semantic`. For example, to get a second opinion from a chat model on one rule and one file:
+
+```bash
+sctx validate-file <file> --rule-filter id=<rule-id> --judge llm
+```
