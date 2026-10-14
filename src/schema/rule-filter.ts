@@ -1,5 +1,5 @@
 import type { Rule } from '../types';
-import { ruleSeverity } from './validate-rules';
+import { ruleSeverities } from './rule-severity';
 
 export const RULE_FILTER_DIMENSIONS = ['mode', 'category', 'severity', 'type', 'id'] as const;
 export type RuleFilterDimension = (typeof RULE_FILTER_DIMENSIONS)[number];
@@ -26,30 +26,32 @@ export function parseRuleFilter(specs: string[]): RuleFilter {
   return filter;
 }
 
-function dimensionValue(rule: Rule, dimension: RuleFilterDimension): string | undefined {
+function dimensionValues(rule: Rule, dimension: RuleFilterDimension): string[] {
   switch (dimension) {
     case 'mode':
-      return rule.mode ?? 'expression';
+      return [rule.mode ?? 'expression'];
     case 'severity':
-      return ruleSeverity(rule);
+      return ruleSeverities(rule);
     case 'category':
-      return rule.category;
+      return [rule.category];
     case 'type':
-      return rule.type;
+      return rule.type ? [rule.type] : [];
     case 'id':
-      return rule.id;
+      return [rule.id];
   }
 }
 
-/** Keep the rules matching every dimension of the filter. A rule with no `type` never matches a `type` filter. */
+/**
+ * Keep the rules matching every dimension of the filter. A rule with no `type` never matches a `type` filter,
+ * and a rule with a verdict map matches a `severity` filter on any severity it can report.
+ */
 export function filterRules(rules: Rule[], filter?: RuleFilter): Rule[] {
   if (!filter) return rules;
   return rules.filter((rule) =>
     RULE_FILTER_DIMENSIONS.every((dim) => {
       const wanted = filter[dim];
       if (!wanted) return true;
-      const value = dimensionValue(rule, dim);
-      return value !== undefined && wanted.includes(value);
+      return dimensionValues(rule, dim).some((value) => wanted.includes(value));
     }),
   );
 }

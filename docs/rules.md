@@ -28,13 +28,14 @@ Rules are a flat array.
 |---|---|---|
 | `id` | yes | Unique rule identifier |
 | `category` | yes | `validation` \| `coherence` \| `workflow` \| `best-practice` |
-| `severity` | no | `error` \| `warning` \| `info`; overrides the category default (see [Severity](#severity)) |
+| `severity` | no | `error` \| `warning` \| `info`; overrides the category default (see [Severity](#severity)). Semantic rules may instead map verdicts to severities |
 | `description` | yes | Human-readable rule intent |
 | `check` | yes, unless `mode: semantic` | JSONata expression; must evaluate to `true` |
+| `when` | no | JSONata applicability test, evaluated per node before the rule. The rule runs only where it returns `true`; elsewhere it is skipped and not reported. Not allowed with `scope: "global"` |
 | `mode` | no | `expression` (default) or `semantic` (judged by a model; see [Semantic rules](semantic-rules.md)) |
 | `rubric` | semantic only | Detailed prompt for the judge; falls back to `description` |
-| `verdicts` | semantic only | Closed set of verdicts the judge must choose from: `{ "<verdict>": "<when it applies>" }`. Default `pass` / `fail`. |
-| `failOn` | semantic only | Verdicts that count as a violation. Default `["fail"]`; required when `verdicts` is declared. At least one verdict must pass. |
+| `verdicts` | semantic only | Closed set of verdicts the judge must choose from. Default `pass` / `fail`. See [Semantic rules](semantic-rules.md#rule-fields) |
+| `judge` | semantic only | Name of the configured judge provider to use; a `--judge` run override wins |
 | `type` | no | Restrict rule to nodes of this `resolvedType` |
 | `scope` | no | Use `"global"` to evaluate once for the whole space |
 | `override` | no | Only for merge conflicts: allows later duplicate `id` to replace earlier |
@@ -115,6 +116,18 @@ Inside `nodes[...]`, bare names refer to each candidate node. Use `$$` to refere
 ```jsonata
 $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
 ```
+
+## Conditional rules (`when`)
+
+`when` is a JSONata test evaluated on each node before the rule, with the same context as `check`. The rule runs only where it returns `true`; on every other node it is skipped and not reported (it is neither passed nor gated). Use it when a rule applies to a subset of nodes that `type` cannot express:
+
+```json
+{ "id": "ready-has-owner", "category": "workflow", "type": "task",
+  "description": "Ready tasks have an owner",
+  "when": "current.status = 'ready'", "check": "$exists(current.owner)" }
+```
+
+A `when` that errors or returns anything other than `true` means the rule does not apply. `when` needs a per-node rule, so it cannot be combined with `scope: "global"`.
 
 ## Reusing rules
 

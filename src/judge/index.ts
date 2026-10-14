@@ -1,4 +1,4 @@
-export { createJudgeProvider, JudgeConfigError } from './factory';
+export { createJudge, createJudgeProvider, JudgeConfigError, RoutedJudgeProvider } from './factory';
 export { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from './prompt';
 export type { AnthropicJudgeProviderOptions } from './provider/anthropic';
 export { AnthropicJudgeProvider } from './provider/anthropic';
@@ -12,6 +12,7 @@ export { PerRuleJudgeProvider } from './provider/per-rule';
 export type {
   GatedRuleRecord,
   JudgeConfig,
+  JudgeProviderDefinition,
   SemanticEvaluationRecord,
   SemanticJudgeInput,
   SemanticJudgeProvider,

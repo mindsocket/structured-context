@@ -8,8 +8,10 @@ export interface SemanticRuleSpec {
   category: RuleCategory | string;
   /** Allowed verdicts, each with a description of when it applies. */
   verdicts: Record<string, string>;
-  /** Verdicts that count as a violation. */
+  /** Verdicts that count as a violation (those with a severity; `ignore`d verdicts pass). */
   failOn: string[];
+  /** Name of the judge provider the rule asks for, if any. */
+  judge?: string;
 }
 
 /** One node and every semantic rule to judge on it. Judges may answer all rules in a single call. */
@@ -45,12 +47,32 @@ export interface SemanticJudgeProvider {
   evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>>;
 }
 
-/** Judge configuration from config file or options. */
+/** One judge provider: a backend type plus how to reach it. */
+export interface JudgeProviderDefinition {
+  /** `none` is an inert placeholder for templates; judging with it is an error. */
+  type?: 'anthropic' | 'openai' | 'jev' | 'fake' | 'none' | string;
+  model?: string;
+  endpoint?: string;
+  /** Prefer `apiKeyEnv`: keys do not belong in config files. */
+  apiKey?: string;
+  /** Environment variable holding the key. Defaults to the provider type's usual one (e.g. ANTHROPIC_API_KEY). */
+  apiKeyEnv?: string;
+}
+
+/**
+ * Judge configuration from config file or options. Either the flat shorthand (`provider`, `model`, ...), which
+ * defines one provider named "default", or several named `providers`.
+ */
 export interface JudgeConfig {
-  provider?: 'anthropic' | 'openai' | 'jev' | 'fake' | string;
+  provider?: 'anthropic' | 'openai' | 'jev' | 'fake' | 'none' | string;
   model?: string;
   apiKey?: string;
+  apiKeyEnv?: string;
   endpoint?: string;
+  /** Named providers, for rules (or runs) that pick one by name. */
+  providers?: Record<string, JudgeProviderDefinition>;
+  /** Provider for rules that name none. Needed when several providers are configured. */
+  use?: string;
   autoRun?: boolean;
 }
 
@@ -59,7 +81,7 @@ export interface SemanticEvaluationRecord {
   file: string;
   ruleId: string;
   verdict: string;
-  /** True when the verdict is not one of the rule's `failOn` verdicts. */
+  /** True when the verdict does not fail the rule (it has no severity, or is `ignore`d). */
   pass: boolean;
   confidence?: number;
   evidence?: string;

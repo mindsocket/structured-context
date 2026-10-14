@@ -18,8 +18,8 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `loadSpaceGraph(spaceName, config, options?)` | Read, assemble, and optionally filter a space into a navigable `SpaceGraph`. `options.hierarchy` names the hierarchy that structures the graph (default: the main hierarchy). |
 | `assembleSpaceGraph(context, options?)` | Assemble (and optionally filter) a graph from a context you already hold — reuses the context instead of rebuilding it. |
 | `buildSpaceGraph(nodes, hierarchy?)` | Build a navigable `SpaceGraph` directly from an array of `SpaceNode`s and a `Hierarchy` definition. |
-| `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. Options: `depth`, `includeGated`, `semantic`, `judgeProvider`, `ruleFilter`. |
-| `validateFile(filePath, config, options?)` | Validate a single file within its space. Options: `includeGated`, `semantic`, `judgeProvider`, `ruleFilter`. |
+| `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. Options: `depth`, `includeGated`, `semantic`, `judge`, `judgeProvider`, `ruleFilter`. |
+| `validateFile(filePath, config, options?)` | Validate a single file within its space. Options: `includeGated`, `semantic`, `judge`, `judgeProvider`, `ruleFilter`. |
 | `formatWikilink(target, alias?)` | Format a target into an Obsidian wikilink (`[[target]]` or `[[target|alias]]`). |
 | `parseWikilink(link)` | Parse a wikilink or target string into `{ target, anchor?, displayText? }`. |
 | `wikilinkToTarget(link)` | Extract the plain target lookup key from a wikilink string. |
@@ -29,11 +29,12 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 
 ## Semantic judging
 
-Semantic rules are evaluated only when `semantic: true` is passed (or configured; see [config.md](config.md#judge-semantic-rules)); the provider must be named explicitly, never inferred from the environment. The judge defaults to the configured provider; pass `judgeProvider` to inject your own.
+Semantic rules are evaluated only when `semantic: true` is passed (or configured; see [config.md](config.md#judge-semantic-rules)); the provider must be named explicitly, never inferred from the environment. The judge is built from the configured providers, with `judge` naming one to use for every rule; pass `judgeProvider` to inject your own.
 
 | Export | Purpose |
 | --- | --- |
-| `createJudgeProvider(config?, env?, custom?)` | Resolve a `SemanticJudgeProvider` from `JudgeConfig` and the environment. |
+| `createJudge(config?, env?, custom?, override?)` | Build the `RoutedJudgeProvider` for a run: routes each rule to the provider it names (`judge`), else the default; `override` names one for every rule. |
+| `createJudgeProvider(config?, env?, custom?, name?)` | Resolve a single `SemanticJudgeProvider` from `JudgeConfig` and the environment. Throws `JudgeConfigError` when misconfigured. |
 | `AnthropicJudgeProvider`, `OpenAIJudgeProvider`, `JevJudgeProvider` | Built-in providers. |
 | `PerRuleJudgeProvider` | Base class for providers that can only answer one rule per request; implement `judgeRule`. |
 | `FakeJudgeProvider` | Deterministic provider for tests. |

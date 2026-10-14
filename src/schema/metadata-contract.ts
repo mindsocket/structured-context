@@ -55,20 +55,55 @@ const HIERARCHY_LEVEL_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+const SEVERITY_SCHEMA = { enum: ['error', 'warning', 'info'] } as const;
+
 const RULE_SCHEMA = {
   type: 'object',
   properties: {
     id: { type: 'string', minLength: 1 },
     category: { enum: ['validation', 'coherence', 'workflow', 'best-practice'] },
-    severity: { enum: ['error', 'warning', 'info'] },
+    /**
+     * A severity, or (semantic rules only) a map of verdict to severity. In a map, a verdict mapped to
+     * `ignore` is judged but not reported, and a verdict left out passes. Defaults from the category.
+     */
+    severity: {
+      oneOf: [
+        SEVERITY_SCHEMA,
+        {
+          type: 'object',
+          additionalProperties: { enum: ['error', 'warning', 'info', 'ignore'] },
+          minProperties: 1,
+        },
+      ],
+    },
     description: { type: 'string', minLength: 1 },
     check: { type: 'string', minLength: 1 },
+    /** Optional JSONata applicability test, evaluated per node before the rule runs. The rule applies only when it returns true. */
+    when: { type: 'string', minLength: 1 },
     mode: { enum: ['expression', 'semantic'] },
     rubric: { type: 'string', minLength: 1 },
-    /** Semantic rules: the closed set of verdicts a judge may return, each with a description. Defaults to `pass`/`fail`. */
-    verdicts: { type: 'object', additionalProperties: { type: 'string', minLength: 1 }, minProperties: 2 },
-    /** Semantic rules: which verdicts count as a violation. Defaults to `fail`; every other verdict passes. */
-    failOn: { type: 'array', items: { type: 'string', minLength: 1 }, minItems: 1, uniqueItems: true },
+    /**
+     * Semantic rules: the closed set of verdicts a judge may return. Each is a description (what the verdict
+     * means, for the judge) or `{ description, guidance }`, where `guidance` is shown to the user when it fires.
+     * Defaults to `pass`/`fail`.
+     */
+    verdicts: {
+      type: 'object',
+      additionalProperties: {
+        oneOf: [
+          { type: 'string', minLength: 1 },
+          {
+            type: 'object',
+            properties: { description: { type: 'string', minLength: 1 }, guidance: { type: 'string', minLength: 1 } },
+            required: ['description'],
+            additionalProperties: false,
+          },
+        ],
+      },
+      minProperties: 2,
+    },
+    /** Semantic rules: name of the configured judge provider to use. A run-level override takes precedence. */
+    judge: { type: 'string', minLength: 1 },
     type: { type: 'string', minLength: 1 },
     scope: { enum: ['global'] },
     override: { type: 'boolean' },
@@ -76,11 +111,24 @@ const RULE_SCHEMA = {
     gatesDescendants: { type: 'boolean' },
   },
   required: ['id', 'category', 'description'],
-  // Semantic rules are judged per node, so they take no `check` and cannot be global; every other rule needs a `check`.
+  // A global rule has no node to test, so `when` needs a per-node rule.
+  not: { required: ['when', 'scope'] },
+  // Semantic rules are judged per node (no `check`, not global) and with custom verdicts must map each failing
+  // verdict to a severity. Every other rule needs a `check` and takes none of the semantic-only fields.
   if: { properties: { mode: { const: 'semantic' } }, required: ['mode'] },
   // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then`/`else` keyword, not a thenable
-  then: { not: { anyOf: [{ required: ['check'] }, { required: ['scope'] }] } },
-  else: { required: ['check'] },
+  then: {
+    not: { anyOf: [{ required: ['check'] }, { required: ['scope'] }] },
+    if: { required: ['verdicts'] },
+    // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then`/`else` keyword, not a thenable
+    then: { required: ['severity'], properties: { severity: { type: 'object' } } },
+    else: { properties: { severity: { oneOf: [SEVERITY_SCHEMA, { type: 'object' }] } } },
+  },
+  else: {
+    required: ['check'],
+    not: { anyOf: [{ required: ['verdicts'] }, { required: ['rubric'] }, { required: ['judge'] }] },
+    properties: { severity: SEVERITY_SCHEMA },
+  },
   additionalProperties: false,
 } as const;
 

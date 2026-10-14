@@ -1,11 +1,16 @@
-import type { Rule, SpaceNode } from '../types';
+import type { Rule, RuleSeverity, SpaceNode } from '../types';
 import type { SemanticEvaluationRecord, SemanticJudgeProvider } from './types';
-import { isJudgeError, semanticRuleSpec } from './verdicts';
+import { isJudgeError, resolveSemanticRule } from './verdicts';
 
 export type NodeJudgement = {
   rule: Rule;
-  /** True when the verdict is one of the rule's `failOn` verdicts, or the judge errored. */
+  /** True when the verdict fails the rule (it has a severity), or the judge errored. */
   failed: boolean;
+  /** Severity of the failing verdict; unset for a judge error, which takes the rule's own severity. */
+  severity?: RuleSeverity;
+  verdict?: string;
+  /** User-facing guidance declared for the failing verdict. */
+  guidance?: string;
   evidence?: string;
   /** Set when the judge could not produce a verdict for this rule. */
   error?: string;
@@ -20,7 +25,8 @@ export async function judgeNode(
   rules: Rule[],
 ): Promise<NodeJudgement[]> {
   if (rules.length === 0) return [];
-  const specs = rules.map(semanticRuleSpec);
+  const resolved = rules.map(resolveSemanticRule);
+  const specs = resolved.map((r) => r.spec);
   let results: Awaited<ReturnType<SemanticJudgeProvider['evaluate']>>;
   try {
     results = await judge.evaluate({
@@ -50,10 +56,14 @@ export async function judgeNode(
       const message = result ? result.error : 'Judge returned no result for this rule';
       return { rule, failed: true, evidence: `Error during evaluation: ${message}`, error: message };
     }
-    const failed = specs[i]!.failOn.includes(result.verdict);
+    const severity = resolved[i]!.severities[result.verdict];
+    const failed = severity !== undefined;
     return {
       rule,
       failed,
+      severity,
+      verdict: result.verdict,
+      guidance: failed ? resolved[i]!.guidance[result.verdict] : undefined,
       evidence: result.evidence,
       record: {
         file: node.label,

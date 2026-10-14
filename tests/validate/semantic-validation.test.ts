@@ -1,6 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Config } from '../../src/config';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
@@ -8,6 +6,7 @@ import { bundledSchemasDir } from '../../src/schema/schema';
 import { createSpaceContext } from '../../src/space-context';
 import type { FileValidationResult } from '../../src/types';
 import { validateFile, validateSpace } from '../../src/validate';
+import { makeTempSpace, type TempSpace } from '../helpers/temp-space';
 
 const STRICT_SCHEMA_PATH = join(bundledSchemasDir, 'strict_ost.json');
 const VALID_DIR = join(import.meta.dir, '../fixtures/strict_ost/valid-directory');
@@ -144,58 +143,30 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
 });
 
 describe('validateFile judges only the target and its gate-capable ancestor rules', () => {
-  let dir: string;
-  let config: Config;
-  const typeSchema = (type: string, parent?: string) => ({
-    type: 'object',
-    properties: { type: { const: type }, title: { type: 'string' }, ...(parent && { parent: { type: 'string' } }) },
-    required: ['type', 'title'],
+  let space: TempSpace;
+  const rule = (id: string, type: string, severity: string) => ({
+    id,
+    type,
+    mode: 'semantic',
+    category: 'validation',
+    severity,
+    description: id,
   });
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), 'sctx-judge-target-'));
-    const schemaPath = join(dir, 'schema.json');
-    const rule = (id: string, type: string, severity: string) => ({
-      id,
-      type,
-      mode: 'semantic',
-      category: 'validation',
-      severity,
-      description: id,
-    });
-    writeFileSync(
-      schemaPath,
-      JSON.stringify({
-        $schema:
-          'https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/latest/_structured_context_schema_meta.json',
-        $id: 'sctx://judge-target.test',
-        $metadata: {
-          hierarchy: { levels: ['goal', 'task', 'step'] },
-          rules: [
-            rule('goal-sound', 'goal', 'error'), // gates descendants
-            rule('task-sound', 'task', 'warning'), // does not gate
-            rule('step-sound', 'step', 'warning'),
-          ],
-        },
-        oneOf: [typeSchema('goal'), typeSchema('task', 'p'), typeSchema('step', 'p')],
-      }),
-    );
-    const space = join(dir, 'space');
-    mkdirSync(space);
-    writeFileSync(join(space, 'G.md'), '---\ntype: goal\n---\n');
-    writeFileSync(join(space, 'T.md'), '---\ntype: task\nparent: "[[G]]"\n---\n');
-    writeFileSync(join(space, 'S.md'), '---\ntype: step\nparent: "[[T]]"\n---\n');
-    writeFileSync(join(space, 'Other.md'), '---\ntype: goal\n---\n');
-    config = { spaces: [{ name: 'jt', path: space, schema: schemaPath }] };
+    space = makeTempSpace([
+      rule('goal-sound', 'goal', 'error'), // gates descendants
+      rule('task-sound', 'task', 'warning'), // does not gate
+      rule('step-sound', 'step', 'warning'),
+    ]);
   });
-
-  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  afterAll(() => space.cleanup());
 
   const run = (judge: FakeJudgeProvider, file: string, extra = {}) =>
-    validateFile(join(dir, 'space', file), config, {
+    validateFile(space.file(file), space.config, {
       semantic: true,
       judgeProvider: judge,
-      configDir: dir,
+      configDir: space.dir,
       ...extra,
     }) as Promise<FileValidationResult>;
 
@@ -242,7 +213,7 @@ describe('Semantic rules: verdicts, batching and rule filter', () => {
     expect(fake.callHistory.every((c) => c.rules.length >= 1)).toBe(true);
   });
 
-  it('records the verdict and confidence on evaluations and fails only on failOn verdicts', async () => {
+  it('records the verdict and confidence on evaluations and fails only on verdicts that have a severity', async () => {
     const fake = new FakeJudgeProvider({ verdict: 'fail', confidence: 0.7, evidence: 'solution in disguise' });
     const result = await validateSpace(context, { semantic: true, judgeProvider: fake });
     const record = result.semanticEvaluations?.find((e) => e.ruleId === 'opportunity-customer-voice');

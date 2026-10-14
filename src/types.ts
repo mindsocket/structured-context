@@ -203,6 +203,10 @@ export type RuleViolation = {
   description: string;
   /** Cited evidence or reasoning from evaluation (for semantic judge rules). */
   evidence?: string;
+  /** The verdict that failed the rule (semantic rules). */
+  verdict?: string;
+  /** User-facing guidance declared for that verdict (semantic rules). */
+  guidance?: string;
 };
 
 export type GraphViolation = {

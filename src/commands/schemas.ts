@@ -136,8 +136,7 @@ function showMetadata(metadata: SchemaMetadata): void {
       for (const [category, rules] of groups) {
         console.log(`  ${category} (default severity: ${DEFAULT_SEVERITY_BY_CATEGORY[category]}):`);
         for (const rule of rules) {
-          const override = rule.severity ? ` [severity: ${rule.severity}]` : '';
-          console.log(`    ${rule.id}: ${rule.description}${override}`);
+          console.log(`    ${rule.id}: ${rule.description}${ruleAnnotations(rule)}`);
         }
       }
     }
@@ -225,6 +224,24 @@ function generateMermaidErd(metadata: SchemaMetadata, entities: EntityInfo[]): s
   }
 
   return mmd;
+}
+
+/** Bracketed notes on a rule: mode, severity (or verdict severities), judge and `when`. Empty for a plain rule. */
+function ruleAnnotations(rule: Rule): string {
+  const notes: string[] = [];
+  if (rule.mode === 'semantic') notes.push('semantic');
+  if (typeof rule.severity === 'string') {
+    notes.push(`severity: ${rule.severity}`);
+  } else if (rule.severity) {
+    notes.push(
+      `severity: ${Object.entries(rule.severity)
+        .map(([verdict, sev]) => `${verdict}=${sev}`)
+        .join(', ')}`,
+    );
+  }
+  if (rule.judge) notes.push(`judge: ${rule.judge}`);
+  if (rule.when) notes.push(`when: ${rule.when}`);
+  return notes.length > 0 ? ` [${notes.join('] [')}]` : '';
 }
 
 export async function listSchemas(): Promise<void> {

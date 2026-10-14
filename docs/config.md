@@ -69,6 +69,8 @@ Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` d
 
 `judge` configures the model that evaluates `mode: semantic` [rules](semantic-rules.md). Set it at the top level of the config (all spaces) or on a space (the space wins). `semantic` turns semantic evaluation on by default, at the same two levels; otherwise it runs only with `--semantic`.
 
+The shorthand defines one provider:
+
 ```json
 {
   "judge": { "provider": "anthropic", "model": "claude-haiku-5-5" },
@@ -80,13 +82,30 @@ Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` d
 
 | Field | Description |
 |---|---|
-| `provider` | **Required** to judge (or set `SCTX_JUDGE_PROVIDER`). One of `anthropic`, `openai` (any OpenAI-compatible endpoint: OpenAI, Ollama, vLLM, OpenRouter chat models), `jev` (TypeSafe decision model via OpenRouter's decisions API), or `fake` (tests). Never inferred from API keys in the environment. |
+| `provider` | **Required** to judge (or set `SCTX_JUDGE_PROVIDER`). One of `anthropic`, `openai` (any OpenAI-compatible endpoint: OpenAI, Ollama, vLLM, OpenRouter chat models), `jev` (TypeSafe decision model via OpenRouter's decisions API), `fake` (tests), or `none` (an inert placeholder for templates; judging with it is an error). Never inferred from API keys in the environment. |
 | `model` | Defaults: `claude-haiku-5-5` (anthropic), `gpt-4o-mini` (openai), `typesafe/jev-1.13` (jev). |
 | `endpoint` | Override the API URL. Jev defaults to `https://openrouter.ai/api/alpha/decisions`. |
-| `apiKey` | Prefer environment variables over storing keys in config. Once the provider is chosen, its key is read from `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `OPENROUTER_API_KEY` (jev). |
+| `apiKeyEnv` | Name of the environment variable holding the key. Defaults to the provider's usual one: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY` (jev). |
+| `apiKey` | The key itself. Prefer `apiKeyEnv`; keys do not belong in config files. |
 | `autoRun` | Evaluate semantic rules without `--semantic`. |
 
-`SCTX_JUDGE_PROVIDER`, `SCTX_JUDGE_MODEL`, `SCTX_JUDGE_ENDPOINT` and `SCTX_JUDGE_API_KEY` override the corresponding config fields. Semantic evaluation sends node content to the configured provider.
+To use several providers, name them under `providers` (each takes `type` plus `model`, `endpoint`, `apiKeyEnv`, `apiKey`) and pick the default with `use`:
+
+```json
+{
+  "judge": {
+    "providers": {
+      "decision": { "type": "jev" },
+      "llm": { "type": "anthropic", "model": "claude-haiku-5-5" }
+    },
+    "use": "llm"
+  }
+}
+```
+
+A rule names one with `judge: "decision"`, and `--judge <name>` overrides every rule for a run. `use` is only needed when more than one provider is configured. Providers are created when first used, so one no rule reaches needs no credentials. The shorthand's provider is named `default`. Using the names `decision` (a decision model) and `llm` (a chat model) keeps shared schemas and configs portable.
+
+`SCTX_JUDGE_PROVIDER`, `SCTX_JUDGE_MODEL`, `SCTX_JUDGE_ENDPOINT` and `SCTX_JUDGE_API_KEY` override the shorthand (`default`) provider. Semantic evaluation sends node content to the configured provider.
 
 ## Markdown plugin config
 

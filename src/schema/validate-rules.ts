@@ -1,20 +1,10 @@
 import { judgeNode } from '../judge/judge-node';
 import type { GatedRuleRecord, SemanticEvaluationRecord, SemanticJudgeProvider } from '../judge/types';
-import type { Rule, RuleCategory, RuleSeverity, RuleViolation, SpaceNode } from '../types';
+import type { Rule, RuleViolation, SpaceNode } from '../types';
 import { buildEvalContext, evaluateExpression } from './evaluate-rule';
+import { ruleSeverity } from './rule-severity';
 
-/** Default severity for each rule category. A rule's own `severity` field overrides this. */
-export const DEFAULT_SEVERITY_BY_CATEGORY: Record<RuleCategory, RuleSeverity> = {
-  validation: 'error',
-  coherence: 'warning',
-  workflow: 'warning',
-  'best-practice': 'info',
-};
-
-/** Effective severity of a rule: its explicit `severity`, else its category default. */
-export function ruleSeverity(rule: Rule): RuleSeverity {
-  return rule.severity ?? DEFAULT_SEVERITY_BY_CATEGORY[rule.category];
-}
+export { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity } from './rule-severity';
 
 export interface ValidateRulesOptions {
   /** Whether to run semantic rules (default: false). */
@@ -100,6 +90,7 @@ export async function validateRules(
       const targetNodes = rule.type ? nodes.filter((n) => n.resolvedType === rule.type) : nodes;
       for (const node of targetNodes) {
         const context = buildEvalContext(node, nodes, nodeIndex);
+        if (rule.when && (await evaluateExpression(rule.when, context)) !== true) continue;
         const result = await evaluateExpression(check, context);
         if (result !== true) {
           violations.push({
@@ -124,7 +115,12 @@ export async function validateRules(
 
     for (const node of nodes) {
       if (options.judgeTarget !== undefined && node.label !== options.judgeTarget) continue;
-      const applicable = semanticRules.filter((r) => !r.type || r.type === node.resolvedType);
+      const applicable: Rule[] = [];
+      for (const r of semanticRules) {
+        if (r.type && r.type !== node.resolvedType) continue;
+        if (r.when && (await evaluateExpression(r.when, buildEvalContext(node, nodes, nodeIndex))) !== true) continue;
+        applicable.push(r);
+      }
       if (applicable.length === 0) continue;
 
       // Safe cascading default: gate semantic evaluation if node failed upstream checks
@@ -142,9 +138,11 @@ export async function validateRules(
           file: node.label,
           ruleId: j.rule.id,
           category: j.rule.category,
-          severity: ruleSeverity(j.rule),
+          severity: j.severity ?? ruleSeverity(j.rule),
           description: j.error ? `${j.rule.description} (Judge error: ${j.error})` : j.rule.description,
           evidence: j.evidence,
+          ...(j.verdict !== undefined && { verdict: j.verdict }),
+          ...(j.guidance !== undefined && { guidance: j.guidance }),
         });
         if (!j.error) failedNodeLabels.add(node.label);
       }

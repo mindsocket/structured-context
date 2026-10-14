@@ -197,13 +197,28 @@
                 "enum": ["validation", "coherence", "workflow", "best-practice"]
               },
               "severity": {
-                "enum": ["error", "warning", "info"]
+                "oneOf": [
+                  {
+                    "enum": ["error", "warning", "info"]
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "enum": ["error", "warning", "info", "ignore"]
+                    },
+                    "minProperties": 1
+                  }
+                ]
               },
               "description": {
                 "type": "string",
                 "minLength": 1
               },
               "check": {
+                "type": "string",
+                "minLength": 1
+              },
+              "when": {
                 "type": "string",
                 "minLength": 1
               },
@@ -217,19 +232,33 @@
               "verdicts": {
                 "type": "object",
                 "additionalProperties": {
-                  "type": "string",
-                  "minLength": 1
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "guidance": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": ["description"],
+                      "additionalProperties": false
+                    }
+                  ]
                 },
                 "minProperties": 2
               },
-              "failOn": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "minItems": 1,
-                "uniqueItems": true
+              "judge": {
+                "type": "string",
+                "minLength": 1
               },
               "type": {
                 "type": "string",
@@ -246,6 +275,9 @@
               }
             },
             "required": ["id", "category", "description"],
+            "not": {
+              "required": ["when", "scope"]
+            },
             "if": {
               "properties": {
                 "mode": {
@@ -264,10 +296,53 @@
                     "required": ["scope"]
                   }
                 ]
+              },
+              "if": {
+                "required": ["verdicts"]
+              },
+              "then": {
+                "required": ["severity"],
+                "properties": {
+                  "severity": {
+                    "type": "object"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "severity": {
+                    "oneOf": [
+                      {
+                        "enum": ["error", "warning", "info"]
+                      },
+                      {
+                        "type": "object"
+                      }
+                    ]
+                  }
+                }
               }
             },
             "else": {
-              "required": ["check"]
+              "required": ["check"],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": ["verdicts"]
+                  },
+                  {
+                    "required": ["rubric"]
+                  },
+                  {
+                    "required": ["judge"]
+                  }
+                ]
+              },
+              "properties": {
+                "severity": {
+                  "enum": ["error", "warning", "info"]
+                }
+              }
             },
             "additionalProperties": false
           }

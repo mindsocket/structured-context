@@ -25,6 +25,7 @@ export { PLUGIN_PREFIX } from './constants';
 export type {
   GatedRuleRecord,
   JudgeConfig,
+  JudgeProviderDefinition,
   SemanticEvaluationRecord,
   SemanticJudgeInput,
   SemanticJudgeProvider,
@@ -34,11 +35,14 @@ export type {
 } from './judge';
 export {
   AnthropicJudgeProvider,
+  createJudge,
   createJudgeProvider,
   FakeJudgeProvider,
   JevJudgeProvider,
+  JudgeConfigError,
   OpenAIJudgeProvider,
   PerRuleJudgeProvider,
+  RoutedJudgeProvider,
 } from './judge';
 export { assembleSpaceGraph, loadSpaceGraph } from './load-space-graph';
 export type {

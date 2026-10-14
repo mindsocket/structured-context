@@ -80,12 +80,14 @@ program
   )
   .option('--semantic', 'Evaluate semantic rules with the configured judge')
   .option('--no-semantic', 'Skip semantic rules even if enabled in config')
+  .option('--judge <name>', 'Judge every semantic rule with this configured provider (implies --semantic)')
   .action(async (filePath, options) => {
     process.exitCode = await reportJudgeConfigErrors(() =>
       validateFileCommand(filePath, {
         json: options.json,
         includeGated: options.includeGated,
         semantic: options.semantic,
+        judge: options.judge,
         ruleFilter: options.ruleFilter,
       }),
     );
@@ -113,6 +115,7 @@ program
   )
   .option('--semantic', 'Evaluate semantic rules with the configured judge')
   .option('--no-semantic', 'Skip semantic rules even if enabled in config')
+  .option('--judge <name>', 'Judge every semantic rule with this configured provider (implies --semantic)')
   .action(async (spaceName, options) => {
     const context = buildSpaceContext(spaceName);
     if (options.watch) {

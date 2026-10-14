@@ -6,7 +6,7 @@ import { resolveSpacePluginSchemas } from '../plugins/util';
 import { parseRuleFilter } from '../schema/rule-filter';
 import { bundledSchemasDir } from '../schema/schema';
 import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
-import { formatErrors, validateSpace } from '../validate';
+import { formatErrors, ruleViolationMessage, validateSpace } from '../validate';
 
 export async function validate(
   context: SpaceContext,
@@ -15,6 +15,7 @@ export async function validate(
     depth?: number;
     includeGated?: boolean;
     semantic?: boolean;
+    judge?: string;
     ruleFilter?: string[];
     judgeProvider?: SemanticJudgeProvider;
   } = {},
@@ -24,6 +25,7 @@ export async function validate(
     depth: options.depth,
     includeGated: options.includeGated,
     semantic: options.semantic,
+    judge: options.judge,
     ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
     judgeProvider: options.judgeProvider,
   });
@@ -61,10 +63,7 @@ export async function validate(
     }
     for (const v of result.ruleViolations) {
       if (v.file && v.severity === 'error') {
-        const message = v.evidence
-          ? `[${v.ruleId}] ${v.description} (Evidence: ${v.evidence})`
-          : `[${v.ruleId}] ${v.description}`;
-        addError(v.file, `rule:${v.ruleId}`, 'rule', message, v.severity);
+        addError(v.file, `rule:${v.ruleId}`, 'rule', ruleViolationMessage(v), v.severity);
       }
     }
     const globalRuleErrorCount = result.ruleViolations.filter((v) => !v.file && v.severity === 'error').length;
@@ -214,6 +213,9 @@ export async function validate(
         console.log(`    ${v.file ? `${v.file}: ` : ''}${v.description} [${v.category}: ${v.ruleId}]`);
         if (v.evidence) {
           console.log(`      Evidence: ${v.evidence}`);
+        }
+        if (v.guidance) {
+          console.log(`      Guidance: ${v.guidance}`);
         }
       }
     }

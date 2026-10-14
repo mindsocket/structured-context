@@ -1,32 +1,58 @@
 import { describe, expect, it } from 'bun:test';
 import { PerRuleJudgeProvider } from '../../src/judge/provider/per-rule';
 import type { SemanticJudgeResult } from '../../src/judge/types';
-import { semanticRuleSpec } from '../../src/judge/verdicts';
+import { resolveSemanticRule } from '../../src/judge/verdicts';
 import type { Rule } from '../../src/types';
 import { graded, node, passFailRule } from './helpers';
 
 const base: Rule = { id: 'r', category: 'best-practice', description: 'd', mode: 'semantic' };
 
-describe('semanticRuleSpec', () => {
-  it('defaults to pass/fail with fail as the violation', () => {
-    const spec = semanticRuleSpec(base);
-    expect(Object.keys(spec.verdicts)).toEqual(['pass', 'fail']);
-    expect(spec.failOn).toEqual(['fail']);
+describe('resolveSemanticRule', () => {
+  it('defaults to pass/fail with fail at the rule severity', () => {
+    const resolved = resolveSemanticRule(base);
+    expect(Object.keys(resolved.spec.verdicts)).toEqual(['pass', 'fail']);
+    expect(resolved.spec.failOn).toEqual(['fail']);
+    expect(resolved.severities).toEqual({ fail: 'info' }); // best-practice default
+    expect(resolveSemanticRule({ ...base, severity: 'error' }).severities).toEqual({ fail: 'error' });
   });
 
-  it('uses declared verdicts and failOn', () => {
-    const spec = semanticRuleSpec({ ...base, verdicts: { a: 'A', b: 'B', c: 'C' }, failOn: ['b', 'c'] });
-    expect(spec.failOn).toEqual(['b', 'c']);
+  it('maps declared verdicts to severities; unmapped and ignored verdicts pass', () => {
+    const resolved = resolveSemanticRule({
+      ...base,
+      verdicts: { ok: 'O', minor: 'M', major: 'J', skip: 'S' },
+      severity: { minor: 'warning', major: 'error', skip: 'ignore' },
+    });
+    expect(resolved.severities).toEqual({ minor: 'warning', major: 'error' });
+    expect(resolved.spec.failOn).toEqual(['minor', 'major']);
   });
 
-  it('rejects declared verdicts without failOn, unknown failOn, and all-failing sets', () => {
-    expect(() => semanticRuleSpec({ ...base, verdicts: { a: 'A', b: 'B' } })).toThrow('no failOn');
-    expect(() => semanticRuleSpec({ ...base, verdicts: { a: 'A', b: 'B' }, failOn: ['z'] })).toThrow(
+  it('splits a verdict into the judge description and user guidance', () => {
+    const resolved = resolveSemanticRule({
+      ...base,
+      verdicts: {
+        ok: 'Fine',
+        vague: { description: 'Too vague to act on', guidance: 'Name the customer and the pain.' },
+      },
+      severity: { vague: 'warning' },
+    });
+    expect(resolved.spec.verdicts).toEqual({ ok: 'Fine', vague: 'Too vague to act on' });
+    expect(resolved.guidance).toEqual({ vague: 'Name the customer and the pain.' });
+  });
+
+  it("carries the rule's judge name to the spec", () => {
+    expect(resolveSemanticRule({ ...base, judge: 'llm' }).spec.judge).toBe('llm');
+  });
+
+  it('rejects custom verdicts without a severity map, unknown verdicts, and sets with no passing verdict', () => {
+    expect(() => resolveSemanticRule({ ...base, verdicts: { a: 'A', b: 'B' } })).toThrow(
+      'must map the failing verdicts',
+    );
+    expect(() => resolveSemanticRule({ ...base, verdicts: { a: 'A', b: 'B' }, severity: { z: 'error' } })).toThrow(
       'not in its verdicts',
     );
-    expect(() => semanticRuleSpec({ ...base, verdicts: { a: 'A', b: 'B' }, failOn: ['a', 'b'] })).toThrow(
-      'no passing verdict',
-    );
+    expect(() =>
+      resolveSemanticRule({ ...base, verdicts: { a: 'A', b: 'B' }, severity: { a: 'error', b: 'warning' } }),
+    ).toThrow('no passing verdict');
   });
 });
 

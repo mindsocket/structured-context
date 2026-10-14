@@ -12,12 +12,13 @@ export { validateFile } from '../validate';
  */
 export async function validateFileCommand(
   filePath: string,
-  options: { json?: boolean; includeGated?: boolean; semantic?: boolean; ruleFilter?: string[] } = {},
+  options: { json?: boolean; includeGated?: boolean; semantic?: boolean; judge?: string; ruleFilter?: string[] } = {},
 ): Promise<number> {
   const config = loadConfig();
   const result = await validateFile(filePath, config, {
     includeGated: options.includeGated,
     semantic: options.semantic,
+    judge: options.judge,
     ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
   });
 

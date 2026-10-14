@@ -13,13 +13,31 @@ import {
 } from './plugins/util';
 import { bundledSchemasDir } from './schema/schema';
 
+const JUDGE_PROVIDER_TYPES = ['anthropic', 'openai', 'jev', 'fake', 'none'];
+
+const JUDGE_PROVIDER_SCHEMA = {
+  type: 'object',
+  properties: {
+    type: { type: 'string', enum: JUDGE_PROVIDER_TYPES },
+    model: { type: 'string' },
+    endpoint: { type: 'string' },
+    apiKey: { type: 'string' },
+    apiKeyEnv: { type: 'string' },
+  },
+  required: ['type'],
+  additionalProperties: false,
+} as const;
+
 const JUDGE_CONFIG_SCHEMA = {
   type: 'object',
   properties: {
-    provider: { type: 'string', enum: ['anthropic', 'openai', 'jev', 'fake'] },
+    provider: { type: 'string', enum: JUDGE_PROVIDER_TYPES },
     model: { type: 'string' },
     apiKey: { type: 'string' },
+    apiKeyEnv: { type: 'string' },
     endpoint: { type: 'string' },
+    providers: { type: 'object', additionalProperties: JUDGE_PROVIDER_SCHEMA },
+    use: { type: 'string' },
     autoRun: { type: 'boolean' },
   },
   additionalProperties: false,
