@@ -57,6 +57,7 @@ For most development only the main unit tests need re-running regularly.
 - `bun run test:hook` — unit test plugin hooks (`hook-test/unit/`) - hook development only
 - `bun run test:hook:e2e` — test plugin hooks in Claude Code (`hook-test/`) - hook development only
 - `bun run test:smoke` — smoke tests run against locally configured spaces - only use when changes could affect compatibility.
+- `bun run test:judge` — live judge tests (`judge-test/`): real provider calls on a fixture space, for each provider whose API key is set (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`). Costs money; only use when changing judges, prompts or semantic rule behaviour.
 
 ## Debugging
 

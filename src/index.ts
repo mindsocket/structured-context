@@ -128,6 +128,7 @@ program
           depth: options.depth,
           includeGated: options.includeGated,
           semantic: options.semantic,
+          judge: options.judge,
           ruleFilter: options.ruleFilter,
         }),
       );
@@ -216,7 +217,7 @@ program.addCommand(schemasCmd);
 
 program
   .command('docs [topic]')
-  .description('Show documentation (no arg: README; topics: concepts, config, schema, rules, semantic)')
+  .description('Show documentation (no arg: README; topics: concepts, config, schema, rules, semantic-rules)')
   .action((topic?: string) => docs(topic));
 
 const renderCmd = new Command('render').description('Render a space in a given format');

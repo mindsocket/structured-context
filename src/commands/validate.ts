@@ -92,6 +92,7 @@ export async function validate(
           skippedByDepth: result.skippedByDepth,
           depthLimit: result.depthLimit,
           semanticEvaluations: result.semanticEvaluations,
+          gatedRules: result.gatedRules,
         },
         null,
         2,
