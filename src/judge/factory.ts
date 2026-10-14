@@ -55,6 +55,19 @@ export function createModelProvider(
 }
 
 /**
+ * The judge a CLI run asks for: none without `--semantic` or `--judge <provider>`; the named provider with
+ * `--judge`; else the configured one.
+ */
+export function judgeForRun(
+  config: Parameters<typeof createJudge>[0],
+  space: Parameters<typeof createJudge>[1],
+  options: { semantic?: boolean; judge?: string },
+): SemanticJudgeProvider | undefined {
+  if (!options.semantic && options.judge === undefined) return undefined;
+  return createJudge(config, space, options.judge);
+}
+
+/**
  * The judge for a run: the model provider named by `name` (the `--judge` override), else the space's
  * `judge.provider`, else the top-level one. Throws {@link JudgeConfigError} when it cannot be built.
  */

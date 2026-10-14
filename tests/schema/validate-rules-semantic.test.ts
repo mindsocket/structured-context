@@ -67,15 +67,13 @@ describe('validateRules - semantic evaluation', () => {
     },
   ];
 
-  it('skips semantic rules when semantic option is false / omitted (default validate)', async () => {
+  it('skips semantic rules without a judge (default validate)', async () => {
     // Default validate should only run expression rules and remain deterministic & free
-    const fake = new FakeJudgeProvider();
-    const violations = await validateRules(sampleNodes, rules, { judgeProvider: fake });
+    const violations = await validateRules(sampleNodes, rules);
     expect(violations).toHaveLength(0);
-    expect(fake.callHistory).toHaveLength(0);
   });
 
-  it('evaluates semantic rules when semantic option is true', async () => {
+  it('evaluates semantic rules with a judge', async () => {
     const fake = new FakeJudgeProvider(
       new Map([
         [
@@ -90,8 +88,7 @@ describe('validateRules - semantic evaluation', () => {
     );
 
     const violations = await validateRules(sampleNodes, rules, {
-      semantic: true,
-      judgeProvider: fake,
+      judge: fake,
     });
 
     expect(violations).toHaveLength(1);
@@ -111,8 +108,7 @@ describe('validateRules - semantic evaluation', () => {
     const gatedNodeLabels = new Set(['bad-opp.md']);
 
     const violations = await validateRules(sampleNodes, rules, {
-      semantic: true,
-      judgeProvider: fake,
+      judge: fake,
       gatedNodeLabels,
     });
 
@@ -143,8 +139,7 @@ describe('validateRules - semantic evaluation', () => {
     const fake = new FakeJudgeProvider();
 
     const violations = await validateRules(sampleNodes, strictRules, {
-      semantic: true,
-      judgeProvider: fake,
+      judge: fake,
     });
 
     // bad-opp.md source is "Engineering suggestion", so it failed require-interviews-source

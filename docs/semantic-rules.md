@@ -38,7 +38,7 @@ Semantic rules cost money and send node content to the judge's provider. Thus th
 - `--semantic` runs them with the configured judge.
 - `--judge <provider>` runs them with that model provider instead.
 
-Both work on `sctx validate` and `sctx validate-file`. Config cannot turn semantic rules on. The API is the same: pass `semantic` or `judge` to `validateSpace` or `validateFile`.
+Both work on `sctx validate` and `sctx validate-file`. Config cannot turn semantic rules on.
 
 ## Rule fields
 

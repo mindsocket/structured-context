@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { createJudge, createModelProvider, JudgeConfigError } from '../../src/judge/factory';
+import { createJudge, createModelProvider, JudgeConfigError, judgeForRun } from '../../src/judge/factory';
 import { AnthropicJudgeProvider } from '../../src/judge/provider/anthropic';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { JevJudgeProvider } from '../../src/judge/provider/jev';
@@ -70,5 +70,21 @@ describe('createJudge', () => {
 
   it('fails when the chosen provider has no key', () => {
     expect(() => createJudge(config, {}, undefined, { OPENROUTER_API_KEY: 'r' })).toThrow('ANTHROPIC_API_KEY');
+  });
+});
+
+describe('judgeForRun (CLI)', () => {
+  const config = { modelProviders: { f: { type: 'fake' }, g: { type: 'fake' } } as const, judge: { provider: 'f' } };
+
+  it('gives no judge unless the run asks with --semantic or --judge', () => {
+    expect(judgeForRun(config, {}, {})).toBeUndefined();
+    expect(judgeForRun({}, {}, {})).toBeUndefined(); // no judge config needed when not asked
+    expect(judgeForRun(config, {}, { semantic: true })).toBeInstanceOf(FakeJudgeProvider);
+    expect(judgeForRun(config, {}, { judge: 'g' })).toBeInstanceOf(FakeJudgeProvider);
+  });
+
+  it('fails when asked and no judge is configured, or the named provider is missing', () => {
+    expect(() => judgeForRun({}, {}, { semantic: true })).toThrow('No judge configured');
+    expect(() => judgeForRun(config, {}, { judge: 'nope' })).toThrow('Model provider "nope" is not configured');
   });
 });

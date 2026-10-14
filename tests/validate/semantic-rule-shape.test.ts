@@ -39,8 +39,7 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
   it('reports each verdict at its mapped severity with its guidance', async () => {
     const { context } = setup([stepRule]);
     const minor = await validateSpace(context(), {
-      semantic: true,
-      judgeProvider: new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } }),
+      judge: new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } }),
     });
     expect(minor.ruleViolations).toEqual([
       expect.objectContaining({
@@ -52,8 +51,7 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
     ]);
 
     const major = await validateSpace(context(), {
-      semantic: true,
-      judgeProvider: new FakeJudgeProvider({ 'step-fit': { verdict: 'major' } }),
+      judge: new FakeJudgeProvider({ 'step-fit': { verdict: 'major' } }),
     });
     expect(major.ruleViolations[0]).toMatchObject({ severity: 'error', verdict: 'major' });
   });
@@ -61,7 +59,7 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
   it('judges an ignored verdict without reporting it', async () => {
     const { context } = setup([stepRule]);
     const fake = new FakeJudgeProvider({ 'step-fit': { verdict: 'unsure' } });
-    const result = await validateSpace(context(), { semantic: true, judgeProvider: fake });
+    const result = await validateSpace(context(), { judge: fake });
     expect(fake.callHistory).toHaveLength(1);
     expect(result.ruleViolations).toEqual([]);
   });
@@ -71,12 +69,12 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
     const { context } = setup([taskRule, { ...stepRule, id: 'step-fit' }]);
 
     const minor = new FakeJudgeProvider({ 'task-fit': { verdict: 'minor' } });
-    const ungated = await validateSpace(context(), { semantic: true, judgeProvider: minor });
+    const ungated = await validateSpace(context(), { judge: minor });
     expect(ungated.coverageGates).toEqual([]);
     expect(minor.callHistory.some((c) => c.node.label === 'S.md')).toBe(true);
 
     const major = new FakeJudgeProvider({ 'task-fit': { verdict: 'major' } });
-    const gated = await validateSpace(context(), { semantic: true, judgeProvider: major });
+    const gated = await validateSpace(context(), { judge: major });
     expect(gated.coverageGates[0]).toMatchObject({ reason: 'rule', ruleId: 'task-fit' });
     expect(major.callHistory.some((c) => c.node.label === 'S.md')).toBe(false);
   });
@@ -84,8 +82,7 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
   it('shows guidance in validate-file output', async () => {
     const { space } = setup([stepRule]);
     const result = (await validateFile(space.file('S.md'), space.config, {
-      semantic: true,
-      judgeProvider: new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } }),
+      judge: new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } }),
       configDir: space.dir,
     })) as FileValidationResult;
     expect(result.warnings['rule:step-fit']?.message).toContain('Guidance: Tighten the wording.');
@@ -94,10 +91,10 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
   it('--rule-filter severity matches any severity a verdict map can report', async () => {
     const { context } = setup([stepRule]);
     const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
-    await validateSpace(context(), { semantic: true, judgeProvider: judge, ruleFilter: { severity: ['warning'] } });
+    await validateSpace(context(), { judge: judge, ruleFilter: { severity: ['warning'] } });
     expect(judge.callHistory.length).toBeGreaterThan(0);
     const none = new FakeJudgeProvider();
-    await validateSpace(context(), { semantic: true, judgeProvider: none, ruleFilter: { severity: ['info'] } });
+    await validateSpace(context(), { judge: none, ruleFilter: { severity: ['info'] } });
     expect(none.callHistory).toHaveLength(0);
   });
 });
@@ -122,52 +119,30 @@ describe('rule `when` precondition', () => {
     const rule = { ...stepRule, id: 'task-fit', type: 'task', when };
     const { context } = setup([rule], { frontmatter: { T: 'status: ready' } });
     const judge = new FakeJudgeProvider();
-    await validateSpace(context(), { semantic: true, judgeProvider: judge });
+    await validateSpace(context(), { judge: judge });
     expect(judge.callHistory.map((c) => c.node.label)).toEqual(['T.md']);
 
     const none = setup([rule]);
     const idle = new FakeJudgeProvider();
-    const result = await validateSpace(none.context(), { semantic: true, judgeProvider: idle });
+    const result = await validateSpace(none.context(), { judge: idle });
     expect(idle.callHistory).toHaveLength(0);
     expect(result.coverageGates).toEqual([]); // not applicable is not gated
   });
 });
 
-describe('judge configuration', () => {
-  const judging = { modelProviders: { llm: { type: 'fake' } } as const, judge: { provider: 'llm' } };
-
-  it('fails before any request when the named provider is not configured', async () => {
-    const { context } = setup([stepRule], { judging });
-    await expect(validateSpace(context(), { judge: 'nope' })).rejects.toThrow(
-      'Model provider "nope" is not configured',
-    );
-  });
-
-  it('fails before any request when no judge is configured', async () => {
+describe('judge option', () => {
+  it('evaluates no semantic rules without a judge', async () => {
     const { context } = setup([stepRule]);
-    await expect(validateSpace(context(), { semantic: true })).rejects.toThrow('No judge configured');
+    const result = await validateSpace(context(), {});
+    expect(result.ruleViolations).toEqual([]);
   });
 
-  it('needs no judge configuration while semantic evaluation is not requested', async () => {
+  it('judges with the judge it is given', async () => {
     const { context } = setup([stepRule]);
-    await expect(validateSpace(context(), {})).resolves.toBeDefined();
-  });
-
-  it('builds no judge when the rule filter leaves no semantic rule', async () => {
-    const { context } = setup([stepRule]);
-    await expect(
-      validateSpace(context(), { semantic: true, ruleFilter: { mode: ['expression'] } }),
-    ).resolves.toBeDefined();
-  });
-
-  it('a judge name implies semantic evaluation, and semantic: false still wins', async () => {
-    const { context } = setup([stepRule], { judging });
-    const on = new FakeJudgeProvider();
-    await validateSpace(context(), { judge: 'llm', judgeProvider: on });
-    expect(on.callHistory.length).toBeGreaterThan(0);
-    const off = new FakeJudgeProvider();
-    await validateSpace(context(), { judge: 'llm', semantic: false, judgeProvider: off });
-    expect(off.callHistory).toHaveLength(0);
+    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+    const result = await validateSpace(context(), { judge });
+    expect(judge.callHistory.length).toBeGreaterThan(0);
+    expect(result.ruleViolations[0]).toMatchObject({ verdict: 'minor' });
   });
 });
 

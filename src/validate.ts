@@ -1,7 +1,6 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
-import { createJudge } from './judge/factory';
 import type { SemanticJudgeProvider } from './judge/types';
 import { readSpace } from './read/read-space';
 import { computeHierarchyDepths, evaluateRulesWithGating, type GatingSeed } from './schema/gating';
@@ -170,27 +169,8 @@ export interface ValidateSpaceOptions {
   includeGated?: boolean;
   /** Evaluate only rules matching this filter (see `parseRuleFilter`). */
   ruleFilter?: RuleFilter;
-  /** Evaluate semantic rules with the configured judge (default: false). */
-  semantic?: boolean;
-  /** Name of the configured judge provider to use for every semantic rule, overriding the rules' own. Implies `semantic`. */
-  judge?: string;
-  /** Optional custom judge provider (for testing or injection). */
-  judgeProvider?: SemanticJudgeProvider;
-}
-
-/**
- * How a run gets its judge: none unless the caller asks (`semantic`, or a `judge` name, which implies it;
- * `semantic: false` wins). The judge is built only if a semantic rule is to be judged, so a misconfigured
- * judge fails before any request and only when it is needed. An injected provider replaces the configured one.
- */
-function judgeForRun(
-  options: { semantic?: boolean; judge?: string; judgeProvider?: SemanticJudgeProvider },
-  space: SpaceConfig,
-  config: Config,
-): (() => SemanticJudgeProvider) | undefined {
-  const requested = options.semantic ?? options.judge !== undefined;
-  if (!requested) return undefined;
-  return () => options.judgeProvider ?? createJudge(config, space, options.judge);
+  /** Judge for `mode: semantic` rules. Without one, semantic rules are not evaluated. */
+  judge?: SemanticJudgeProvider;
 }
 
 /** One-line text for a rule violation: rule, description, and any judge evidence and verdict guidance. */
@@ -209,7 +189,7 @@ type SpaceRuleEvaluation = {
  * Evaluate a space's rules. With a main hierarchy, evaluation cascades: schema, hierarchy
  * and gating-rule failures (the `seeds`) suppress rule evaluation for the failing node's subtree.
  * Shared by `validateSpace` and `validateFile` so both report identical rule results for a node.
- * Semantic rules run only when `judge` is supplied; it is called once, and only if a semantic rule survives the filter.
+ * Semantic rules run only when a `judge` is supplied.
  */
 async function evaluateSpaceRules(
   nodes: SpaceNode[],
@@ -217,19 +197,17 @@ async function evaluateSpaceRules(
   seeds: GatingSeed[],
   options: {
     includeGated?: boolean;
-    judge?: () => SemanticJudgeProvider;
+    judge?: SemanticJudgeProvider;
     judgeTarget?: string;
     ruleFilter?: RuleFilter;
   } = {},
 ): Promise<SpaceRuleEvaluation> {
   const rules = metadata.rules && filterRules(metadata.rules, options.ruleFilter);
   if (!rules) return { violations: [], gates: [] };
-  // Built before any node is evaluated, so a misconfigured judge fails before any request is made.
-  const provider = options.judge && rules.some((r) => r.mode === 'semantic') ? options.judge() : undefined;
+  const provider = options.judge;
   if (!metadata.hierarchy) {
     const result = await validateRules(nodes, rules, {
-      semantic: provider !== undefined,
-      judgeProvider: provider,
+      judge: provider,
       judgeTarget: options.judgeTarget,
     });
     return { violations: result, gates: [] };
@@ -365,11 +343,10 @@ export async function validateSpace(
       ),
       ...result.hierarchyViolations.map((v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' })),
     ];
-    const judge = judgeForRun(options, context.space, context.config);
     const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, {
       includeGated: options.includeGated,
       ruleFilter: options.ruleFilter,
-      judge,
+      judge: options.judge,
     });
     result.ruleViolations = violations;
     result.coverageGates = gates;
@@ -393,7 +370,7 @@ export async function validateSpace(
 }
 
 /** Find which space a file belongs to by checking directory containment. */
-function resolveFileSpace(filePath: string, config: Config): { space: SpaceConfig; label: string } | null {
+export function resolveFileSpace(filePath: string, config: Config): { space: SpaceConfig; label: string } | null {
   const absFile = isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath);
 
   for (const space of config.spaces) {
@@ -413,12 +390,8 @@ export interface ValidateFileOptions {
   includeGated?: boolean;
   /** Evaluate only rules matching this filter (see `parseRuleFilter`). */
   ruleFilter?: RuleFilter;
-  /** Evaluate semantic rules with the configured judge (default: false). */
-  semantic?: boolean;
-  /** Name of the configured judge provider to use for every semantic rule. Implies `semantic`. */
-  judge?: string;
-  /** Optional custom judge provider (for testing or injection). */
-  judgeProvider?: SemanticJudgeProvider;
+  /** Judge for `mode: semantic` rules. Without one, semantic rules are not evaluated. */
+  judge?: SemanticJudgeProvider;
 }
 
 /**
@@ -542,11 +515,10 @@ export async function validateFile(
         (v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' }),
       ),
     ];
-    const judge = judgeForRun(options, space, config);
     const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, {
       includeGated: options.includeGated,
       ruleFilter: options.ruleFilter,
-      judge,
+      judge: options.judge,
       judgeTarget: label,
     });
     for (const v of violations) {

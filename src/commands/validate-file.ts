@@ -1,7 +1,8 @@
 import { loadConfig } from '../config';
+import { judgeForRun } from '../judge/factory';
 import { parseRuleFilter } from '../schema/rule-filter';
 import type { FileValidationIssue, FileValidationResult } from '../types';
-import { validateFile } from '../validate';
+import { resolveFileSpace, validateFile } from '../validate';
 
 export { validateFile } from '../validate';
 
@@ -15,10 +16,10 @@ export async function validateFileCommand(
   options: { json?: boolean; includeGated?: boolean; semantic?: boolean; judge?: string; ruleFilter?: string[] } = {},
 ): Promise<number> {
   const config = loadConfig();
+  const space = resolveFileSpace(filePath, config)?.space;
   const result = await validateFile(filePath, config, {
     includeGated: options.includeGated,
-    semantic: options.semantic,
-    judge: options.judge,
+    judge: space && judgeForRun(config, space, options),
     ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
   });
 

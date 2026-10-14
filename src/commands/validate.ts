@@ -1,7 +1,7 @@
 import { dirname } from 'node:path';
 import chokidar from 'chokidar';
 import { getConfigSourceFiles } from '../config';
-import type { SemanticJudgeProvider } from '../judge/types';
+import { judgeForRun } from '../judge/factory';
 import { resolveSpacePluginSchemas } from '../plugins/util';
 import { parseRuleFilter } from '../schema/rule-filter';
 import { bundledSchemasDir } from '../schema/schema';
@@ -17,17 +17,14 @@ export async function validate(
     semantic?: boolean;
     judge?: string;
     ruleFilter?: string[];
-    judgeProvider?: SemanticJudgeProvider;
   } = {},
 ): Promise<number> {
   const { schema, schemaRefRegistry } = context;
   const result = await validateSpace(context, {
     depth: options.depth,
     includeGated: options.includeGated,
-    semantic: options.semantic,
-    judge: options.judge,
+    judge: judgeForRun(context.config, context.space, options),
     ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
-    judgeProvider: options.judgeProvider,
   });
   const ruleCounts: Record<RuleSeverity, number> = { error: 0, warning: 0, info: 0 };
   for (const v of result.ruleViolations) ruleCounts[v.severity]++;

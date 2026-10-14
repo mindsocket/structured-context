@@ -7,10 +7,8 @@ import { ruleSeverity } from './rule-severity';
 export { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity } from './rule-severity';
 
 export interface ValidateRulesOptions {
-  /** Whether to run semantic rules (default: false). */
-  semantic?: boolean;
-  /** The semantic judge provider to use if semantic is true. */
-  judgeProvider?: SemanticJudgeProvider;
+  /** Judge for semantic rules. Without one, semantic rules are not evaluated. */
+  judge?: SemanticJudgeProvider;
   /** Label of the only node to judge (`validate-file`); other nodes' semantic rules are skipped. */
   judgeTarget?: string;
   /** Set of node labels that have already failed upstream structural checks. */
@@ -23,7 +21,7 @@ export interface ValidateRulesOptions {
  *
  * @param nodes - All nodes in the space
  * @param rules - Rules metadata list
- * @param options - Validation options including semantic opt-in and judge provider
+ * @param options - Validation options, including the judge for semantic rules
  * @returns Rule violations
  */
 export async function validateRules(
@@ -110,13 +108,9 @@ export async function validateRules(
     }
   }
 
-  // 2. Evaluate semantic rules only if explicitly requested
-  if (options.semantic) {
-    const judgeProvider = options.judgeProvider;
-    if (!judgeProvider) {
-      throw new Error('Semantic evaluation was requested but no judgeProvider was provided to validateRules.');
-    }
-
+  // 2. Evaluate semantic rules only when a judge is supplied
+  const judge = options.judge;
+  if (judge) {
     for (const node of nodes) {
       if (options.judgeTarget !== undefined && node.label !== options.judgeTarget) continue;
       const applicable: Rule[] = [];
@@ -137,7 +131,7 @@ export async function validateRules(
       // Safe cascading default: gate semantic evaluation if node failed upstream checks
       if (failedNodeLabels.has(node.label)) continue;
 
-      for (const j of await judgeNode(judgeProvider, node, applicable)) {
+      for (const j of await judgeNode(judge, node, applicable)) {
         if (!j.failed) continue;
         violations.push({
           file: node.label,
