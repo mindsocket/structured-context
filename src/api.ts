@@ -22,28 +22,6 @@ export type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
 export type { Config, SpaceConfig } from './config';
 export { loadConfig, resolveSchema, resolveSchemaPath, setConfigPath } from './config';
 export { PLUGIN_PREFIX } from './constants';
-export type {
-  GatedRuleRecord,
-  JudgeConfig,
-  JudgeProviderDefinition,
-  SemanticEvaluationRecord,
-  SemanticJudgeInput,
-  SemanticJudgeProvider,
-  SemanticJudgeResult,
-  SemanticJudgeVerdict,
-  SemanticRuleSpec,
-} from './judge';
-export {
-  AnthropicJudgeProvider,
-  createJudge,
-  createJudgeProvider,
-  FakeJudgeProvider,
-  JevJudgeProvider,
-  JudgeConfigError,
-  OpenAIJudgeProvider,
-  PerRuleJudgeProvider,
-  RoutedJudgeProvider,
-} from './judge';
 export { assembleSpaceGraph, loadSpaceGraph } from './load-space-graph';
 export type {
   ParseHook,
@@ -74,8 +52,6 @@ export {
   wikilinkToTarget,
 } from './read/wikilink-utils';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
-export type { RuleFilter } from './schema/rule-filter';
-export { filterRules, parseRuleFilter } from './schema/rule-filter';
 export { bundledSchemasDir, loadSchema, type PluginSchemaSource, setBundledSchemasDir } from './schema/schema';
 export { createSpaceContext, SpaceNotFoundError } from './space-context';
 export { buildSpaceGraph, type SpaceGraph } from './space-graph';
@@ -103,5 +79,5 @@ export type {
   UnresolvedRef,
   ValidateFileOutput,
 } from './types';
-export type { ValidateFileOptions, ValidateSpaceOptions, ValidationResult } from './validate';
+export type { ValidationResult } from './validate';
 export { validateFile, validateSpace } from './validate';
