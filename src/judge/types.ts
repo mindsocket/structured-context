@@ -8,8 +8,6 @@ export interface SemanticRuleSpec {
   category: RuleCategory | string;
   /** Allowed verdicts, each with a description of when it applies. */
   verdicts: Record<string, string>;
-  /** Name of the judge provider the rule asks for, if any. */
-  judge?: string;
 }
 
 /** One node and every semantic rule to judge on it. Judges may answer all rules in a single call. */
@@ -38,13 +36,13 @@ export interface SemanticJudgeProvider {
   evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>>;
 }
 
-/** Judge provider types. `none` is an inert placeholder for templates; judging with it is an error. */
-export const JUDGE_PROVIDER_TYPES = ['anthropic', 'openai', 'jev', 'fake', 'none'] as const;
-export type JudgeProviderType = (typeof JUDGE_PROVIDER_TYPES)[number];
+/** Model provider types. `fake` is for tests. */
+export const MODEL_PROVIDER_TYPES = ['anthropic', 'openai', 'jev', 'fake'] as const;
+export type ModelProviderType = (typeof MODEL_PROVIDER_TYPES)[number];
 
-/** One judge provider: a backend type plus how to reach it. */
-export interface JudgeProviderDefinition {
-  type: JudgeProviderType;
+/** How to reach a model: config `modelProviders.<name>`. */
+export interface ModelProviderConfig {
+  type: ModelProviderType;
   model?: string;
   endpoint?: string;
   /** Prefer `apiKeyEnv`: keys do not belong in config files. */
@@ -53,13 +51,8 @@ export interface JudgeProviderDefinition {
   apiKeyEnv?: string;
 }
 
-/**
- * Judge configuration: the flat shorthand (provider fields directly on `judge`), which defines one provider
- * named "default", and/or several named `providers`.
- */
-export interface JudgeConfig extends Partial<JudgeProviderDefinition> {
-  /** Named providers, for rules (or runs) that pick one by name. */
-  providers?: Record<string, JudgeProviderDefinition>;
-  /** Provider for rules that name none. Needed when several providers are configured. */
-  default?: string;
+/** Which model provider judges semantic rules: config `judge`, at the top level or on a space. */
+export interface JudgeConfig {
+  /** Name of an entry in `modelProviders`. */
+  provider?: string;
 }

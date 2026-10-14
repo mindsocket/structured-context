@@ -11,7 +11,7 @@ Then use the `sctx` command for all operations. Always pass `--config <path>` wh
 ## validate
 
 ```bash
-sctx validate <space> [--watch] [--config <path>] [--depth <n>] [--include-gated] [--semantic|--no-semantic] [--judge <name>] [--rule-filter <dim=values>]
+sctx validate <space> [--watch] [--config <path>] [--depth <n>] [--include-gated] [--semantic] [--judge <provider>] [--rule-filter <dim=values>]
 ```
 
 Validates all `.md` files in the space against the JSON schema. For each file:
@@ -30,7 +30,7 @@ the top — useful for fixing a space level by level (fix the top, re-run with a
 `--depth`, repeat). `--include-gated` evaluates rules on gated nodes anyway, still reporting
 them as gated — use it to surface cheap bottom-up checks even when an upstream blocker fired.
 `--semantic` also runs `mode: semantic` rules through a configured model judge (costly; off by
-default; `--no-semantic` forces it off even if config enables it; `--judge <name>` picks a configured judge provider), and `--rule-filter <dimension>=<values>` (repeatable; mode, category, severity, type, id)
+default; `--judge <provider>` judges with that configured model provider and implies `--semantic`), and `--rule-filter <dimension>=<values>` (repeatable; mode, category, severity, type, id)
 narrows which rules run. `validate-file` accepts the same two flags.
 
 Exit codes: `0` = clean (warning and info rule violations don't fail), `1` = validation errors found.

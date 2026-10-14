@@ -387,19 +387,20 @@ describe('loadConfig with includeSpacesFrom', () => {
     expect(mainConfig.spaces[0]!.name).toBe('main-space');
   });
 
-  it('accepts judge config with the jev provider at root and per space', () => {
+  it('accepts model providers, a top-level judge and a space judge override', () => {
     const configPath = join(testDir, 'judge-config.json');
     writeFileSync(
       configPath,
       JSON.stringify({
-        judge: { type: 'jev' },
-        semantic: true,
-        spaces: [{ name: 's', path: '/p', judge: { type: 'anthropic', model: 'claude-haiku-5-5' }, semantic: false }],
+        modelProviders: { jev: { type: 'jev' }, claude: { type: 'anthropic', model: 'claude-haiku-5-5' } },
+        judge: { provider: 'jev' },
+        spaces: [{ name: 's', path: '/p', judge: { provider: 'claude' } }],
       }),
     );
     setConfigPath(configPath);
     const config = loadConfig();
-    expect(config.judge?.type).toBe('jev');
-    expect(config.spaces?.[0]?.judge?.model).toBe('claude-haiku-5-5');
+    expect(config.judge?.provider).toBe('jev');
+    expect(config.modelProviders?.claude?.model).toBe('claude-haiku-5-5');
+    expect(config.spaces?.[0]?.judge?.provider).toBe('claude');
   });
 });

@@ -1,6 +1,5 @@
 import { afterAll, describe, expect, it } from 'bun:test';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
-import type { JudgeConfig } from '../../src/judge/types';
 import { createSpaceContext } from '../../src/space-context';
 import type { FileValidationResult } from '../../src/types';
 import { validateFile, validateSpace } from '../../src/validate';
@@ -134,36 +133,41 @@ describe('rule `when` precondition', () => {
   });
 });
 
-describe('run-level judge override', () => {
-  it('fails before any request when the named judge is not configured', async () => {
-    const { context } = setup([stepRule], { judge: { providers: { llm: { type: 'fake' } } } });
-    await expect(validateSpace(context(), { judge: 'nope' })).rejects.toThrow('Judge "nope" is not configured');
+describe('judge configuration', () => {
+  const judging = { modelProviders: { llm: { type: 'fake' } } as const, judge: { provider: 'llm' } };
+
+  it('fails before any request when the named provider is not configured', async () => {
+    const { context } = setup([stepRule], { judging });
+    await expect(validateSpace(context(), { judge: 'nope' })).rejects.toThrow(
+      'Model provider "nope" is not configured',
+    );
   });
 
-  it('--judge implies semantic evaluation, and semantic: false still wins', async () => {
-    const { context } = setup([stepRule], { judge: { providers: { llm: { type: 'fake' } } } });
+  it('fails before any request when no judge is configured', async () => {
+    const { context } = setup([stepRule]);
+    await expect(validateSpace(context(), { semantic: true })).rejects.toThrow('No judge configured');
+  });
+
+  it('needs no judge configuration while semantic evaluation is not requested', async () => {
+    const { context } = setup([stepRule]);
+    await expect(validateSpace(context(), {})).resolves.toBeDefined();
+  });
+
+  it('builds no judge when the rule filter leaves no semantic rule', async () => {
+    const { context } = setup([stepRule]);
+    await expect(
+      validateSpace(context(), { semantic: true, ruleFilter: { mode: ['expression'] } }),
+    ).resolves.toBeDefined();
+  });
+
+  it('a judge name implies semantic evaluation, and semantic: false still wins', async () => {
+    const { context } = setup([stepRule], { judging });
     const on = new FakeJudgeProvider();
     await validateSpace(context(), { judge: 'llm', judgeProvider: on });
     expect(on.callHistory.length).toBeGreaterThan(0);
     const off = new FakeJudgeProvider();
     await validateSpace(context(), { judge: 'llm', semantic: false, judgeProvider: off });
     expect(off.callHistory).toHaveLength(0);
-  });
-});
-
-describe('judge type "none"', () => {
-  it('throws, not skips, when semantic evaluation is attempted', async () => {
-    const judges: JudgeConfig[] = [{ type: 'none' }, { providers: { llm: { type: 'none' } }, default: 'llm' }];
-    for (const judge of judges) {
-      const { context } = setup([stepRule], { judge });
-      await expect(validateSpace(context(), { semantic: true })).rejects.toThrow('no provider type');
-      await expect(validateSpace(context(), { judge: 'default' })).rejects.toThrow();
-    }
-  });
-
-  it('is harmless while semantic evaluation is not requested', async () => {
-    const { context } = setup([stepRule], { judge: { type: 'none' } });
-    await expect(validateSpace(context(), {})).resolves.toBeDefined();
   });
 });
 

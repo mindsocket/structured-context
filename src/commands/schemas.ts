@@ -226,7 +226,7 @@ function generateMermaidErd(metadata: SchemaMetadata, entities: EntityInfo[]): s
   return mmd;
 }
 
-/** Bracketed notes on a rule: mode, severity (or verdict severities), judge and `when`. Empty for a plain rule. */
+/** Bracketed notes on a rule: mode, severity (or verdict severities) and `when`. Empty for a plain rule. */
 function ruleAnnotations(rule: Rule): string {
   const notes: string[] = [];
   if (rule.mode === 'semantic') notes.push('semantic');
@@ -239,7 +239,6 @@ function ruleAnnotations(rule: Rule): string {
         .join(', ')}`,
     );
   }
-  if (rule.judge) notes.push(`judge: ${rule.judge}`);
   if (rule.when) notes.push(`when: ${rule.when}`);
   return notes.length > 0 ? ` [${notes.join('] [')}]` : '';
 }

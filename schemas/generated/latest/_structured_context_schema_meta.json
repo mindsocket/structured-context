@@ -256,10 +256,6 @@
                 },
                 "minProperties": 2
               },
-              "judge": {
-                "type": "string",
-                "minLength": 1
-              },
               "type": {
                 "type": "string",
                 "minLength": 1
@@ -332,9 +328,6 @@
                   },
                   {
                     "required": ["rubric"]
-                  },
-                  {
-                    "required": ["judge"]
                   }
                 ]
               },

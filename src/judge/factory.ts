@@ -1,15 +1,8 @@
-import type { Rule } from '../types';
 import { AnthropicJudgeProvider } from './provider/anthropic';
 import { FakeJudgeProvider } from './provider/fake';
 import { JevJudgeProvider } from './provider/jev';
 import { OpenAIJudgeProvider } from './provider/openai';
-import type {
-  JudgeConfig,
-  JudgeProviderDefinition,
-  SemanticJudgeInput,
-  SemanticJudgeProvider,
-  SemanticJudgeResult,
-} from './types';
+import { MODEL_PROVIDER_TYPES, type ModelProviderConfig, type SemanticJudgeProvider } from './types';
 
 type Env = Record<string, string | undefined>;
 
@@ -20,54 +13,23 @@ const DEFAULT_KEY_ENV = {
   jev: 'OPENROUTER_API_KEY',
 } as const;
 
-const PROVIDER_TYPES = ['anthropic', 'openai', 'jev', 'fake'] as const;
-
-/** Name of the provider defined by the flat `judge: { type, ... }` shorthand. */
-export const DEFAULT_JUDGE_NAME = 'default';
-
 /** The judge is misconfigured (no provider, unknown provider, missing key). Reported as a plain CLI error. */
 export class JudgeConfigError extends Error {}
-
-/** Every provider the config defines, by name, and the one used for rules that don't name any. */
-function providerDefinitions(config: JudgeConfig | undefined): {
-  definitions: Record<string, JudgeProviderDefinition>;
-  defaultName?: string;
-} {
-  const definitions: Record<string, JudgeProviderDefinition> = { ...config?.providers };
-
-  // The flat shorthand defines one provider named "default".
-  if (config?.type) {
-    definitions[DEFAULT_JUDGE_NAME] = {
-      type: config.type,
-      model: config.model,
-      endpoint: config.endpoint,
-      apiKey: config.apiKey,
-      apiKeyEnv: config.apiKeyEnv,
-    };
-  }
-
-  const names = Object.keys(definitions);
-  const defaultName =
-    config?.default ??
-    (DEFAULT_JUDGE_NAME in definitions ? DEFAULT_JUDGE_NAME : names.length === 1 ? names[0] : undefined);
-  return { definitions, defaultName };
-}
 
 /**
  * Instantiate one provider from its definition. The type is always explicit and is never inferred from API keys
  * in the environment, so a key set for another tool is never spent on judging. Once the type is chosen, its key
  * comes from `apiKey`, else the environment variable named by `apiKeyEnv` (default: the type's usual variable).
  */
-function createProvider(name: string, def: JudgeProviderDefinition, env: Env): SemanticJudgeProvider {
+export function createModelProvider(
+  name: string,
+  def: ModelProviderConfig,
+  env: Env = process.env,
+): SemanticJudgeProvider {
   const type = def.type;
-  if (!type || type === 'none') {
+  if (!(MODEL_PROVIDER_TYPES as readonly string[]).includes(type)) {
     throw new JudgeConfigError(
-      `Judge "${name}" has no provider type. Set it to one of: ${PROVIDER_TYPES.join(', ')} (config.example.json shows a template).`,
-    );
-  }
-  if (!(PROVIDER_TYPES as readonly string[]).includes(type)) {
-    throw new JudgeConfigError(
-      `Unknown judge provider "${type}" for "${name}". Use one of: ${PROVIDER_TYPES.join(', ')}.`,
+      `Model provider "${name}" has unknown type "${type}". Use one of: ${MODEL_PROVIDER_TYPES.join(', ')}.`,
     );
   }
   if (type === 'fake') return new FakeJudgeProvider();
@@ -79,7 +41,7 @@ function createProvider(name: string, def: JudgeProviderDefinition, env: Env): S
   // OpenAI-compatible endpoints (Ollama, vLLM, ...) may need no key.
   if (!apiKey && type !== 'openai') {
     throw new JudgeConfigError(
-      `Judge "${name}" (${type}) has no API key. Set ${keyEnv} in the environment, or "apiKey" / "apiKeyEnv" on the provider.`,
+      `Model provider "${name}" (${type}) has no API key. Set ${keyEnv} in the environment, or "apiKey" / "apiKeyEnv" on the provider.`,
     );
   }
   switch (type) {
@@ -93,90 +55,27 @@ function createProvider(name: string, def: JudgeProviderDefinition, env: Env): S
 }
 
 /**
- * Routes each semantic rule to the judge provider it names (`judge` on the rule), else the configured default.
- * A run-level override replaces every rule's choice. Providers are created on first use, so one that no rule
- * reaches needs no credentials.
- */
-export class RoutedJudgeProvider implements SemanticJudgeProvider {
-  readonly name = 'routed';
-  private readonly cache = new Map<string, SemanticJudgeProvider>();
-
-  constructor(
-    private readonly definitions: Record<string, JudgeProviderDefinition>,
-    private readonly defaultName: string | undefined,
-    private readonly env: Env,
-    private readonly override?: string,
-    private readonly injected?: SemanticJudgeProvider,
-  ) {}
-
-  /** The provider that judges a rule asking for `requested` (undefined: the default). */
-  resolve(requested?: string): SemanticJudgeProvider {
-    if (this.injected) return this.injected;
-    const name = this.override ?? requested ?? this.defaultName;
-    if (!name) {
-      const known = Object.keys(this.definitions);
-      throw new JudgeConfigError(
-        known.length === 0
-          ? `No semantic judge configured. Set "judge.type" in config.json (one of: ${PROVIDER_TYPES.join(', ')}).`
-          : `Several judge providers are configured (${known.join(', ')}). Set "judge.default" for the default, or name one on the rule ("judge") or with --judge.`,
-      );
-    }
-    const def = this.definitions[name];
-    if (!def) {
-      const known = Object.keys(this.definitions);
-      throw new JudgeConfigError(
-        `Judge "${name}" is not configured.${known.length ? ` Configured: ${known.join(', ')}.` : ' Add it under "judge.providers" in config.json.'}`,
-      );
-    }
-    let provider = this.cache.get(name);
-    if (!provider) {
-      provider = createProvider(name, def, this.env);
-      this.cache.set(name, provider);
-    }
-    return provider;
-  }
-
-  /** Fail now, before any request is made, if a rule's judge is not usable. */
-  prepare(rules: Rule[]): void {
-    for (const rule of rules) {
-      if (rule.mode === 'semantic') this.resolve(rule.judge);
-    }
-  }
-
-  async evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>> {
-    const groups = new Map<SemanticJudgeProvider, SemanticJudgeInput['rules']>();
-    for (const rule of input.rules) {
-      const provider = this.resolve(rule.judge);
-      groups.set(provider, [...(groups.get(provider) ?? []), rule]);
-    }
-    const results: Record<string, SemanticJudgeResult> = {};
-    for (const [provider, rules] of groups) {
-      Object.assign(results, await provider.evaluate({ node: input.node, rules }));
-    }
-    return results;
-  }
-}
-
-/**
- * Build the judge for a run from config and environment. `override` (the `--judge` flag) names the provider to use
- * for every rule; `customProvider` (tests, injection) replaces configured providers altogether.
+ * The judge for a run: the model provider named by `name` (the `--judge` override), else the space's
+ * `judge.provider`, else the top-level one. Throws {@link JudgeConfigError} when it cannot be built.
  */
 export function createJudge(
-  config?: JudgeConfig,
-  env: Env = process.env,
-  customProvider?: SemanticJudgeProvider,
-  override?: string,
-): RoutedJudgeProvider {
-  const { definitions, defaultName } = providerDefinitions(config);
-  return new RoutedJudgeProvider(definitions, defaultName, env, override, customProvider);
-}
-
-/** The single provider for a config: the default one, or the one named by `name`. */
-export function createJudgeProvider(
-  config?: JudgeConfig,
-  env: Env = process.env,
-  customProvider?: SemanticJudgeProvider,
+  config: { modelProviders?: Record<string, ModelProviderConfig>; judge?: { provider?: string } },
+  space: { judge?: { provider?: string } } = {},
   name?: string,
+  env: Env = process.env,
 ): SemanticJudgeProvider {
-  return createJudge(config, env, customProvider).resolve(name);
+  const chosen = name ?? space.judge?.provider ?? config.judge?.provider;
+  const known = Object.keys(config.modelProviders ?? {});
+  if (!chosen) {
+    throw new JudgeConfigError(
+      'No judge configured. Set "judge.provider" in config.json to the name of an entry in "modelProviders".',
+    );
+  }
+  const def = config.modelProviders?.[chosen];
+  if (!def) {
+    throw new JudgeConfigError(
+      `Model provider "${chosen}" is not configured.${known.length ? ` Configured: ${known.join(', ')}.` : ' Add it under "modelProviders" in config.json.'}`,
+    );
+  }
+  return createModelProvider(chosen, def, env);
 }

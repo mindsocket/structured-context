@@ -26,7 +26,7 @@ export interface TempSpace {
  */
 export function makeTempSpace(
   rules: object[],
-  options: { frontmatter?: Record<string, string>; judge?: Config['judge'] } = {},
+  options: { frontmatter?: Record<string, string>; judging?: Pick<Config, 'modelProviders' | 'judge'> } = {},
 ): TempSpace {
   const dir = mkdtempSync(join(tmpdir(), 'sctx-temp-space-'));
   const schemaPath = join(dir, 'schema.json');
@@ -50,7 +50,7 @@ export function makeTempSpace(
     dir,
     config: {
       spaces: [{ name: 'ts', path: space, schema: schemaPath }],
-      ...(options.judge && { judge: options.judge }),
+      ...options.judging,
     },
     file: (name) => join(space, name),
     cleanup: () => rmSync(dir, { recursive: true, force: true }),

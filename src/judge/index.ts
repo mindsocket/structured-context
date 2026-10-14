@@ -1,4 +1,4 @@
-export { createJudge, createJudgeProvider, JudgeConfigError, RoutedJudgeProvider } from './factory';
+export { createJudge, createModelProvider, JudgeConfigError } from './factory';
 export { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from './prompt';
 export type { AnthropicJudgeProviderOptions } from './provider/anthropic';
 export { AnthropicJudgeProvider } from './provider/anthropic';
@@ -11,7 +11,7 @@ export { OpenAIJudgeProvider } from './provider/openai';
 export { PerRuleJudgeProvider } from './provider/per-rule';
 export type {
   JudgeConfig,
-  JudgeProviderDefinition,
+  ModelProviderConfig,
   SemanticJudgeInput,
   SemanticJudgeProvider,
   SemanticJudgeResult,

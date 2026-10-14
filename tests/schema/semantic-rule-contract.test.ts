@@ -45,11 +45,10 @@ describe('rule contract: check and semantic mode', () => {
     expect(() => load('semantic-global', { ...base, mode: 'semantic', scope: 'global' })).toThrow();
   });
 
-  it('accepts a verdict map with guidance, a severity map (including ignore), a judge and a when', () => {
+  it('accepts a verdict map with guidance, a severity map (including ignore) and a when', () => {
     const rule = {
       ...base,
       mode: 'semantic',
-      judge: 'llm',
       when: "current.status = 'ready'",
       verdicts: { ok: 'Fine', vague: { description: 'Too vague', guidance: 'Be specific.' } },
       severity: { vague: 'warning' },
@@ -67,7 +66,9 @@ describe('rule contract: check and semantic mode', () => {
   it('keeps semantic-only fields off expression rules', () => {
     const expr = { ...base, check: 'true' };
     expect(() => load('expr-map', { ...expr, severity: { fail: 'error' } })).toThrow();
+    // Rules do not choose a judge: that is config, not schema.
     expect(() => load('expr-judge', { ...expr, judge: 'llm' })).toThrow();
+    expect(() => load('semantic-judge', { ...base, mode: 'semantic', judge: 'llm' })).toThrow();
     expect(() => load('expr-verdicts', { ...expr, verdicts: { a: 'A', b: 'B' } })).toThrow();
     expect(load('expr-when', { ...expr, when: 'true' }).rules).toHaveLength(1);
   });

@@ -4,7 +4,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020';
 import JSON5 from 'json5';
 import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
-import { JUDGE_PROVIDER_TYPES, type JudgeConfig } from './judge/types';
+import { type JudgeConfig, MODEL_PROVIDER_TYPES, type ModelProviderConfig } from './judge/types';
 import {
   normalizePluginName,
   resolvePluginSchemasDir,
@@ -13,10 +13,10 @@ import {
 } from './plugins/util';
 import { bundledSchemasDir } from './schema/schema';
 
-const JUDGE_PROVIDER_SCHEMA = {
+const MODEL_PROVIDER_SCHEMA = {
   type: 'object',
   properties: {
-    type: { type: 'string', enum: JUDGE_PROVIDER_TYPES },
+    type: { type: 'string', enum: MODEL_PROVIDER_TYPES },
     model: { type: 'string' },
     endpoint: { type: 'string' },
     apiKey: { type: 'string' },
@@ -28,15 +28,7 @@ const JUDGE_PROVIDER_SCHEMA = {
 
 const JUDGE_CONFIG_SCHEMA = {
   type: 'object',
-  properties: {
-    type: { type: 'string', enum: JUDGE_PROVIDER_TYPES },
-    model: { type: 'string' },
-    apiKey: { type: 'string' },
-    apiKeyEnv: { type: 'string' },
-    endpoint: { type: 'string' },
-    providers: { type: 'object', additionalProperties: JUDGE_PROVIDER_SCHEMA },
-    default: { type: 'string' },
-  },
+  properties: { provider: { type: 'string', minLength: 1 } },
   additionalProperties: false,
 } as const;
 
@@ -62,7 +54,6 @@ const CONFIG_SCHEMA = {
             },
           },
           judge: JUDGE_CONFIG_SCHEMA,
-          semantic: { type: 'boolean' },
         },
         required: ['name', 'path'],
         additionalProperties: false,
@@ -70,8 +61,8 @@ const CONFIG_SCHEMA = {
     },
     schema: { type: 'string' },
     includeSpacesFrom: { type: 'array', items: { type: 'string' } },
+    modelProviders: { type: 'object', additionalProperties: MODEL_PROVIDER_SCHEMA },
     judge: JUDGE_CONFIG_SCHEMA,
-    semantic: { type: 'boolean' },
   },
   anyOf: [{ required: ['spaces'] }, { required: ['includeSpacesFrom'] }],
   additionalProperties: false,
@@ -85,10 +76,8 @@ export type SpaceConfig = {
   plugins?: Record<string, Record<string, unknown>>;
   /** Named filter views for this space. Keys are view names; values contain the filter expression. */
   views?: Record<string, { expression: string }>;
-  /** LLM judge provider configuration for semantic rule evaluation. */
+  /** Judge for this space's semantic rules; overrides the top-level `judge`. */
   judge?: JudgeConfig;
-  /** Whether to evaluate semantic rules during validation for this space. */
-  semantic?: boolean;
   /**
    * Directory of the config file that defined this space, used to anchor relative plugin-config
    * paths. Set by loadConfig; absent for a hand-assembled Config, whose callers must pass an
@@ -101,10 +90,10 @@ export type Config = {
   spaces: SpaceConfig[];
   schema?: string;
   includeSpacesFrom?: string[];
-  /** Default LLM judge provider configuration for semantic rule evaluation. */
+  /** Model providers by name: how to reach each model. */
+  modelProviders?: Record<string, ModelProviderConfig>;
+  /** Judge for semantic rules (a model provider name). A space's `judge` overrides it. */
   judge?: JudgeConfig;
-  /** Whether to evaluate semantic rules during validation across spaces. */
-  semantic?: boolean;
 };
 
 let _configPathOverride: string | undefined;

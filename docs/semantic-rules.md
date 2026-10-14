@@ -7,13 +7,16 @@ This page assumes you know [Rules](rules.md). Semantic rules use the same fields
 ## Quick start
 
 1. Set `OPENROUTER_API_KEY` in your environment.
-2. Add a judge to `config.json`:
+2. Add a model provider and choose it as the judge in `config.json`:
 
    ```json
-   { "judge": { "type": "jev" } }
+   {
+     "modelProviders": { "jev": { "type": "jev" } },
+     "judge": { "provider": "jev" }
+   }
    ```
 
-   Jev is a decision model and the recommended judge (see [Choosing a judge](#choosing-a-judge)). To use Claude instead, set `"type": "anthropic"` and `ANTHROPIC_API_KEY`.
+   Jev is a decision model and the recommended judge (see [Choosing a judge](#choosing-a-judge)). To use Claude instead, add a provider with `"type": "anthropic"` and set `ANTHROPIC_API_KEY`.
 3. Add a rule to the schema's `$metadata.rules`:
 
    ```json
@@ -30,11 +33,12 @@ This page assumes you know [Rules](rules.md). Semantic rules use the same fields
 
 ## Turning semantic rules on
 
-Semantic rules cost money and send node content to the judge's provider. Thus they run only when you ask:
+Semantic rules cost money and send node content to the judge's provider. Thus they run only when you ask, on each run:
 
-- `--semantic` runs them for one run of `sctx validate` or `sctx validate-file`.
-- `"semantic": true` in [config](config.md#judge-semantic-rules) runs them on every run. Set it at the top level (all spaces) or on a space.
-- `--no-semantic` stops them for one run, and overrides config.
+- `--semantic` runs them with the configured judge.
+- `--judge <provider>` runs them with that model provider instead.
+
+Both work on `sctx validate` and `sctx validate-file`. Config cannot turn semantic rules on. The API is the same: pass `semantic` or `judge` to `validateSpace` or `validateFile`.
 
 ## Rule fields
 
@@ -44,7 +48,6 @@ Semantic rules cost money and send node content to the judge's provider. Thus th
 | `rubric` | no | Tells the judge what to assess. Default: `description` |
 | `verdicts` | no | The answers the judge can give. Default: `pass` and `fail`. See [Verdicts](#verdicts) |
 | `severity` | if `verdicts` is set | The severity of each verdict. See [Severity](#severity) |
-| `judge` | no | The name of a [judge provider](#several-judges). Default: the configured default provider |
 
 A semantic rule cannot have `check` or `scope: "global"`.
 
@@ -103,12 +106,10 @@ Use a decision model when you can. Its results are repeatable and cheap, and the
 | `anthropic` | Claude. Default model: `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
 | `openai` | Any OpenAI-compatible chat endpoint, for example OpenAI, Ollama or vLLM. Set `endpoint` for servers other than OpenAI. Local servers do not need a key | `OPENAI_API_KEY` |
 
-sctx uses only the provider type that you set. It does not choose a provider from the keys in your environment. See [Judge configuration](config.md#judge-semantic-rules) for all fields.
+sctx uses only the provider that you configure. It does not choose a provider from the keys in your environment. See [Model providers](config.md#model-providers) and [Judge](config.md#judge-semantic-rules) for all fields.
 
-### Several judges
-
-You can configure several providers by name, for example `decision` and `llm`. A rule selects one with `judge`. `--judge <name>` uses one provider for every rule in a run, and implies `--semantic`. For example, to get a second opinion from a chat model on one rule and one file:
+A rule does not choose its judge: that is configuration, not schema. To use a different provider for one run, name it with `--judge`. For example, to get a second opinion from a chat model on one rule and one file:
 
 ```bash
-sctx validate-file <file> --rule-filter id=<rule-id> --judge llm
+sctx validate-file <file> --rule-filter id=<rule-id> --judge claude
 ```

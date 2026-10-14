@@ -65,49 +65,44 @@ All plugin names must start with `sctx-` (the prefix is optional in config and n
 
 Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` directory (or `"sctx": { "schemas": "..." }` in `package.json`). If a space specifies a plugin-prefixed schema (e.g. `"sctx-wardley-mapping/wardley_map.json"`), schemas are resolved statically without executing plugin code, and the plugin's code hooks are loaded when parsing or rendering.
 
-## Judge (semantic rules)
+## Model providers
 
-`judge` configures the model that judges [semantic rules](semantic-rules.md). `semantic: true` runs semantic rules without `--semantic`. Set either key at the top level (all spaces) or on a space. A space's value replaces the top-level value.
-
-To use one provider, set its fields directly on `judge`:
+`modelProviders` names the models that sctx can use, and says how to reach each one. Set it at the top level only.
 
 ```json
 {
-  "judge": { "type": "anthropic", "model": "claude-haiku-5-5" },
-  "spaces": [
-    { "name": "ProductX", "path": "/path/to/space", "semantic": true, "judge": { "type": "jev" } }
-  ]
+  "modelProviders": {
+    "jev": { "type": "jev" },
+    "claude": { "type": "anthropic", "model": "claude-haiku-5-5" },
+    "local": { "type": "openai", "endpoint": "http://localhost:11434/v1" }
+  }
 }
 ```
 
 | Field | Description |
 |---|---|
-| `type` | **Required.** `jev`, `anthropic`, `openai` (see [Choosing a judge](semantic-rules.md#choosing-a-judge)), `fake` (for tests) or `none` (a placeholder for templates; judging with it is an error). |
-| `model` | Defaults: `claude-haiku-5-5` (anthropic), `gpt-4o-mini` (openai), `typesafe/jev-1.13` (jev). |
+| `type` | **Required.** `jev`, `anthropic` or `openai` (see [Choosing a judge](semantic-rules.md#choosing-a-judge)), or `fake` (for tests). |
+| `model` | Defaults: `typesafe/jev-1.13` (jev), `claude-haiku-5-5` (anthropic), `gpt-4o-mini` (openai). |
 | `endpoint` | Override the API URL. Jev defaults to `https://openrouter.ai/api/alpha/decisions`. |
-| `apiKeyEnv` | The environment variable that holds the key. Defaults: `OPENROUTER_API_KEY` (jev), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`. |
+| `apiKeyEnv` | The environment variable that holds the key. Defaults: `OPENROUTER_API_KEY` (jev), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`. A local `openai` endpoint can need no key. |
 | `apiKey` | The key itself. Use `apiKeyEnv` instead, so that keys stay out of config files. |
 
-To use several providers, give each a name under `providers`. Each provider takes the fields above. `default` names the provider for rules that do not name one:
+sctx creates a provider only when it uses it, so a provider that is not used needs no key. The environment holds only keys: no environment variable selects or configures a provider.
+
+## Judge (semantic rules)
+
+`judge.provider` names the model provider that judges [semantic rules](semantic-rules.md). Set it at the top level. A space can set its own `judge`, which replaces the top-level one for that space, for example to keep a private space on a local model:
 
 ```json
 {
-  "judge": {
-    "providers": {
-      "decision": { "type": "jev" },
-      "llm": { "type": "anthropic", "model": "claude-haiku-5-5" }
-    },
-    "default": "llm"
-  }
+  "judge": { "provider": "jev" },
+  "spaces": [
+    { "name": "private-notes", "path": "/path/to/notes", "judge": { "provider": "local" } }
+  ]
 }
 ```
 
-- A rule selects a provider with `judge: "decision"`. `--judge <name>` selects one for every rule in a run.
-- `default` is necessary only with more than one provider.
-- A provider needs a key only when a rule uses it.
-- Use the names `decision` (a decision model) and `llm` (a chat model), so that shared schemas work with other configs.
-
-The environment holds only keys. There are no environment variables that change the judge.
+Config does not turn semantic rules on. Each run asks for them with `--semantic`, or with `--judge <provider>`, which also selects a different provider for that run.
 
 ## Markdown plugin config
 

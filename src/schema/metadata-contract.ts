@@ -102,8 +102,6 @@ const RULE_SCHEMA = {
       },
       minProperties: 2,
     },
-    /** Semantic rules: name of the configured judge provider to use. A run-level override takes precedence. */
-    judge: { type: 'string', minLength: 1 },
     type: { type: 'string', minLength: 1 },
     scope: { enum: ['global'] },
     override: { type: 'boolean' },
@@ -126,7 +124,7 @@ const RULE_SCHEMA = {
   },
   else: {
     required: ['check'],
-    not: { anyOf: [{ required: ['verdicts'] }, { required: ['rubric'] }, { required: ['judge'] }] },
+    not: { anyOf: [{ required: ['verdicts'] }, { required: ['rubric'] }] },
     properties: { severity: SEVERITY_SCHEMA },
   },
   additionalProperties: false,

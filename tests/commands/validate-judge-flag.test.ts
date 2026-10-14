@@ -6,7 +6,7 @@ import { makeTempSpace } from '../helpers/temp-space';
 const ROOT = join(import.meta.dir, '..', '..');
 const space = makeTempSpace(
   [{ id: 'step-fit', type: 'step', mode: 'semantic', category: 'coherence', description: 'Step fits its task' }],
-  { judge: { providers: { f: { type: 'fake' } } } },
+  { judging: { modelProviders: { f: { type: 'fake' } } } },
 );
 const configPath = join(space.dir, 'config.json');
 writeFileSync(configPath, JSON.stringify(space.config));
@@ -35,7 +35,7 @@ describe('--judge on the CLI', () => {
     });
   }
 
-  it('--no-semantic wins over --judge', () => {
-    expect(spawn('validate', 'ts', '--judge', 'missing', '--no-semantic').exitCode).toBe(0);
+  it('runs no judge without --semantic or --judge', () => {
+    expect(spawn('validate', 'ts').exitCode).toBe(0);
   });
 });

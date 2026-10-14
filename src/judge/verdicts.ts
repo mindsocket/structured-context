@@ -64,7 +64,6 @@ export function resolveSemanticRule(rule: Rule): ResolvedSemanticRule {
       description: rule.description,
       rubric: rule.rubric,
       category: rule.category,
-      judge: rule.judge,
       verdicts,
     },
     severities,

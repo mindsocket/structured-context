@@ -38,7 +38,7 @@ Rules are a flat array.
 | `check` | yes, unless `mode: semantic` | JSONata expression; must evaluate to `true` |
 | `when` | no | JSONata test. The rule runs only on nodes where it returns `true`. See [Conditional rules](#conditional-rules-when) |
 | `mode` | no | `expression` (default) or `semantic` |
-| `rubric`, `verdicts`, `judge` | semantic only | See [Semantic rules](semantic-rules.md#rule-fields) |
+| `rubric`, `verdicts` | semantic only | See [Semantic rules](semantic-rules.md#rule-fields) |
 | `type` | no | Restrict rule to nodes of this `resolvedType` |
 | `scope` | no | Use `"global"` to evaluate once for the whole space |
 | `override` | no | Only for merge conflicts: allows later duplicate `id` to replace earlier |

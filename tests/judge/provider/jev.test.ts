@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'bun:test';
-import { createJudgeProvider } from '../../../src/judge/factory';
+import { createModelProvider } from '../../../src/judge/factory';
 import { JevJudgeProvider } from '../../../src/judge/provider/jev';
 import { graded, node, passFailRule } from '../helpers';
 
@@ -70,8 +70,7 @@ describe('JevJudgeProvider', () => {
   });
 
   it('is created explicitly via provider "jev" with OPENROUTER_API_KEY, never auto-detected', () => {
-    expect(createJudgeProvider({ type: 'jev' }, { OPENROUTER_API_KEY: 'k' }).name).toBe('jev');
-    expect(() => createJudgeProvider({ type: 'jev' }, {})).toThrow('OPENROUTER_API_KEY');
-    expect(() => createJudgeProvider(undefined, { OPENROUTER_API_KEY: 'k' })).toThrow('No semantic judge configured');
+    expect(createModelProvider('jev', { type: 'jev' }, { OPENROUTER_API_KEY: 'k' }).name).toBe('jev');
+    expect(() => createModelProvider('jev', { type: 'jev' }, {})).toThrow('OPENROUTER_API_KEY');
   });
 });

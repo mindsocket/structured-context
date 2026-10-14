@@ -57,7 +57,7 @@ export interface GatingOptions {
   /** Evaluate rules on gated nodes anyway (gates are still reported). */
   includeGated?: boolean;
   /** Judge for `mode: semantic` rules. Without it, semantic rules are not evaluated. */
-  judge?: SemanticJudgeProvider;
+  provider?: SemanticJudgeProvider;
   /**
    * Label of the one node whose result is wanted (`validate-file`). Gating is still computed over the
    * whole space, but the judge is only consulted for that node and for its hierarchy ancestors' gate-capable
@@ -121,7 +121,7 @@ export async function evaluateRulesWithGating(
     }
   }
 
-  const judge = options.judge;
+  const judge = options.provider;
   const violations: RuleViolation[] = [];
   const gateOrigins = new Map<string, CoverageGate>();
 

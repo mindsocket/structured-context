@@ -37,10 +37,6 @@ describe('resolveSemanticRule', () => {
     expect(resolved.guidance).toEqual({ vague: 'Name the customer and the pain.' });
   });
 
-  it("carries the rule's judge name to the spec", () => {
-    expect(resolveSemanticRule({ ...base, judge: 'llm' }).spec.judge).toBe('llm');
-  });
-
   it('rejects custom verdicts without a severity map, unknown verdicts, and sets with no passing verdict', () => {
     expect(() => resolveSemanticRule({ ...base, verdicts: { a: 'A', b: 'B' } })).toThrow(
       'must map the failing verdicts',
