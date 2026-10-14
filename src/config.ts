@@ -4,7 +4,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020';
 import JSON5 from 'json5';
 import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
-import type { JudgeConfig } from './judge/types';
+import { JUDGE_PROVIDER_TYPES, type JudgeConfig } from './judge/types';
 import {
   normalizePluginName,
   resolvePluginSchemasDir,
@@ -12,8 +12,6 @@ import {
   shortenPluginName,
 } from './plugins/util';
 import { bundledSchemasDir } from './schema/schema';
-
-const JUDGE_PROVIDER_TYPES = ['anthropic', 'openai', 'jev', 'fake', 'none'];
 
 const JUDGE_PROVIDER_SCHEMA = {
   type: 'object',

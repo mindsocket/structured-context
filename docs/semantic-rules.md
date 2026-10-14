@@ -78,7 +78,7 @@ The verdict is a classification. The severity says what the verdict means for th
 - With custom verdicts, `severity` is a map from verdict to `error`, `warning`, `info` or `ignore`.
 - A verdict with `error`, `warning` or `info` reports a violation at that severity.
 - A verdict that is not in the map reports no violation. At least one verdict must report no violation.
-- `ignore` also reports no violation. Use it to show that you chose to ignore a verdict. The verdict is still recorded in `--json` output.
+- `ignore` also reports no violation. Use it to show that you chose to ignore a verdict.
 - With the default verdicts, `severity` is one value for `fail`, the same as for an expression rule.
 
 Gating uses the severity of the verdict. A verdict with `error` severity gates the node's subtree, as for any rule. `gatesDescendants` changes this, as for any rule.
@@ -86,10 +86,10 @@ Gating uses the severity of the verdict. A verdict with `error` severity gates t
 ## How judging works
 
 - **Order.** On each node, expression rules run first. Then sctx sends all of the node's semantic rules to the judge in one call.
-- **Gating.** sctx does not judge a gated node. The JSON output lists the rules it did not judge under `gatedRules`.
+- **Gating.** sctx does not judge a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
 - **Judge errors.** If the judge fails (for example, a network error or output that sctx cannot read), sctx reports a violation. A judge error does not gate.
 - **Input.** The judge gets the node's title, type, parent titles and schema data, including frontmatter.
-- **Output.** Violations include the verdict, the judge's evidence and any guidance. `--json` adds `semanticEvaluations`: the verdict, confidence and evidence for each node and rule.
+- **Output.** A violation from a semantic rule also includes the verdict, the judge's evidence and any guidance.
 
 `sctx validate-file` judges only the file and the rules on its ancestors that can gate it. Thus one file costs at most one judge call for each ancestor level, plus one.
 

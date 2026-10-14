@@ -54,8 +54,7 @@ export function resolveSemanticRule(rule: Rule): ResolvedSemanticRule {
   for (const [verdict, severity] of Object.entries(mapping)) {
     if (severity !== 'ignore') severities[verdict] = severity;
   }
-  const failOn = Object.keys(severities);
-  if (failOn.length >= Object.keys(verdicts).length) {
+  if (Object.keys(severities).length >= Object.keys(verdicts).length) {
     throw new Error(`Semantic rule "${rule.id}" has no passing verdict: every verdict has a severity.`);
   }
 
@@ -67,7 +66,6 @@ export function resolveSemanticRule(rule: Rule): ResolvedSemanticRule {
       category: rule.category,
       judge: rule.judge,
       verdicts,
-      failOn,
     },
     severities,
     guidance,

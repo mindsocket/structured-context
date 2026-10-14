@@ -2,7 +2,7 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
 import { createJudge, RoutedJudgeProvider } from './judge/factory';
-import type { GatedRuleRecord, JudgeConfig, SemanticEvaluationRecord, SemanticJudgeProvider } from './judge/types';
+import type { JudgeConfig, SemanticJudgeProvider } from './judge/types';
 import { readSpace } from './read/read-space';
 import { computeHierarchyDepths, evaluateRulesWithGating, type GatingSeed } from './schema/gating';
 import { filterRules, type RuleFilter } from './schema/rule-filter';
@@ -55,10 +55,6 @@ export interface ValidationResult {
   skippedByDepth: Array<{ file: string; title: string }>;
   /** The depth limit applied, if any (undefined means the full space was validated). */
   depthLimit?: number;
-  /** Details on semantic rule evaluations performed (if semantic mode enabled). */
-  semanticEvaluations?: SemanticEvaluationRecord[];
-  /** Semantic rule/node pairs skipped because the node was gated by an upstream failure. */
-  gatedRules?: GatedRuleRecord[];
 }
 
 /**
@@ -209,8 +205,6 @@ export function ruleViolationMessage(v: RuleViolation): string {
 type SpaceRuleEvaluation = {
   violations: RuleViolation[];
   gates: CoverageGate[];
-  semanticEvaluations: SemanticEvaluationRecord[];
-  gatedRules: GatedRuleRecord[];
 };
 
 /**
@@ -231,7 +225,7 @@ async function evaluateSpaceRules(
   } = {},
 ): Promise<SpaceRuleEvaluation> {
   const rules = metadata.rules && filterRules(metadata.rules, options.ruleFilter);
-  if (!rules) return { violations: [], gates: [], semanticEvaluations: [], gatedRules: [] };
+  if (!rules) return { violations: [], gates: [] };
   // Misconfigured judges fail before any request is made.
   if (options.judge instanceof RoutedJudgeProvider) options.judge.prepare(rules);
   if (!metadata.hierarchy) {
@@ -240,12 +234,7 @@ async function evaluateSpaceRules(
       judgeProvider: options.judge,
       judgeTarget: options.judgeTarget,
     });
-    return {
-      violations: result,
-      gates: [],
-      semanticEvaluations: result.semanticEvaluations,
-      gatedRules: result.gatedRules,
-    };
+    return { violations: result, gates: [] };
   }
   const graph = buildSpaceGraph(nodes, metadata.hierarchy);
   return evaluateRulesWithGating(nodes, rules, graph, seeds, options);
@@ -375,17 +364,13 @@ export async function validateSpace(
       ...result.hierarchyViolations.map((v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' })),
     ];
     const judge = resolveJudge(options.semantic, options.judgeProvider, context.space, context.config, options.judge);
-    const { violations, gates, semanticEvaluations, gatedRules } = await evaluateSpaceRules(nodes, metadata, seeds, {
+    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, {
       includeGated: options.includeGated,
       ruleFilter: options.ruleFilter,
       judge,
     });
     result.ruleViolations = violations;
     result.coverageGates = gates;
-    if (judge) {
-      result.semanticEvaluations = semanticEvaluations;
-      result.gatedRules = gatedRules;
-    }
   }
 
   // Collect unresolved content links (warnings — not errors)

@@ -4,6 +4,7 @@ import { AnthropicJudgeProvider } from '../../src/judge/provider/anthropic';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { JevJudgeProvider } from '../../src/judge/provider/jev';
 import { OpenAIJudgeProvider } from '../../src/judge/provider/openai';
+import type { JudgeConfig } from '../../src/judge/types';
 import type { Rule } from '../../src/types';
 import { graded, node, passFailRule } from './helpers';
 
@@ -32,7 +33,7 @@ describe('createJudgeProvider factory', () => {
   });
 
   it('reads the key from the variable named by apiKeyEnv', () => {
-    const config = { type: 'jev', apiKeyEnv: 'MY_JEV_KEY' };
+    const config: JudgeConfig = { type: 'jev', apiKeyEnv: 'MY_JEV_KEY' };
     expect(createJudgeProvider(config, { MY_JEV_KEY: 'k' }) instanceof JevJudgeProvider).toBe(true);
     expect(() => createJudgeProvider(config, { OPENROUTER_API_KEY: 'k' })).toThrow('MY_JEV_KEY');
   });
@@ -65,7 +66,7 @@ describe('createJudgeProvider factory', () => {
 });
 
 describe('named providers and routing', () => {
-  const config = {
+  const config: JudgeConfig = {
     providers: { decision: { type: 'jev' }, llm: { type: 'anthropic', model: 'claude-haiku-5-5' } },
     default: 'llm',
   };

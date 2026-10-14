@@ -1,5 +1,5 @@
 import { judgeNode } from '../judge/judge-node';
-import type { GatedRuleRecord, SemanticEvaluationRecord, SemanticJudgeProvider } from '../judge/types';
+import type { SemanticJudgeProvider } from '../judge/types';
 import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, RuleViolation, SpaceNode } from '../types';
 import { buildEvalContext, expressionErrorViolation, tryEvaluateExpression } from './evaluate-rule';
@@ -51,10 +51,6 @@ export type CoverageGate = {
 export type GatedRuleEvaluation = {
   violations: RuleViolation[];
   gates: CoverageGate[];
-  /** Semantic judgements made (empty unless a judge was supplied). */
-  semanticEvaluations: SemanticEvaluationRecord[];
-  /** Semantic rule/node pairs skipped because the node was gated (empty unless a judge was supplied). */
-  gatedRules: GatedRuleRecord[];
 };
 
 export interface GatingOptions {
@@ -127,8 +123,6 @@ export async function evaluateRulesWithGating(
 
   const judge = options.judge;
   const violations: RuleViolation[] = [];
-  const semanticEvaluations: SemanticEvaluationRecord[] = [];
-  const gatedRules: GatedRuleRecord[] = [];
   const gateOrigins = new Map<string, CoverageGate>();
 
   function originFor(
@@ -241,7 +235,6 @@ export async function evaluateRulesWithGating(
     const semantic = applicable.filter((r) => r.mode === 'semantic');
     if (judge && semantic.length > 0) {
       for (const j of await judgeNode(judge, node, semantic)) {
-        if (j.record) semanticEvaluations.push(j.record);
         if (j.failed) {
           report(j.rule, {
             severity: j.severity,
@@ -254,12 +247,6 @@ export async function evaluateRulesWithGating(
       }
     }
     return { blockingRuleId };
-  }
-
-  async function recordGatedSemantic(node: SpaceNode, reason: string): Promise<void> {
-    for (const rule of await applicableRules(node)) {
-      if (rule.mode === 'semantic') gatedRules.push({ file: node.label, ruleId: rule.id, reason });
-    }
   }
 
   // Non-hierarchy nodes sit outside the subtree cascade — always evaluated, never gated.
@@ -286,9 +273,6 @@ export async function evaluateRulesWithGating(
     const shouldEvaluate = !isGated || includeGated;
 
     const { blockingRuleId } = shouldEvaluate ? await evaluateApplicableRules(node) : {};
-    if (!shouldEvaluate) {
-      await recordGatedSemantic(node, isGatedByAncestor ? 'Gated by an ancestor failure' : 'Gated by failure on node');
-    }
 
     let childOrigin: string | undefined = ancestorOrigin;
     if (isGatedByAncestor) {
@@ -312,7 +296,5 @@ export async function evaluateRulesWithGating(
   return {
     violations,
     gates: [...gateOrigins.values()].filter((g) => g.gatedFiles.length > 0),
-    semanticEvaluations,
-    gatedRules,
   };
 }

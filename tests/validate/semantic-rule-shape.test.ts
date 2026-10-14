@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, it } from 'bun:test';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
+import type { JudgeConfig } from '../../src/judge/types';
 import { createSpaceContext } from '../../src/space-context';
 import type { FileValidationResult } from '../../src/types';
 import { validateFile, validateSpace } from '../../src/validate';
@@ -60,12 +61,10 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
 
   it('judges an ignored verdict without reporting it', async () => {
     const { context } = setup([stepRule]);
-    const result = await validateSpace(context(), {
-      semantic: true,
-      judgeProvider: new FakeJudgeProvider({ 'step-fit': { verdict: 'unsure' } }),
-    });
+    const fake = new FakeJudgeProvider({ 'step-fit': { verdict: 'unsure' } });
+    const result = await validateSpace(context(), { semantic: true, judgeProvider: fake });
+    expect(fake.callHistory).toHaveLength(1);
     expect(result.ruleViolations).toEqual([]);
-    expect(result.semanticEvaluations).toEqual([expect.objectContaining({ verdict: 'unsure', pass: true })]);
   });
 
   it('gates the subtree per verdict: an error-mapped verdict gates, a warning-mapped one does not', async () => {
@@ -131,7 +130,7 @@ describe('rule `when` precondition', () => {
     const idle = new FakeJudgeProvider();
     const result = await validateSpace(none.context(), { semantic: true, judgeProvider: idle });
     expect(idle.callHistory).toHaveLength(0);
-    expect(result.gatedRules).toEqual([]); // not applicable is not gated
+    expect(result.coverageGates).toEqual([]); // not applicable is not gated
   });
 });
 
@@ -143,16 +142,19 @@ describe('run-level judge override', () => {
 
   it('--judge implies semantic evaluation, and semantic: false still wins', async () => {
     const { context } = setup([stepRule], { judge: { providers: { llm: { type: 'fake' } } } });
-    const on = await validateSpace(context(), { judge: 'llm' });
-    expect(on.semanticEvaluations?.length).toBeGreaterThan(0);
-    const off = await validateSpace(context(), { judge: 'llm', semantic: false });
-    expect(off.semanticEvaluations ?? []).toHaveLength(0);
+    const on = new FakeJudgeProvider();
+    await validateSpace(context(), { judge: 'llm', judgeProvider: on });
+    expect(on.callHistory.length).toBeGreaterThan(0);
+    const off = new FakeJudgeProvider();
+    await validateSpace(context(), { judge: 'llm', semantic: false, judgeProvider: off });
+    expect(off.callHistory).toHaveLength(0);
   });
 });
 
 describe('judge type "none"', () => {
   it('throws, not skips, when semantic evaluation is attempted', async () => {
-    for (const judge of [{ type: 'none' }, { providers: { llm: { type: 'none' } }, default: 'llm' }]) {
+    const judges: JudgeConfig[] = [{ type: 'none' }, { providers: { llm: { type: 'none' } }, default: 'llm' }];
+    for (const judge of judges) {
       const { context } = setup([stepRule], { judge });
       await expect(validateSpace(context(), { semantic: true })).rejects.toThrow('no provider type');
       await expect(validateSpace(context(), { judge: 'default' })).rejects.toThrow();

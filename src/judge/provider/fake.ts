@@ -27,7 +27,8 @@ function normalise(answer: FakeAnswer): SemanticJudgeResult {
 
 /**
  * In-memory fake judge for offline, deterministic tests. Configure with a single answer, a handler,
- * or answers keyed by `ruleId:title`, `ruleId:label` or `ruleId` (most specific wins). Unmatched calls pass.
+ * or answers keyed by `ruleId:title`, `ruleId:label` or `ruleId` (most specific wins). Unmatched calls get `pass`,
+ * or the rule's first declared verdict.
  */
 export class FakeJudgeProvider implements SemanticJudgeProvider {
   readonly name = 'fake';
@@ -45,7 +46,8 @@ export class FakeJudgeProvider implements SemanticJudgeProvider {
   }
 
   private async answer(node: SemanticJudgeInput['node'], rule: SemanticRuleSpec): Promise<FakeAnswer> {
-    const passing = { verdict: Object.keys(rule.verdicts).find((v) => !rule.failOn.includes(v)) ?? 'pass' };
+    // The fake does not know severities: default to `pass`, else the first declared verdict.
+    const passing = { verdict: 'pass' in rule.verdicts ? 'pass' : (Object.keys(rule.verdicts)[0] ?? 'pass') };
     const fallback = { ...passing, evidence: `Fake passed evaluation for rule "${rule.id}"` };
     const config = this.config;
     if (!config) return fallback;

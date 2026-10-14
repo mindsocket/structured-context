@@ -1,5 +1,5 @@
 import type { Rule, RuleSeverity, SpaceNode } from '../types';
-import type { SemanticEvaluationRecord, SemanticJudgeProvider } from './types';
+import type { SemanticJudgeProvider } from './types';
 import { isJudgeError, resolveSemanticRule } from './verdicts';
 
 export type NodeJudgement = {
@@ -14,8 +14,6 @@ export type NodeJudgement = {
   evidence?: string;
   /** Set when the judge could not produce a verdict for this rule. */
   error?: string;
-  /** Present when the judge produced a verdict. */
-  record?: SemanticEvaluationRecord;
 };
 
 /** Judge every given semantic rule on a node in one provider call. */
@@ -30,14 +28,7 @@ export async function judgeNode(
   let results: Awaited<ReturnType<SemanticJudgeProvider['evaluate']>>;
   try {
     results = await judge.evaluate({
-      node: {
-        label: node.label,
-        title: node.title,
-        type: node.type,
-        resolvedType: node.resolvedType,
-        schemaData: node.schemaData,
-        resolvedParents: node.resolvedParents.map((p) => ({ title: p.title, field: p.field })),
-      },
+      node,
       rules: specs,
     });
   } catch (err) {
@@ -65,14 +56,6 @@ export async function judgeNode(
       verdict: result.verdict,
       guidance: failed ? resolved[i]!.guidance[result.verdict] : undefined,
       evidence: result.evidence,
-      record: {
-        file: node.label,
-        ruleId: rule.id,
-        verdict: result.verdict,
-        pass: !failed,
-        confidence: result.confidence,
-        evidence: result.evidence,
-      },
     };
   });
 }

@@ -27,9 +27,9 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
 
   describe('validateSpace', () => {
     it('skips semantic rules by default (deterministic & free)', async () => {
-      const result = await validateSpace(validContext);
-      expect(result.semanticEvaluations ?? []).toHaveLength(0);
-      expect(result.gatedRules ?? []).toHaveLength(0);
+      const fake = new FakeJudgeProvider({ pass: false });
+      const result = await validateSpace(validContext, { judgeProvider: fake });
+      expect(fake.callHistory).toHaveLength(0);
       expect(result.ruleViolations.some((v) => v.ruleId === 'opportunity-customer-voice')).toBe(false);
     });
 
@@ -44,15 +44,11 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
         judgeProvider: fakeProvider,
       });
 
-      expect(result.semanticEvaluations).toBeDefined();
-      expect(result.semanticEvaluations!.length).toBeGreaterThan(0);
+      expect(fakeProvider.callHistory.some((c) => c.rules.some((r) => r.id === 'opportunity-customer-voice'))).toBe(
+        true,
+      );
 
-      const oppEval = result.semanticEvaluations!.find((e) => e.ruleId === 'opportunity-customer-voice');
-      expect(oppEval).toBeDefined();
-      expect(oppEval?.pass).toBe(true);
-      expect(oppEval?.evidence).toContain('framed in clear customer language');
-
-      // No violation when pass is true
+      // No violation when the verdict has no severity
       expect(result.ruleViolations.some((v) => v.ruleId === 'opportunity-customer-voice')).toBe(false);
     });
 
@@ -96,13 +92,9 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       expect(result.nodeErrors.some((e) => e.file === 'opportunity-no-source.md')).toBe(true);
 
       // Therefore it must be gated and never evaluated by the judge
-      expect(result.gatedRules).toBeDefined();
-      const gated = result.gatedRules!.find(
-        (g) => g.file === 'opportunity-no-source.md' && g.ruleId === 'opportunity-customer-voice',
+      expect(result.coverageGates.some((g) => g.file === 'opportunity-no-source.md' && g.reason === 'schema')).toBe(
+        true,
       );
-      expect(gated).toBeDefined();
-      expect(gated?.reason).toMatch(/^Gated by/);
-
       // Judge was never called for opportunity-no-source.md
       expect(fakeProvider.callHistory.some((c) => c.node.label === 'opportunity-no-source.md')).toBe(false);
     });
@@ -213,12 +205,11 @@ describe('Semantic rules: verdicts, batching and rule filter', () => {
     expect(fake.callHistory.every((c) => c.rules.length >= 1)).toBe(true);
   });
 
-  it('records the verdict and confidence on evaluations and fails only on verdicts that have a severity', async () => {
+  it('reports a verdict that has a severity as a violation carrying the verdict and evidence', async () => {
     const fake = new FakeJudgeProvider({ verdict: 'fail', confidence: 0.7, evidence: 'solution in disguise' });
     const result = await validateSpace(context, { semantic: true, judgeProvider: fake });
-    const record = result.semanticEvaluations?.find((e) => e.ruleId === 'opportunity-customer-voice');
-    expect(record).toMatchObject({ verdict: 'fail', pass: false, confidence: 0.7 });
-    expect(result.ruleViolations.some((v) => v.ruleId === 'opportunity-customer-voice')).toBe(true);
+    const violation = result.ruleViolations.find((v) => v.ruleId === 'opportunity-customer-voice');
+    expect(violation).toMatchObject({ verdict: 'fail', evidence: 'solution in disguise' });
   });
 
   it('reports a per-rule judge error as a violation without gating the subtree', async () => {
@@ -244,6 +235,6 @@ describe('Semantic rules: verdicts, batching and rule filter', () => {
       ruleFilter: { mode: ['expression'] },
     });
     expect(fake.callHistory).toHaveLength(0);
-    expect(expressionOnly.semanticEvaluations ?? []).toHaveLength(0);
+    expect(expressionOnly.ruleViolations.some((v) => v.verdict !== undefined)).toBe(false);
   });
 });

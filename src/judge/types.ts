@@ -1,4 +1,4 @@
-import type { RuleCategory } from '../types';
+import type { RuleCategory, SpaceNode } from '../types';
 
 /** A semantic rule as presented to a judge: the closed verdict set it must choose from. */
 export interface SemanticRuleSpec {
@@ -8,22 +8,13 @@ export interface SemanticRuleSpec {
   category: RuleCategory | string;
   /** Allowed verdicts, each with a description of when it applies. */
   verdicts: Record<string, string>;
-  /** Verdicts that count as a violation (those with a severity; `ignore`d verdicts pass). */
-  failOn: string[];
   /** Name of the judge provider the rule asks for, if any. */
   judge?: string;
 }
 
 /** One node and every semantic rule to judge on it. Judges may answer all rules in a single call. */
 export interface SemanticJudgeInput {
-  node: {
-    label: string;
-    title: string;
-    type: string;
-    resolvedType: string;
-    schemaData: Record<string, unknown>;
-    resolvedParents?: Array<{ title: string; field: string }>;
-  };
+  node: Pick<SpaceNode, 'label' | 'title' | 'type' | 'resolvedType' | 'schemaData' | 'resolvedParents'>;
   rules: SemanticRuleSpec[];
 }
 
@@ -47,10 +38,13 @@ export interface SemanticJudgeProvider {
   evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>>;
 }
 
+/** Judge provider types. `none` is an inert placeholder for templates; judging with it is an error. */
+export const JUDGE_PROVIDER_TYPES = ['anthropic', 'openai', 'jev', 'fake', 'none'] as const;
+export type JudgeProviderType = (typeof JUDGE_PROVIDER_TYPES)[number];
+
 /** One judge provider: a backend type plus how to reach it. */
 export interface JudgeProviderDefinition {
-  /** `none` is an inert placeholder for templates; judging with it is an error. */
-  type?: 'anthropic' | 'openai' | 'jev' | 'fake' | 'none' | string;
+  type: JudgeProviderType;
   model?: string;
   endpoint?: string;
   /** Prefer `apiKeyEnv`: keys do not belong in config files. */
@@ -60,35 +54,12 @@ export interface JudgeProviderDefinition {
 }
 
 /**
- * Judge configuration from config file or options. Either the flat shorthand (`type`, `model`, ...), which
- * defines one provider named "default", or several named `providers`.
+ * Judge configuration: the flat shorthand (provider fields directly on `judge`), which defines one provider
+ * named "default", and/or several named `providers`.
  */
-export interface JudgeConfig {
-  type?: 'anthropic' | 'openai' | 'jev' | 'fake' | 'none' | string;
-  model?: string;
-  apiKey?: string;
-  apiKeyEnv?: string;
-  endpoint?: string;
+export interface JudgeConfig extends Partial<JudgeProviderDefinition> {
   /** Named providers, for rules (or runs) that pick one by name. */
   providers?: Record<string, JudgeProviderDefinition>;
   /** Provider for rules that name none. Needed when several providers are configured. */
   default?: string;
-}
-
-/** Record of a completed semantic evaluation. */
-export interface SemanticEvaluationRecord {
-  file: string;
-  ruleId: string;
-  verdict: string;
-  /** True when the verdict does not fail the rule (it has no severity, or is `ignore`d). */
-  pass: boolean;
-  confidence?: number;
-  evidence?: string;
-}
-
-/** Record of a rule gated/suppressed due to upstream failure. */
-export interface GatedRuleRecord {
-  file: string;
-  ruleId: string;
-  reason: string;
 }

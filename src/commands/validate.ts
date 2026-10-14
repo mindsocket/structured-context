@@ -91,8 +91,6 @@ export async function validate(
           coverageGates: result.coverageGates,
           skippedByDepth: result.skippedByDepth,
           depthLimit: result.depthLimit,
-          semanticEvaluations: result.semanticEvaluations,
-          gatedRules: result.gatedRules,
         },
         null,
         2,
@@ -220,17 +218,6 @@ export async function validate(
         }
       }
     }
-  }
-
-  if (result.semanticEvaluations && result.semanticEvaluations.length > 0) {
-    const passed = result.semanticEvaluations.filter((e) => e.pass).length;
-    const failed = result.semanticEvaluations.filter((e) => !e.pass).length;
-    console.log(
-      `\nSemantic evaluations: ${result.semanticEvaluations.length} total (${passed} passed, ${failed} failed)`,
-    );
-  }
-  if (result.gatedRules && result.gatedRules.length > 0) {
-    console.log(`Gated semantic rules (skipped due to upstream errors): ${result.gatedRules.length}`);
   }
 
   if (result.hierarchyViolations.length > 0) {

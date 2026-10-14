@@ -22,7 +22,7 @@ const DEFAULT_KEY_ENV = {
 
 const PROVIDER_TYPES = ['anthropic', 'openai', 'jev', 'fake'] as const;
 
-/** Name of the provider defined by the flat `judge: { provider, ... }` shorthand. */
+/** Name of the provider defined by the flat `judge: { type, ... }` shorthand. */
 export const DEFAULT_JUDGE_NAME = 'default';
 
 /** The judge is misconfigured (no provider, unknown provider, missing key). Reported as a plain CLI error. */

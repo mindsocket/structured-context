@@ -22,13 +22,7 @@ function spawn(...args: string[]) {
   return { ...result, stderr: new TextDecoder().decode(result.stderr) };
 }
 
-const run = (...args: string[]) => JSON.parse(new TextDecoder().decode(spawn(...args).stdout));
-
 describe('--judge on the CLI', () => {
-  it('validate: naming a judge runs semantic rules without --semantic', () => {
-    expect(run('validate', 'ts', '--judge', 'f').semanticEvaluations).toHaveLength(1);
-  });
-
   // An unknown name fails only if the flag reaches the judge.
   for (const args of [
     ['validate', 'ts'],
@@ -42,6 +36,6 @@ describe('--judge on the CLI', () => {
   }
 
   it('--no-semantic wins over --judge', () => {
-    expect(run('validate', 'ts', '--judge', 'f', '--no-semantic').semanticEvaluations).toBeUndefined();
+    expect(spawn('validate', 'ts', '--judge', 'missing', '--no-semantic').exitCode).toBe(0);
   });
 });

@@ -69,10 +69,10 @@ describe('validateRules - semantic evaluation', () => {
 
   it('skips semantic rules when semantic option is false / omitted (default validate)', async () => {
     // Default validate should only run expression rules and remain deterministic & free
-    const violations = await validateRules(sampleNodes, rules);
+    const fake = new FakeJudgeProvider();
+    const violations = await validateRules(sampleNodes, rules, { judgeProvider: fake });
     expect(violations).toHaveLength(0);
-    expect(violations.semanticEvaluations).toHaveLength(0);
-    expect(violations.gatedRules).toHaveLength(0);
+    expect(fake.callHistory).toHaveLength(0);
   });
 
   it('evaluates semantic rules when semantic option is true', async () => {
@@ -101,10 +101,7 @@ describe('validateRules - semantic evaluation', () => {
     expect(violations[0]?.evidence).toBe(
       'Stated as a solution feature ("Build social login") rather than a customer need',
     );
-
-    expect(violations.semanticEvaluations).toHaveLength(2);
-    expect(violations.semanticEvaluations.find((e) => e.file === 'valid-opp.md')?.pass).toBe(true);
-    expect(violations.semanticEvaluations.find((e) => e.file === 'bad-opp.md')?.pass).toBe(false);
+    expect(fake.callHistory.map((c) => c.node.label).sort()).toEqual(['bad-opp.md', 'valid-opp.md']);
   });
 
   it('gates semantic rules when node has upstream structural error (cascading)', async () => {
@@ -122,10 +119,7 @@ describe('validateRules - semantic evaluation', () => {
     // bad-opp.md was gated; only valid-opp.md was sent to the judge
     expect(fake.callHistory).toHaveLength(1);
     expect(fake.callHistory[0]?.node.label).toBe('valid-opp.md');
-
-    expect(violations.gatedRules).toHaveLength(1);
-    expect(violations.gatedRules[0]?.file).toBe('bad-opp.md');
-    expect(violations.gatedRules[0]?.ruleId).toBe('opportunity-customer-voice');
+    expect(violations).toHaveLength(0);
   });
 
   it('gates semantic rules when node fails an upstream expression rule', async () => {
@@ -162,7 +156,5 @@ describe('validateRules - semantic evaluation', () => {
     // Only valid-opp.md was evaluated by the semantic judge
     expect(fake.callHistory).toHaveLength(1);
     expect(fake.callHistory[0]?.node.label).toBe('valid-opp.md');
-
-    expect(violations.gatedRules.some((g) => g.file === 'bad-opp.md')).toBe(true);
   });
 });

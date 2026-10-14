@@ -15,14 +15,19 @@ const PROVIDERS = [
   { name: 'openai', keyEnv: 'OPENAI_API_KEY' },
 ];
 
-const NEED = 'I cannot find my receipts at tax time.md';
 const SOLUTION = 'Build an AI receipt scanner.md';
 const GATED = 'Use a third-party OCR API.md';
 
 type Output = {
-  ruleViolations: Array<{ file: string; ruleId: string; severity: string; verdict?: string; guidance?: string }>;
-  semanticEvaluations: Array<{ file: string; ruleId: string; verdict: string; pass: boolean }>;
-  gatedRules: Array<{ file: string; ruleId: string }>;
+  ruleViolations: Array<{
+    file: string;
+    ruleId: string;
+    severity: string;
+    description: string;
+    verdict?: string;
+    guidance?: string;
+  }>;
+  coverageGates: Array<{ file: string; ruleId?: string; gatedFiles: string[] }>;
 };
 
 function validate(...args: string[]): { exitCode: number; output: Output } {
@@ -43,25 +48,24 @@ describe.skipIf(!LIVE)('live judges', () => {
       `${name}: classifies clear-cut opportunities and gates below an error verdict`,
       () => {
         const { exitCode, output } = validate('--judge', name);
-        const verdict = (file: string) =>
-          output.semanticEvaluations.find((e) => e.file === file && e.ruleId === 'opportunity-framing')?.verdict;
 
-        expect(verdict(NEED)).toBe('customer-need');
-        expect(verdict(SOLUTION)).toBe('solution');
-
-        const violation = output.ruleViolations.find((v) => v.file === SOLUTION);
-        expect(violation).toMatchObject({ severity: 'error', verdict: 'solution' });
+        // No judge errors, and the only violation is the solution in disguise.
+        expect(output.ruleViolations.filter((v) => v.description.includes('Judge error'))).toEqual([]);
+        expect(output.ruleViolations).toHaveLength(1);
+        const violation = output.ruleViolations[0];
+        expect(violation).toMatchObject({
+          file: SOLUTION,
+          ruleId: 'opportunity-framing',
+          severity: 'error',
+          verdict: 'solution',
+        });
         expect(violation?.guidance).toContain('customer problem');
         expect(exitCode).toBe(1);
 
-        // The error verdict gates the solution beneath it, so it is not judged.
-        expect(output.gatedRules).toContainEqual(
-          expect.objectContaining({ file: GATED, ruleId: 'solution-addresses-parent' }),
-        );
-        expect(output.semanticEvaluations.some((e) => e.file === GATED)).toBe(false);
-
-        // No judge errors: every evaluation has a real verdict.
-        expect(output.ruleViolations.filter((v) => !v.verdict)).toEqual([]);
+        // The error verdict gates the solution beneath it, so that solution is not judged.
+        expect(output.coverageGates).toEqual([
+          expect.objectContaining({ file: SOLUTION, ruleId: 'opportunity-framing', gatedFiles: [GATED] }),
+        ]);
       },
       60_000,
     );

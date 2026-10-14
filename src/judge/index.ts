@@ -10,10 +10,8 @@ export type { OpenAIJudgeProviderOptions } from './provider/openai';
 export { OpenAIJudgeProvider } from './provider/openai';
 export { PerRuleJudgeProvider } from './provider/per-rule';
 export type {
-  GatedRuleRecord,
   JudgeConfig,
   JudgeProviderDefinition,
-  SemanticEvaluationRecord,
   SemanticJudgeInput,
   SemanticJudgeProvider,
   SemanticJudgeResult,

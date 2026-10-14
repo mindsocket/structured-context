@@ -1,5 +1,5 @@
 import { judgeNode } from '../judge/judge-node';
-import type { GatedRuleRecord, SemanticEvaluationRecord, SemanticJudgeProvider } from '../judge/types';
+import type { SemanticJudgeProvider } from '../judge/types';
 import type { Rule, RuleViolation, SpaceNode } from '../types';
 import { buildEvalContext, expressionErrorViolation, tryEvaluateExpression } from './evaluate-rule';
 import { ruleSeverity } from './rule-severity';
@@ -17,11 +17,6 @@ export interface ValidateRulesOptions {
   gatedNodeLabels?: Set<string>;
 }
 
-export type ValidatedRulesResult = RuleViolation[] & {
-  semanticEvaluations: SemanticEvaluationRecord[];
-  gatedRules: GatedRuleRecord[];
-};
-
 /**
  * Validate nodes against rules metadata.
  * Evaluates deterministic expression rules and (when opt-in) semantic judge rules.
@@ -29,16 +24,14 @@ export type ValidatedRulesResult = RuleViolation[] & {
  * @param nodes - All nodes in the space
  * @param rules - Rules metadata list
  * @param options - Validation options including semantic opt-in and judge provider
- * @returns Array of rule violations with semanticEvaluations and gatedRules metadata attached
+ * @returns Rule violations
  */
 export async function validateRules(
   nodes: SpaceNode[],
   rules: Rule[],
   options: ValidateRulesOptions = {},
-): Promise<ValidatedRulesResult> {
+): Promise<RuleViolation[]> {
   const violations: RuleViolation[] = [];
-  const semanticEvaluations: SemanticEvaluationRecord[] = [];
-  const gatedRules: GatedRuleRecord[] = [];
 
   // Track nodes that have failed checks (for cascading gating)
   const failedNodeLabels = new Set<string>(options.gatedNodeLabels || []);
@@ -142,15 +135,9 @@ export async function validateRules(
       if (applicable.length === 0) continue;
 
       // Safe cascading default: gate semantic evaluation if node failed upstream checks
-      if (failedNodeLabels.has(node.label)) {
-        for (const rule of applicable) {
-          gatedRules.push({ file: node.label, ruleId: rule.id, reason: 'Gated by upstream error on node' });
-        }
-        continue;
-      }
+      if (failedNodeLabels.has(node.label)) continue;
 
       for (const j of await judgeNode(judgeProvider, node, applicable)) {
-        if (j.record) semanticEvaluations.push(j.record);
         if (!j.failed) continue;
         violations.push({
           file: node.label,
@@ -167,8 +154,5 @@ export async function validateRules(
     }
   }
 
-  const result = violations as ValidatedRulesResult;
-  result.semanticEvaluations = semanticEvaluations;
-  result.gatedRules = gatedRules;
-  return result;
+  return violations;
 }

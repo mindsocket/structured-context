@@ -11,7 +11,6 @@ describe('resolveSemanticRule', () => {
   it('defaults to pass/fail with fail at the rule severity', () => {
     const resolved = resolveSemanticRule(base);
     expect(Object.keys(resolved.spec.verdicts)).toEqual(['pass', 'fail']);
-    expect(resolved.spec.failOn).toEqual(['fail']);
     expect(resolved.severities).toEqual({ fail: 'info' }); // best-practice default
     expect(resolveSemanticRule({ ...base, severity: 'error' }).severities).toEqual({ fail: 'error' });
   });
@@ -23,7 +22,6 @@ describe('resolveSemanticRule', () => {
       severity: { minor: 'warning', major: 'error', skip: 'ignore' },
     });
     expect(resolved.severities).toEqual({ minor: 'warning', major: 'error' });
-    expect(resolved.spec.failOn).toEqual(['minor', 'major']);
   });
 
   it('splits a verdict into the judge description and user guidance', () => {
