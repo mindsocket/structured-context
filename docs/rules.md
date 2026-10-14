@@ -127,7 +127,7 @@ $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
   "when": "current.status = 'ready'", "check": "$exists(current.owner)" }
 ```
 
-A `when` that errors or returns anything other than `true` means the rule does not apply. `when` needs a per-node rule, so it cannot be combined with `scope: "global"`.
+A `when` that returns anything other than `true` means the rule does not apply. A `when` (or `check`) that cannot be evaluated, for example a syntax error, is not silently skipped: it is reported as an `error` violation on that node, with `Rule error:` in its description, and does not gate descendants. `when` needs a per-node rule, so it cannot be combined with `scope: "global"`.
 
 ## Reusing rules
 

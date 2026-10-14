@@ -60,11 +60,11 @@ export interface JudgeProviderDefinition {
 }
 
 /**
- * Judge configuration from config file or options. Either the flat shorthand (`provider`, `model`, ...), which
+ * Judge configuration from config file or options. Either the flat shorthand (`type`, `model`, ...), which
  * defines one provider named "default", or several named `providers`.
  */
 export interface JudgeConfig {
-  provider?: 'anthropic' | 'openai' | 'jev' | 'fake' | 'none' | string;
+  type?: 'anthropic' | 'openai' | 'jev' | 'fake' | 'none' | string;
   model?: string;
   apiKey?: string;
   apiKeyEnv?: string;
@@ -72,7 +72,7 @@ export interface JudgeConfig {
   /** Named providers, for rules (or runs) that pick one by name. */
   providers?: Record<string, JudgeProviderDefinition>;
   /** Provider for rules that name none. Needed when several providers are configured. */
-  use?: string;
+  default?: string;
   autoRun?: boolean;
 }
 

@@ -2,7 +2,7 @@ import { judgeNode } from '../judge/judge-node';
 import type { GatedRuleRecord, SemanticEvaluationRecord, SemanticJudgeProvider } from '../judge/types';
 import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, RuleViolation, SpaceNode } from '../types';
-import { buildEvalContext, evaluateExpression } from './evaluate-rule';
+import { buildEvalContext, expressionErrorViolation, tryEvaluateExpression } from './evaluate-rule';
 import { ruleSeverities, ruleSeverity } from './rule-severity';
 
 /**
@@ -148,8 +148,10 @@ export async function evaluateRulesWithGating(
   if (sentinel) {
     for (const rule of globalRules) {
       const context = buildEvalContext(sentinel, nodes, nodeIndex);
-      const result = await evaluateExpression(rule.check as string, context);
-      if (result !== true) {
+      const outcome = await tryEvaluateExpression(rule.check as string, context);
+      if ('error' in outcome) {
+        violations.push(expressionErrorViolation(rule, '', outcome.error));
+      } else if (outcome.value !== true) {
         violations.push({
           file: '',
           ruleId: rule.id,
@@ -183,7 +185,7 @@ export async function evaluateRulesWithGating(
   }
 
   /** Rules that apply to this node: matching `type`, passing their `when` test, and (for a judge target) worth judging. */
-  async function applicableRules(node: SpaceNode): Promise<Rule[]> {
+  async function applicableRules(node: SpaceNode, onWhenError?: (rule: Rule, error: string) => void): Promise<Rule[]> {
     const applicable: Rule[] = [];
     for (const r of perNodeRules) {
       if (r.type && r.type !== node.resolvedType) continue;
@@ -191,7 +193,14 @@ export async function evaluateRulesWithGating(
         // Ancestors only matter through the gates they could raise.
         if (!(targetAncestors.has(node.title) && ruleCanGate(r))) continue;
       }
-      if (r.when && (await evaluateExpression(r.when, buildEvalContext(node, nodes, nodeIndex))) !== true) continue;
+      if (r.when) {
+        const outcome = await tryEvaluateExpression(r.when, buildEvalContext(node, nodes, nodeIndex));
+        if ('error' in outcome) {
+          onWhenError?.(r, outcome.error);
+          continue;
+        }
+        if (outcome.value !== true) continue;
+      }
       applicable.push(r);
     }
     return applicable;
@@ -199,7 +208,9 @@ export async function evaluateRulesWithGating(
 
   async function evaluateApplicableRules(node: SpaceNode): Promise<{ blockingRuleId?: string }> {
     let blockingRuleId: string | undefined;
-    const applicable = await applicableRules(node);
+    const applicable = await applicableRules(node, (rule, error) =>
+      violations.push(expressionErrorViolation(rule, node.label, error)),
+    );
 
     function report(
       rule: Rule,
@@ -222,8 +233,9 @@ export async function evaluateRulesWithGating(
 
     // Cheap deterministic rules first; the judge is only consulted afterwards, once per node.
     for (const rule of applicable.filter((r) => r.mode !== 'semantic')) {
-      const result = await evaluateExpression(rule.check as string, buildEvalContext(node, nodes, nodeIndex));
-      if (result !== true) report(rule);
+      const outcome = await tryEvaluateExpression(rule.check as string, buildEvalContext(node, nodes, nodeIndex));
+      if ('error' in outcome) violations.push(expressionErrorViolation(rule, node.label, outcome.error));
+      else if (outcome.value !== true) report(rule);
     }
 
     const semantic = applicable.filter((r) => r.mode === 'semantic');

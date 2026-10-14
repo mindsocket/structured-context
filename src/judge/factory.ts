@@ -29,27 +29,27 @@ export const DEFAULT_JUDGE_NAME = 'default';
 export class JudgeConfigError extends Error {}
 
 /** Every provider the config defines, by name, and the one used for rules that don't name any. */
-function providerDefinitions(
-  config: JudgeConfig | undefined,
-  env: Env,
-): { definitions: Record<string, JudgeProviderDefinition>; defaultName?: string } {
+function providerDefinitions(config: JudgeConfig | undefined): {
+  definitions: Record<string, JudgeProviderDefinition>;
+  defaultName?: string;
+} {
   const definitions: Record<string, JudgeProviderDefinition> = { ...config?.providers };
 
-  // The flat shorthand (and SCTX_JUDGE_* overrides) define one provider named "default".
-  const type = config?.provider || env.SCTX_JUDGE_PROVIDER;
-  if (type) {
+  // The flat shorthand defines one provider named "default".
+  if (config?.type) {
     definitions[DEFAULT_JUDGE_NAME] = {
-      type,
-      model: config?.model || env.SCTX_JUDGE_MODEL,
-      endpoint: config?.endpoint || env.SCTX_JUDGE_ENDPOINT,
-      apiKey: config?.apiKey || env.SCTX_JUDGE_API_KEY,
-      apiKeyEnv: config?.apiKeyEnv,
+      type: config.type,
+      model: config.model,
+      endpoint: config.endpoint,
+      apiKey: config.apiKey,
+      apiKeyEnv: config.apiKeyEnv,
     };
   }
 
   const names = Object.keys(definitions);
   const defaultName =
-    config?.use ?? (DEFAULT_JUDGE_NAME in definitions ? DEFAULT_JUDGE_NAME : names.length === 1 ? names[0] : undefined);
+    config?.default ??
+    (DEFAULT_JUDGE_NAME in definitions ? DEFAULT_JUDGE_NAME : names.length === 1 ? names[0] : undefined);
   return { definitions, defaultName };
 }
 
@@ -117,8 +117,8 @@ export class RoutedJudgeProvider implements SemanticJudgeProvider {
       const known = Object.keys(this.definitions);
       throw new JudgeConfigError(
         known.length === 0
-          ? `No semantic judge configured. Set "judge.provider" in config.json (one of: ${PROVIDER_TYPES.join(', ')}) or SCTX_JUDGE_PROVIDER.`
-          : `Several judge providers are configured (${known.join(', ')}). Set "judge.use" for the default, or name one on the rule ("judge") or with --judge.`,
+          ? `No semantic judge configured. Set "judge.type" in config.json (one of: ${PROVIDER_TYPES.join(', ')}).`
+          : `Several judge providers are configured (${known.join(', ')}). Set "judge.default" for the default, or name one on the rule ("judge") or with --judge.`,
       );
     }
     const def = this.definitions[name];
@@ -167,7 +167,7 @@ export function createJudge(
   customProvider?: SemanticJudgeProvider,
   override?: string,
 ): RoutedJudgeProvider {
-  const { definitions, defaultName } = providerDefinitions(config, env);
+  const { definitions, defaultName } = providerDefinitions(config);
   return new RoutedJudgeProvider(definitions, defaultName, env, override, customProvider);
 }
 

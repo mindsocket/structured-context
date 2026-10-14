@@ -17,8 +17,7 @@
       },
       {
         "id": "okf-stale-after-generated",
-        "category": "coherence",
-        "severity": "error",
+        "category": "validation",
         "description": "stale_after must be later than generated.at",
         "check": "$not($exists(current.stale_after)) or $not($exists(current.generated.at)) or $toMillis(current.stale_after) > $toMillis(current.generated.at)"
       },
@@ -34,7 +33,6 @@
         // from other body text: any body counts.
         "id": "okf-computation-present",
         "category": "validation",
-        "severity": "error",
         "type": "Attested Computation",
         "description": "An Attested Computation needs its computation: a `computation` path or a body `# Computation` section",
         "check": "$exists(current.computation) or $exists(current.content)"

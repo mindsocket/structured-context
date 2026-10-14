@@ -1,5 +1,5 @@
 import jsonata from 'jsonata';
-import type { SpaceNode } from '../types';
+import type { Rule, RuleViolation, SpaceNode } from '../types';
 
 const expressionCache = new Map<string, ReturnType<typeof jsonata>>();
 
@@ -17,7 +17,7 @@ export interface EvalContext {
 
 /**
  * Evaluate a JSONata expression against a context.
- * Returns the result of the expression (boolean for rule checks).
+ * Returns the result of the expression (boolean for rule checks). Throws {@link ExpressionError} if it fails.
  *
  * @param expr - JSONata expression string
  * @param context - Evaluation context with $, $$, parent, $lookup
@@ -51,9 +51,31 @@ export async function evaluateExpression(expr: string, context: EvalContext): Pr
     const result = await expression.evaluate(input);
     return result as boolean | string | number;
   } catch (error) {
-    // Log warning and return false (fail safe)
-    console.warn(`Warning: Error evaluating expression "${expr}":`, error);
-    return false;
+    throw new ExpressionError(expr, error);
+  }
+}
+
+/** A JSONata expression could not be compiled or evaluated. */
+export class ExpressionError extends Error {
+  constructor(
+    readonly expression: string,
+    cause: unknown,
+  ) {
+    // JSONata throws plain objects ({ code, message, position }), not Error instances.
+    const reason = (cause as { message?: unknown } | null)?.message ?? cause;
+    super(`Expression "${expression}" failed: ${String(reason)}`);
+  }
+}
+
+/** Result of evaluating a rule's `check` or `when`: a value, or the error that stopped it (never thrown). */
+export type ExpressionOutcome = { value: boolean | string | number } | { error: string };
+
+/** Like {@link evaluateExpression} but reports a failure as data, so callers can turn it into a violation. */
+export async function tryEvaluateExpression(expr: string, context: EvalContext): Promise<ExpressionOutcome> {
+  try {
+    return { value: await evaluateExpression(expr, context) };
+  } catch (error) {
+    return { error: error instanceof ExpressionError ? error.message : String(error) };
   }
 }
 
@@ -104,5 +126,16 @@ export function buildEvalContext(
     $$: flattenNode(node),
     parent: flattenedParents[0],
     parents: flattenedParents.length > 0 ? flattenedParents : undefined,
+  };
+}
+
+/** The violation reported when a rule's `check` or `when` cannot be evaluated: an authoring error, so always `error`. */
+export function expressionErrorViolation(rule: Rule, file: string, error: string): RuleViolation {
+  return {
+    file,
+    ruleId: rule.id,
+    category: rule.category,
+    severity: 'error',
+    description: `${rule.description} (Rule error: ${error})`,
   };
 }

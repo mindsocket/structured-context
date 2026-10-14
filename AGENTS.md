@@ -38,6 +38,8 @@ There are several places that need reviewing and updating with any new feature o
 - **Simplicity first:** Strive for the simplest design that completely solves the problem. Prefer conventions and established filesystem patterns over adding new configuration, programmatic APIs, or abstractions.
 - **Explicitly state alternatives:** When planning or making architectural decisions, do not anchor to the first familiar mechanism. Formulate and state at least one alternative approach, weighing trade-offs, complexity, and ergonomic impact.
 - **Minimise blast radius:** Protect established boundaries and interfaces. Treat unnecessary ripple effects (such as making synchronous APIs asynchronous or adding dual APIs) as a design smell indicating the approach should be re-evaluated.
+- **Where a setting lives:** Config says *what* to use, CLI flags override it for one run, and the environment holds secrets and the config location only (`apiKeyEnv` names a secret; `SCTX_CONFIG` locates the config). Do not add env vars that set config values, and never infer a choice (such as a judge provider) from a variable that happens to be set: a key present for another tool must not be spent silently.
+- **Failures are visible:** A rule or expression that cannot be evaluated is reported as a violation, never skipped or treated as a pass. Likewise a misconfiguration fails before any work or spend.
 
 ## Key Files
 

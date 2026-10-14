@@ -28,10 +28,10 @@ For expression rules, severity, gating and merge behaviour, see [Rules](rules.md
    }
    ```
 
-2. **Choose a judge** in `config.json`. The provider is always explicit; keys in your environment are never picked up unless you name the provider:
+2. **Choose a judge** in `config.json`. The judge `type` is always explicit; keys in your environment are never picked up unless you name the type:
 
    ```json
-   { "judge": { "provider": "anthropic" } }
+   { "judge": { "type": "anthropic" } }
    ```
 
    with `ANTHROPIC_API_KEY` set. See [Judge configuration](config.md#judge-semantic-rules) for every field.

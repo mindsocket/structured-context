@@ -70,8 +70,8 @@ describe('JevJudgeProvider', () => {
   });
 
   it('is created explicitly via provider "jev" with OPENROUTER_API_KEY, never auto-detected', () => {
-    expect(createJudgeProvider({ provider: 'jev' }, { OPENROUTER_API_KEY: 'k' }).name).toBe('jev');
-    expect(() => createJudgeProvider({ provider: 'jev' }, {})).toThrow('OPENROUTER_API_KEY');
+    expect(createJudgeProvider({ type: 'jev' }, { OPENROUTER_API_KEY: 'k' }).name).toBe('jev');
+    expect(() => createJudgeProvider({ type: 'jev' }, {})).toThrow('OPENROUTER_API_KEY');
     expect(() => createJudgeProvider(undefined, { OPENROUTER_API_KEY: 'k' })).toThrow('No semantic judge configured');
   });
 });

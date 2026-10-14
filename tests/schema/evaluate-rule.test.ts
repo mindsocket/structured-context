@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import { buildEvalContext, evaluateExpression } from '../../src/schema/evaluate-rule';
+import {
+  buildEvalContext,
+  ExpressionError,
+  evaluateExpression,
+  tryEvaluateExpression,
+} from '../../src/schema/evaluate-rule';
 import type { SpaceNode } from '../../src/types';
 import { makeParentRef } from '../test-helpers';
 
@@ -111,18 +116,10 @@ describe('evaluate-rule', () => {
       expect(result).toBe(1);
     });
 
-    it('returns false on expression evaluation error', async () => {
-      // Suppress expected warning for invalid syntax
-      const originalWarn = console.warn;
-      console.warn = () => {};
-
-      try {
-        const context = buildEvalContext(mockNode, allNodes, mockNodeIndex);
-        const result = await evaluateExpression('invalid.syntax.('!, context);
-        expect(result).toBe(false);
-      } finally {
-        console.warn = originalWarn;
-      }
+    it('throws on an expression evaluation error, which tryEvaluateExpression reports as data', async () => {
+      const context = buildEvalContext(mockNode, allNodes, mockNodeIndex);
+      await expect(evaluateExpression('invalid.syntax.('!, context)).rejects.toThrow(ExpressionError);
+      expect(await tryEvaluateExpression('invalid.syntax.('!, context)).toHaveProperty('error');
     });
   });
 

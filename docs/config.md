@@ -73,23 +73,23 @@ The shorthand defines one provider:
 
 ```json
 {
-  "judge": { "provider": "anthropic", "model": "claude-haiku-5-5" },
+  "judge": { "type": "anthropic", "model": "claude-haiku-5-5" },
   "spaces": [
-    { "name": "ProductX", "path": "/path/to/space", "semantic": true, "judge": { "provider": "jev" } }
+    { "name": "ProductX", "path": "/path/to/space", "semantic": true, "judge": { "type": "jev" } }
   ]
 }
 ```
 
 | Field | Description |
 |---|---|
-| `provider` | **Required** to judge (or set `SCTX_JUDGE_PROVIDER`). One of `anthropic`, `openai` (any OpenAI-compatible endpoint: OpenAI, Ollama, vLLM, OpenRouter chat models), `jev` (TypeSafe decision model via OpenRouter's decisions API), `fake` (tests), or `none` (an inert placeholder for templates; judging with it is an error). Never inferred from API keys in the environment. |
+| `type` | **Required** to judge. One of `anthropic`, `openai` (any OpenAI-compatible endpoint: OpenAI, Ollama, vLLM, OpenRouter chat models), `jev` (TypeSafe decision model via OpenRouter's decisions API), `fake` (tests), or `none` (an inert placeholder for templates; judging with it is an error). Never inferred from API keys in the environment. |
 | `model` | Defaults: `claude-haiku-5-5` (anthropic), `gpt-4o-mini` (openai), `typesafe/jev-1.13` (jev). |
 | `endpoint` | Override the API URL. Jev defaults to `https://openrouter.ai/api/alpha/decisions`. |
 | `apiKeyEnv` | Name of the environment variable holding the key. Defaults to the provider's usual one: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY` (jev). |
 | `apiKey` | The key itself. Prefer `apiKeyEnv`; keys do not belong in config files. |
 | `autoRun` | Evaluate semantic rules without `--semantic`. |
 
-To use several providers, name them under `providers` (each takes `type` plus `model`, `endpoint`, `apiKeyEnv`, `apiKey`) and pick the default with `use`:
+To use several providers, name them under `providers` (each takes `type` plus `model`, `endpoint`, `apiKeyEnv`, `apiKey`) and pick the default with `default`:
 
 ```json
 {
@@ -98,14 +98,14 @@ To use several providers, name them under `providers` (each takes `type` plus `m
       "decision": { "type": "jev" },
       "llm": { "type": "anthropic", "model": "claude-haiku-5-5" }
     },
-    "use": "llm"
+    "default": "llm"
   }
 }
 ```
 
-A rule names one with `judge: "decision"`, and `--judge <name>` overrides every rule for a run. `use` is only needed when more than one provider is configured. Providers are created when first used, so one no rule reaches needs no credentials. The shorthand's provider is named `default`. Using the names `decision` (a decision model) and `llm` (a chat model) keeps shared schemas and configs portable.
+A rule names one with `judge: "decision"`, and `--judge <name>` overrides every rule for a run. `default` is only needed when more than one provider is configured (a lone provider is the default). Providers, not profiles: a rule's `judge` names a provider, and there is no separate layer between them. Providers are created when first used, so one no rule reaches needs no credentials. The shorthand's provider is named `default`. Using the names `decision` (a decision model) and `llm` (a chat model) keeps shared schemas and configs portable.
 
-`SCTX_JUDGE_PROVIDER`, `SCTX_JUDGE_MODEL`, `SCTX_JUDGE_ENDPOINT` and `SCTX_JUDGE_API_KEY` override the shorthand (`default`) provider. Semantic evaluation sends node content to the configured provider.
+There are deliberately no `SCTX_JUDGE_*` environment overrides: config says what to use, flags override per run, and the environment holds only secrets (named by `apiKeyEnv`). Semantic evaluation sends node content to the configured provider.
 
 ## Markdown plugin config
 

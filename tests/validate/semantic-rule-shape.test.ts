@@ -149,3 +149,40 @@ describe('run-level judge override', () => {
     expect(off.semanticEvaluations ?? []).toHaveLength(0);
   });
 });
+
+describe('judge type "none"', () => {
+  it('throws, not skips, when semantic evaluation is attempted', async () => {
+    for (const judge of [{ type: 'none' }, { providers: { llm: { type: 'none' } }, default: 'llm' }]) {
+      const { context } = setup([stepRule], { judge });
+      await expect(validateSpace(context(), { semantic: true })).rejects.toThrow('no provider type');
+      await expect(validateSpace(context(), { judge: 'default' })).rejects.toThrow();
+    }
+  });
+
+  it('is harmless while semantic evaluation is not requested', async () => {
+    const { context } = setup([stepRule], { judge: { type: 'none' } });
+    await expect(validateSpace(context(), {})).resolves.toBeDefined();
+  });
+});
+
+describe('rule expression errors', () => {
+  const broken = { id: 'broken', category: 'validation', description: 'Broken check', check: '$notAFunction(' };
+  const brokenWhen = {
+    id: 'bad-when',
+    category: 'coherence',
+    description: 'Task rule',
+    type: 'task',
+    when: '1 +',
+    check: 'true',
+  };
+
+  it('reports a failing check or when as an error violation instead of passing silently', async () => {
+    const { context } = setup([broken, brokenWhen]);
+    const result = await validateSpace(context(), {});
+    const byId = (id: string) => result.ruleViolations.filter((v) => v.ruleId === id);
+    expect(byId('broken').length).toBeGreaterThan(0);
+    expect(byId('broken')[0]).toMatchObject({ severity: 'error' });
+    expect(byId('broken')[0]?.description).toContain('Rule error');
+    expect(byId('bad-when')).toEqual([expect.objectContaining({ file: 'T.md', severity: 'error' })]);
+  });
+});

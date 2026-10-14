@@ -1,7 +1,7 @@
 import { judgeNode } from '../judge/judge-node';
 import type { GatedRuleRecord, SemanticEvaluationRecord, SemanticJudgeProvider } from '../judge/types';
 import type { Rule, RuleViolation, SpaceNode } from '../types';
-import { buildEvalContext, evaluateExpression } from './evaluate-rule';
+import { buildEvalContext, expressionErrorViolation, tryEvaluateExpression } from './evaluate-rule';
 import { ruleSeverity } from './rule-severity';
 
 export { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity } from './rule-severity';
@@ -75,8 +75,10 @@ export async function validateRules(
       const sentinel = nodes[0];
       if (sentinel) {
         const context = buildEvalContext(sentinel, nodes, nodeIndex);
-        const result = await evaluateExpression(check, context);
-        if (result !== true) {
+        const outcome = await tryEvaluateExpression(check, context);
+        if ('error' in outcome) {
+          violations.push(expressionErrorViolation(rule, '', outcome.error));
+        } else if (outcome.value !== true) {
           violations.push({
             file: '',
             ruleId: rule.id,
@@ -90,9 +92,18 @@ export async function validateRules(
       const targetNodes = rule.type ? nodes.filter((n) => n.resolvedType === rule.type) : nodes;
       for (const node of targetNodes) {
         const context = buildEvalContext(node, nodes, nodeIndex);
-        if (rule.when && (await evaluateExpression(rule.when, context)) !== true) continue;
-        const result = await evaluateExpression(check, context);
-        if (result !== true) {
+        if (rule.when) {
+          const when = await tryEvaluateExpression(rule.when, context);
+          if ('error' in when) {
+            violations.push(expressionErrorViolation(rule, node.label, when.error));
+            continue;
+          }
+          if (when.value !== true) continue;
+        }
+        const outcome = await tryEvaluateExpression(check, context);
+        if ('error' in outcome) {
+          violations.push(expressionErrorViolation(rule, node.label, outcome.error));
+        } else if (outcome.value !== true) {
           violations.push({
             file: node.label,
             ruleId: rule.id,
@@ -118,7 +129,14 @@ export async function validateRules(
       const applicable: Rule[] = [];
       for (const r of semanticRules) {
         if (r.type && r.type !== node.resolvedType) continue;
-        if (r.when && (await evaluateExpression(r.when, buildEvalContext(node, nodes, nodeIndex))) !== true) continue;
+        if (r.when) {
+          const when = await tryEvaluateExpression(r.when, buildEvalContext(node, nodes, nodeIndex));
+          if ('error' in when) {
+            violations.push(expressionErrorViolation(r, node.label, when.error));
+            continue;
+          }
+          if (when.value !== true) continue;
+        }
         applicable.push(r);
       }
       if (applicable.length === 0) continue;

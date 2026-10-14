@@ -14,7 +14,7 @@ describe('createJudgeProvider factory', () => {
   });
 
   it('creates FakeJudgeProvider when provider is "fake"', () => {
-    expect(createJudgeProvider({ provider: 'fake' }, {}) instanceof FakeJudgeProvider).toBe(true);
+    expect(createJudgeProvider({ type: 'fake' }, {}) instanceof FakeJudgeProvider).toBe(true);
   });
 
   it.each([
@@ -22,16 +22,17 @@ describe('createJudgeProvider factory', () => {
     ['openai', 'OPENAI_API_KEY', OpenAIJudgeProvider],
     ['jev', 'OPENROUTER_API_KEY', JevJudgeProvider],
   ] as const)('creates %s from config provider with its usual env key (%s)', (provider, keyEnv, Class) => {
-    expect(createJudgeProvider({ provider }, { [keyEnv]: 'k' }) instanceof Class).toBe(true);
+    expect(createJudgeProvider({ type: provider }, { [keyEnv]: 'k' }) instanceof Class).toBe(true);
   });
 
-  it('takes the provider from SCTX_JUDGE_PROVIDER and the key from config', () => {
-    const provider = createJudgeProvider({ apiKey: 'k' }, { SCTX_JUDGE_PROVIDER: 'anthropic' });
-    expect(provider.name).toBe('anthropic');
+  it('never takes the provider type from the environment', () => {
+    expect(() => createJudgeProvider({ apiKey: 'k' }, { SCTX_JUDGE_PROVIDER: 'anthropic' })).toThrow(
+      'No semantic judge configured',
+    );
   });
 
   it('reads the key from the variable named by apiKeyEnv', () => {
-    const config = { provider: 'jev', apiKeyEnv: 'MY_JEV_KEY' };
+    const config = { type: 'jev', apiKeyEnv: 'MY_JEV_KEY' };
     expect(createJudgeProvider(config, { MY_JEV_KEY: 'k' }) instanceof JevJudgeProvider).toBe(true);
     expect(() => createJudgeProvider(config, { OPENROUTER_API_KEY: 'k' })).toThrow('MY_JEV_KEY');
   });
@@ -48,25 +49,25 @@ describe('createJudgeProvider factory', () => {
   });
 
   it("does not borrow another provider's key", () => {
-    expect(() => createJudgeProvider({ provider: 'anthropic' }, { OPENAI_API_KEY: 'o' })).toThrow('ANTHROPIC_API_KEY');
-    expect(() => createJudgeProvider({ provider: 'jev' }, { ANTHROPIC_API_KEY: 'a' })).toThrow('OPENROUTER_API_KEY');
+    expect(() => createJudgeProvider({ type: 'anthropic' }, { OPENAI_API_KEY: 'o' })).toThrow('ANTHROPIC_API_KEY');
+    expect(() => createJudgeProvider({ type: 'jev' }, { ANTHROPIC_API_KEY: 'a' })).toThrow('OPENROUTER_API_KEY');
   });
 
   it('lets openai run without a key for local endpoints', () => {
-    const provider = createJudgeProvider({ provider: 'openai', endpoint: 'http://localhost:11434/v1' }, {});
+    const provider = createJudgeProvider({ type: 'openai', endpoint: 'http://localhost:11434/v1' }, {});
     expect(provider instanceof OpenAIJudgeProvider).toBe(true);
   });
 
   it('treats provider "none" as an inert placeholder and rejects unknown providers', () => {
-    expect(() => createJudgeProvider({ provider: 'none' }, {})).toThrow('no provider type');
-    expect(() => createJudgeProvider({ provider: 'gemini' as never }, {})).toThrow('Unknown judge provider');
+    expect(() => createJudgeProvider({ type: 'none' }, {})).toThrow('no provider type');
+    expect(() => createJudgeProvider({ type: 'gemini' as never }, {})).toThrow('Unknown judge provider');
   });
 });
 
 describe('named providers and routing', () => {
   const config = {
     providers: { decision: { type: 'jev' }, llm: { type: 'anthropic', model: 'claude-haiku-5-5' } },
-    use: 'llm',
+    default: 'llm',
   };
   const env = { OPENROUTER_API_KEY: 'r', ANTHROPIC_API_KEY: 'a' };
 
@@ -80,8 +81,8 @@ describe('named providers and routing', () => {
     expect(createJudge(config, env, undefined, 'decision').resolve('llm').name).toBe('jev');
   });
 
-  it('needs `use` when several providers are configured and a rule names none', () => {
-    expect(() => createJudge({ providers: config.providers }, env).resolve()).toThrow('judge.use');
+  it('needs `default` when several providers are configured and a rule names none', () => {
+    expect(() => createJudge({ providers: config.providers }, env).resolve()).toThrow('judge.default');
   });
 
   it('uses the only configured provider as the default', () => {
@@ -107,7 +108,7 @@ describe('named providers and routing', () => {
   it('sends each rule to the provider it names, in one call per provider', async () => {
     const a = new FakeJudgeProvider({ 'customer-voice': { verdict: 'pass' } });
     const b = new FakeJudgeProvider({ framing: { verdict: 'good' } });
-    const judge = createJudge({ provider: 'fake' }, {});
+    const judge = createJudge({ type: 'fake' }, {});
     // Swap in recording providers for the two names.
     const routed = Object.assign(judge, {
       resolve: (name?: string) => (name === 'b' ? b : a),

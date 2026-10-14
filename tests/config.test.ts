@@ -392,16 +392,14 @@ describe('loadConfig with includeSpacesFrom', () => {
     writeFileSync(
       configPath,
       JSON.stringify({
-        judge: { provider: 'jev' },
+        judge: { type: 'jev' },
         semantic: true,
-        spaces: [
-          { name: 's', path: '/p', judge: { provider: 'anthropic', model: 'claude-haiku-5-5' }, semantic: false },
-        ],
+        spaces: [{ name: 's', path: '/p', judge: { type: 'anthropic', model: 'claude-haiku-5-5' }, semantic: false }],
       }),
     );
     setConfigPath(configPath);
     const config = loadConfig();
-    expect(config.judge?.provider).toBe('jev');
+    expect(config.judge?.type).toBe('jev');
     expect(config.spaces?.[0]?.judge?.model).toBe('claude-haiku-5-5');
   });
 });

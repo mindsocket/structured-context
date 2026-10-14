@@ -31,13 +31,13 @@ const JUDGE_PROVIDER_SCHEMA = {
 const JUDGE_CONFIG_SCHEMA = {
   type: 'object',
   properties: {
-    provider: { type: 'string', enum: JUDGE_PROVIDER_TYPES },
+    type: { type: 'string', enum: JUDGE_PROVIDER_TYPES },
     model: { type: 'string' },
     apiKey: { type: 'string' },
     apiKeyEnv: { type: 'string' },
     endpoint: { type: 'string' },
     providers: { type: 'object', additionalProperties: JUDGE_PROVIDER_SCHEMA },
-    use: { type: 'string' },
+    default: { type: 'string' },
     autoRun: { type: 'boolean' },
   },
   additionalProperties: false,
