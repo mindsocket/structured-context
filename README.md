@@ -49,7 +49,7 @@ Rule violations:
     High tech juice press.md: Explore multiple candidate solutions (aim for at least three) for the target opportunity [best-practice: solution-quantity]
 ```
 
-Rule violations carry a severity (`error`, `warning` or `info`) that defaults from the rule's category. Only errors fail validation — see [docs/rules.md](docs/rules.md#categories-and-severity).
+Rule violations carry a severity (`error`, `warning` or `info`) that defaults from the rule's category. Only errors fail validation — see [docs/rules.md](docs/rules.md#rule-shape).
 
 ## Installation
 

@@ -28,14 +28,12 @@ This page assumes you know [Rules](rules.md). Semantic rules use the same fields
 
 4. Run `sctx validate <space> --semantic`.
 
-## Turning semantic rules on
+## Run `sctx validate` or `sctx validate-file` with semantic rule checking
 
 Semantic rules cost money and send node content to the judge's provider. Thus they run only when you ask, on each run:
 
 - `--semantic` runs them with the configured judge.
-- `--judge <provider>` runs them with that model provider instead.
-
-Both work on `sctx validate` and `sctx validate-file`. Config cannot turn semantic rules on.
+- `--judge <provider>` runs them with a specific model provider instead.
 
 ## Rule fields
 

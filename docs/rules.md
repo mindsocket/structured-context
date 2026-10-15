@@ -27,24 +27,7 @@ Rules are a flat array.
 ]
 ```
 
-| Field | Required | Description |
-|---|---|---|
-| `id` | yes | Unique rule identifier |
-| `category` | yes | `validation` \| `coherence` \| `workflow` \| `best-practice` |
-| `severity` | no | `error` \| `warning` \| `info`; overrides the category default (see [Severity](#severity)) |
-| `description` | yes | Human-readable rule intent |
-| `check` | yes, unless `mode: semantic` | JSONata expression; must evaluate to `true` |
-| `when` | no | JSONata test. The rule runs only on nodes where it returns `true`. See [Conditional rules](#conditional-rules-when) |
-| `mode` | no | `expression` (default) or `semantic` |
-| `rubric`, `verdicts` | semantic only | See [Semantic rules](semantic-rules.md#rule-fields) |
-| `type` | no | Restrict rule to nodes of this `resolvedType` |
-| `scope` | no | Use `"global"` to evaluate once for the whole space |
-| `override` | no | Only for merge conflicts: allows later duplicate `id` to replace earlier |
-| `gatesDescendants` | no | Whether a violation gates downstream checks on the node's hierarchy subtree. Defaults to `true` for `error` rules, `false` otherwise. |
-
-## Categories and severity
-
-Categories describe a rule's intent and supply its default severity. They do not change expression execution semantics.
+Every rule has a category, which describes its intent and supplies a default severity.
 
 | Category | Typical use | Default severity |
 |---|---|---|
@@ -53,9 +36,7 @@ Categories describe a rule's intent and supply its default severity. They do not
 | `workflow` | Process/operating-discipline checks | `warning` |
 | `best-practice` | Advisory quality checks | `info` |
 
-### Severity
-
-When a rule finds a problem on a node, it reports a **violation**. Otherwise it reports nothing. Each violation has a severity:
+Severity can also be set per rule.
 
 | Severity | Meaning | Fails validation |
 |---|---|---|
@@ -80,20 +61,32 @@ Prefer choosing the right category and relying on its default. Set `severity` on
 
 `sctx schemas show` lists each category with its default severity and marks rules that override it.
 
-### Output
-
-- **`sctx validate`** — the summary counts rule violations per severity, and details are grouped by severity with each line showing the rule's category and id.
-- **`sctx validate --json`** — `errors` includes only `error` severity rule violations (keyed `rule:<id>`, with a `severity` field). A `ruleViolations` array lists every violation with `file`, `ruleId`, `category`, `severity` and `description` (`file` is empty for global rules).
-- **`sctx validate-file`** — `error` severity violations appear under `errors`; `warning` and `info` violations appear under `warnings`. Rule entries carry a `severity` field.
-
-## Which nodes a rule runs on
+## Selecting nodes
 
 - A rule with `scope: "global"` runs once for the space.
 - Other rules run once for each node.
 - `type` limits a rule to nodes with that `resolvedType`.
 - `when` limits a rule to nodes where a test returns `true`. See [Conditional rules](#conditional-rules-when).
 
-## Expression context
+### Conditional rules (`when`)
+
+`when` is a JSONata test that determines whether a rule runs on a node. It has the same context as `check` and runs before it. Use `when` when `type` cannot select the nodes a rule applies to:
+
+```json
+{ "id": "ready-has-owner", "category": "workflow", "type": "task",
+  "description": "Ready tasks have an owner",
+  "when": "current.status = 'ready'", "check": "$exists(current.owner)" }
+```
+
+`when` costs almost nothing, so use it to stop an expensive rule from running where it does not apply. For a semantic rule, this saves a model call on each node that `when` excludes.
+
+An error in a `when` or `check` is reported as a non-gating `error` violation.
+
+## Writing expressions
+
+An expression rule's `check` (and `when`) is JSONata. This section covers what an expression can see and how to write checks.
+
+### Expression context
 
 Each evaluation receives:
 
@@ -111,7 +104,7 @@ Useful resolved fields on nodes:
 
 Prefer `resolvedType` over raw `type` so aliases are handled correctly.
 
-## Predicate scoping (`$$`)
+### Predicate scoping (`$$`)
 
 Inside `nodes[...]`, bare names refer to each candidate node. Use `$$` to reference outer variables:
 
@@ -119,36 +112,39 @@ Inside `nodes[...]`, bare names refer to each candidate node. Use `$$` to refere
 $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
 ```
 
-## Conditional rules (`when`)
+### Common patterns
 
-`when` is a JSONata test that determines whether a rule runs at all — effectively, under what circumstances the rule applies. It has the same context as `check` and runs on each node before the rule. Use `when` when `type` cannot select the nodes a rule applies to:
-
-```json
-{ "id": "ready-has-owner", "category": "workflow", "type": "task",
-  "description": "Ready tasks have an owner",
-  "when": "current.status = 'ready'", "check": "$exists(current.owner)" }
+```jsonata
+$exists(current.metric) = true
+$count(current.sources) >= 1
+$count(nodes[resolvedType='outcome' and status='active']) <= 1
+current.status != 'active' or $exists(parent) = false or parent.status = 'active'
 ```
 
-`when` costs almost nothing, so use it to stop an expensive rule from running where it does not apply. For a semantic rule, this saves a model call on each node that `when` excludes.
+#### Dates and times
 
-An error in a `when` or `check` is reported as a non-gating `error` violation. A rule with `scope: "global"` cannot have `when`.
+Dates and datetimes reach rules as ISO 8601 strings. Convert with `$toMillis()` to compare them, including date against datetime, and use `$millis()` for the current time:
 
-## Reusing rules
+```jsonata
+$not($exists(current.due)) or $toMillis(current.due) > $millis()
+$toMillis(current.stale_after) > $toMillis(current.generated.at)
+```
 
-To share rules, put them in a schema's `$metadata.rules` and list that schema's `$id` in `$metadata.imports`. An import brings the whole schema's metadata, including its own imports:
+A datetime without an offset (`2026-07-01T00:00:00`) is read in the machine's local time zone, so require an offset with `format: "date-time"` when results must not depend on where validation runs. `$toMillis()` also needs seconds: it cannot parse a minute-precision datetime such as `2026-07-01T09:15`, which `format: "date-or-date-time"` accepts. A value `$toMillis()` cannot parse makes the rule fail.
+
+The same applies to [filter expressions](concepts.md#filter-expressions): compare dates with `$toMillis()`, not as strings.
+
+## Sharing rules
+
+To share rules, put them in a schema's `$metadata.rules` and list that schema's `$id` in `$metadata.imports`. An import brings the whole schema's metadata, including its own imports. Merged rules combine by `id`; a duplicate `id` is an error, and a later rule replaces an earlier one only with `override: true`.
+
+### Overriding rules
 
 ```json5
 "$metadata": {
   "imports": ["sctx://_rule-pack"]
 }
 ```
-
-## Merge and conflict behavior
-
-When metadata is merged from imports (imports in order, then the schema's own metadata):
-- Rules are merged by `id`.
-- A duplicate `id` is an error.
-- A later rule may replace an earlier one only with `override: true`.
 
 Example override:
 
@@ -173,18 +169,16 @@ in a way that makes its descendants' checks untrustworthy or wasteful to run:
   suppressed too, since its data is structurally invalid.
 - **Hierarchy structure violation** on a node (e.g. an invalid parent) — always gates the
   node's subtree, though the node's own rules still run.
-- **A rule violation with `gatesDescendants: true`** (the default for `error`-severity rules; `warning` and `info` rules don't gate unless they set `gatesDescendants: true`) — gates the node's subtree. The
-  violating node's own other rules still run (they're the same cheap deterministic layer).
+- **A rule violation with `gatesDescendants: true`** — gates the node's subtree, though the
+  violating node's own other rules still run.
 
-Gating is per-subtree: once a node is gated, its descendants inherit the same gate (the
-original blocker), rather than each generating a new one. Non-hierarchy nodes and
-`scope: "global"` rules are never gated — cascade gating only applies within the hierarchy
-DAG.
-
-This exists so that expensive or semantic downstream checks (see [Semantic rules](semantic-rules.md)) aren't wasted
+Gating exists so that expensive or semantic downstream checks (see [Semantic rules](semantic-rules.md)) aren't wasted
 evaluating nodes whose ancestors are already known-bad, and so noise doesn't drown out the
-actionable failure. Set `gatesDescendants: false` on an error-severity rule whose violations shouldn't suppress
-checks further down the tree, or `gatesDescendants: true` on a warning/info rule that should.
+actionable failure. It is per-subtree: once a node is gated, its descendants inherit the same
+gate (the original blocker), rather than each generating a new one. Cascade gating only applies to nodes within the
+hierarchy DAG.
+
+The default is `gatesDescendants: true` for `error`-severity rules and `false` for `warning` and `info` rules. Set it explicitly when that default doesn't fit.
 
 ### Coverage output
 
@@ -200,16 +194,17 @@ don't depend on an ancestor being valid.
 
 ### Single-file validation
 
-`sctx validate-file <path>` applies the same gating as `sctx validate`, so a file's rule results match its entry in a full run. Expression rules are evaluated for the whole space and the output is restricted to the file. Semantic rules are judged only for the file and its gating ancestors (see [Semantic rules](semantic-rules.md#single-file-validation)). If the file is gated, its rule checks are skipped and a `gated:<file>` entry (kind `gated`, severity `info`) under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway. `--depth` is not supported.
+`sctx validate-file <path>` applies the same gating as `sctx validate`, so a file's rule results match its entry in a full run.
 
-### Depth-limited evaluation
+- Expression rules are evaluated for the whole space; the output is restricted to the file.
+- Semantic rules are judged only for the file and its gating ancestors (see [Semantic rules](semantic-rules.md#single-file-validation)).
+- If the file is gated, its rule checks are skipped and a `gated:<file>` entry under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway.
 
-`--depth <n>` restricts validation to hierarchy nodes within `n` breadth-first levels from
-the top (roots and orphans are depth 1). This is a manual, coarser control than cascade
-gating — intended for staged workflows (e.g. an agent fixes the top level, then requests
-the next). Excluded nodes are reported under `skippedByDepth`, separate from gated nodes.
+## Controlling validation runs
 
-## Filtering rules
+These options restrict which rules run, without changing rule definitions.
+
+### Filtering rules
 
 `--rule-filter <dimension>=<value>[,<value>]` runs only the rules that match. It works on `sctx validate` and `sctx validate-file`.
 
@@ -220,24 +215,18 @@ the next). Excluded nodes are reported under `skippedByDepth`, separate from gat
 
 For example, `--rule-filter category=workflow,coherence --rule-filter severity=error` runs only workflow and coherence rules that can report an error.
 
-## Common patterns
+### Depth-limited evaluation
 
-```jsonata
-$exists(current.metric) = true
-$count(current.sources) >= 1
-$count(nodes[resolvedType='outcome' and status='active']) <= 1
-current.status != 'active' or $exists(parent) = false or parent.status = 'active'
-```
+`--depth <n>` restricts validation to hierarchy nodes within `n` breadth-first levels from
+the top (roots and orphans are depth 1). This is a manual, coarser control than cascade
+gating — intended for staged workflows (e.g. an agent fixes the top level, then requests
+the next). Excluded nodes are reported under `skippedByDepth`, separate from gated nodes.
 
-### Dates and times
+## Output
 
-Dates and datetimes reach rules as ISO 8601 strings. Convert with `$toMillis()` to compare them, including date against datetime, and use `$millis()` for the current time:
+- **`sctx validate`** — the summary counts rule violations per severity, and details are grouped by severity with each line showing the rule's category and id.
+- **`sctx validate --json`** — `errors` includes only `error` severity rule violations (keyed `rule:<id>`, with a `severity` field). A `ruleViolations` array lists every violation with `file`, `ruleId`, `category`, `severity` and `description` (`file` is empty for global rules).
+- **`sctx validate-file`** — `error` severity violations appear under `errors`; `warning` and `info` violations appear under `warnings`. Rule entries carry a `severity` field.
 
-```jsonata
-$not($exists(current.due)) or $toMillis(current.due) > $millis()
-$toMillis(current.stale_after) > $toMillis(current.generated.at)
-```
+Gated files: see [Single-file validation](#single-file-validation).
 
-A datetime without an offset (`2026-07-01T00:00:00`) is read in the machine's local time zone, so require an offset with `format: "date-time"` when results must not depend on where validation runs. `$toMillis()` also needs seconds: it cannot parse a minute-precision datetime such as `2026-07-01T09:15`, which `format: "date-or-date-time"` accepts. A value `$toMillis()` cannot parse makes the rule fail.
-
-The same applies to [filter expressions](concepts.md#filter-expressions): compare dates with `$toMillis()`, not as strings.
