@@ -38,6 +38,14 @@ if [ ! -d "$modules" ]; then
   echo "no node_modules found (run bun install); skipping checks"
   exit 0
 fi
+# A stale node_modules (installed before a lockfile change) fails or passes with
+# tool versions the pushed code doesn't expect. Refresh it first; a no-op install
+# costs well under a second.
+if ! bun install --frozen-lockfile >/dev/null 2>&1; then
+  echo "bun install --frozen-lockfile failed; fix dependencies before pushing"
+  exit 1
+fi
+
 ln -s "$modules" "$wt/node_modules"
 cd "$wt" || exit 1
 
