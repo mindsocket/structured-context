@@ -90,6 +90,7 @@ describe('OKF bundle validation', () => {
     const result = await validateSpace(makeSpaceContext(RULE_VIOLATIONS_DIR, OKF_SCHEMA_PATH));
     expect(result.nodeErrors).toEqual([]);
     expect(result.ruleViolations.map((v) => `${v.file}:${v.ruleId}`).sort()).toEqual([
+      'body-without-computation.md:okf-computation-present',
       'no-computation.md:okf-computation-present',
       'stale-before-generated.md:okf-stale-after-generated',
       'usage-without-window.md:okf-usage-count-window',
