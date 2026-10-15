@@ -36,23 +36,46 @@ export interface SemanticJudgeProvider {
   evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>>;
 }
 
-/** Model provider types. `fake` is for tests. */
-export const MODEL_PROVIDER_TYPES = ['anthropic', 'openai', 'jev', 'fake'] as const;
-export type ModelProviderType = (typeof MODEL_PROVIDER_TYPES)[number];
+/** Wire APIs a provider can speak. Names the request shape, never the vendor or model. */
+export const MODEL_PROVIDER_APIS = [
+  'openai-completions',
+  'anthropic-messages',
+  'openrouter-decisions',
+  'typesafe-systemone',
+  'fake',
+] as const;
+export type ModelProviderApi = (typeof MODEL_PROVIDER_APIS)[number];
 
-/** How to reach a model: config `modelProviders.<name>`. */
+/** How to reach a model: a bundled provider or config `modelProviders.<name>`, before hydration. */
 export interface ModelProviderConfig {
-  type: ModelProviderType;
+  /** The wire API to speak. */
+  api: ModelProviderApi;
+  /** Fixed model override. Beats `modelEnv` and the bundled default. */
   model?: string;
+  /** Environment variable that holds the model override. */
+  modelEnv?: string;
+  /** Fixed endpoint override. Beats `endpointEnv` and the bundled default. */
   endpoint?: string;
+  /** Environment variable that holds the endpoint override. */
+  endpointEnv?: string;
   /** Prefer `apiKeyEnv`: keys do not belong in config files. */
   apiKey?: string;
-  /** Environment variable holding the key. Defaults to the provider type's usual one (e.g. ANTHROPIC_API_KEY). */
+  /** Environment variable holding the key. */
   apiKeyEnv?: string;
+}
+
+/** A provider after hydration: every field is a concrete value; the implementation reads no environment. */
+export interface HydratedProvider {
+  api: ModelProviderApi;
+  model?: string;
+  endpoint?: string;
+  apiKey?: string;
+  /** The environment variable the key was read from, when one was named or defaulted. */
+  keyEnv?: string;
 }
 
 /** Which model provider judges semantic rules: config `judge`, at the top level or on a space. */
 export interface JudgeConfig {
-  /** Name of an entry in `modelProviders`, or a bundled provider ("jev", "anthropic", "openai"). */
+  /** Name of an entry in `modelProviders`, or a bundled provider. */
   provider?: string;
 }

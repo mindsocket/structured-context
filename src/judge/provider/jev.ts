@@ -1,13 +1,11 @@
-import type { SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult } from '../types';
+import type { HydratedProvider, SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult } from '../types';
 
-export interface JevJudgeProviderOptions {
-  apiKey: string;
-  model?: string;
-  endpoint?: string;
+export interface JevJudgeProviderOptions extends HydratedProvider {
+  /** The factory requires a resolved key before constructing a non-OpenAI provider. */
+  apiKey?: string;
 }
 
-export const DEFAULT_JEV_MODEL = 'typesafe/jev-1.13';
-export const DEFAULT_JEV_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
+export const OPENROUTER_DECISIONS_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
 
 type JevChoiceAnswer = {
   type?: string;
@@ -30,9 +28,9 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
   private endpoint: string;
 
   constructor(options: JevJudgeProviderOptions) {
-    this.apiKey = options.apiKey;
-    this.model = options.model || DEFAULT_JEV_MODEL;
-    this.endpoint = options.endpoint || DEFAULT_JEV_ENDPOINT;
+    this.apiKey = options.apiKey ?? '';
+    this.model = options.model || 'typesafe/jev-latest';
+    this.endpoint = options.endpoint || OPENROUTER_DECISIONS_ENDPOINT;
   }
 
   async evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>> {

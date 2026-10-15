@@ -392,7 +392,10 @@ describe('loadConfig with includeSpacesFrom', () => {
     writeFileSync(
       configPath,
       JSON.stringify({
-        modelProviders: { jev: { type: 'jev' }, claude: { type: 'anthropic', model: 'claude-haiku-5-5' } },
+        modelProviders: {
+          jev: { api: 'openrouter-decisions' },
+          claude: { api: 'anthropic-messages', model: 'claude-haiku-5-5' },
+        },
         judge: { provider: 'jev' },
         spaces: [{ name: 's', path: '/p', judge: { provider: 'claude' } }],
       }),

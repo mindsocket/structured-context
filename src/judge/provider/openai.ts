@@ -1,16 +1,18 @@
 import { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from '../prompt';
-import type { SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from '../types';
+import type { HydratedProvider, SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from '../types';
 import { PerRuleJudgeProvider } from './per-rule';
 
-export interface OpenAIJudgeProviderOptions {
+export interface OpenAIJudgeProviderOptions extends HydratedProvider {
+  /** Optional: local OpenAI-compatible servers need no key. */
   apiKey?: string;
-  model?: string;
-  endpoint?: string;
 }
 
+export const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
+export const OPENAI_COMPLETIONS_ENDPOINT = 'https://api.openai.com/v1';
+
 /**
- * Built-in judge provider for OpenAI-compatible Chat Completions API.
- * Supports OpenAI, Ollama, vLLM, Groq, OpenRouter, and other compatible endpoints.
+ * Judge provider for the OpenAI-compatible Chat Completions API (OpenAI, Ollama, vLLM, ...).
+ * Reads no environment: it takes hydrated values.
  */
 export class OpenAIJudgeProvider extends PerRuleJudgeProvider {
   readonly name = 'openai';
@@ -21,10 +23,9 @@ export class OpenAIJudgeProvider extends PerRuleJudgeProvider {
   constructor(options: OpenAIJudgeProviderOptions) {
     super();
     this.apiKey = options.apiKey;
-    this.model = options.model || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    this.model = options.model || DEFAULT_OPENAI_MODEL;
 
-    const base =
-      options.endpoint || process.env.OPENAI_BASE_URL || process.env.OPENAI_ENDPOINT || 'https://api.openai.com/v1';
+    const base = options.endpoint || OPENAI_COMPLETIONS_ENDPOINT;
     this.endpoint = base.endsWith('/chat/completions') ? base : `${base.replace(/\/+$/, '')}/chat/completions`;
   }
 

@@ -6,7 +6,7 @@ import { makeTempSpace } from '../helpers/temp-space';
 const ROOT = join(import.meta.dir, '..', '..');
 const space = makeTempSpace(
   [{ id: 'step-fit', type: 'step', mode: 'semantic', category: 'coherence', description: 'Step fits its task' }],
-  { judging: { modelProviders: { f: { type: 'fake' } } } },
+  { judging: { modelProviders: { f: { api: 'fake' } } } },
 );
 const configPath = join(space.dir, 'config.json');
 writeFileSync(configPath, JSON.stringify(space.config));

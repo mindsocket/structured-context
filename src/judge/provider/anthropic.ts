@@ -1,16 +1,16 @@
 import { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from '../prompt';
-import type { SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from '../types';
+import type { HydratedProvider, SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from '../types';
 import { PerRuleJudgeProvider } from './per-rule';
 
-export interface AnthropicJudgeProviderOptions {
-  apiKey: string;
-  model?: string;
-  endpoint?: string;
+export interface AnthropicJudgeProviderOptions extends HydratedProvider {
+  /** The factory requires a resolved key before constructing a non-OpenAI provider. */
+  apiKey?: string;
 }
 
-export const DEFAULT_ANTHROPIC_JUDGE_MODEL = 'claude-haiku-5-5';
+export const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-5-5';
+export const ANTHROPIC_MESSAGES_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 
-/** Built-in judge provider for the Anthropic Messages API. */
+/** Judge provider for the Anthropic Messages API. Reads no environment: it takes hydrated values. */
 export class AnthropicJudgeProvider extends PerRuleJudgeProvider {
   readonly name = 'anthropic';
   private apiKey: string;
@@ -19,9 +19,9 @@ export class AnthropicJudgeProvider extends PerRuleJudgeProvider {
 
   constructor(options: AnthropicJudgeProviderOptions) {
     super();
-    this.apiKey = options.apiKey;
-    this.model = options.model || process.env.ANTHROPIC_MODEL || DEFAULT_ANTHROPIC_JUDGE_MODEL;
-    this.endpoint = options.endpoint || 'https://api.anthropic.com/v1/messages';
+    this.apiKey = options.apiKey ?? '';
+    this.model = options.model || DEFAULT_ANTHROPIC_MODEL;
+    this.endpoint = options.endpoint || ANTHROPIC_MESSAGES_ENDPOINT;
   }
 
   protected async judgeRule(node: SemanticJudgeInput['node'], rule: SemanticRuleSpec): Promise<SemanticJudgeResult> {

@@ -48,6 +48,10 @@ export async function judgeNode(
       return { rule, failed: true, evidence: `Error during evaluation: ${message}`, error: message };
     }
     const severity = resolved[i]!.severities[result.verdict];
+    if (severity === undefined && !(result.verdict in resolved[i]!.spec.verdicts)) {
+      const message = `Judge returned unknown verdict "${result.verdict}" (allowed: ${Object.keys(resolved[i]!.spec.verdicts).join(', ')})`;
+      return { rule, failed: true, evidence: `Error during evaluation: ${message}`, error: message };
+    }
     const failed = severity !== undefined;
     return {
       rule,

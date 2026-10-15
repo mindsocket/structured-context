@@ -67,37 +67,50 @@ Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` d
 
 ## Model providers and judge
 
-structured-context judges [semantic rules](semantic-rules.md) with a **model provider**: a named definition that says which model to use and how to reach it. The bundled providers `jev`, `anthropic` and `openai` take their type defaults; an entry in `modelProviders` replaces a bundled provider of the same name, and fields it leaves out still take the defaults. Set `modelProviders` at the top level when the bundled defaults do not suit.
+structured-context judges [semantic rules](semantic-rules.md) with a **model provider**: a named definition that says which wire API to speak, which model to use and where. A provider definition combines an `api`, explicit values or environment-variable names, and the key source. `sctx providers` lists every usable provider with its effective config (keys are never shown).
+
+**Bundled providers** work without any configuration. Each combines an API, an endpoint, a key source and an opinionated model:
+
+| Provider | API | Model | Key variable |
+|---|---|---|---|
+| `openrouter-jev` | `openrouter-decisions` | `typesafe/jev-latest` | `OPENROUTER_API_KEY` |
+| `typesafe-jev` | `typesafe-systemone` | `jev-latest` | `TYPESAFE_API_KEY` |
+| `anthropic` | `anthropic-messages` | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
+| `openai` | `openai-completions` | `gpt-4o-mini` | `OPENAI_API_KEY` |
+| `openrouter` | `openai-completions` | `openai/gpt-4o-mini` | `OPENROUTER_API_KEY` |
+
+The `-env` variants (`openai-env`, `anthropic-env`) also read the vendor's usual model and endpoint variables (`OPENAI_MODEL`, `OPENAI_BASE_URL`, `ANTHROPIC_MODEL`), falling back to the bundle's defaults where a variable is unset. Bundled providers without `-env` read no environment beyond the key: they behave the same on every machine. `anthropic-haiku-5-5` pins the model, so it does not drift when the `anthropic` bundle's default changes.
+
+**Configured providers** live in `modelProviders` at the top level, and replace a bundled provider of the same name. Fields a configured provider leaves out still take the API defaults:
 
 ```json
 {
   "modelProviders": {
-    "jev": { "type": "jev" },
-    "claude": { "type": "anthropic", "model": "claude-haiku-5-5" },
-    "local": { "type": "openai", "endpoint": "http://localhost:11434/v1" }
+    "mine": { "api": "openrouter-decisions", "apiKeyEnv": "MY_JEV_KEY" },
+    "local": { "api": "openai-completions", "endpoint": "http://localhost:11434/v1" }
   }
 }
 ```
 
 | Field | Description |
 |---|---|
-| `type` | **Required.** `jev`, `anthropic` or `openai` (see [Choosing a judge](semantic-rules.md#choosing-a-judge)), or `fake` (for tests). |
-| `model` | Defaults: `typesafe/jev-1.13` (jev), `claude-haiku-5-5` (anthropic), `gpt-4o-mini` (openai). |
-| `endpoint` | Override the API URL. Jev defaults to `https://openrouter.ai/api/alpha/decisions`. |
-| `apiKeyEnv` | The environment variable that holds the key. Defaults: `OPENROUTER_API_KEY` (jev), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`. A local `openai` endpoint can need no key. |
+| `api` | **Required.** The wire API: `openrouter-decisions`, `typesafe-systemone`, `anthropic-messages` or `openai-completions` (see [Choosing a judge](semantic-rules.md#choosing-a-judge)), or `fake` (for tests). |
+| `model` | A fixed model. Its default depends on the API. |
+| `modelEnv` | Environment variable holding a model override. An explicit `model` wins; a variable set but empty is an error. |
+| `endpoint` | A fixed API URL. |
+| `endpointEnv` | Environment variable holding an endpoint override. Same precedence as `modelEnv`. |
+| `apiKeyEnv` | The environment variable that holds the key. Defaults to the API's usual variable (see the table above). A local `openai-completions` endpoint can need no key. |
 | `apiKey` | The key itself. Use `apiKeyEnv` instead, so that keys stay out of config files. |
 
-The environment holds only keys: no environment variable selects or configures a provider.
+Resolution per field: the explicit value wins, then the named environment variable, then the API default. Provider implementations read no environment; all hydration happens before one runs.
+
+The environment holds only keys and the variables a `-env` bundle names. No environment variable selects a provider.
 
 The top-level `judge` names the model provider that judges semantic rules: a bundled provider or an entry in `modelProviders`. A space can set its own `judge`, which replaces the top-level one for that space, for example to keep a private space on a local model:
 
 ```json
 {
-  "modelProviders": {
-    "jev": { "type": "jev" },
-    "local": { "type": "openai", "endpoint": "http://localhost:11434/v1" }
-  },
-  "judge": { "provider": "jev" },
+  "judge": { "provider": "openrouter-jev" },
   "spaces": [
     { "name": "private-notes", "path": "/path/to/notes", "judge": { "provider": "local" } }
   ]

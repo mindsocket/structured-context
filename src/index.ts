@@ -191,6 +191,19 @@ spacesCmd
   .action((options) => listSpaces(options));
 program.addCommand(spacesCmd);
 
+const providersCmd = new Command('providers').description(
+  'List model providers (bundled and configured) with their effective config',
+);
+providersCmd
+  .command('list', { isDefault: true })
+  .description('List bundled and configured model providers; keys are never shown')
+  .option('--json', 'Output as JSON')
+  .action(async (options) => {
+    const { listProviders } = await import('./commands/providers');
+    listProviders(options);
+  });
+program.addCommand(providersCmd);
+
 const schemasCmd = new Command('schemas').alias('schema').description('List and inspect schemas');
 schemasCmd
   .command('list', { isDefault: true })

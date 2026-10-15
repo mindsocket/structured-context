@@ -8,17 +8,17 @@ import type { SemanticJudgeInput, SemanticRuleSpec } from '../../src/judge/types
 import { node, passFailRule } from './helpers';
 
 const CASES = [
-  { type: 'jev' as const, keyEnv: 'OPENROUTER_API_KEY' },
-  { type: 'anthropic' as const, keyEnv: 'ANTHROPIC_API_KEY' },
-  { type: 'openai' as const, keyEnv: 'OPENAI_API_KEY' },
+  { name: 'openrouter-jev', api: 'openrouter-decisions' as const, keyEnv: 'OPENROUTER_API_KEY' },
+  { name: 'anthropic', api: 'anthropic-messages' as const, keyEnv: 'ANTHROPIC_API_KEY' },
+  { name: 'openai', api: 'openai-completions' as const, keyEnv: 'OPENAI_API_KEY' },
 ];
 
 describe.skipIf(process.env.SCTX_LIVE_JUDGE_TESTS !== '1')('live judges', () => {
-  for (const { type, keyEnv } of CASES) {
+  for (const { name, api, keyEnv } of CASES) {
     it.skipIf(!process.env[keyEnv])(
-      `${type}: returns a verdict from the rule's closed set`,
+      `${name}: returns a verdict from the rule's closed set`,
       async () => {
-        const provider = createModelProvider(type, { type }, { [keyEnv]: process.env[keyEnv] });
+        const provider = createModelProvider(name, { api }, { [keyEnv]: process.env[keyEnv] });
         const rule: SemanticRuleSpec = {
           ...passFailRule,
           description: 'The node title names a customer need or pain point',

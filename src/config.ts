@@ -4,7 +4,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020';
 import JSON5 from 'json5';
 import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
-import { type JudgeConfig, MODEL_PROVIDER_TYPES, type ModelProviderConfig } from './judge/types';
+import { type JudgeConfig, MODEL_PROVIDER_APIS, type ModelProviderConfig } from './judge/types';
 import {
   normalizePluginName,
   resolvePluginSchemasDir,
@@ -16,13 +16,15 @@ import { bundledSchemasDir } from './schema/schema';
 const MODEL_PROVIDER_SCHEMA = {
   type: 'object',
   properties: {
-    type: { type: 'string', enum: MODEL_PROVIDER_TYPES },
+    api: { type: 'string', enum: MODEL_PROVIDER_APIS },
     model: { type: 'string' },
+    modelEnv: { type: 'string' },
     endpoint: { type: 'string' },
+    endpointEnv: { type: 'string' },
     apiKey: { type: 'string' },
     apiKeyEnv: { type: 'string' },
   },
-  required: ['type'],
+  required: ['api'],
   additionalProperties: false,
 } as const;
 
