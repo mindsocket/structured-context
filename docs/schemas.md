@@ -1,3 +1,7 @@
+---
+title: "Schemas"
+---
+
 # Schemas
 
 This document explains schema usage, metadata shape, and composition semantics in `structured-context`.

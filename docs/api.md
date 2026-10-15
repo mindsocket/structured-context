@@ -1,3 +1,7 @@
+---
+title: "Programmatic API"
+---
+
 # Programmatic API
 
 The package exposes a library entry point at `structured-context/api` for embedding the

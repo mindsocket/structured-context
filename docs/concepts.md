@@ -1,4 +1,8 @@
-# Structured Context: Concepts and Terminology
+---
+title: "Concepts and Terminology"
+---
+
+# Concepts and Terminology
 
 This document is the canonical reference for concepts and terminology used in this project. It focuses on the meta-concepts the project supports, not the content of specific frameworks modelled in schemas. Before naming things in code, tests, comments, or documentation, check definitions here for consistency, and update them here when the project's "world view" changes, avoiding blurry terms as much as possible.
 

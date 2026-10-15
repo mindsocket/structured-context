@@ -1,3 +1,7 @@
+---
+title: "Executable Rules"
+---
+
 # Executable Rules
 
 Rules are JSONata expressions in schema metadata (`$metadata.rules`). They run after structural JSON Schema validation and let you enforce cross-node checks and workflow constraints.

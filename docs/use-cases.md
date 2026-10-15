@@ -1,3 +1,7 @@
+---
+title: "Use Cases"
+---
+
 # Use Cases
 
 A catalog of use cases for structured-context, covering both direct CLI usage and agentic AI-assisted workflows.

@@ -1,4 +1,8 @@
-# structured-context Configuration Reference
+---
+title: "Configuration Reference"
+---
+
+# Configuration Reference
 
 ## Config file location
 

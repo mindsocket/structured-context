@@ -1,4 +1,8 @@
-# Structured Context: Architecture
+---
+title: "Architecture"
+---
+
+# Architecture
 
 This document describes the architecture of structured-context — how data flows through the system, and how key concepts map to code. It complements [concepts.md](concepts.md), which defines the canonical terminology.
 
