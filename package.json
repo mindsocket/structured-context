@@ -42,6 +42,7 @@
     "test": "bun test tests/",
     "test:smoke": "bun test smoke/",
     "test:judge": "SCTX_LIVE_JUDGE_TESTS=1 bun test tests/judge/live.test.ts",
+    "test:models": "SCTX_MODEL_VALIDATION=1 bun test tests/judge/model-validation.test.ts",
     "test:hook": "bun test hook-test/unit/",
     "test:hook:e2e": "bun test hook-test/hooks.test.ts",
     "test:all": "bun test",

@@ -67,19 +67,30 @@ Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` d
 
 ## Model providers and judge
 
-structured-context judges [semantic rules](semantic-rules.md) with a **model provider**: a named definition that says which wire API to speak, which model to use and where. A provider definition combines an `api`, explicit values or environment-variable names, and the key source. `sctx providers` lists every usable provider with its effective config (keys are never shown).
+structured-context judges [semantic rules](semantic-rules.md) with a **model provider**: a named definition that says which wire API to speak, which model to use and where. A provider definition combines an `api`, explicit values or environment-variable names, and the key source.
 
-**Bundled providers** work without any configuration. Each combines an API, an endpoint, a key source and an opinionated model:
+**Bundled providers** work without any configuration: a fixed model per vendor chosen by this project, plus `-env` variants that also read the vendor's usual model and endpoint variables (`OPENAI_MODEL`, `OPENAI_BASE_URL`, `ANTHROPIC_MODEL`), falling back to the bundle's defaults where a variable is unset. Bundles without `-env` read no environment beyond the key: they behave the same on every machine.
 
-| Provider | API | Model | Key variable |
-|---|---|---|---|
-| `openrouter-jev` | `openrouter-decisions` | `typesafe/jev-latest` | `OPENROUTER_API_KEY` |
-| `typesafe-jev` | `typesafe-systemone` | `jev-latest` | `TYPESAFE_API_KEY` |
-| `anthropic` | `anthropic-messages` | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
-| `openai` | `openai-completions` | `gpt-4o-mini` | `OPENAI_API_KEY` |
-| `openrouter` | `openai-completions` | `openai/gpt-4o-mini` | `OPENROUTER_API_KEY` |
+Run `sctx providers` for the authoritative list of bundled and configured providers with their effective API, endpoint, model and key variable. Keys are never shown. `bun run test:models` checks that each bundled model resolves on its endpoint.
 
-The `-env` variants (`openai-env`, `anthropic-env`) also read the vendor's usual model and endpoint variables (`OPENAI_MODEL`, `OPENAI_BASE_URL`, `ANTHROPIC_MODEL`), falling back to the bundle's defaults where a variable is unset. Bundled providers without `-env` read no environment beyond the key: they behave the same on every machine. `anthropic-haiku-5-5` pins the model, so it does not drift when the `anthropic` bundle's default changes.
+### Wire APIs and bundled-provider conventions
+
+A provider's `api` names the **request shape**, potentially supported by multiple vendors.
+
+| API | Shape | Bundled providers |
+|---|---|---|
+| `openrouter-decisions` | Decisions API, closed-set `choice` questions, answers with confidence and probabilities | `openrouter-jev`, `openrouter-openai-decisions` |
+| `typesafe-systemone` | Same decisions shape (currently) | `typesafe-jev` |
+| `openai-decisions` | OpenAI's Decisions API: same concept, its own request/response shape | `openai-decisions` |
+| `anthropic-messages` | Chat: one request per rule, structured JSON verdict | `anthropic`, `anthropic-haiku-5-5`, `anthropic-env` |
+| `openai-completions` | Chat: OpenAI-compatible; works with Ollama, vLLM and OpenRouter | `openai`, `openai-env`, `openrouter-openai` |
+
+Bundled provider names follow the pattern:
+
+- `<vendor>` — this project's recommended model for that vendor; can change between releases.
+- `<vendor>-<model>` (e.g. `anthropic-haiku-5-5`) — pins a model id, so it does not drift when the `<vendor>` bundle's recommendation moves.
+- `<vendor>-env` — hydrates model, endpoint etc from the vendor's usual environment variables.
+- `openrouter-<vendor>-<purpose>` (e.g. `openrouter-openai-decisions`) — aggregating vendor's endpoint variant
 
 **Configured providers** live in `modelProviders` at the top level, and replace a bundled provider of the same name. Fields a configured provider leaves out still take the API defaults:
 
@@ -94,7 +105,7 @@ The `-env` variants (`openai-env`, `anthropic-env`) also read the vendor's usual
 
 | Field | Description |
 |---|---|
-| `api` | **Required.** The wire API: `openrouter-decisions`, `typesafe-systemone`, `anthropic-messages` or `openai-completions` (see [Choosing a judge](semantic-rules.md#choosing-a-judge)), or `fake` (for tests). |
+| `api` | **Required.** The wire API (see the table above and [Choosing a judge](semantic-rules.md#choosing-a-judge)), or `fake` (for tests). |
 | `model` | A fixed model. Its default depends on the API. |
 | `modelEnv` | Environment variable holding a model override. An explicit `model` wins; a variable set but empty is an error. |
 | `endpoint` | A fixed API URL. |

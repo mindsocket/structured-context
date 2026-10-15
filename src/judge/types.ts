@@ -39,6 +39,7 @@ export interface SemanticJudgeProvider {
 /** Wire APIs a provider can speak. Names the request shape, never the vendor or model. */
 export const MODEL_PROVIDER_APIS = [
   'openai-completions',
+  'openai-decisions',
   'anthropic-messages',
   'openrouter-decisions',
   'typesafe-systemone',

@@ -7,7 +7,7 @@ export interface OpenAIJudgeProviderOptions extends HydratedProvider {
   apiKey?: string;
 }
 
-export const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
+export const RECOMMENDED_OPENAI_MODEL = 'gpt-6-luna';
 export const OPENAI_COMPLETIONS_ENDPOINT = 'https://api.openai.com/v1';
 
 /**
@@ -23,7 +23,7 @@ export class OpenAIJudgeProvider extends PerRuleJudgeProvider {
   constructor(options: OpenAIJudgeProviderOptions) {
     super();
     this.apiKey = options.apiKey;
-    this.model = options.model || DEFAULT_OPENAI_MODEL;
+    this.model = options.model || RECOMMENDED_OPENAI_MODEL;
 
     const base = options.endpoint || OPENAI_COMPLETIONS_ENDPOINT;
     this.endpoint = base.endsWith('/chat/completions') ? base : `${base.replace(/\/+$/, '')}/chat/completions`;

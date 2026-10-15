@@ -7,7 +7,7 @@ export interface AnthropicJudgeProviderOptions extends HydratedProvider {
   apiKey?: string;
 }
 
-export const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-5-5';
+export const RECOMMENDED_ANTHROPIC_MODEL = 'claude-haiku-5-5';
 export const ANTHROPIC_MESSAGES_ENDPOINT = 'https://api.anthropic.com/v1/messages';
 
 /** Judge provider for the Anthropic Messages API. Reads no environment: it takes hydrated values. */
@@ -20,7 +20,7 @@ export class AnthropicJudgeProvider extends PerRuleJudgeProvider {
   constructor(options: AnthropicJudgeProviderOptions) {
     super();
     this.apiKey = options.apiKey ?? '';
-    this.model = options.model || DEFAULT_ANTHROPIC_MODEL;
+    this.model = options.model || RECOMMENDED_ANTHROPIC_MODEL;
     this.endpoint = options.endpoint || ANTHROPIC_MESSAGES_ENDPOINT;
   }
 

@@ -97,14 +97,7 @@ Gating uses the severity of the verdict. A verdict with `error` severity gates t
 
 Use a decision model when you can. Its results are repeatable and cheap, and they include a confidence. Use a chat model when the rubric needs open reasoning or a written explanation.
 
-| Bundled provider | API | Model | Key variable |
-|---|---|---|---|
-| `openrouter-jev` | `openrouter-decisions` | `typesafe/jev-latest` | `OPENROUTER_API_KEY` |
-| `typesafe-jev` | `typesafe-systemone` | `jev-latest` | `TYPESAFE_API_KEY` |
-| `anthropic` | `anthropic-messages` | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
-| `openai` | `openai-completions` | `gpt-4o-mini` | `OPENAI_API_KEY` |
-
-The `openai-completions` API speaks to any OpenAI-compatible endpoint, for example Ollama or vLLM; local servers do not need a key. `sctx providers` lists every bundled and configured provider with its effective config.
+Bundled providers give you a model with no configuration; the decision models among them speak a decisions API. Run `sctx providers` for the full list with effective models, endpoints and key variables.
 
 structured-context uses only the provider that you configure. It does not choose a provider from the keys in your environment. To override models, endpoints or keys, add an entry of the same name to `modelProviders`, or define a new one (see [Model providers and judge](config.md#model-providers-and-judge)).
 

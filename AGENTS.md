@@ -9,7 +9,9 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 - `bun run src/index.ts --help` — list CLI commands
 - `bun run typecheck` — type-check all code (`tsconfig.json`)
 - `bun run lint` — biome
+- `bun run lint:fix` — biome with fixes
 - `bun run build` — compile `src/` to `dist/` (`tsconfig.build.json`)
+- see `package.json` 
 - Releases go through the `/release` skill.
 
 Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or `./config.json`
@@ -66,7 +68,8 @@ For most development only the main unit tests need re-running regularly.
 - `bun run test:hook` — unit test plugin hooks (`hook-test/unit/`) - hook development only
 - `bun run test:hook:e2e` — test plugin hooks in Claude Code (`hook-test/`) - hook development only
 - `bun run test:smoke` — smoke tests run against locally configured spaces - only use when changes could affect compatibility.
-- `bun run test:judge` — live judge tests (`tests/judge/live.test.ts`): one real provider call per provider whose API key is set. Costs money; use sparingly when changing judges, prompts or semantic rule behaviour.
+- `bun run test:judge` — live judge tests (`tests/judge/live.test.ts`): one real provider call per provider whose API key is set. Costs money; use sparingly when changing judges or semantic rule behaviour.
+- `bun run test:models` — check that every bundled provider's configured model exists (no API keys)
 
 ## Debugging
 

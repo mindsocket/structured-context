@@ -1,9 +1,11 @@
 import type { AnthropicJudgeProviderOptions } from './provider/anthropic';
-import { AnthropicJudgeProvider } from './provider/anthropic';
+import { AnthropicJudgeProvider, RECOMMENDED_ANTHROPIC_MODEL } from './provider/anthropic';
 import { FakeJudgeProvider } from './provider/fake';
 import type { JevJudgeProviderOptions } from './provider/jev';
-import { JevJudgeProvider } from './provider/jev';
-import { OpenAIJudgeProvider } from './provider/openai';
+import { JEV_LATEST, JevJudgeProvider } from './provider/jev';
+import { OpenAIJudgeProvider, RECOMMENDED_OPENAI_MODEL } from './provider/openai';
+import type { OpenAIDecisionsJudgeProviderOptions } from './provider/openai-decisions';
+import { OpenAIDecisionsJudgeProvider, RECOMMENDED_OPENAI_DECISIONS_MODEL } from './provider/openai-decisions';
 import {
   type HydratedProvider,
   MODEL_PROVIDER_APIS,
@@ -13,39 +15,61 @@ import {
 
 type Env = Record<string, string | undefined>;
 
+const OPENROUTER_COMPLETIONS_ENDPOINT = 'https://openrouter.ai/api/v1';
+
+const RECOMMENDED_OPENROUTER_OPENAI_DECISIONS_MODEL = `openai/${RECOMMENDED_OPENAI_DECISIONS_MODEL}-decisions`;
+const RECOMMENDED_OPENROUTER_OPENAI_MODEL = `openai/${RECOMMENDED_OPENAI_MODEL}`;
+
+const ANTHROPIC_KEY_ENV = 'ANTHROPIC_API_KEY';
+const OPENAI_KEY_ENV = 'OPENAI_API_KEY';
+const OPENROUTER_KEY_ENV = 'OPENROUTER_API_KEY';
+
+const ANTHROPIC_BASE: ModelProviderConfig = {
+  api: 'anthropic-messages',
+  model: RECOMMENDED_ANTHROPIC_MODEL,
+  apiKeyEnv: ANTHROPIC_KEY_ENV,
+};
+const OPENAI_BASE: ModelProviderConfig = {
+  api: 'openai-completions',
+  model: RECOMMENDED_OPENAI_MODEL,
+  apiKeyEnv: OPENAI_KEY_ENV,
+};
+
 /**
  * Bundled providers: usable as a judge by name, without a `modelProviders` entry. A user entry of the
  * same name replaces one wholesale; fields it leaves out take the type defaults in the constructors.
  * Every value here is explicit: no bundle reads the environment.
  */
 export const BUNDLED_PROVIDERS: Record<string, ModelProviderConfig> = {
-  // Jev decision model. The TypeSafe and OpenRouter decision endpoints share a wire shape, so both
-  // speak a decisions API; the vendors' endpoints stay distinct bundles.
-  'typesafe-jev': { api: 'typesafe-systemone', model: 'jev-latest', apiKeyEnv: 'TYPESAFE_API_KEY' },
-  'openrouter-jev': { api: 'openrouter-decisions', model: 'typesafe/jev-latest', apiKeyEnv: 'OPENROUTER_API_KEY' },
-  // Chat models. `<vendor>` is a fixed opinionated bundle; `<vendor>-env` hydrates model and endpoint
-  // from the vendor's usual environment variables, falling back to the bundle's defaults.
-  anthropic: { api: 'anthropic-messages', model: 'claude-haiku-5-5', apiKeyEnv: 'ANTHROPIC_API_KEY' },
-  'anthropic-haiku-5-5': { api: 'anthropic-messages', model: 'claude-haiku-5-5', apiKeyEnv: 'ANTHROPIC_API_KEY' },
-  'anthropic-env': {
-    api: 'anthropic-messages',
-    model: 'claude-haiku-5-5',
-    modelEnv: 'ANTHROPIC_MODEL',
-    apiKeyEnv: 'ANTHROPIC_API_KEY',
+  'typesafe-jev': { api: 'typesafe-systemone', model: JEV_LATEST, apiKeyEnv: 'TYPESAFE_API_KEY' },
+  'openrouter-jev': { api: 'openrouter-decisions', model: `~typesafe/${JEV_LATEST}`, apiKeyEnv: OPENROUTER_KEY_ENV },
+  'openrouter-openai-decisions': {
+    api: 'openrouter-decisions',
+    model: RECOMMENDED_OPENROUTER_OPENAI_DECISIONS_MODEL,
+    apiKeyEnv: OPENROUTER_KEY_ENV,
   },
-  openai: { api: 'openai-completions', model: 'gpt-4o-mini', apiKeyEnv: 'OPENAI_API_KEY' },
+  'openai-decisions': {
+    api: 'openai-decisions',
+    model: RECOMMENDED_OPENAI_DECISIONS_MODEL,
+    apiKeyEnv: OPENAI_KEY_ENV,
+  },
+  anthropic: ANTHROPIC_BASE,
+  'anthropic-haiku-5-5': { api: 'anthropic-messages', model: 'claude-haiku-5-5', apiKeyEnv: ANTHROPIC_KEY_ENV },
+  'anthropic-env': {
+    ...ANTHROPIC_BASE,
+    modelEnv: 'ANTHROPIC_MODEL',
+  },
+  openai: OPENAI_BASE,
   'openai-env': {
-    api: 'openai-completions',
-    model: 'gpt-4o-mini',
+    ...OPENAI_BASE,
     modelEnv: 'OPENAI_MODEL',
     endpointEnv: 'OPENAI_BASE_URL',
-    apiKeyEnv: 'OPENAI_API_KEY',
   },
-  openrouter: {
+  'openrouter-openai': {
     api: 'openai-completions',
-    endpoint: 'https://openrouter.ai/api/v1',
-    model: 'openai/gpt-4o-mini',
-    apiKeyEnv: 'OPENROUTER_API_KEY',
+    endpoint: OPENROUTER_COMPLETIONS_ENDPOINT,
+    model: RECOMMENDED_OPENROUTER_OPENAI_MODEL,
+    apiKeyEnv: OPENROUTER_KEY_ENV,
   },
 } as const;
 
@@ -53,6 +77,7 @@ export const BUNDLED_PROVIDERS: Record<string, ModelProviderConfig> = {
 const DEFAULT_KEY_ENV: Record<string, string> = {
   'anthropic-messages': 'ANTHROPIC_API_KEY',
   'openai-completions': 'OPENAI_API_KEY',
+  'openai-decisions': 'OPENAI_API_KEY',
   'openrouter-decisions': 'OPENROUTER_API_KEY',
   'typesafe-systemone': 'TYPESAFE_API_KEY',
 } as const;
@@ -115,6 +140,8 @@ export function createModelProvider(
     case 'openrouter-decisions':
     case 'typesafe-systemone':
       return new JevJudgeProvider(h as JevJudgeProviderOptions);
+    case 'openai-decisions':
+      return new OpenAIDecisionsJudgeProvider(h as OpenAIDecisionsJudgeProviderOptions);
     case 'openai-completions':
       return new OpenAIJudgeProvider(h);
   }

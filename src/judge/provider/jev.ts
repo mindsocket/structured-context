@@ -1,9 +1,10 @@
 import type { HydratedProvider, SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult } from '../types';
 
 export interface JevJudgeProviderOptions extends HydratedProvider {
-  /** The factory requires a resolved key before constructing a non-OpenAI provider. */
   apiKey?: string;
 }
+
+export const JEV_LATEST = 'jev-latest';
 
 export const OPENROUTER_DECISIONS_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
 
@@ -29,7 +30,7 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
 
   constructor(options: JevJudgeProviderOptions) {
     this.apiKey = options.apiKey ?? '';
-    this.model = options.model || 'typesafe/jev-latest';
+    this.model = options.model || JEV_LATEST;
     this.endpoint = options.endpoint || OPENROUTER_DECISIONS_ENDPOINT;
   }
 

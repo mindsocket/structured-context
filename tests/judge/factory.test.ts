@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'bun:test';
 import {
-  BUNDLED_PROVIDERS,
   createJudge,
   createModelProvider,
   hydrateProvider,
@@ -42,28 +41,6 @@ describe('hydrateProvider', () => {
 
   it('rejects an unknown api', () => {
     expect(() => hydrateProvider('p', { api: 'gemini' as never }, {})).toThrow('unknown api "gemini"');
-  });
-});
-
-describe('bundled providers', () => {
-  it.each([
-    ['openrouter-jev', 'openrouter-decisions', undefined, 'typesafe/jev-latest', 'OPENROUTER_API_KEY'],
-    ['typesafe-jev', 'typesafe-systemone', undefined, 'jev-latest', 'TYPESAFE_API_KEY'],
-    ['anthropic', 'anthropic-messages', undefined, 'claude-haiku-5-5', 'ANTHROPIC_API_KEY'],
-    ['openai', 'openai-completions', undefined, 'gpt-4o-mini', 'OPENAI_API_KEY'],
-    ['openrouter', 'openai-completions', 'https://openrouter.ai/api/v1', 'openai/gpt-4o-mini', 'OPENROUTER_API_KEY'],
-  ] as const)('%s carries its vendor defaults', (name, api, endpoint, model, keyEnv) => {
-    const env = { [keyEnv]: 'k' };
-    const judge = createJudge({ judge: { provider: name } }, {}, undefined, env);
-    expect(judge.name).toBe(
-      api === 'openrouter-decisions' || api === 'typesafe-systemone'
-        ? 'jev'
-        : api.startsWith('anthropic')
-          ? 'anthropic'
-          : 'openai',
-    );
-    expect(BUNDLED_PROVIDERS[name]).toMatchObject({ api, model, apiKeyEnv: keyEnv });
-    if (endpoint) expect(BUNDLED_PROVIDERS[name]!.endpoint).toBe(endpoint); // only where the bundle pins one
   });
 });
 

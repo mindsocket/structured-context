@@ -41,7 +41,7 @@ describe('JevJudgeProvider', () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe('https://openrouter.ai/api/alpha/decisions');
     const sent = JSON.parse(calls[0]?.init.body as string);
-    expect(sent.model).toBe('typesafe/jev-latest');
+    expect(sent.model).toBe('jev-latest');
     expect(sent.state).toMatchObject({ title: 'I cannot find my receipts', parents: ['Faster Tax Filing'] });
     expect(sent.questions.framing).toEqual({
       type: 'choice',
