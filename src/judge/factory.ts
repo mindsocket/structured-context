@@ -41,7 +41,12 @@ export const BUNDLED_PROVIDERS: Record<string, ModelProviderConfig> = {
     endpointEnv: 'OPENAI_BASE_URL',
     apiKeyEnv: 'OPENAI_API_KEY',
   },
-  openrouter: { api: 'openai-completions', model: 'openai/gpt-4o-mini', apiKeyEnv: 'OPENROUTER_API_KEY' },
+  openrouter: {
+    api: 'openai-completions',
+    endpoint: 'https://openrouter.ai/api/v1',
+    model: 'openai/gpt-4o-mini',
+    apiKeyEnv: 'OPENROUTER_API_KEY',
+  },
 } as const;
 
 /** Each API reads its key from this variable unless `apiKeyEnv` names another one. Model and endpoint never read env vars. */

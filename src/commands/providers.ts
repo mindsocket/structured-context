@@ -59,7 +59,8 @@ export function listProviders(options: { json?: boolean } = {}): void {
   for (const r of rows) {
     const origin = r.source === 'bundled' ? '' : ' (config)';
     const model = r.model ?? '(api default)';
+    const endpoint = r.endpoint ?? '(api default)';
     const key = r.valid ? `key via ${r.keyEnv}` : (r.error ?? 'no key');
-    console.log(`${r.name}${origin}  ${r.api}  model=${model}  ${key}`);
+    console.log(`${r.name}${origin}\n  api=${r.api}\n  endpoint=${endpoint}\n  model=${model}\n  ${key}`);
   }
 }

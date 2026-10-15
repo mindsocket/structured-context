@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import {
+  BUNDLED_PROVIDERS,
   createJudge,
   createModelProvider,
   hydrateProvider,
@@ -44,7 +45,57 @@ describe('hydrateProvider', () => {
   });
 });
 
+describe('bundled providers', () => {
+  it.each([
+    ['openrouter-jev', 'openrouter-decisions', undefined, 'typesafe/jev-latest', 'OPENROUTER_API_KEY'],
+    ['typesafe-jev', 'typesafe-systemone', undefined, 'jev-latest', 'TYPESAFE_API_KEY'],
+    ['anthropic', 'anthropic-messages', undefined, 'claude-haiku-5-5', 'ANTHROPIC_API_KEY'],
+    ['openai', 'openai-completions', undefined, 'gpt-4o-mini', 'OPENAI_API_KEY'],
+    ['openrouter', 'openai-completions', 'https://openrouter.ai/api/v1', 'openai/gpt-4o-mini', 'OPENROUTER_API_KEY'],
+  ] as const)('%s carries its vendor defaults', (name, api, endpoint, model, keyEnv) => {
+    const env = { [keyEnv]: 'k' };
+    const judge = createJudge({ judge: { provider: name } }, {}, undefined, env);
+    expect(judge.name).toBe(
+      api === 'openrouter-decisions' || api === 'typesafe-systemone'
+        ? 'jev'
+        : api.startsWith('anthropic')
+          ? 'anthropic'
+          : 'openai',
+    );
+    expect(BUNDLED_PROVIDERS[name]).toMatchObject({ api, model, apiKeyEnv: keyEnv });
+    if (endpoint) expect(BUNDLED_PROVIDERS[name]!.endpoint).toBe(endpoint); // only where the bundle pins one
+  });
+});
+
 describe('createModelProvider', () => {
+  it('the decisions API defaults to the OpenRouter decisions endpoint', async () => {
+    const calls: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL) => {
+      calls.push(String(url));
+      throw new Error('stop');
+    }) as unknown as typeof fetch;
+    try {
+      const judge = createJudge({ judge: { provider: 'openrouter-jev' } }, {}, undefined, { OPENROUTER_API_KEY: 'k' });
+      await judge
+        .evaluate({
+          node: {
+            label: 'n',
+            title: 't',
+            type: 'opportunity',
+            resolvedType: 'opportunity',
+            schemaData: {},
+            resolvedParents: [],
+          },
+          rules: [],
+        })
+        .catch(() => {});
+      expect(calls[0]).toBe('https://openrouter.ai/api/alpha/decisions');
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
   it('creates FakeJudgeProvider for api "fake"', () => {
     expect(createModelProvider('f', { api: 'fake' }, {}) instanceof FakeJudgeProvider).toBe(true);
   });
