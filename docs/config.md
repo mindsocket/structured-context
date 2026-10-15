@@ -79,7 +79,7 @@ A provider's `api` names the **request shape**, potentially supported by multipl
 
 | API | Shape | Bundled providers |
 |---|---|---|
-| `openrouter-decisions` | Decisions API, closed-set `choice` questions, answers with confidence and probabilities | `openrouter-jev`, `openrouter-openai-decisions` |
+| `openrouter-decisions` | Decisions API, closed-set `choice` questions, answers with confidence and probabilities; nodes with the same rules share a request | `openrouter-jev`, `openrouter-openai-decisions` |
 | `typesafe-systemone` | Same decisions shape (currently) | `typesafe-jev` |
 | `openai-decisions` | OpenAI's Decisions API: same concept, its own request/response shape | `openai-decisions` |
 | `anthropic-messages` | Chat: one request per rule, structured JSON verdict | `anthropic`, `anthropic-haiku-5-5`, `anthropic-env` |

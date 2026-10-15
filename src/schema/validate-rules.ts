@@ -1,4 +1,4 @@
-import { judgeNode } from '../judge/judge-node';
+import { judgeNodes } from '../judge/judge-node';
 import type { SemanticJudgeProvider } from '../judge/types';
 import type { Rule, RuleViolation, SpaceNode } from '../types';
 import {
@@ -117,15 +117,19 @@ export async function validateRules(
   const judge = options.judge;
   const runnableSemanticRules = judge ? semanticRules : semanticRules.filter((r) => r.check);
   if (runnableSemanticRules.length > 0) {
+    const perNode: RuleViolation[][] = []; // kept in node order
+    const pending: Array<{ node: SpaceNode; rules: Rule[]; found: RuleViolation[] }> = [];
     for (const node of nodes) {
       if (options.judgeTarget !== undefined && node.label !== options.judgeTarget) continue;
+      const found: RuleViolation[] = [];
+      perNode.push(found);
       const applicable: Rule[] = [];
       for (const r of runnableSemanticRules) {
         if (r.type && r.type !== node.resolvedType) continue;
         if (r.when) {
           const when = await tryEvaluateExpression(r.when, buildEvalContext(node, nodes, nodeIndex));
           if ('error' in when) {
-            violations.push(expressionErrorViolation(r, node.label, when.error));
+            found.push(expressionErrorViolation(r, node.label, when.error));
             continue;
           }
           if (when.value !== true) continue;
@@ -139,12 +143,16 @@ export async function validateRules(
 
       // A semantic rule's `check` fails fast before the judge.
       const prechecked = await applySemanticChecks(applicable, node, nodes, nodeIndex);
-      violations.push(...prechecked.violations);
-      if (!judge) continue;
+      found.push(...prechecked.violations);
+      if (judge) pending.push({ node, rules: prechecked.judgeable, found });
+    }
 
-      for (const j of await judgeNode(judge, node, prechecked.judgeable)) {
+    // One judge call for every node, so a batching judge can share requests.
+    const judged = judge ? await judgeNodes(judge, pending) : [];
+    pending.forEach(({ node, found }, i) => {
+      for (const j of judged[i] ?? []) {
         if (!j.failed) continue;
-        violations.push({
+        found.push({
           file: node.label,
           ruleId: j.rule.id,
           category: j.rule.category,
@@ -154,9 +162,9 @@ export async function validateRules(
           ...(j.verdict !== undefined && { verdict: j.verdict }),
           ...(j.guidance !== undefined && { guidance: j.guidance }),
         });
-        if (!j.error) failedNodeLabels.add(node.label);
       }
-    }
+    });
+    for (const found of perNode) violations.push(...found);
   }
 
   return violations;
