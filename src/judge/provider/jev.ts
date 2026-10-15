@@ -167,7 +167,7 @@ const estimateTokens = (value: unknown) => Math.ceil(JSON.stringify(value).lengt
 
 /** Plan the DecisionRequests for one NodeRulesetGroup (inputs sharing a rule set): runs of nodes, in order, never splitting a node. */
 function planDecisionRequests(indices: number[], inputs: SemanticJudgeInput[]): number[][] {
-  const chunks: number[][] = [];
+  const requests: number[][] = [];
   let current: number[] = [];
   let tokens = 0;
   let questions = 0;
@@ -180,7 +180,7 @@ function planDecisionRequests(indices: number[], inputs: SemanticJudgeInput[]): 
       (tokens + cost > JEV_DECISION_REQUEST_MAX_ESTIMATED_TOKENS ||
         questions + count > JEV_DECISION_REQUEST_MAX_QUESTIONS)
     ) {
-      chunks.push(current);
+      requests.push(current);
       current = [];
       tokens = 0;
       questions = 0;
@@ -189,8 +189,8 @@ function planDecisionRequests(indices: number[], inputs: SemanticJudgeInput[]): 
     tokens += cost;
     questions += count;
   }
-  if (current.length > 0) chunks.push(current);
-  return chunks;
+  if (current.length > 0) requests.push(current);
+  return requests;
 }
 
 function describeDistribution(answer: JevChoiceAnswer): string {
