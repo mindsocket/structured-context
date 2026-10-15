@@ -18,8 +18,5 @@
     }
   ],
   "schema": "/path/to/custom/schemas/my-general-schema.json",
-  "modelProviders": {
-    "jev": { "type": "jev" }
-  },
-  "judge": { "provider": "jev" }
+  "judge": { "type": "jev" }
 }

@@ -65,9 +65,9 @@ All plugin names must start with `sctx-` (the prefix is optional in config and n
 
 Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` directory (or `"sctx": { "schemas": "..." }` in `package.json`). If a space specifies a plugin-prefixed schema (e.g. `"sctx-wardley-mapping/wardley_map.json"`), schemas are resolved statically without executing plugin code, and the plugin's code hooks are loaded when parsing or rendering.
 
-## Model providers
+## Model providers and judge
 
-`modelProviders` names the models that sctx can use, and says how to reach each one. Set it at the top level only.
+structured-context judges [semantic rules](semantic-rules.md) with a **model provider**: a named entry in `modelProviders` that says which model to use and how to reach it. Set `modelProviders` at the top level when the bundled defaults do not suit.
 
 ```json
 {
@@ -87,14 +87,16 @@ Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` d
 | `apiKeyEnv` | The environment variable that holds the key. Defaults: `OPENROUTER_API_KEY` (jev), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`. A local `openai` endpoint can need no key. |
 | `apiKey` | The key itself. Use `apiKeyEnv` instead, so that keys stay out of config files. |
 
-sctx creates a provider only when it uses it, so a provider that is not used needs no key. The environment holds only keys: no environment variable selects or configures a provider.
+The environment holds only keys: no environment variable selects or configures a provider.
 
-## Judge (semantic rules)
-
-`judge.provider` names the model provider that judges [semantic rules](semantic-rules.md). Set it at the top level. A space can set its own `judge`, which replaces the top-level one for that space, for example to keep a private space on a local model:
+The top-level `judge` names the model provider that judges semantic rules: either an entry in `modelProviders` (`provider`) or a bundled provider type (`type`), which takes the type's defaults. A `modelProviders` entry wins over a bundled type of the same name. A space can set its own `judge`, which replaces the top-level one for that space, for example to keep a private space on a local model:
 
 ```json
 {
+  "modelProviders": {
+    "jev": { "type": "jev" },
+    "local": { "type": "openai", "endpoint": "http://localhost:11434/v1" }
+  },
   "judge": { "provider": "jev" },
   "spaces": [
     { "name": "private-notes", "path": "/path/to/notes", "judge": { "provider": "local" } }

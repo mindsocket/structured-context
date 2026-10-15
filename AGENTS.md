@@ -42,6 +42,14 @@ There are several places that need reviewing and updating with any new feature o
 - **Where a setting lives:** Config says *what* to use, CLI flags override it for one run, and the environment holds secrets and the config location only (`apiKeyEnv` names a secret; `SCTX_CONFIG` locates the config). Do not add env vars that set config values, and never infer a choice (such as a judge provider) from a variable that happens to be set: a key present for another tool must not be spent silently. Config also never switches on costly or outward-facing behaviour (such as semantic judging): each run asks for it, through a flag or an API option.
 - **Failures are visible:** A rule or expression that cannot be evaluated is reported as a violation, never skipped or treated as a pass. Likewise a misconfiguration fails before any work or spend.
 
+## Documentation Principles
+
+- **One idea lives in one place:** Decide which doc owns each concept, document it there once, and link instead of repeating. Small, non-obvious tidbits may be repeated; explanations may not.
+- **Document what it does, not what it doesn't:** Describe behaviour and purpose. State a limit only when a new user would realistically assume otherwise. Specification and decision history do not leak into docs.
+- **Proper name in docs:** `structured-context` is the project name for prose; `sctx` is only the CLI command in command examples.
+- **Approachability:** Write short, declarative sentences in active voice, one idea per sentence — about 80% of the way to ASD-STE100. Introduce a concept once, before sections that need it. Frame options by purpose (what each is for, and for whom).
+- **Front-load the happy path:** Quick starts give the fewest steps that run. Tuning, alternatives and edge cases come after.
+
 ## Key Files
 
 - `src/api.ts` — Public library entry point (`structured-context/api`). Re-exports the supported programmatic surface. Keep CLI-only concerns out of it. Do not extend it without agreement (see **Public API surface** above).
@@ -58,7 +66,7 @@ For most development only the main unit tests need re-running regularly.
 - `bun run test:hook` — unit test plugin hooks (`hook-test/unit/`) - hook development only
 - `bun run test:hook:e2e` — test plugin hooks in Claude Code (`hook-test/`) - hook development only
 - `bun run test:smoke` — smoke tests run against locally configured spaces - only use when changes could affect compatibility.
-- `bun run test:judge` — live judge tests (`judge-test/`): real provider calls on a fixture space, for each provider whose API key is set (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`). Costs money; only use when changing judges, prompts or semantic rule behaviour.
+- `bun run test:judge` — live judge tests (`judge-test/`): real provider calls on a fixture space, for each provider whose API key is set. Costs money; use sparingly when changing judges, prompts or semantic rule behaviour.
 
 ## Debugging
 

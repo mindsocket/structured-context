@@ -28,7 +28,10 @@ const MODEL_PROVIDER_SCHEMA = {
 
 const JUDGE_CONFIG_SCHEMA = {
   type: 'object',
-  properties: { provider: { type: 'string', minLength: 1 } },
+  properties: {
+    provider: { type: 'string', minLength: 1 },
+    type: { type: 'string', enum: MODEL_PROVIDER_TYPES },
+  },
   additionalProperties: false,
 } as const;
 

@@ -69,26 +69,31 @@ export function judgeForRun(
 
 /**
  * The judge for a run: the model provider named by `name` (the `--judge` override), else the space's
- * `judge.provider`, else the top-level one. Throws {@link JudgeConfigError} when it cannot be built.
+ * `judge`, else the top-level one. A judge names either an entry in `modelProviders` (`provider`) or a
+ * bundled provider type (`type`), which takes the type's defaults. An entry in `modelProviders` wins over
+ * a bundled type of the same name. Throws {@link JudgeConfigError} when it cannot be built.
  */
 export function createJudge(
-  config: { modelProviders?: Record<string, ModelProviderConfig>; judge?: { provider?: string } },
-  space: { judge?: { provider?: string } } = {},
+  config: { modelProviders?: Record<string, ModelProviderConfig>; judge?: { provider?: string; type?: string } },
+  space: { judge?: { provider?: string; type?: string } } = {},
   name?: string,
   env: Env = process.env,
 ): SemanticJudgeProvider {
-  const chosen = name ?? space.judge?.provider ?? config.judge?.provider;
+  const chosen = name ?? space.judge?.provider ?? space.judge?.type ?? config.judge?.provider ?? config.judge?.type;
   const known = Object.keys(config.modelProviders ?? {});
   if (!chosen) {
     throw new JudgeConfigError(
-      'No judge configured. Set "judge.provider" in config.json to the name of an entry in "modelProviders".',
+      'No judge configured. Set "judge" in config.json to a bundled type (e.g. { "type": "jev" }) or to the name of an entry in "modelProviders".',
     );
   }
   const def = config.modelProviders?.[chosen];
   if (!def) {
-    throw new JudgeConfigError(
-      `Model provider "${chosen}" is not configured.${known.length ? ` Configured: ${known.join(', ')}.` : ' Add it under "modelProviders" in config.json.'}`,
-    );
+    if (!(MODEL_PROVIDER_TYPES as readonly string[]).includes(chosen)) {
+      throw new JudgeConfigError(
+        `Judge "${chosen}" is neither a bundled type (${MODEL_PROVIDER_TYPES.join(', ')}) nor a configured model provider.${known.length ? ` Configured: ${known.join(', ')}.` : ''}`,
+      );
+    }
+    return createModelProvider(chosen, { type: chosen as ModelProviderConfig['type'] }, env);
   }
   return createModelProvider(chosen, def, env);
 }

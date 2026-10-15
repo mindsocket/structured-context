@@ -7,16 +7,13 @@ This page assumes you know [Rules](rules.md). Semantic rules use the same fields
 ## Quick start
 
 1. Set `OPENROUTER_API_KEY` in your environment.
-2. Add a model provider and choose it as the judge in `config.json`:
+2. Choose Jev as the judge in `config.json`. Jev is a decision model and the recommended judge (see [Choosing a judge](#choosing-a-judge)):
 
    ```json
-   {
-     "modelProviders": { "jev": { "type": "jev" } },
-     "judge": { "provider": "jev" }
-   }
+   { "judge": { "type": "jev" } }
    ```
 
-   Jev is a decision model and the recommended judge (see [Choosing a judge](#choosing-a-judge)). To use Claude instead, add a provider with `"type": "anthropic"` and set `ANTHROPIC_API_KEY`.
+   To use Claude instead, set `"type": "anthropic"` and `ANTHROPIC_API_KEY`.
 3. Add a rule to the schema's `$metadata.rules`:
 
    ```json
@@ -58,7 +55,7 @@ For each node, the judge gives exactly one verdict for each rule. The verdict mu
 Each verdict has a purpose for one audience:
 
 - The **description** tells the judge when to choose that verdict.
-- The **guidance** (optional) tells the user what to do when the judge chooses that verdict. sctx shows it with the violation. sctx does not send it to the judge.
+- The **guidance** (optional) tells the user what to do when the judge chooses that verdict. structured-context shows it with the violation and does not send it to the judge.
 
 A verdict is a description string, or an object with `description` and `guidance`:
 
@@ -88,9 +85,9 @@ Gating uses the severity of the verdict. A verdict with `error` severity gates t
 
 ## How judging works
 
-- **Order.** On each node, expression rules run first. Then sctx sends all of the node's semantic rules to the judge in one call.
-- **Gating.** sctx does not judge a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
-- **Judge errors.** If the judge fails (for example, a network error or output that sctx cannot read), sctx reports a violation. A judge error does not gate.
+- **Order.** On each node, expression rules run first. Then structured-context sends all of the node's semantic rules to the judge in one call.
+- **Gating.** structured-context does not judge a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
+- **Judge errors.** If the judge fails (for example, a network error or output that structured-context cannot read), structured-context reports a violation. A judge error does not gate.
 - **Input.** The judge gets the node's title, type, parent titles and schema data, including frontmatter.
 - **Output.** A violation from a semantic rule also includes the verdict, the judge's evidence and any guidance.
 
@@ -106,7 +103,7 @@ Use a decision model when you can. Its results are repeatable and cheap, and the
 | `anthropic` | Claude. Default model: `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
 | `openai` | Any OpenAI-compatible chat endpoint, for example OpenAI, Ollama or vLLM. Set `endpoint` for servers other than OpenAI. Local servers do not need a key | `OPENAI_API_KEY` |
 
-sctx uses only the provider that you configure. It does not choose a provider from the keys in your environment. See [Model providers](config.md#model-providers) and [Judge](config.md#judge-semantic-rules) for all fields.
+structured-context uses only the provider that you configure. It does not choose a provider from the keys in your environment. Each provider type above works as a judge directly (`{ "judge": { "type": "jev" } }`); see [Model providers and judge](config.md#model-providers-and-judge) to override models, endpoints or keys.
 
 A rule does not choose its judge: that is configuration, not schema. To use a different provider for one run, name it with `--judge`. For example, to get a second opinion from a chat model on one rule and one file:
 

@@ -9,8 +9,6 @@ Rules check content after JSON Schema validation, for example cross-node checks 
 - An **expression rule** (the default) is a JSONata `check` that must return `true`.
 - A **semantic rule** asks a model to judge a node. See [Semantic rules](semantic-rules.md).
 
-This page applies to both kinds, unless it says otherwise.
-
 For metadata structure and composition behavior, see [docs/schemas.md](schemas.md).
 
 ## Rule shape
@@ -33,7 +31,7 @@ Rules are a flat array.
 |---|---|---|
 | `id` | yes | Unique rule identifier |
 | `category` | yes | `validation` \| `coherence` \| `workflow` \| `best-practice` |
-| `severity` | no | `error` \| `warning` \| `info`; overrides the category default (see [Severity](#severity)). A semantic rule can map verdicts to severities |
+| `severity` | no | `error` \| `warning` \| `info`; overrides the category default (see [Severity](#severity)) |
 | `description` | yes | Human-readable rule intent |
 | `check` | yes, unless `mode: semantic` | JSONata expression; must evaluate to `true` |
 | `when` | no | JSONata test. The rule runs only on nodes where it returns `true`. See [Conditional rules](#conditional-rules-when) |
@@ -42,7 +40,7 @@ Rules are a flat array.
 | `type` | no | Restrict rule to nodes of this `resolvedType` |
 | `scope` | no | Use `"global"` to evaluate once for the whole space |
 | `override` | no | Only for merge conflicts: allows later duplicate `id` to replace earlier |
-| `gatesDescendants` | no | Whether a violation gates downstream checks on the node's hierarchy subtree. Defaults to `true` for rules with `error` severity, `false` for `warning` and `info`. Set explicitly to override either way. |
+| `gatesDescendants` | no | Whether a violation gates downstream checks on the node's hierarchy subtree. Defaults to `true` for `error` rules, `false` otherwise. |
 
 ## Categories and severity
 
@@ -123,7 +121,7 @@ $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
 
 ## Conditional rules (`when`)
 
-`when` is a JSONata test with the same context as `check`. sctx evaluates it on each node before the rule. The rule runs only where `when` returns `true`. On other nodes the rule does not run: it reports nothing and does not gate. Use `when` when `type` cannot select the nodes a rule applies to:
+`when` is a JSONata test that determines whether a rule runs at all — effectively, under what circumstances the rule applies. It has the same context as `check` and runs on each node before the rule. Use `when` when `type` cannot select the nodes a rule applies to:
 
 ```json
 { "id": "ready-has-owner", "category": "workflow", "type": "task",
@@ -133,7 +131,7 @@ $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
 
 `when` costs almost nothing, so use it to stop an expensive rule from running where it does not apply. For a semantic rule, this saves a model call on each node that `when` excludes.
 
-If sctx cannot evaluate a `when` or a `check` (for example, because of a syntax error), it reports an `error` violation on the node, with `Rule error:` in its description. This violation does not gate descendants. A rule with `scope: "global"` cannot have `when`.
+An error in a `when` or `check` is reported as a non-gating `error` violation. A rule with `scope: "global"` cannot have `when`.
 
 ## Reusing rules
 
@@ -220,7 +218,7 @@ the next). Excluded nodes are reported under `skippedByDepth`, separate from gat
 - A semantic rule with a severity map matches each severity that it can report.
 - Gating comes only from the rules that ran.
 
-For example, `--rule-filter mode=expression` skips semantic rules, and `--rule-filter category=workflow,coherence --rule-filter severity=error` runs only workflow and coherence rules that can report an error.
+For example, `--rule-filter category=workflow,coherence --rule-filter severity=error` runs only workflow and coherence rules that can report an error.
 
 ## Common patterns
 

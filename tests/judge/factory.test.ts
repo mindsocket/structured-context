@@ -56,6 +56,20 @@ describe('createJudge', () => {
     expect(createJudge(config, space, 'claude', env).name).toBe('anthropic');
   });
 
+  it('accepts a bundled type as the judge, with the type defaults', () => {
+    expect(createJudge({}, { judge: { type: 'jev' } }, undefined, env).name).toBe('jev');
+    expect(createJudge({ judge: { type: 'anthropic' } }, {}, undefined, env).name).toBe('anthropic');
+    expect(createJudge({}, {}, 'fake', env) instanceof FakeJudgeProvider).toBe(true);
+  });
+
+  it('prefers a configured model provider over a bundled type of the same name', () => {
+    const overridden = {
+      modelProviders: { fake: { type: 'anthropic' } } as const,
+      judge: { type: 'fake' },
+    };
+    expect(createJudge(overridden, {}, undefined, env).name).toBe('anthropic');
+  });
+
   it('never infers a provider from API keys in the environment', () => {
     const keys = { ANTHROPIC_API_KEY: 'a', OPENAI_API_KEY: 'o', OPENROUTER_API_KEY: 'r' };
     expect(() => createJudge({}, {}, undefined, keys)).toThrow(JudgeConfigError);
@@ -64,7 +78,8 @@ describe('createJudge', () => {
     );
   });
 
-  it('rejects a provider name that is not configured, listing what is', () => {
+  it('rejects a judge that is neither a bundled type nor a configured provider', () => {
+    expect(() => createJudge(config, {}, 'nope', env)).toThrow('neither a bundled type');
     expect(() => createJudge(config, {}, 'nope', env)).toThrow('Configured: jev, claude');
   });
 
@@ -85,6 +100,6 @@ describe('judgeForRun (CLI)', () => {
 
   it('fails when asked and no judge is configured, or the named provider is missing', () => {
     expect(() => judgeForRun({}, {}, { semantic: true })).toThrow('No judge configured');
-    expect(() => judgeForRun(config, {}, { judge: 'nope' })).toThrow('Model provider "nope" is not configured');
+    expect(() => judgeForRun(config, {}, { judge: 'nope' })).toThrow('Judge "nope" is neither a bundled type');
   });
 });

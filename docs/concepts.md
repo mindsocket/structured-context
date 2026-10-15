@@ -155,7 +155,7 @@ See [docs/rules.md](rules.md) for the rules reference, including JSONata express
 
 A **semantic rule** (`mode: semantic`) asks a model to judge a node, for example whether an opportunity is a customer need. It has a `rubric` instead of a `check`.
 
-A **judge** is the model that judges semantic rules: a decision model (Jev) or a chat model (Claude, OpenAI-compatible). For each rule, the judge gives one **verdict** from the rule's `verdicts`, for example `customer-need`, `vague` or `solution`. The rule's `severity` says which verdicts report a violation. Semantic rules cost money, so they run only when a run asks for them (`--semantic` or `--judge`). The judge is a configured **model provider**. See [docs/semantic-rules.md](semantic-rules.md).
+A **judge** is the model that judges semantic rules: a decision model (Jev) or a chat model (Claude, OpenAI-compatible). For each rule, the judge gives one **verdict** from the rule's `verdicts`, for example `customer-need`, `vague` or `solution`. The rule's `severity` says which verdicts report a violation. Semantic rules cost money, so they run only when a run asks for them (`--semantic` or `--judge`). The judge is a configured **model provider**: either a bundled provider type or an entry in `modelProviders`. See [docs/semantic-rules.md](semantic-rules.md).
 
 ### Cascade gating
 

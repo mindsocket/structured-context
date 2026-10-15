@@ -55,4 +55,6 @@ export interface ModelProviderConfig {
 export interface JudgeConfig {
   /** Name of an entry in `modelProviders`. */
   provider?: string;
+  /** A bundled provider type, used with its defaults when no `modelProviders` entry of that name exists. */
+  type?: string;
 }
