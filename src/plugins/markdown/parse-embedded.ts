@@ -26,6 +26,8 @@ type StackEntry = {
   nodeType: string;
   /** Preferred wikilink key used when this heading acts as a parent. */
   refTarget: string;
+  /** Node whose section this heading opens; absent for untyped placeholders and the page's own entry. */
+  node?: BaseNode;
 };
 
 /**
@@ -197,10 +199,26 @@ export function defaultNodeType(stack: StackEntry[], hierarchy: readonly string[
   return hierarchy[idx + 1]!;
 }
 
-function appendContent(node: BaseNode, text: string): void {
+/** Whether a node's content currently ends in a list item, so the next item joins without a blank line. */
+const endsInListItem = new WeakSet<BaseNode>();
+
+type Position = NonNullable<Heading['position']>;
+
+/** Source text of an mdast node, sliced from the original markdown. */
+function sourceOf(node: { position?: Position }, body: string): string {
+  const start = node.position?.start.offset;
+  const end = node.position?.end.offset;
+  return start !== undefined && end !== undefined ? body.slice(start, end) : '';
+}
+
+/** Append markdown source to a node's content. Blocks are separated by a blank line; consecutive list items by a newline. */
+function appendContent(node: BaseNode, text: string, isListItem = false): void {
   if (!text) return;
   const existing = node.schemaData.content as string | undefined;
-  const updated = existing ? `${existing}\n${text}` : text;
+  const separator = isListItem && endsInListItem.has(node) ? '\n' : '\n\n';
+  const updated = existing ? `${existing}${separator}${text}` : text;
+  if (isListItem) endsInListItem.add(node);
+  else endsInListItem.delete(node);
   node.schemaData.content = updated;
   node.content = updated;
 }
@@ -219,11 +237,12 @@ function processListItem(
   activeNodeFieldAppend?: { node: BaseNode; field: string },
   file?: string,
   lineOffset?: number,
+  body = '',
 ): void {
   const firstPara = item.children.find((c) => c.type === 'paragraph') as Paragraph | undefined;
 
   if (!firstPara) {
-    appendContent(contentTarget, `- ${mdastToString(item)}`);
+    appendContent(contentTarget, sourceOf(item, body), true);
     return;
   }
 
@@ -288,7 +307,9 @@ function processListItem(
 
     const nestedParentRef = `[[${linkTargets[0] ?? title}]]`;
     for (const child of item.children) {
-      if (child.type === 'list') {
+      if (child !== firstPara && child.type !== 'list') {
+        appendContent(newNode, sourceOf(child, body));
+      } else if (child.type === 'list') {
         for (const subItem of (child as List).children) {
           processListItem(
             subItem,
@@ -304,12 +325,13 @@ function processListItem(
             undefined,
             file,
             lineOffset,
+            body,
           );
         }
       }
     }
   } else {
-    appendContent(contentTarget, `- ${rawText}`);
+    appendContent(contentTarget, sourceOf(item, body), true);
   }
 }
 
@@ -610,6 +632,9 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         stack.push({ depth, title, nodeType: '', refTarget: title });
         // Discard any pending grouping (untyped heading has no implied type)
         grouping = null;
+        // An untyped heading is part of the enclosing node's body; it also ends any deeper node's section.
+        activeNode = stack.findLast((entry) => entry.node)?.node ?? rootNode;
+        appendContent(activeNode, sourceOf(heading, body));
         continue;
       }
 
@@ -655,7 +680,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
       // Push to stack BEFORE resolving semantic parent — stack[-2] is the correct parent.
       const refTarget = linkTargets[0] ?? title;
-      stack.push({ depth, title, nodeType: type, refTarget });
+      stack.push({ depth, title, nodeType: type, refTarget, node: headingNode });
 
       // If this match came from a relationship/hierarchy and no explicit type was given,
       // create a grouping — delay adding the node until we see the following content.
@@ -714,6 +739,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             activeNodeFieldAppendArg,
             options.file,
             options.lineOffset,
+            body,
           );
         }
         grouping = null;
@@ -733,6 +759,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             undefined,
             options.file,
             options.lineOffset,
+            body,
           );
         }
       }
@@ -853,7 +880,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
           }
           grouping = null;
         } else {
-          appendContent(activeNode, mdastToString(child));
+          appendContent(activeNode, sourceOf(child, body));
         }
       }
     } else {
@@ -867,7 +894,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       if (child.type === 'paragraph') {
         const rawText = mdastToString(child);
         const { cleanText: afterBracketed, fields: bracketedFields } = extractBracketedFields(rawText);
-        const { remainingText, fields: unbracketedFields } = extractUnbracketedFields(afterBracketed);
+        const { fields: unbracketedFields } = extractUnbracketedFields(afterBracketed);
         const allFields = applyFieldMap({ ...unbracketedFields, ...bracketedFields }, fieldMap);
 
         if ('type' in allFields) {
@@ -878,7 +905,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         }
 
         Object.assign(activeNode.schemaData, allFields);
-        if (remainingText) appendContent(activeNode, remainingText);
+        appendContent(activeNode, sourceOf(child, body));
         activeNode.contentLinks ??= [];
         activeNode.contentLinks.push(...extractLinksFromAstNode(child));
       } else if (child.type === 'code' && (child as Code).lang?.trim() === 'yaml') {
@@ -889,10 +916,10 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         } else if (Array.isArray(parsed)) {
           throw new Error(`YAML block must be an object at "${activeNode.label}".`);
         } else {
-          appendContent(activeNode, code.value);
+          appendContent(activeNode, sourceOf(child, body));
         }
       } else {
-        appendContent(activeNode, mdastToString(child));
+        appendContent(activeNode, sourceOf(child, body));
         activeNode.contentLinks ??= [];
         activeNode.contentLinks.push(...extractLinksFromAstNode(child));
       }

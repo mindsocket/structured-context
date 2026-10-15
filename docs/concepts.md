@@ -99,6 +99,8 @@ Node types are defined by the schema in use and may vary across schemas. Example
 
 Each node retains its physical `source` location (`file`, and `line` / `column` where available) so that validation diagnostics, edge errors, and downstream tooling pinpoint the exact location in the vault.
 
+A node's `content` is the markdown source of its body, sliced verbatim from the file. It excludes the node's own heading or list marker, frontmatter, and any nested embedded nodes. Headings that do not define a node stay in the content of the node that contains them.
+
 > `space_on_a_page` and `dashboard` are not `space node` types — they are `tooling types`.
 
 ### Embedded node
@@ -117,7 +119,7 @@ A `space node`'s resolved type (`resolvedType`) is its canonical type after alia
 
 ## Typed page
 
-A **typed page** is a markdown file whose frontmatter declares a `space node` type (e.g. `type: goal`). The file itself represents one node, and its body may additionally contain `embedded nodes`. Body content appearing before any embedded headings (or the entire body when no embedded headings are present) is preserved as the page node's `content`.
+A **typed page** is a markdown file whose frontmatter declares a `space node` type (e.g. `type: goal`). The file itself represents one node, and its body may additionally contain `embedded nodes`. The page node's `content` is the body markdown outside any embedded node (the entire body when there are none).
 
 Typed pages are distinct from `space on a page` files: a typed page *is* a `space node`; a `space_on_a_page` file is merely a container.
 
