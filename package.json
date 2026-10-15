@@ -41,7 +41,7 @@
     "diagram": "bun run src/index.ts diagram",
     "test": "bun test tests/",
     "test:smoke": "bun test smoke/",
-    "test:judge": "SCTX_LIVE_JUDGE_TESTS=1 bun test judge-test/",
+    "test:judge": "SCTX_LIVE_JUDGE_TESTS=1 bun test tests/judge/live.test.ts",
     "test:hook": "bun test hook-test/unit/",
     "test:hook:e2e": "bun test hook-test/hooks.test.ts",
     "test:all": "bun test",

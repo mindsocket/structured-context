@@ -53,8 +53,6 @@ export interface ModelProviderConfig {
 
 /** Which model provider judges semantic rules: config `judge`, at the top level or on a space. */
 export interface JudgeConfig {
-  /** Name of an entry in `modelProviders`. */
+  /** Name of an entry in `modelProviders`, or a bundled provider ("jev", "anthropic", "openai"). */
   provider?: string;
-  /** A bundled provider type, used with its defaults when no `modelProviders` entry of that name exists. */
-  type?: string;
 }

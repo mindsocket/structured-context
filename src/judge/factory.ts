@@ -13,6 +13,13 @@ const DEFAULT_KEY_ENV = {
   jev: 'OPENROUTER_API_KEY',
 } as const;
 
+/** Bundled model providers: usable as a judge by name, without a `modelProviders` entry. */
+const BUNDLED_PROVIDERS: Record<string, ModelProviderConfig> = {
+  jev: { type: 'jev' },
+  anthropic: { type: 'anthropic' },
+  openai: { type: 'openai' },
+} as const;
+
 /** The judge is misconfigured (no provider, unknown provider, missing key). Reported as a plain CLI error. */
 export class JudgeConfigError extends Error {}
 
@@ -69,31 +76,28 @@ export function judgeForRun(
 
 /**
  * The judge for a run: the model provider named by `name` (the `--judge` override), else the space's
- * `judge`, else the top-level one. A judge names either an entry in `modelProviders` (`provider`) or a
- * bundled provider type (`type`), which takes the type's defaults. An entry in `modelProviders` wins over
- * a bundled type of the same name. Throws {@link JudgeConfigError} when it cannot be built.
+ * `judge.provider`, else the top-level one. The name resolves against `modelProviders` first, then the
+ * bundled providers. A user entry replaces a bundled provider of the same name; fields it leaves out
+ * still take the type defaults. Throws {@link JudgeConfigError} when it cannot be built.
  */
 export function createJudge(
-  config: { modelProviders?: Record<string, ModelProviderConfig>; judge?: { provider?: string; type?: string } },
-  space: { judge?: { provider?: string; type?: string } } = {},
+  config: { modelProviders?: Record<string, ModelProviderConfig>; judge?: { provider?: string } },
+  space: { judge?: { provider?: string } } = {},
   name?: string,
   env: Env = process.env,
 ): SemanticJudgeProvider {
-  const chosen = name ?? space.judge?.provider ?? space.judge?.type ?? config.judge?.provider ?? config.judge?.type;
-  const known = Object.keys(config.modelProviders ?? {});
+  const chosen = name ?? space.judge?.provider ?? config.judge?.provider;
   if (!chosen) {
     throw new JudgeConfigError(
-      'No judge configured. Set "judge" in config.json to a bundled type (e.g. { "type": "jev" }) or to the name of an entry in "modelProviders".',
+      'No judge configured. Set "judge.provider" in config.json to a bundled provider (e.g. "jev") or to the name of an entry in "modelProviders".',
     );
   }
-  const def = config.modelProviders?.[chosen];
+  const def = config.modelProviders?.[chosen] ?? BUNDLED_PROVIDERS[chosen];
   if (!def) {
-    if (!(MODEL_PROVIDER_TYPES as readonly string[]).includes(chosen)) {
-      throw new JudgeConfigError(
-        `Judge "${chosen}" is neither a bundled type (${MODEL_PROVIDER_TYPES.join(', ')}) nor a configured model provider.${known.length ? ` Configured: ${known.join(', ')}.` : ''}`,
-      );
-    }
-    return createModelProvider(chosen, { type: chosen as ModelProviderConfig['type'] }, env);
+    const known = [...Object.keys(config.modelProviders ?? {}), ...Object.keys(BUNDLED_PROVIDERS)];
+    throw new JudgeConfigError(
+      `Model provider "${chosen}" is not configured.${known.length ? ` Known providers: ${known.join(', ')}.` : ''}`,
+    );
   }
   return createModelProvider(chosen, def, env);
 }

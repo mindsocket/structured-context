@@ -67,7 +67,7 @@ Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` d
 
 ## Model providers and judge
 
-structured-context judges [semantic rules](semantic-rules.md) with a **model provider**: a named entry in `modelProviders` that says which model to use and how to reach it. Set `modelProviders` at the top level when the bundled defaults do not suit.
+structured-context judges [semantic rules](semantic-rules.md) with a **model provider**: a named definition that says which model to use and how to reach it. The bundled providers `jev`, `anthropic` and `openai` take their type defaults; an entry in `modelProviders` replaces a bundled provider of the same name, and fields it leaves out still take the defaults. Set `modelProviders` at the top level when the bundled defaults do not suit.
 
 ```json
 {
@@ -89,7 +89,7 @@ structured-context judges [semantic rules](semantic-rules.md) with a **model pro
 
 The environment holds only keys: no environment variable selects or configures a provider.
 
-The top-level `judge` names the model provider that judges semantic rules: either an entry in `modelProviders` (`provider`) or a bundled provider type (`type`), which takes the type's defaults. A `modelProviders` entry wins over a bundled type of the same name. A space can set its own `judge`, which replaces the top-level one for that space, for example to keep a private space on a local model:
+The top-level `judge` names the model provider that judges semantic rules: a bundled provider or an entry in `modelProviders`. A space can set its own `judge`, which replaces the top-level one for that space, for example to keep a private space on a local model:
 
 ```json
 {

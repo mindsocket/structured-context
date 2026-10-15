@@ -10,10 +10,10 @@ This page assumes you know [Rules](rules.md). Semantic rules use the same fields
 2. Choose Jev as the judge in `config.json`. Jev is a decision model and the recommended judge (see [Choosing a judge](#choosing-a-judge)):
 
    ```json
-   { "judge": { "type": "jev" } }
+   { "judge": { "provider": "jev" } }
    ```
 
-   To use Claude instead, set `"type": "anthropic"` and `ANTHROPIC_API_KEY`.
+   `jev`, `anthropic` and `openai` are bundled providers. To use Claude instead, set `"provider": "anthropic"` and `ANTHROPIC_API_KEY`.
 3. Add a rule to the schema's `$metadata.rules`:
 
    ```json
@@ -103,7 +103,7 @@ Use a decision model when you can. Its results are repeatable and cheap, and the
 | `anthropic` | Claude. Default model: `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
 | `openai` | Any OpenAI-compatible chat endpoint, for example OpenAI, Ollama or vLLM. Set `endpoint` for servers other than OpenAI. Local servers do not need a key | `OPENAI_API_KEY` |
 
-structured-context uses only the provider that you configure. It does not choose a provider from the keys in your environment. Each provider type above works as a judge directly (`{ "judge": { "type": "jev" } }`); see [Model providers and judge](config.md#model-providers-and-judge) to override models, endpoints or keys.
+structured-context uses only the provider that you configure. It does not choose a provider from the keys in your environment. Each provider type above is also a bundled provider, usable as a judge by name (`{ "judge": { "provider": "jev" } }`). To override models, endpoints or keys, add an entry of the same name to `modelProviders` (see [Model providers and judge](config.md#model-providers-and-judge)).
 
 A rule does not choose its judge: that is configuration, not schema. To use a different provider for one run, name it with `--judge`. For example, to get a second opinion from a chat model on one rule and one file:
 

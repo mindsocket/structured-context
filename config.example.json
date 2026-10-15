@@ -18,5 +18,5 @@
     }
   ],
   "schema": "/path/to/custom/schemas/my-general-schema.json",
-  "judge": { "type": "jev" }
+  "judge": { "provider": "jev" }
 }
