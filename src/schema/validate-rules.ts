@@ -147,7 +147,7 @@ export async function validateRules(
       if (judge) pending.push({ node, rules: prechecked.judgeable, found });
     }
 
-    // One judge call for every node, so a batching judge can share requests.
+    // One judge call for every node, so a judge with `evaluateNodes` can share model calls.
     const judged = judge ? await judgeNodes(judge, pending) : [];
     pending.forEach(({ node, found }, i) => {
       for (const j of judged[i] ?? []) {

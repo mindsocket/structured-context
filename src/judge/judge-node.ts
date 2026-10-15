@@ -76,7 +76,7 @@ export async function judgeNode(
 }
 
 /**
- * Judge several nodes at once. A judge with `evaluateBatch` gets every node in one call and may fold them into
+ * Judge several nodes at once. A judge with `evaluateNodes` gets every node in one call and may fold them into
  * fewer requests; any other judge is called once per node. Results align with `items`. A failure marks only the
  * affected node's rules as errors.
  */
@@ -84,7 +84,7 @@ export async function judgeNodes(
   judge: SemanticJudgeProvider,
   items: Array<{ node: SpaceNode; rules: Rule[] }>,
 ): Promise<NodeJudgement[][]> {
-  if (!judge.evaluateBatch) {
+  if (!judge.evaluateNodes) {
     const out: NodeJudgement[][] = [];
     for (const item of items) out.push(await judgeNode(judge, item.node, item.rules));
     return out;
@@ -94,15 +94,15 @@ export async function judgeNodes(
     .filter((a) => a.rules.length > 0);
   const out: NodeJudgement[][] = items.map(() => []);
   if (active.length === 0) return out;
-  let batch: JudgeResults[];
+  let perNode: JudgeResults[];
   try {
-    batch = await judge.evaluateBatch(active.map((a) => ({ node: a.node, rules: a.resolved.map((r) => r.spec) })));
+    perNode = await judge.evaluateNodes(active.map((a) => ({ node: a.node, rules: a.resolved.map((r) => r.spec) })));
   } catch (err) {
     for (const a of active) out[a.index] = errorJudgements(a.rules, errorMessage(err));
     return out;
   }
   active.forEach((a, k) => {
-    out[a.index] = interpret(a.rules, a.resolved, batch[k] ?? {});
+    out[a.index] = interpret(a.rules, a.resolved, perNode[k] ?? {});
   });
   return out;
 }

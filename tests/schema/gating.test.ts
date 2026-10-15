@@ -187,7 +187,7 @@ describe('evaluateRulesWithGating', () => {
     expect(violations.find((v) => v.ruleId === 'global-fail')).toBeDefined();
   });
 
-  describe('batched judging', () => {
+  describe('judging by depth', () => {
     const semanticRule = {
       id: 'sem',
       category: 'best-practice',
@@ -197,7 +197,7 @@ describe('evaluateRulesWithGating', () => {
       verdicts: { pass: 'ok', fail: 'not ok' },
     } as unknown as Rule;
 
-    it('judges each depth in one batch and still gates children of a failing node', async () => {
+    it('judges each depth in one evaluateNodes call and still gates children of a failing node', async () => {
       const goal = makeSpaceNode('Goal', 'goal');
       const oppA = makeSpaceNode('Opp A', 'opportunity', 'Goal');
       const oppB = makeSpaceNode('Opp B', 'opportunity', 'Goal');
@@ -206,12 +206,12 @@ describe('evaluateRulesWithGating', () => {
       const nodes = [goal, oppA, oppB, solA, solB];
       const graph = buildSpaceGraph(nodes, hierarchy);
 
-      const batches: string[][] = [];
+      const calls: string[][] = [];
       const provider: SemanticJudgeProvider = {
-        name: 'batching',
-        evaluate: () => Promise.reject(new Error('expected evaluateBatch')),
-        evaluateBatch: async (inputs) => {
-          batches.push(inputs.map((i) => i.node.title));
+        name: 'multi-node',
+        evaluate: () => Promise.reject(new Error('expected evaluateNodes')),
+        evaluateNodes: async (inputs) => {
+          calls.push(inputs.map((i) => i.node.title));
           return inputs.map((i) =>
             Object.fromEntries(i.rules.map((r) => [r.id, { verdict: i.node.title === 'Opp A' ? 'fail' : 'pass' }])),
           );
@@ -219,7 +219,7 @@ describe('evaluateRulesWithGating', () => {
       };
 
       const { violations, gates } = await evaluateRulesWithGating(nodes, [semanticRule], graph, [], { provider });
-      expect(batches).toEqual([['Goal'], ['Opp A', 'Opp B'], ['Sol B']]);
+      expect(calls).toEqual([['Goal'], ['Opp A', 'Opp B'], ['Sol B']]);
       expect(violations.map((v) => v.file)).toEqual(['Opp A.md']);
       expect(gates).toHaveLength(1);
       expect(gates[0]?.gatedFiles).toEqual(['Sol A.md']);

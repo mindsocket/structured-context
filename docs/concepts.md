@@ -173,6 +173,12 @@ A **semantic rule** (`mode: semantic`) asks a model to judge a node, for example
 
 A **judge** is the model that judges semantic rules: a decision model (Jev) or a chat model (Claude, OpenAI-compatible). For each rule, the judge gives one **verdict** from the rule's `verdicts`, for example `customer-need`, `vague` or `solution`. The rule's `severity` says which verdicts report a violation. Semantic rules cost money, so they are judged only when a run asks for it (`--semantic` or `--judge`); a rule's `check` always runs. The judge is a configured **model provider**: a bundled provider or an entry in `modelProviders`. See [docs/semantic-rules.md](semantic-rules.md).
 
+A **NodeRulesetGroup** is the set of nodes that share the same semantic rule set. A decision model judges one group in as few decision requests as it can.
+
+A **DecisionRequest** is one call to a decision model's API. It carries the state of one or more nodes and a list of decision questions.
+
+A **DecisionQuestion** is one choice question about one node under one semantic rule, inside a decision request.
+
 ### Cascade gating
 
 **Cascade gating** is the mechanism by which a schema failure, hierarchy structure violation, or blocking rule violation on a node suppresses rule evaluation for that node's `hierarchy` subtree. It exists so downstream checks — especially costly semantic (model-judged) rules — aren't run against inputs already known to be invalid.

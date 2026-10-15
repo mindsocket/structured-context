@@ -48,7 +48,7 @@ describe('judgeNodes', () => {
   } as unknown as Rule;
   const other = { ...node, title: 'Other', label: 'other.md' } as SpaceNode;
 
-  it('calls a judge without evaluateBatch once per node', async () => {
+  it('calls a judge without evaluateNodes once per node', async () => {
     const seen: string[] = [];
     const judge: SemanticJudgeProvider = {
       name: 'single',
@@ -65,12 +65,12 @@ describe('judgeNodes', () => {
     expect(out.map((o) => o.length)).toEqual([1, 1]);
   });
 
-  it('sends every node to evaluateBatch at once and maps results back by position', async () => {
+  it('sends every node to evaluateNodes at once and maps results back by position', async () => {
     let calls = 0;
     const judge: SemanticJudgeProvider = {
-      name: 'batch',
+      name: 'multi-node',
       evaluate: () => Promise.reject(new Error('unused')),
-      evaluateBatch: (inputs) => {
+      evaluateNodes: (inputs) => {
         calls++;
         return Promise.resolve(
           inputs.map((i) => ({
@@ -90,11 +90,11 @@ describe('judgeNodes', () => {
     expect(out[2]?.[0]).toMatchObject({ failed: true, verdict: 'fail' });
   });
 
-  it('marks every rule as an error, not a pass, when the batch call throws', async () => {
+  it('marks every rule as an error, not a pass, when the evaluateNodes call throws', async () => {
     const judge: SemanticJudgeProvider = {
-      name: 'batch',
+      name: 'multi-node',
       evaluate: () => Promise.reject(new Error('unused')),
-      evaluateBatch: () => Promise.reject(new Error('boom')),
+      evaluateNodes: () => Promise.reject(new Error('boom')),
     };
     const out = await judgeNodes(judge, [
       { node: node as SpaceNode, rules: [rule] },

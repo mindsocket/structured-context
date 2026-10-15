@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import { createModelProvider } from '../../../src/judge/factory';
-import { JEV_REQUEST_MAX_QUESTIONS, JevJudgeProvider } from '../../../src/judge/provider/jev';
+import { JEV_DECISION_REQUEST_MAX_QUESTIONS, JevJudgeProvider } from '../../../src/judge/provider/jev';
 import { graded, node, passFailRule } from '../helpers';
 
 const realFetch = globalThis.fetch;
@@ -81,7 +81,7 @@ describe('JevJudgeProvider', () => {
     );
   });
 
-  describe('evaluateBatch', () => {
+  describe('evaluateNodes', () => {
     const jev = () => new JevJudgeProvider({ api: 'openrouter-decisions', apiKey: 'k' });
     const nodeNamed = (title: string, extra: Record<string, unknown> = {}) => ({
       ...node,
@@ -105,7 +105,7 @@ describe('JevJudgeProvider', () => {
 
     it('shares one request between nodes with the same rule set, one question per node and rule', async () => {
       const bodies = answering();
-      const results = await jev().evaluateBatch([
+      const results = await jev().evaluateNodes([
         { node: nodeNamed('A'), rules: [passFailRule, graded] },
         { node: nodeNamed('B'), rules: [passFailRule, graded] },
       ]);
@@ -128,7 +128,7 @@ describe('JevJudgeProvider', () => {
 
     it('sends nodes with different rule sets in separate requests', async () => {
       const bodies = answering();
-      await jev().evaluateBatch([
+      await jev().evaluateNodes([
         { node: nodeNamed('A'), rules: [passFailRule] },
         { node: nodeNamed('B'), rules: [graded] },
       ]);
@@ -137,27 +137,27 @@ describe('JevJudgeProvider', () => {
 
     it('sends a lone node as a plain single-node request', async () => {
       const bodies = answering();
-      await jev().evaluateBatch([{ node: nodeNamed('A'), rules: [passFailRule] }]);
+      await jev().evaluateNodes([{ node: nodeNamed('A'), rules: [passFailRule] }]);
       expect(bodies[0]!.state.nodes).toBeUndefined();
       expect(Object.keys(bodies[0]!.questions)).toEqual(['customer-voice']);
     });
 
-    it('splits a batch by the question cap without splitting a node', async () => {
+    it('splits a NodeRulesetGroup by the question cap without splitting a node', async () => {
       const bodies = answering();
-      const count = JEV_REQUEST_MAX_QUESTIONS + 5;
-      const results = await jev().evaluateBatch(
+      const count = JEV_DECISION_REQUEST_MAX_QUESTIONS + 5;
+      const results = await jev().evaluateNodes(
         Array.from({ length: count }, (_, i) => ({ node: nodeNamed(`N${i}`), rules: [passFailRule] })),
       );
-      expect(bodies.map((b) => Object.keys(b.questions).length)).toEqual([JEV_REQUEST_MAX_QUESTIONS, 5]);
+      expect(bodies.map((b) => Object.keys(b.questions).length)).toEqual([JEV_DECISION_REQUEST_MAX_QUESTIONS, 5]);
       expect(results).toHaveLength(count);
       expect(results.every((r) => 'verdict' in r['customer-voice']!)).toBe(true);
     });
 
-    it('splits a batch by estimated size, and sends an oversized node alone and whole', async () => {
+    it('splits a NodeRulesetGroup by estimated size, and sends an oversized node alone and whole', async () => {
       const bodies = answering();
       const big = (title: string) => nodeNamed(title, { body: 'x'.repeat(60_000) }); // ~15k tokens each
       const huge = nodeNamed('Huge', { body: 'y'.repeat(200_000) }); // ~50k tokens, over the cap alone
-      await jev().evaluateBatch([
+      await jev().evaluateNodes([
         { node: big('A'), rules: [passFailRule] },
         { node: big('B'), rules: [passFailRule] },
         { node: big('C'), rules: [passFailRule] },
@@ -169,7 +169,7 @@ describe('JevJudgeProvider', () => {
 
     it('maps a failed request to errors on its own nodes only', async () => {
       answering((body) => JSON.stringify(body).includes('"title":"A"'));
-      const results = await jev().evaluateBatch([
+      const results = await jev().evaluateNodes([
         { node: nodeNamed('A', { body: 'x'.repeat(100_000) }), rules: [passFailRule] },
         { node: nodeNamed('B', { body: 'x'.repeat(100_000) }), rules: [passFailRule] },
       ]);

@@ -278,13 +278,13 @@ export async function evaluateRulesWithGating(
 
   /**
    * Evaluate a set of nodes whose gating is already decided. Their semantic rules go to the judge together,
-   * so a batching judge can share requests; violations are recorded in node order.
+   * so a judge with `evaluateNodes` can share model calls; violations are recorded in node order.
    */
-  async function evaluateNodes(batch: readonly SpaceNode[]): Promise<Array<{ blockingRuleId?: string }>> {
+  async function evaluateNodes(wave: readonly SpaceNode[]): Promise<Array<{ blockingRuleId?: string }>> {
     const prepared: PreparedNode[] = [];
-    for (const node of batch) prepared.push(await prepareNode(node));
+    for (const node of wave) prepared.push(await prepareNode(node));
     if (judge) {
-      const pending = batch.map((node, i) => ({ node, rules: prepared[i]!.semantic }));
+      const pending = wave.map((node, i) => ({ node, rules: prepared[i]!.semantic }));
       const judgements = await judgeNodes(judge, pending);
       prepared.forEach((p, i) => {
         p.judged(judgements[i] ?? []);
