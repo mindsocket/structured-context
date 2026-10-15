@@ -167,3 +167,74 @@ describe('rule expression errors', () => {
     expect(byId('bad-when')).toEqual([expect.objectContaining({ file: 'T.md', severity: 'error' })]);
   });
 });
+
+describe('semantic rule check precondition', () => {
+  const gated = {
+    id: 'step-fit',
+    type: 'step',
+    mode: 'semantic',
+    category: 'coherence',
+    description: 'Step fits its task',
+    check: '$exists(current.owner)',
+    gatesDescendants: true,
+  };
+  const judgedLabels = (judge: FakeJudgeProvider) => judge.callHistory.map((c) => c.node.label);
+
+  it('judges when the check passes', async () => {
+    const { context } = setup([gated], { frontmatter: { S: 'owner: sam' } });
+    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'fail' } });
+    const result = await validateSpace(context(), { judge });
+    expect(judgedLabels(judge)).toEqual(['S.md']);
+    expect(result.ruleViolations).toEqual([expect.objectContaining({ ruleId: 'step-fit', verdict: 'fail' })]);
+  });
+
+  it('reports a failing check at the rule severity without calling the judge', async () => {
+    const { context } = setup([gated]);
+    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'fail' } });
+    const result = await validateSpace(context(), { judge });
+    expect(judge.callHistory).toHaveLength(0);
+    expect(result.ruleViolations).toEqual([
+      {
+        file: 'S.md',
+        ruleId: 'step-fit',
+        category: 'coherence',
+        severity: 'warning',
+        description: 'Step fits its task',
+      },
+    ]);
+  });
+
+  it('reports a failing check at the most severe mapped severity', async () => {
+    const { context } = setup([{ ...stepRule, check: '$exists(current.owner)' }]);
+    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+    const result = await validateSpace(context(), { judge });
+    expect(judge.callHistory).toHaveLength(0);
+    expect(result.ruleViolations).toEqual([expect.objectContaining({ ruleId: 'step-fit', severity: 'error' })]);
+    expect(result.ruleViolations[0]?.verdict).toBeUndefined();
+  });
+
+  it('does not gate descendants when the check fails', async () => {
+    const { context } = setup([{ ...gated, id: 'task-fit', type: 'task' }, stepRule]);
+    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+    const result = await validateSpace(context(), { judge });
+    expect(judgedLabels(judge)).toEqual(['S.md']);
+    expect(result.ruleViolations.map((v) => v.ruleId).sort()).toEqual(['step-fit', 'task-fit']);
+  });
+
+  it('evaluates when before check', async () => {
+    const { context } = setup([{ ...gated, when: 'false' }]);
+    const judge = new FakeJudgeProvider();
+    const result = await validateSpace(context(), { judge });
+    expect(judge.callHistory).toHaveLength(0);
+    expect(result.ruleViolations).toEqual([]);
+  });
+
+  it('reports a check that cannot be evaluated as an error without judging', async () => {
+    const { context } = setup([{ ...gated, check: '$notAFunction(' }]);
+    const judge = new FakeJudgeProvider();
+    const result = await validateSpace(context(), { judge });
+    expect(judge.callHistory).toHaveLength(0);
+    expect(result.ruleViolations[0]).toMatchObject({ file: 'S.md', severity: 'error' });
+    expect(result.ruleViolations[0]?.description).toContain('Rule error');
+  });
+});

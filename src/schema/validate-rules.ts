@@ -1,7 +1,12 @@
 import { judgeNode } from '../judge/judge-node';
 import type { SemanticJudgeProvider } from '../judge/types';
 import type { Rule, RuleViolation, SpaceNode } from '../types';
-import { buildEvalContext, expressionErrorViolation, tryEvaluateExpression } from './evaluate-rule';
+import {
+  applySemanticChecks,
+  buildEvalContext,
+  expressionErrorViolation,
+  tryEvaluateExpression,
+} from './evaluate-rule';
 import { ruleSeverity } from './rule-severity';
 
 export { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity } from './rule-severity';
@@ -131,7 +136,11 @@ export async function validateRules(
       // Safe cascading default: gate semantic evaluation if node failed upstream checks
       if (failedNodeLabels.has(node.label)) continue;
 
-      for (const j of await judgeNode(judge, node, applicable)) {
+      // A semantic rule's `check` fails fast before the judge; its violation does not gate.
+      const prechecked = await applySemanticChecks(applicable, node, nodes, nodeIndex);
+      violations.push(...prechecked.violations);
+
+      for (const j of await judgeNode(judge, node, prechecked.judgeable)) {
         if (!j.failed) continue;
         violations.push({
           file: node.label,

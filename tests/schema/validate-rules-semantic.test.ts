@@ -152,4 +152,33 @@ describe('validateRules - semantic evaluation', () => {
     expect(fake.callHistory).toHaveLength(1);
     expect(fake.callHistory[0]?.node.label).toBe('valid-opp.md');
   });
+
+  it('applies a semantic rule check before the judge without gating the node', async () => {
+    const checked: Rule[] = [
+      {
+        id: 'opportunity-customer-voice',
+        category: 'best-practice',
+        mode: 'semantic',
+        type: 'opportunity',
+        check: 'current.source = "User interview with Jane"',
+        description: 'Must be in customer voice',
+      },
+    ];
+    const fake = new FakeJudgeProvider({ pass: false, evidence: 'Not customer voice' });
+
+    const violations = await validateRules(sampleNodes, checked, { judge: fake });
+
+    // bad-opp.md fails the check: reported at the rule severity, never sent to the judge.
+    expect(fake.callHistory.map((c) => c.node.label)).toEqual(['valid-opp.md']);
+    expect(violations).toEqual([
+      expect.objectContaining({ file: 'valid-opp.md', evidence: 'Not customer voice' }),
+      {
+        file: 'bad-opp.md',
+        ruleId: 'opportunity-customer-voice',
+        category: 'best-practice',
+        severity: 'info',
+        description: 'Must be in customer voice',
+      },
+    ]);
+  });
 });
