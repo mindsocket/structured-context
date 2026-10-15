@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import { createModelProvider } from '../../../src/judge/factory';
-import { JEV_BATCH_MAX_QUESTIONS, JevJudgeProvider } from '../../../src/judge/provider/jev';
+import { JEV_REQUEST_MAX_QUESTIONS, JevJudgeProvider } from '../../../src/judge/provider/jev';
 import { graded, node, passFailRule } from '../helpers';
 
 const realFetch = globalThis.fetch;
@@ -142,18 +142,18 @@ describe('JevJudgeProvider', () => {
       expect(Object.keys(bodies[0]!.questions)).toEqual(['customer-voice']);
     });
 
-    it('splits a group by the question cap without splitting a node', async () => {
+    it('splits a batch by the question cap without splitting a node', async () => {
       const bodies = answering();
-      const count = JEV_BATCH_MAX_QUESTIONS + 5;
+      const count = JEV_REQUEST_MAX_QUESTIONS + 5;
       const results = await jev().evaluateBatch(
         Array.from({ length: count }, (_, i) => ({ node: nodeNamed(`N${i}`), rules: [passFailRule] })),
       );
-      expect(bodies.map((b) => Object.keys(b.questions).length)).toEqual([JEV_BATCH_MAX_QUESTIONS, 5]);
+      expect(bodies.map((b) => Object.keys(b.questions).length)).toEqual([JEV_REQUEST_MAX_QUESTIONS, 5]);
       expect(results).toHaveLength(count);
       expect(results.every((r) => 'verdict' in r['customer-voice']!)).toBe(true);
     });
 
-    it('splits a group by estimated size, and sends an oversized node alone and whole', async () => {
+    it('splits a batch by estimated size, and sends an oversized node alone and whole', async () => {
       const bodies = answering();
       const big = (title: string) => nodeNamed(title, { body: 'x'.repeat(60_000) }); // ~15k tokens each
       const huge = nodeNamed('Huge', { body: 'y'.repeat(200_000) }); // ~50k tokens, over the cap alone

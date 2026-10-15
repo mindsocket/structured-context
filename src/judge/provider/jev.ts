@@ -15,15 +15,15 @@ export const JEV_LATEST = 'jev-latest';
 export const OPENROUTER_DECISIONS_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
 
 /**
- * Estimated input-token cap (characters / 4) for one batched request. Conservative: issue #152 cites a
+ * Estimated input-token cap (characters / 4) for one request's `state` plus `questions`. Conservative: issue #152 cites a
  * "32k token limit for state plus questions" for Jev, which is unverified. measured: a live probe accepted a
  * 250k-token state through OpenRouter with HTTP 200, so the real limit is higher and this cap is a cost and
  * latency guard, not a hard limit.
  */
-export const JEV_BATCH_MAX_TOKENS = 32_000;
+export const JEV_REQUEST_MAX_ESTIMATED_TOKENS = 32_000;
 
-/** Cap on questions per batched request. Sourced from the jev-rank reference client (20 pairs x 2 = 40 per request). */
-export const JEV_BATCH_MAX_QUESTIONS = 40;
+/** Cap on the number of questions in one request. Sourced from the jev-rank reference client (20 pairs x 2 = 40 per request). */
+export const JEV_REQUEST_MAX_QUESTIONS = 40;
 
 type JevChoiceAnswer = {
   type?: string;
@@ -62,28 +62,28 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
   }
 
   /**
-   * Judge many nodes with fewer requests. Nodes that share the same semantic rule set go into one request,
-   * with every node under `state.nodes` and one question per node and rule. A group is split into chunks by
-   * `JEV_BATCH_MAX_TOKENS` and `JEV_BATCH_MAX_QUESTIONS`, never within a node. A node alone in its chunk, even
+   * Judge many nodes with fewer requests. Nodes that share the same semantic rule set form a batch, sent as one request,
+   * with every node under `state.nodes` and one question per node and rule. A batch is split into requests by
+   * `JEV_REQUEST_MAX_ESTIMATED_TOKENS` and `JEV_REQUEST_MAX_QUESTIONS`, never within a node. A node alone in its request, even
    * one over the cap, is sent as a plain single-node request. A failed request marks only its own nodes' rules
    * as errors.
    */
   async evaluateBatch(inputs: SemanticJudgeInput[]): Promise<Array<Record<string, SemanticJudgeResult>>> {
     const results: Array<Record<string, SemanticJudgeResult>> = inputs.map(() => ({}));
-    const groups = new Map<string, number[]>();
+    const batches = new Map<string, number[]>();
     inputs.forEach((input, i) => {
       if (input.rules.length === 0) return;
       const key = JSON.stringify(input.rules);
-      groups.set(key, [...(groups.get(key) ?? []), i]);
+      batches.set(key, [...(batches.get(key) ?? []), i]);
     });
 
-    for (const indices of groups.values()) {
-      for (const chunk of chunkGroup(indices, inputs)) {
+    for (const indices of batches.values()) {
+      for (const chunk of splitIntoRequests(indices, inputs)) {
         try {
           if (chunk.length === 1) {
             results[chunk[0]!] = await this.evaluate(inputs[chunk[0]!]!);
           } else {
-            await this.evaluateChunk(chunk, inputs, results);
+            await this.evaluateRequest(chunk, inputs, results);
           }
         } catch (err) {
           const error = err instanceof Error ? err.message : String(err);
@@ -96,7 +96,7 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
     return results;
   }
 
-  private async evaluateChunk(
+  private async evaluateRequest(
     chunk: number[],
     inputs: SemanticJudgeInput[],
     results: Array<Record<string, SemanticJudgeResult>>,
@@ -164,8 +164,8 @@ function toResult(rule: SemanticRuleSpec, answer: JevChoiceAnswer | undefined): 
 
 const estimateTokens = (value: unknown) => Math.ceil(JSON.stringify(value).length / 4);
 
-/** Split same-rule-set inputs into request-sized chunks, in order, never splitting a node. */
-function chunkGroup(indices: number[], inputs: SemanticJudgeInput[]): number[][] {
+/** Split one batch (inputs sharing a rule set) into request-sized runs, in order, never splitting a node. */
+function splitIntoRequests(indices: number[], inputs: SemanticJudgeInput[]): number[][] {
   const chunks: number[][] = [];
   let current: number[] = [];
   let tokens = 0;
@@ -174,7 +174,10 @@ function chunkGroup(indices: number[], inputs: SemanticJudgeInput[]): number[][]
     const input = inputs[i]!;
     const cost = estimateTokens(nodeState(input.node)) + estimateTokens(input.rules);
     const count = input.rules.length;
-    if (current.length > 0 && (tokens + cost > JEV_BATCH_MAX_TOKENS || questions + count > JEV_BATCH_MAX_QUESTIONS)) {
+    if (
+      current.length > 0 &&
+      (tokens + cost > JEV_REQUEST_MAX_ESTIMATED_TOKENS || questions + count > JEV_REQUEST_MAX_QUESTIONS)
+    ) {
       chunks.push(current);
       current = [];
       tokens = 0;
