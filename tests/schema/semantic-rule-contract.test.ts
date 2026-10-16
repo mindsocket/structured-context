@@ -104,7 +104,7 @@ describe('rule contract: expression and semantic', () => {
   });
 
   it('accepts scope and includeContent on a semantic part, and nowhere else', () => {
-    const scope = ['parent', 'siblings', 'children', 'ancestors', 'descendants'];
+    const scope = ['parent', 'siblings', 'children', 'ancestors', 'descendants', 'branch'];
     expect(load('scope-ok', { ...base, semantic: { scope, includeContent: 'fullScope' } }).rules).toHaveLength(1);
     expect(load('scope-empty', { ...base, semantic: { scope: [], includeContent: 'nodeOnly' } }).rules).toHaveLength(1);
     expect(load('content-true', { ...base, semantic: { includeContent: true } }).rules).toHaveLength(1);

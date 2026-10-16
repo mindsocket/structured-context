@@ -122,8 +122,11 @@ By default the model sees the evaluated node alone. Use `semantic.scope` to send
 | `children` | The direct children |
 | `ancestors` | The parents, their parents, and so on |
 | `descendants` | The children, their children, and so on |
+| `branch` | The ancestors and the descendants |
 
 Entries add together. A node that matches several entries is sent once, with every relation it has. An empty or absent `scope` sends the evaluated node alone. Other relationships are not followed. A schema without a hierarchy has no related nodes.
+
+A wide scope can send many nodes, and every node sends all its schema data. Prefer to attach a rule at the level where `parent`, `children` or `ancestors` covers what it needs, rather than `descendants` or `branch` on a node near the top of a large tree.
 
 A related node carries all its schema data, including its title and type. The model provider gets the related nodes as a flat list, each with its relation to the evaluated node. Scope sends node data only, never the verdicts of other rules, and [gating](rules.md#cascade-gating) does not change which nodes it selects.
 

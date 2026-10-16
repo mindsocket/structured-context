@@ -175,7 +175,7 @@ A **semantic rule** is a rule with a `semantic` part. It asks a model to evaluat
 
 A **model provider** evaluates semantic rules: a decision model (Jev) or a chat model (Claude, OpenAI-compatible). It is a bundled provider or an entry in `modelProviders`. For each rule, the model gives one **verdict** from the rule's `semantic.verdicts`, for example `customer-need`, `vague` or `solution`. The rule's `semantic.severity` says which verdicts report a violation. Semantic rules cost money, so they are evaluated only when a run asks for it (`--semantic`); a rule's `expression` always runs. See [docs/semantic-rules.md](semantic-rules.md).
 
-The **evaluated node** is the node a semantic rule is judged on. A rule's `semantic.scope` adds **related nodes** (parent, siblings, children, ancestors, descendants) along the main hierarchy's edges, and `semantic.includeContent` chooses whose body is sent. See [Related nodes and content](semantic-rules.md#related-nodes-and-content).
+The **evaluated node** is the node a semantic rule is judged on. A rule's `semantic.scope` adds **related nodes** (parent, siblings, children, ancestors, descendants, or the whole branch) along the main hierarchy's edges, and `semantic.includeContent` chooses whose body is sent. See [Related nodes and content](semantic-rules.md#related-nodes-and-content).
 
 A **node ruleset group** is the set of nodes that share the same semantic rules. It forms within one evaluation step of [cascade gating](#cascade-gating): one hierarchy depth, or the set of non-hierarchy nodes. Nodes are keyed on the rules left after `when` and `expression` filtering. A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates one group in as few decision requests as it can.
 

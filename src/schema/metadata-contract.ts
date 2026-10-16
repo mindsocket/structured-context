@@ -60,8 +60,8 @@ const SEVERITY_SCHEMA = { enum: ['error', 'warning', 'info'] } as const;
 /** The verdicts the evaluation reserves besides a rule's own; a verdict map may set a severity for them. */
 export const RESERVED_VERDICTS = ['missing-context'] as const;
 
-/** Related-node kinds a semantic rule's `scope` can add: main-hierarchy edges only. */
-export const SEMANTIC_SCOPES = ['parent', 'siblings', 'children', 'ancestors', 'descendants'] as const;
+/** Related-node kinds a semantic rule's `scope` can add: main-hierarchy edges only. `branch` is ancestors plus descendants. */
+export const SEMANTIC_SCOPES = ['parent', 'siblings', 'children', 'ancestors', 'descendants', 'branch'] as const;
 
 const VERDICT_SEVERITY_SCHEMA = { enum: ['error', 'warning', 'info', 'ignore'] } as const;
 

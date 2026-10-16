@@ -94,6 +94,15 @@ describe('ruleContext', () => {
     });
     expect(ruleContext(rule({ includeContent: true })).content).toBe('fullScope');
   });
+
+  it('expands branch to ancestors and descendants', () => {
+    expect(ruleContext(rule({ scope: ['branch'] })).scope).toEqual(['ancestors', 'descendants']);
+    expect(ruleContext(rule({ scope: ['branch', 'parent', 'ancestors'] })).scope).toEqual([
+      'parent',
+      'ancestors',
+      'descendants',
+    ]);
+  });
 });
 
 describe('judgeNodes with scope', () => {

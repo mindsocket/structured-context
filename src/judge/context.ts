@@ -4,7 +4,7 @@ import type { SpaceGraph } from '../space-graph';
 import type { Rule, SpaceNode } from '../types';
 import type { RelatedNode, SemanticJudgeInput } from './types';
 
-export type SemanticScope = (typeof SEMANTIC_SCOPES)[number];
+export type SemanticScope = Exclude<(typeof SEMANTIC_SCOPES)[number], 'branch'>;
 export type ContentMode = 'none' | 'nodeOnly' | 'fullScope';
 
 /** What a rule asks to send besides the evaluated node's data. */
@@ -13,12 +13,17 @@ export interface RuleContext {
   content: ContentMode;
 }
 
-/** The related nodes and bodies a semantic rule asks for. `includeContent: true` means `fullScope`. */
+/**
+ * The related nodes and bodies a semantic rule asks for. `branch` expands to `ancestors` and `descendants`;
+ * `includeContent: true` means `fullScope`.
+ */
 export function ruleContext(rule: Rule): RuleContext {
   const semantic = ruleSemantic(rule);
   const include = semantic?.includeContent;
+  const asked = new Set<string>(semantic?.scope ?? []);
+  if (asked.has('branch')) asked.add('ancestors').add('descendants');
   return {
-    scope: SEMANTIC_SCOPES.filter((s) => semantic?.scope?.includes(s)),
+    scope: SEMANTIC_SCOPES.filter((s): s is SemanticScope => s !== 'branch' && asked.has(s)),
     content: include === undefined ? 'none' : include === true ? 'fullScope' : include,
   };
 }

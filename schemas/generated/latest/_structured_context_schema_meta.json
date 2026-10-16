@@ -260,7 +260,7 @@
                       "scope": {
                         "type": "array",
                         "items": {
-                          "enum": ["parent", "siblings", "children", "ancestors", "descendants"]
+                          "enum": ["parent", "siblings", "children", "ancestors", "descendants", "branch"]
                         },
                         "uniqueItems": true
                       },
