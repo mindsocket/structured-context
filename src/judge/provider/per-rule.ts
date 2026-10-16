@@ -7,13 +7,13 @@ import type { SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult, Se
 export abstract class PerRuleJudgeProvider implements SemanticJudgeProvider {
   abstract readonly name: string;
 
-  protected abstract judgeRule(node: SemanticJudgeInput['node'], rule: SemanticRuleSpec): Promise<SemanticJudgeResult>;
+  protected abstract judgeRule(input: SemanticJudgeInput, rule: SemanticRuleSpec): Promise<SemanticJudgeResult>;
 
   async evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>> {
     const results: Record<string, SemanticJudgeResult> = {};
     for (const rule of input.rules) {
       try {
-        results[rule.id] = await this.judgeRule(input.node, rule);
+        results[rule.id] = await this.judgeRule(input, rule);
       } catch (err) {
         results[rule.id] = { error: err instanceof Error ? err.message : String(err) };
       }

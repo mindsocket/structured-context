@@ -29,9 +29,9 @@ export class OpenAIJudgeProvider extends PerRuleJudgeProvider {
     this.endpoint = base.endsWith('/chat/completions') ? base : `${base.replace(/\/+$/, '')}/chat/completions`;
   }
 
-  protected async judgeRule(node: SemanticJudgeInput['node'], rule: SemanticRuleSpec): Promise<SemanticJudgeResult> {
+  protected async judgeRule(input: SemanticJudgeInput, rule: SemanticRuleSpec): Promise<SemanticJudgeResult> {
     const systemPrompt = buildJudgeSystemPrompt();
-    const userPrompt = buildJudgeUserPrompt(node, rule);
+    const userPrompt = buildJudgeUserPrompt(input, rule);
 
     const headers: Record<string, string> = {
       'content-type': 'application/json',

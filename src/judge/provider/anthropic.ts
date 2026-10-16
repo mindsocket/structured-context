@@ -24,7 +24,7 @@ export class AnthropicJudgeProvider extends PerRuleJudgeProvider {
     this.endpoint = options.endpoint || ANTHROPIC_MESSAGES_ENDPOINT;
   }
 
-  protected async judgeRule(node: SemanticJudgeInput['node'], rule: SemanticRuleSpec): Promise<SemanticJudgeResult> {
+  protected async judgeRule(input: SemanticJudgeInput, rule: SemanticRuleSpec): Promise<SemanticJudgeResult> {
     const res = await fetch(this.endpoint, {
       method: 'POST',
       headers: {
@@ -36,7 +36,7 @@ export class AnthropicJudgeProvider extends PerRuleJudgeProvider {
         model: this.model,
         max_tokens: 1024,
         system: buildJudgeSystemPrompt(),
-        messages: [{ role: 'user', content: buildJudgeUserPrompt(node, rule) }],
+        messages: [{ role: 'user', content: buildJudgeUserPrompt(input, rule) }],
       }),
     });
 

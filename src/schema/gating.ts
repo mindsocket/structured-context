@@ -280,7 +280,7 @@ export async function evaluateRulesWithGating(
     for (const node of nodes) prepared.push(await prepareNode(node));
     if (judge) {
       const pending = nodes.map((node, i) => ({ node, rules: prepared[i]!.semantic }));
-      const judgements = await judgeNodes(judge, pending);
+      const judgements = await judgeNodes(judge, pending, graph);
       prepared.forEach((p, i) => {
         p.judged(judgements[i] ?? []);
       });

@@ -1,5 +1,6 @@
 import { judgeNodes } from '../judge/judge-node';
 import type { SemanticJudgeProvider } from '../judge/types';
+import { buildSpaceGraph } from '../space-graph';
 import type { Rule, RuleViolation, SpaceNode } from '../types';
 import {
   buildEvalContext,
@@ -109,7 +110,7 @@ export async function validateRules(
     }
 
     // One provider call for every node, so a provider with `evaluateNodes` can share model calls.
-    const judged = await judgeNodes(judge, pending);
+    const judged = await judgeNodes(judge, pending, buildSpaceGraph(nodes, undefined));
     pending.forEach(({ node, found }, i) => {
       for (const j of judged[i] ?? []) {
         if (!j.failed) continue;

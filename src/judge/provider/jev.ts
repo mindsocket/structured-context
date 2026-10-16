@@ -1,5 +1,6 @@
 import type {
   HydratedProvider,
+  RelatedNode,
   SemanticJudgeInput,
   SemanticJudgeProvider,
   SemanticJudgeResult,
@@ -54,7 +55,7 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
       const part = rules.slice(start, start + JEV_DECISION_REQUEST_MAX_QUESTIONS);
       const questions: Record<string, unknown> = {};
       for (const rule of part) questions[rule.id] = decisionQuestion(rule, rule.rubric || rule.description);
-      const data = await this.post(nodeState(node), questions);
+      const data = await this.post(nodeState(node, input.related), questions);
       for (const rule of part) results[rule.id] = toResult(rule, data.answers?.[rule.id]);
     }
     return results;
@@ -106,7 +107,7 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
     const questions: Record<string, unknown> = {};
     requestInputs.forEach((inputIndex, k) => {
       const input = inputs[inputIndex]!;
-      nodes[`n${k}`] = nodeState(input.node);
+      nodes[`n${k}`] = nodeState(input.node, input.related);
       for (const rule of input.rules) {
         questions[`${rule.id}__n${k}`] = decisionQuestion(
           rule,
@@ -138,12 +139,20 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
 
 type JevResponse = { answers?: Record<string, JevChoiceAnswer> };
 
-function nodeState(node: SemanticJudgeInput['node']) {
+function nodeState(node: SemanticJudgeInput['node'], related: RelatedNode[] = []) {
   return {
     title: node.title,
     type: node.resolvedType,
     parents: node.resolvedParents?.map((p) => p.title) ?? [],
     ...node.schemaData,
+    ...(related.length > 0 && {
+      relatedNodes: related.map((r) => ({
+        relation: r.relations.join(', '),
+        title: r.title,
+        type: r.type,
+        ...r.data,
+      })),
+    }),
   };
 }
 
@@ -173,7 +182,7 @@ function planDecisionRequests(indices: number[], inputs: SemanticJudgeInput[]): 
   let questions = 0;
   for (const i of indices) {
     const input = inputs[i]!;
-    const cost = estimateTokens(nodeState(input.node)) + estimateTokens(input.rules);
+    const cost = estimateTokens(nodeState(input.node, input.related)) + estimateTokens(input.rules);
     const count = input.rules.length;
     if (
       current.length > 0 &&

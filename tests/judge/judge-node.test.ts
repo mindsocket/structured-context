@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'bun:test';
-import { judgeNode, judgeNodes, type NodeJudgement } from '../../src/judge/judge-node';
+import { judgeNodes as judgeNodesIn, type NodeJudgement } from '../../src/judge/judge-node';
 import type { SemanticJudgeProvider, SemanticJudgeResult } from '../../src/judge/types';
 import type { Rule } from '../../src/schema/metadata-contract';
+import { buildSpaceGraph } from '../../src/space-graph';
 import type { SpaceNode } from '../../src/types';
 import { node, passFailRule } from './helpers';
 
@@ -13,6 +14,12 @@ function canned(results: Record<string, SemanticJudgeResult>): SemanticJudgeProv
       Promise.resolve(Object.fromEntries(input.rules.map((r) => [r.id, results[r.id] ?? { verdict: 'pass' }]))),
   };
 }
+
+const graph = buildSpaceGraph([], undefined);
+const judgeNodes = (j: SemanticJudgeProvider, items: Array<{ node: SpaceNode; rules: Rule[] }>) =>
+  judgeNodesIn(j, items, graph);
+const judgeNode = async (j: SemanticJudgeProvider, n: SpaceNode, rules: Rule[]) =>
+  (await judgeNodes(j, [{ node: n, rules }]))[0] ?? [];
 
 describe('judgeNode', () => {
   it('treats an unknown verdict as a judge error, not a pass', async () => {
