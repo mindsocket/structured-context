@@ -54,7 +54,9 @@ describe('createModelProvider', () => {
       throw new Error('stop');
     }) as unknown as typeof fetch;
     try {
-      const judge = createJudge({ judge: { provider: 'openrouter-jev' } }, {}, undefined, { OPENROUTER_API_KEY: 'k' });
+      const judge = createJudge({ semantic: { provider: 'openrouter-jev' } }, {}, undefined, {
+        OPENROUTER_API_KEY: 'k',
+      });
       await judge
         .evaluate({
           node: {
@@ -109,7 +111,7 @@ describe('createModelProvider', () => {
 describe('createJudge', () => {
   const config = {
     modelProviders: { mine: { api: 'openrouter-decisions' }, claude: { api: 'anthropic-messages' } } as const,
-    judge: { provider: 'claude' },
+    semantic: { provider: 'claude' },
   };
   const env = { OPENROUTER_API_KEY: 'r', ANTHROPIC_API_KEY: 'a', TYPESAFE_API_KEY: 't' };
 
@@ -118,27 +120,27 @@ describe('createJudge', () => {
   });
 
   it("uses the space's judge over the top-level one, and a run's over both", () => {
-    const space = { judge: { provider: 'mine' } };
+    const space = { semantic: { provider: 'mine' } };
     expect(createJudge(config, space, undefined, env).name).toBe('jev');
     expect(createJudge(config, space, 'claude', env).name).toBe('anthropic');
   });
 
   it('accepts a bundled provider as the judge, with the type defaults', () => {
-    expect(createJudge({}, { judge: { provider: 'openrouter-jev' } }, undefined, env).name).toBe('jev');
-    expect(createJudge({ judge: { provider: 'anthropic' } }, {}, undefined, env).name).toBe('anthropic');
+    expect(createJudge({}, { semantic: { provider: 'openrouter-jev' } }, undefined, env).name).toBe('jev');
+    expect(createJudge({ semantic: { provider: 'anthropic' } }, {}, undefined, env).name).toBe('anthropic');
   });
 
   it('ships the pinned and env variants of each vendor bundle', () => {
-    expect(createJudge({}, { judge: { provider: 'anthropic-haiku-5-5' } }, undefined, env).name).toBe('anthropic');
-    expect(createJudge({}, { judge: { provider: 'anthropic-env' } }, undefined, env).name).toBe('anthropic');
-    expect(createJudge({}, { judge: { provider: 'openai-env' } }, undefined, env).name).toBe('openai');
-    expect(createJudge({}, { judge: { provider: 'typesafe-jev' } }, undefined, env).name).toBe('jev');
+    expect(createJudge({}, { semantic: { provider: 'anthropic-haiku-5-5' } }, undefined, env).name).toBe('anthropic');
+    expect(createJudge({}, { semantic: { provider: 'anthropic-env' } }, undefined, env).name).toBe('anthropic');
+    expect(createJudge({}, { semantic: { provider: 'openai-env' } }, undefined, env).name).toBe('openai');
+    expect(createJudge({}, { semantic: { provider: 'typesafe-jev' } }, undefined, env).name).toBe('jev');
   });
 
   it('lets a configured model provider replace a bundled provider of the same name, keeping type defaults for fields it leaves out', () => {
     const augmented = {
       modelProviders: { anthropic: { api: 'anthropic-messages', model: 'claude-sonnet-5-5' } } as const,
-      judge: { provider: 'anthropic' },
+      semantic: { provider: 'anthropic' },
     };
     expect(createJudge(augmented, {}, undefined, env).name).toBe('anthropic');
   });
@@ -147,7 +149,7 @@ describe('createJudge', () => {
     const keys = { ANTHROPIC_API_KEY: 'a', OPENAI_API_KEY: 'o', OPENROUTER_API_KEY: 'r' };
     expect(() => createJudge({}, {}, undefined, keys)).toThrow(JudgeConfigError);
     expect(() => createJudge({ modelProviders: config.modelProviders }, {}, undefined, keys)).toThrow(
-      'No judge configured',
+      '--semantic needs a model provider',
     );
   });
 
@@ -161,25 +163,25 @@ describe('createJudge', () => {
   });
 
   it('does not bundle the test-only fake provider', () => {
-    expect(() => createJudge({}, { judge: { provider: 'fake' } }, undefined, env)).toThrow('not configured');
+    expect(() => createJudge({}, { semantic: { provider: 'fake' } }, undefined, env)).toThrow('not configured');
   });
 });
 
 describe('judgeForRun (CLI)', () => {
   const config = {
     modelProviders: { f: { api: 'fake' }, g: { api: 'fake' } } as const,
-    judge: { provider: 'f' },
+    semantic: { provider: 'f' },
   };
 
-  it('gives no judge unless the run asks with --semantic or --judge', () => {
-    expect(judgeForRun(config, {}, {})).toBeUndefined();
-    expect(judgeForRun({}, {}, {})).toBeUndefined(); // no judge config needed when not asked
-    expect(judgeForRun(config, {}, { semantic: true }) instanceof FakeJudgeProvider).toBe(true);
-    expect(judgeForRun(config, {}, { judge: 'g' }) instanceof FakeJudgeProvider).toBe(true);
+  it('gives no provider unless the run asks with --semantic', () => {
+    expect(judgeForRun(config, {})).toBeUndefined();
+    expect(judgeForRun({}, {})).toBeUndefined(); // no judge config needed when not asked
+    expect(judgeForRun(config, {}, true) instanceof FakeJudgeProvider).toBe(true);
+    expect(judgeForRun(config, {}, 'g') instanceof FakeJudgeProvider).toBe(true);
   });
 
   it('fails when asked and no judge is configured, or the named provider is missing', () => {
-    expect(() => judgeForRun({}, {}, { semantic: true })).toThrow('No judge configured');
-    expect(() => judgeForRun(config, {}, { judge: 'nope' })).toThrow('Model provider "nope" is not configured');
+    expect(() => judgeForRun({}, {}, true)).toThrow('--semantic needs a model provider');
+    expect(() => judgeForRun(config, {}, 'nope')).toThrow('Model provider "nope" is not configured');
   });
 });

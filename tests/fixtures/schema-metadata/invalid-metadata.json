@@ -7,7 +7,7 @@
         "id": "invalid-category",
         "category": "not-a-category",
         "description": "Invalid category should fail schema validation",
-        "check": "true"
+        "expression": "true"
       }
     ]
   },

@@ -308,6 +308,30 @@ interface MetadataProvider {
   metadata: MetadataContract;
 }
 
+/** Rule fields that were replaced, with what to use instead. */
+const REPLACED_RULE_FIELDS: Record<string, string> = {
+  check: 'use "expression"',
+  mode: 'a rule is semantic when it has a "semantic" object',
+  rubric: 'use "semantic.rubric"',
+  verdicts: 'use "semantic.verdicts"',
+  scope: 'use "global": true',
+};
+
+/** Fail with a pointer to the replacement when a rule uses a field the rule shape no longer has. */
+function rejectReplacedRuleFields(metadata: Record<string, unknown>, schemaId: string): void {
+  if (!Array.isArray(metadata.rules)) return;
+  metadata.rules.forEach((rule, index) => {
+    if (!isObject(rule)) return;
+    for (const [field, hint] of Object.entries(REPLACED_RULE_FIELDS)) {
+      if (field in rule) {
+        throw new Error(
+          `Invalid $metadata in schema "${schemaId}": /rules/${index} has unknown property "${field}" (${hint}).`,
+        );
+      }
+    }
+  });
+}
+
 function readTopLevelMetadata(schema: AnySchemaObject): MetadataContract | undefined {
   const metadata = schema.$metadata;
   if (!isObject(metadata)) return undefined;
@@ -317,6 +341,7 @@ function readTopLevelMetadata(schema: AnySchemaObject): MetadataContract | undef
       `Invalid $metadata in schema "${schemaId}": hierarchy both declares levels and selects a hierarchy with "$ref". Use one or the other.`,
     );
   }
+  rejectReplacedRuleFields(metadata, schemaId);
   if (!validateMetadataContract(metadata)) {
     const errors =
       validateMetadataContract.errors?.map((e) => `${e.instancePath || '(root)'} ${e.message}`).join('; ') ??

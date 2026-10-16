@@ -93,21 +93,22 @@ describe('validate-rules', () => {
           category: 'validation',
           description: 'Parent must be an opportunity',
           type: 'solution',
-          check: '$exists(parent) = false or $exists(nodes[title=$$.current.parent and resolvedType="opportunity"])',
+          expression:
+            '$exists(parent) = false or $exists(nodes[title=$$.current.parent and resolvedType="opportunity"])',
         },
         {
           id: 'experiment-parent-type',
           category: 'validation',
           description: 'Parent must be a solution',
           type: 'experiment',
-          check: '$exists(parent) and $exists(nodes[title=$$.current.parent and resolvedType="solution"])',
+          expression: '$exists(parent) and $exists(nodes[title=$$.current.parent and resolvedType="solution"])',
         },
         {
           id: 'outcome-no-parent',
           category: 'validation',
           description: 'Outcome nodes should not have a parent',
           type: 'outcome',
-          check: '$exists(parent) = false',
+          expression: '$exists(parent) = false',
         },
       ];
 
@@ -173,7 +174,7 @@ describe('validate-rules', () => {
           category: 'best-practice',
           description: 'Explore multiple candidate solutions for the target opportunity',
           type: 'opportunity',
-          check: '$count(nodes[resolvedParentTitle=$$.current.title and resolvedType="solution"]) >= 3',
+          expression: '$count(nodes[resolvedParentTitle=$$.current.title and resolvedType="solution"]) >= 3',
         },
       ];
 
@@ -259,14 +260,14 @@ describe('validate-rules', () => {
           id: 'active-outcome-count',
           category: 'workflow',
           description: 'Only one outcome should be active at a time',
-          scope: 'global',
-          check: '$count(nodes[resolvedType="outcome" and status="active"]) <= 1',
+          global: true,
+          expression: '$count(nodes[resolvedType="outcome" and status="active"]) <= 1',
         },
         {
           id: 'active-node-parent-active',
           category: 'workflow',
           description: "An active node's parent should also be active",
-          check: "current.status != 'active' or $exists(parent) = false or parent.status = 'active'",
+          expression: "current.status != 'active' or $exists(parent) = false or parent.status = 'active'",
         },
       ];
 
@@ -389,14 +390,15 @@ describe('validate-rules', () => {
           category: 'validation',
           description: 'Parent must be an opportunity',
           type: 'solution',
-          check: '$exists(parent) = false or $exists(nodes[title=$$.current.parent and resolvedType="opportunity"])',
+          expression:
+            '$exists(parent) = false or $exists(nodes[title=$$.current.parent and resolvedType="opportunity"])',
         },
         {
           id: 'active-outcome-count',
           category: 'workflow',
           description: 'Only one outcome should be active at a time',
-          scope: 'global',
-          check: '$count(nodes[resolvedType="outcome" and status="active"]) <= 1',
+          global: true,
+          expression: '$count(nodes[resolvedType="outcome" and status="active"]) <= 1',
         },
       ];
 
@@ -460,7 +462,7 @@ describe('validate-rules', () => {
         id: 'always-fails',
         category: 'workflow',
         description: 'Always fails',
-        check: 'false',
+        expression: 'false',
         ...overrides,
       });
 
@@ -486,7 +488,7 @@ describe('validate-rules', () => {
           [node],
           [
             failingRule({ id: 'node-default', category: 'coherence' }),
-            failingRule({ id: 'global-override', scope: 'global', severity: 'error' }),
+            failingRule({ id: 'global-override', global: true, severity: 'error' }),
           ],
         );
         expect(violations.map((v) => [v.ruleId, v.severity])).toEqual([

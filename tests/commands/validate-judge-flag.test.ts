@@ -5,7 +5,7 @@ import { makeTempSpace } from '../helpers/temp-space';
 
 const ROOT = join(import.meta.dir, '..', '..');
 const space = makeTempSpace(
-  [{ id: 'step-fit', type: 'step', mode: 'semantic', category: 'coherence', description: 'Step fits its task' }],
+  [{ id: 'step-fit', type: 'step', semantic: {}, category: 'coherence', description: 'Step fits its task' }],
   { judging: { modelProviders: { f: { api: 'fake' } } } },
 );
 const configPath = join(space.dir, 'config.json');
@@ -22,20 +22,20 @@ function spawn(...args: string[]) {
   return { ...result, stderr: new TextDecoder().decode(result.stderr) };
 }
 
-describe('--judge on the CLI', () => {
-  // An unknown name fails only if the flag reaches the judge.
+describe('--semantic <provider> on the CLI', () => {
+  // An unknown name fails only if the flag reaches the provider factory.
   for (const args of [
     ['validate', 'ts'],
     ['validate-file', space.file('S.md')],
   ]) {
-    it(`${args[0]} passes --judge to the judge`, () => {
-      const result = spawn(...args, '--judge', 'missing');
+    it(`${args[0]} passes the provider name`, () => {
+      const result = spawn(...args, '--semantic', 'missing');
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('missing');
     });
   }
 
-  it('runs no judge without --semantic or --judge', () => {
+  it('runs no semantic evaluation without --semantic', () => {
     expect(spawn('validate', 'ts').exitCode).toBe(0);
   });
 });

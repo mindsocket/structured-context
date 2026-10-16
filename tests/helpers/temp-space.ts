@@ -26,7 +26,7 @@ export interface TempSpace {
  */
 export function makeTempSpace(
   rules: object[],
-  options: { frontmatter?: Record<string, string>; judging?: Pick<Config, 'modelProviders' | 'judge'> } = {},
+  options: { frontmatter?: Record<string, string>; judging?: Pick<Config, 'modelProviders' | 'semantic'> } = {},
 ): TempSpace {
   const dir = mkdtempSync(join(tmpdir(), 'sctx-temp-space-'));
   const schemaPath = join(dir, 'schema.json');

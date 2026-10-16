@@ -21,7 +21,7 @@
         "category": "validation",
         "description": "Test rule",
         "type": "nonexistent",
-        "check": "true"
+        "expression": "true"
       }
     ]
   },

@@ -57,35 +57,20 @@ const HIERARCHY_LEVEL_SCHEMA = {
 
 const SEVERITY_SCHEMA = { enum: ['error', 'warning', 'info'] } as const;
 
-const RULE_SCHEMA = {
+/** The verdicts the evaluation reserves besides a rule's own; a verdict map may set a severity for them. */
+export const RESERVED_VERDICTS = ['missing-context'] as const;
+
+const VERDICT_SEVERITY_SCHEMA = { enum: ['error', 'warning', 'info', 'ignore'] } as const;
+
+/** The semantic part of a rule: a model evaluates the node against a rubric and returns a verdict. */
+const SEMANTIC_SCHEMA = {
   type: 'object',
   properties: {
-    id: { type: 'string', minLength: 1 },
-    category: { enum: ['validation', 'coherence', 'workflow', 'best-practice'] },
-    /**
-     * A severity, or (semantic rules only) a map of verdict to severity. In a map, a verdict mapped to
-     * `ignore` is judged but not reported, and a verdict left out passes. Defaults from the category.
-     */
-    severity: {
-      oneOf: [
-        SEVERITY_SCHEMA,
-        {
-          type: 'object',
-          additionalProperties: { enum: ['error', 'warning', 'info', 'ignore'] },
-          minProperties: 1,
-        },
-      ],
-    },
-    description: { type: 'string', minLength: 1 },
-    /** Expression rules: the test a node must pass. Semantic rules: a precondition evaluated after `when` and before the judge; a failing node is reported without judging. */
-    check: { type: 'string', minLength: 1 },
-    /** Optional JSONata applicability test, evaluated per node before the rule runs. The rule applies only when it returns true. */
-    when: { type: 'string', minLength: 1 },
-    mode: { enum: ['expression', 'semantic'] },
+    /** What the model judges the node against. Falls back to the rule's `description`. */
     rubric: { type: 'string', minLength: 1 },
     /**
-     * Semantic rules: the closed set of verdicts a judge may return. Each is a description (what the verdict
-     * means, for the judge) or `{ description, guidance }`, where `guidance` is shown to the user when it fires.
+     * The closed set of verdicts the model may return. Each is a description (what the verdict means, for the
+     * model) or `{ description, guidance }`, where `guidance` is shown to the user when it fires.
      * Defaults to `pass`/`fail`.
      */
     verdicts: {
@@ -103,32 +88,81 @@ const RULE_SCHEMA = {
       },
       minProperties: 2,
     },
+    /**
+     * Severity per verdict in effect (declared, default or reserved). A verdict mapped to `ignore` is judged but
+     * not reported, and a verdict left out passes. Required with `verdicts`; with the default verdicts, `fail`
+     * takes the rule's own `severity` instead.
+     */
+    severity: {
+      type: 'object',
+      additionalProperties: VERDICT_SEVERITY_SCHEMA,
+      minProperties: 1,
+    },
+  },
+  additionalProperties: false,
+} as const;
+
+const RULE_SCHEMA = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', minLength: 1 },
+    category: { enum: ['validation', 'coherence', 'workflow', 'best-practice'] },
+    /**
+     * Severity of a failed `expression` and of the default `fail` verdict. Defaults from the category.
+     */
+    severity: SEVERITY_SCHEMA,
+    description: { type: 'string', minLength: 1 },
+    /** JSONata test a node must pass. When the rule also has `semantic`, a failing node is reported without being evaluated by the model. */
+    expression: { type: 'string', minLength: 1 },
+    /** Optional JSONata applicability condition, evaluated per node before the rule runs. The rule applies only when it returns true. */
+    when: { type: 'string', minLength: 1 },
+    /** A model evaluates the node against a rubric. `{}` takes every default; `true` means the same. */
+    semantic: { oneOf: [{ const: true }, SEMANTIC_SCHEMA] },
     type: { type: 'string', minLength: 1 },
-    scope: { enum: ['global'] },
+    /** Run once for the whole space instead of once per node. */
+    global: { type: 'boolean' },
     override: { type: 'boolean' },
-    /** Whether a violation of this rule gates (suppresses) downstream checks on the node's hierarchy subtree. Defaults to true for `error` severity rules and false otherwise. */
+    /** Whether a failure of this rule gates (suppresses) downstream rules on the node's hierarchy subtree. Defaults to true when the failure's severity is `error`. */
     gatesDescendants: { type: 'boolean' },
   },
   required: ['id', 'category', 'description'],
-  // A global rule has no node to test, so `when` needs a per-node rule.
-  not: { required: ['when', 'scope'] },
-  // Semantic rules are judged per node (not global, `check` optional) and with custom verdicts must map each failing
-  // verdict to a severity. Every other rule needs a `check` and takes none of the semantic-only fields.
-  if: { properties: { mode: { const: 'semantic' } }, required: ['mode'] },
-  // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then`/`else` keyword, not a thenable
-  then: {
-    not: { required: ['scope'] },
-    if: { required: ['verdicts'] },
-    // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then`/`else` keyword, not a thenable
-    then: { required: ['severity'], properties: { severity: { type: 'object' } } },
-    else: { properties: { severity: { oneOf: [SEVERITY_SCHEMA, { type: 'object' }] } } },
-  },
-  else: {
-    required: ['check'],
-    not: { anyOf: [{ required: ['verdicts'] }, { required: ['rubric'] }] },
-    properties: { severity: SEVERITY_SCHEMA },
-  },
   additionalProperties: false,
+  allOf: [
+    // A rule has an expression, a semantic part, or both.
+    { anyOf: [{ required: ['expression'] }, { required: ['semantic'] }] },
+    // A global rule has no node to apply to or to evaluate.
+    {
+      if: { required: ['global'], properties: { global: { const: true } } },
+      // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
+      then: { not: { anyOf: [{ required: ['when'] }, { required: ['type'] }, { required: ['semantic'] }] } },
+    },
+    // Custom verdicts need a severity for each failing verdict.
+    {
+      if: { required: ['semantic'], properties: { semantic: { type: 'object', required: ['verdicts'] } } },
+      // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
+      then: { properties: { semantic: { type: 'object', required: ['severity'] } } },
+    },
+    // With the default verdicts, `fail` takes the rule's severity.
+    {
+      if: { required: ['semantic'], properties: { semantic: { type: 'object', not: { required: ['verdicts'] } } } },
+      // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
+      then: {
+        properties: {
+          semantic: { type: 'object', properties: { severity: { type: 'object', not: { required: ['fail'] } } } },
+        },
+      },
+    },
+    // A rule with custom verdicts and no expression has no failure for the top-level severity to describe.
+    {
+      if: {
+        required: ['semantic'],
+        properties: { semantic: { type: 'object', required: ['verdicts'] } },
+        not: { required: ['expression'] },
+      },
+      // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
+      then: { not: { required: ['severity'] } },
+    },
+  ],
 } as const;
 
 const REF_SCHEMA = {
@@ -238,4 +272,5 @@ export type MetadataContractRelationship = FromSchema<typeof RELATIONSHIP_SCHEMA
 export type SharedEdgeFields = FromSchema<typeof EDGE_SCHEMA>;
 export type SharedEmbeddingFields = FromSchema<typeof EMBEDDING_SCHEMA>;
 export type Rule = FromSchema<typeof RULE_SCHEMA>;
+export type RuleSemantic = FromSchema<typeof SEMANTIC_SCHEMA>;
 export type MetadataRef = FromSchema<typeof REF_SCHEMA>;

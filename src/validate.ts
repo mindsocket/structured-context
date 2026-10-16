@@ -169,11 +169,11 @@ export interface ValidateSpaceOptions {
   includeGated?: boolean;
   /** Evaluate only rules matching this filter (see `parseRuleFilter`). */
   ruleFilter?: RuleFilter;
-  /** Judge for `mode: semantic` rules. Without one, a semantic rule runs only its `check`. */
+  /** Evaluates `semantic` rules. Without one, a rule runs only its `expression`, and a semantic-only rule is skipped. */
   judge?: SemanticJudgeProvider;
 }
 
-/** One-line text for a rule violation: rule, description, and any judge evidence and verdict guidance. */
+/** One-line text for a rule violation: rule, description, and any evidence and verdict guidance. */
 export function ruleViolationMessage(v: RuleViolation): string {
   const evidence = v.evidence ? ` (Evidence: ${v.evidence})` : '';
   const guidance = v.guidance ? ` Guidance: ${v.guidance}` : '';
@@ -440,7 +440,7 @@ export interface ValidateFileOptions {
   includeGated?: boolean;
   /** Evaluate only rules matching this filter (see `parseRuleFilter`). */
   ruleFilter?: RuleFilter;
-  /** Judge for `mode: semantic` rules. Without one, a semantic rule runs only its `check`. */
+  /** Evaluates `semantic` rules. Without one, a rule runs only its `expression`, and a semantic-only rule is skipped. */
   judge?: SemanticJudgeProvider;
 }
 

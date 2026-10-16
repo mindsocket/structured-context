@@ -14,8 +14,8 @@
         "id": "root-rule",
         "category": "workflow",
         "description": "Root-level workflow rule",
-        "scope": "global",
-        "check": "true"
+        "global": true,
+        "expression": "true"
       }
     ]
   },

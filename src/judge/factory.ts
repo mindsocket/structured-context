@@ -82,7 +82,7 @@ const DEFAULT_KEY_ENV: Record<string, string> = {
   'typesafe-systemone': 'TYPESAFE_API_KEY',
 } as const;
 
-/** The judge is misconfigured (no provider, unknown provider, missing key). Reported as a plain CLI error. */
+/** Semantic evaluation is misconfigured (no provider, unknown provider, missing key). Reported as a plain CLI error. */
 export class JudgeConfigError extends Error {}
 
 /**
@@ -102,7 +102,7 @@ export function hydrateProvider(name: string, def: ModelProviderConfig, env: Env
     const envValue = env[envName];
     if (envValue !== undefined && envValue.trim() === '') {
       throw new JudgeConfigError(
-        `Model provider "${name}" has ${envName}=${envName} set but empty; set a value or unset the variable.`,
+        `Model provider "${name}" has ${envName} set but empty; set a value or unset the variable.`,
       );
     }
     return envValue;
@@ -148,33 +148,33 @@ export function createModelProvider(
 }
 
 /**
- * The judge a CLI run asks for: none without `--semantic` or `--judge <provider>`; the named provider with
- * `--judge`; else the configured one.
+ * The provider a CLI run asks for: none without `--semantic`; the named one with `--semantic <provider>`;
+ * else the configured one.
  */
 export function judgeForRun(
   config: Parameters<typeof createJudge>[0],
   space: Parameters<typeof createJudge>[1],
-  options: { semantic?: boolean; judge?: string },
+  semantic?: boolean | string,
 ): SemanticJudgeProvider | undefined {
-  if (!options.semantic && options.judge === undefined) return undefined;
-  return createJudge(config, space, options.judge);
+  if (!semantic) return undefined;
+  return createJudge(config, space, typeof semantic === 'string' ? semantic : undefined);
 }
 
 /**
- * The judge for a run: the model provider named by `name` (the `--judge` override), else the space's
- * `judge.provider`, else the top-level one. The name resolves against `modelProviders` first, then
+ * The provider for a run: the one named by `name` (the `--semantic <provider>` override), else the space's
+ * `semantic.provider`, else the top-level one. The name resolves against `modelProviders` first, then
  * the bundled providers. Throws {@link JudgeConfigError} when it cannot be built.
  */
 export function createJudge(
-  config: { modelProviders?: Record<string, ModelProviderConfig>; judge?: { provider?: string } },
-  space: { judge?: { provider?: string } } = {},
+  config: { modelProviders?: Record<string, ModelProviderConfig>; semantic?: { provider?: string } },
+  space: { semantic?: { provider?: string } } = {},
   name?: string,
   env: Env = process.env,
 ): SemanticJudgeProvider {
-  const chosen = name ?? space.judge?.provider ?? config.judge?.provider;
+  const chosen = name ?? space.semantic?.provider ?? config.semantic?.provider;
   if (!chosen) {
     throw new JudgeConfigError(
-      'No judge configured. Set "judge.provider" in config.json to a bundled provider (e.g. "openrouter-jev") or to the name of an entry in "modelProviders".',
+      '--semantic needs a model provider. Set "semantic.provider" in config.json, or pass --semantic <provider>.',
     );
   }
   const def = config.modelProviders?.[chosen] ?? BUNDLED_PROVIDERS[chosen];

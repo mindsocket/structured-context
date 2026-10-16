@@ -14,8 +14,7 @@ export async function validate(
     json?: boolean;
     depth?: number;
     includeGated?: boolean;
-    semantic?: boolean;
-    judge?: string;
+    semantic?: boolean | string;
     ruleFilter?: string[];
   } = {},
 ): Promise<number> {
@@ -23,7 +22,7 @@ export async function validate(
   const result = await validateSpace(context, {
     depth: options.depth,
     includeGated: options.includeGated,
-    judge: judgeForRun(context.config, context.space, options),
+    judge: judgeForRun(context.config, context.space, options.semantic),
     ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
   });
   const ruleCounts: Record<RuleSeverity, number> = { error: 0, warning: 0, info: 0 };

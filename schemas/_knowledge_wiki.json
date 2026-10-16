@@ -50,14 +50,14 @@
         "category": "coherence",
         "description": "Syntheses should reference at least one contributing source in their sources array",
         "type": "synthesis",
-        "check": "$exists(current.sources) and $count(current.sources) >= 1"
+        "expression": "$exists(current.sources) and $count(current.sources) >= 1"
       },
       {
         "id": "concept-has-summary",
         "category": "best-practice",
         "description": "Concept pages should have a short summary for index discoverability",
         "type": "concept",
-        "check": "$exists(current.summary) and $length(current.summary) > 0"
+        "expression": "$exists(current.summary) and $length(current.summary) > 0"
       }
     ]
   },

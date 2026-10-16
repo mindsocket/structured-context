@@ -11,7 +11,7 @@
         "id": "pack-a-rule",
         "category": "validation",
         "description": "Pack A validation rule",
-        "check": "true"
+        "expression": "true"
       }
     ]
   },

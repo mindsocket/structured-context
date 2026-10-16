@@ -9,6 +9,7 @@ import {
   resolveSpacePluginSchemas,
   shortenPluginName,
 } from '../plugins/util';
+import { ruleSemantic } from '../schema/rule-severity';
 import {
   bundledSchemasDir,
   type EntityInfo,
@@ -226,15 +227,16 @@ function generateMermaidErd(metadata: SchemaMetadata, entities: EntityInfo[]): s
   return mmd;
 }
 
-/** Bracketed notes on a rule: mode, severity (or verdict severities) and `when`. Empty for a plain rule. */
+/** Bracketed notes on a rule: semantic, severity (and verdict severities) and `when`. Empty for a plain rule. */
 function ruleAnnotations(rule: Rule): string {
   const notes: string[] = [];
-  if (rule.mode === 'semantic') notes.push('semantic');
-  if (typeof rule.severity === 'string') {
-    notes.push(`severity: ${rule.severity}`);
-  } else if (rule.severity) {
+  const semantic = ruleSemantic(rule);
+  if (rule.global) notes.push('global');
+  if (semantic) notes.push('semantic');
+  if (rule.severity) notes.push(`severity: ${rule.severity}`);
+  if (semantic?.severity) {
     notes.push(
-      `severity: ${Object.entries(rule.severity)
+      `verdict severity: ${Object.entries(semantic.severity)
         .map(([verdict, sev]) => `${verdict}=${sev}`)
         .join(', ')}`,
     );

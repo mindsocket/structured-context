@@ -20,9 +20,7 @@ describe('judgeNode', () => {
       id: passFailRule.id,
       description: passFailRule.description,
       category: passFailRule.category,
-      mode: 'semantic',
-      severity: { fail: 'error' },
-      verdicts: passFailRule.verdicts,
+      semantic: { verdicts: passFailRule.verdicts, severity: { fail: 'error' } },
     } as unknown as Rule;
     const judgements: NodeJudgement[] = await judgeNode(
       canned({ 'customer-voice': { verdict: 'unexpected', evidence: 'hmm' } }),
@@ -42,9 +40,7 @@ describe('judgeNodes', () => {
     id: passFailRule.id,
     description: passFailRule.description,
     category: passFailRule.category,
-    mode: 'semantic',
-    severity: { fail: 'error' },
-    verdicts: passFailRule.verdicts,
+    semantic: { verdicts: passFailRule.verdicts, severity: { fail: 'error' } },
   } as unknown as Rule;
   const other = { ...node, title: 'Other', label: 'other.md' } as SpaceNode;
 

@@ -13,27 +13,27 @@
         "category": "best-practice",
         "severity": "warning",
         "description": "Concepts should have a one-line description (used by index generators and search snippets)",
-        "check": "$exists(current.description) and $length(current.description) > 0"
+        "expression": "$exists(current.description) and $length(current.description) > 0"
       },
       {
         "id": "okf-stale-after-generated",
         "category": "validation",
         "description": "stale_after must be later than generated.at",
-        "check": "$not($exists(current.stale_after)) or $not($exists(current.generated.at)) or $toMillis(current.stale_after) > $toMillis(current.generated.at)"
+        "expression": "$not($exists(current.stale_after)) or $not($exists(current.generated.at)) or $toMillis(current.stale_after) > $toMillis(current.generated.at)"
       },
       {
         "id": "okf-usage-count-window",
         "category": "coherence",
         "severity": "warning",
         "description": "A source's usage_count is only meaningful within a usage_window (on the source or shared at the top level)",
-        "check": "$not($exists(current.sources)) or $count(current.sources[$exists(usage_count) and $not($exists(usage_window)) and $not($exists($$.current.usage_window))]) = 0"
+        "expression": "$not($exists(current.sources)) or $count(current.sources[$exists(usage_count) and $not($exists(usage_window)) and $not($exists($$.current.usage_window))]) = 0"
       },
       {
         "id": "okf-computation-present",
         "category": "validation",
         "type": "Attested Computation",
         "description": "An Attested Computation needs its computation: a `computation` path or a body `# Computation` section. Known limitation: the section is found by matching a `# Computation` line in the body text, so such a line inside a code fence also counts",
-        "check": "$exists(current.computation) or $contains(current.content, /^# Computation[ \\t]*$/m)"
+        "expression": "$exists(current.computation) or $contains(current.content, /^# Computation[ \\t]*$/m)"
       }
     ]
   },

@@ -14,16 +14,17 @@ afterAll(() => {
 const stepRule = {
   id: 'step-fit',
   type: 'step',
-  mode: 'semantic',
   category: 'coherence',
   description: 'Step fits its task',
-  verdicts: {
-    fits: 'The step fits',
-    minor: { description: 'Slightly off', guidance: 'Tighten the wording.' },
-    major: { description: 'Unrelated', guidance: 'Move it under a better task.' },
-    unsure: 'Cannot tell',
+  semantic: {
+    verdicts: {
+      fits: 'The step fits',
+      minor: { description: 'Slightly off', guidance: 'Tighten the wording.' },
+      major: { description: 'Unrelated', guidance: 'Move it under a better task.' },
+      unsure: 'Cannot tell',
+    },
+    severity: { minor: 'warning', major: 'error', unsure: 'ignore' },
   },
-  severity: { minor: 'warning', major: 'error', unsure: 'ignore' },
 };
 
 function setup(rules: object[], options?: Parameters<typeof makeTempSpace>[1]) {
@@ -107,7 +108,7 @@ describe('rule `when` precondition', () => {
       id: 'needs-owner',
       category: 'validation',
       description: 'owner',
-      check: '$exists(current.owner)',
+      expression: '$exists(current.owner)',
       when,
     };
     const { context } = setup([rule], { frontmatter: { T: 'status: ready', S: 'status: draft' } });
@@ -147,14 +148,14 @@ describe('judge option', () => {
 });
 
 describe('rule expression errors', () => {
-  const broken = { id: 'broken', category: 'validation', description: 'Broken check', check: '$notAFunction(' };
+  const broken = { id: 'broken', category: 'validation', description: 'Broken check', expression: '$notAFunction(' };
   const brokenWhen = {
     id: 'bad-when',
     category: 'coherence',
     description: 'Task rule',
     type: 'task',
     when: '1 +',
-    check: 'true',
+    expression: 'true',
   };
 
   it('reports a failing check or when as an error violation instead of passing silently', async () => {
@@ -172,10 +173,10 @@ describe('semantic rule check precondition', () => {
   const gated = {
     id: 'step-fit',
     type: 'step',
-    mode: 'semantic',
+    semantic: {},
     category: 'coherence',
     description: 'Step fits its task',
-    check: '$exists(current.owner)',
+    expression: '$exists(current.owner)',
     gatesDescendants: true,
   };
   const judgedLabels = (judge: FakeJudgeProvider) => judge.callHistory.map((c) => c.node.label);
@@ -200,18 +201,24 @@ describe('semantic rule check precondition', () => {
         category: 'coherence',
         severity: 'warning',
         description: 'Step fits its task',
-        evidence: 'expression check failed: $exists(current.owner)',
+        evidence: 'expression failed: $exists(current.owner)',
       },
     ]);
   });
 
-  it('reports a failing check at the most severe mapped severity', async () => {
-    const { context } = setup([{ ...stepRule, check: '$exists(current.owner)' }]);
-    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
-    const result = await validateSpace(context(), { judge });
-    expect(judge.callHistory).toHaveLength(0);
-    expect(result.ruleViolations).toEqual([expect.objectContaining({ ruleId: 'step-fit', severity: 'error' })]);
-    expect(result.ruleViolations[0]?.verdict).toBeUndefined();
+  it('reports a failing expression at the top-level severity, not a verdict severity', async () => {
+    const rule = { ...stepRule, expression: '$exists(current.owner)' };
+    const run = async (r: object) => {
+      const { context } = setup([r]);
+      const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+      const result = await validateSpace(context(), { judge });
+      expect(judge.callHistory).toHaveLength(0);
+      return result.ruleViolations;
+    };
+    const byCategory = await run(rule);
+    expect(byCategory).toEqual([expect.objectContaining({ ruleId: 'step-fit', severity: 'warning' })]);
+    expect(byCategory[0]?.verdict).toBeUndefined();
+    expect(await run({ ...rule, severity: 'error' })).toEqual([expect.objectContaining({ severity: 'error' })]);
   });
 
   it('gates descendants of a failing check like an expression rule: by severity, unless overridden', async () => {
@@ -266,7 +273,7 @@ describe('semantic rule check precondition', () => {
         expect.objectContaining({
           ruleId: 'step-fit',
           file: 'S.md',
-          evidence: 'expression check failed: $exists(current.owner)',
+          evidence: 'expression failed: $exists(current.owner)',
         }),
       ]);
     });
@@ -277,25 +284,29 @@ describe('semantic rule check precondition', () => {
       expect(result.ruleViolations).toEqual([]);
     });
 
-    it('still skips a semantic rule that has no check', async () => {
+    it('still skips a semantic-only rule', async () => {
       const { context } = setup([stepRule]);
       expect((await validateSpace(context(), {})).ruleViolations).toEqual([]);
     });
 
-    it('honours --rule-filter mode=semantic', async () => {
+    it('honours --rule-filter', async () => {
       const { context } = setup([gated]);
-      const kept = await validateSpace(context(), { ruleFilter: { mode: ['semantic'] } });
+      const kept = await validateSpace(context(), { ruleFilter: { id: ['step-fit'] } });
       expect(kept.ruleViolations).toHaveLength(1);
-      const dropped = await validateSpace(context(), { ruleFilter: { mode: ['expression'] } });
+      const dropped = await validateSpace(context(), { ruleFilter: { id: ['other'] } });
       expect(dropped.ruleViolations).toEqual([]);
     });
   });
 
-  it('reports a failing check with an all-ignore severity map at info', async () => {
-    const rule = { ...stepRule, severity: { minor: 'ignore', major: 'ignore' }, check: '$exists(current.owner)' };
+  it('reports a failing expression the same way when every verdict is ignored', async () => {
+    const rule = {
+      ...stepRule,
+      semantic: { ...stepRule.semantic, severity: { minor: 'ignore', major: 'ignore' } },
+      expression: '$exists(current.owner)',
+    };
     const { context } = setup([rule]);
     const result = await validateSpace(context(), {});
-    expect(result.ruleViolations).toEqual([expect.objectContaining({ ruleId: 'step-fit', severity: 'info' })]);
+    expect(result.ruleViolations).toEqual([expect.objectContaining({ ruleId: 'step-fit', severity: 'warning' })]);
   });
 
   it('evaluates when before check', async () => {
@@ -307,7 +318,7 @@ describe('semantic rule check precondition', () => {
   });
 
   it('reports a check that cannot be evaluated as an error without judging', async () => {
-    const { context } = setup([{ ...gated, check: '$notAFunction(' }]);
+    const { context } = setup([{ ...gated, expression: '$notAFunction(' }]);
     const judge = new FakeJudgeProvider();
     const result = await validateSpace(context(), { judge });
     expect(judge.callHistory).toHaveLength(0);
