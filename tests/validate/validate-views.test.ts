@@ -65,25 +65,25 @@ describe('validateFile is a view over the validateSpace core', () => {
   });
 });
 
-describe('judging a node that fails an expression rule', () => {
+describe('judging a node with an expression rule violation', () => {
   const dirs: string[] = [];
   afterAll(() => {
     for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
   });
 
-  /** One file `A.md` of type `item` with a failing expression rule and a semantic rule. */
-  function setup(hierarchy: boolean) {
+  /** One file `A.md` of type `item`, violating an expression rule at `severity`, plus a semantic rule. */
+  function setup(hierarchy: boolean, severity: string) {
     const dir = mkdtempSync(join(tmpdir(), 'sctx-views-'));
     dirs.push(dir);
     const schemaPath = join(dir, 'schema.json');
     const rules = [
       {
-        id: 'always-fails',
+        id: 'never-holds',
         type: 'item',
         expression: 'false',
         category: 'validation',
-        severity: 'error',
-        description: 'always fails',
+        severity,
+        description: 'never holds',
       },
       {
         id: 'sound',
@@ -118,21 +118,25 @@ describe('judging a node that fails an expression rule', () => {
 
   const judgedRules = (judge: FakeJudgeProvider) => judge.callHistory.flatMap((c) => c.rules.map((r) => r.id));
 
-  it('skips the node semantic rules in a space with no hierarchy', async () => {
-    const { config, dir, file } = setup(false);
-    const judge = new FakeJudgeProvider({ pass: true });
-    const result = (await validateFile(file, config, { judge, configDir: dir })) as FileValidationResult;
-    expect(result.errors['rule:always-fails']).toBeDefined();
-    expect(judgedRules(judge)).toEqual([]);
-  });
+  for (const hierarchy of [false, true]) {
+    const label = hierarchy ? 'with' : 'without';
 
-  it('still judges the node semantic rules in a space with a hierarchy', async () => {
-    const { config, dir, file } = setup(true);
-    const judge = new FakeJudgeProvider({ pass: true });
-    const result = (await validateFile(file, config, { judge, configDir: dir })) as FileValidationResult;
-    expect(result.errors['rule:always-fails']).toBeDefined();
-    expect(judgedRules(judge)).toEqual(['sound']);
-  });
+    it(`skips the node's semantic rules after a gating violation, ${label} a hierarchy`, async () => {
+      const { config, dir, file } = setup(hierarchy, 'error');
+      const judge = new FakeJudgeProvider({ pass: true });
+      const result = (await validateFile(file, config, { judge, configDir: dir })) as FileValidationResult;
+      expect(result.errors['rule:never-holds']).toBeDefined();
+      expect(judgedRules(judge)).toEqual([]);
+    });
+
+    it(`still judges the node after a non-gating violation, ${label} a hierarchy`, async () => {
+      const { config, dir, file } = setup(hierarchy, 'info');
+      const judge = new FakeJudgeProvider({ pass: true });
+      const result = (await validateFile(file, config, { judge, configDir: dir })) as FileValidationResult;
+      expect(result.warnings['rule:never-holds']).toBeDefined();
+      expect(judgedRules(judge)).toEqual(['sound']);
+    });
+  }
 });
 
 describe('invalid node type', () => {

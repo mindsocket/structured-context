@@ -9,6 +9,7 @@ import {
   expressionErrorViolation,
   tryEvaluateExpression,
 } from './evaluate-rule';
+import { ruleGatesDescendants } from './gating';
 import { ruleSeverities, ruleSeverity } from './rule-severity';
 
 export { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity } from './rule-severity';
@@ -75,7 +76,7 @@ export async function validateRules(
 
   // 1. Expressions, in rule order. A global rule is evaluated once against the full node set; a sentinel node
   // provides the evaluation context (the nodes array is what matters).
-  const failedNodeLabels = new Set<string>(options.gatedNodeLabels); // nodes that failed an expression (or upstream)
+  const gatedNodeLabels = new Set<string>(options.gatedNodeLabels); // nodes with a gating violation (or gated upstream)
   const notEvaluable = new Set<string>(); // `${rule.id}\0${label}` whose own expression failed or errored
   for (const rule of runnable) {
     if (rule.expression === undefined) continue;
@@ -90,12 +91,12 @@ export async function validateRules(
       if (result.passed) continue;
       violations.push(result.violation);
       notEvaluable.add(`${rule.id}\0${node.label}`);
-      if (result.failed) failedNodeLabels.add(node.label);
+      if (result.failed && ruleGatesDescendants(rule, result.violation.severity)) gatedNodeLabels.add(node.label);
     }
   }
 
-  // 2. Semantic parts, for nodes that passed their own expression. A node that failed an expression or
-  // upstream is left out (safe cascading default).
+  // 2. Semantic parts, for nodes that passed their own expression. A node with a gating violation, or gated
+  // upstream, is left out.
   if (judge) {
     const perNode: RuleViolation[][] = []; // kept in node order
     const pending: Array<{ node: SpaceNode; rules: Rule[]; found: RuleViolation[] }> = [];
@@ -103,7 +104,7 @@ export async function validateRules(
       if (options.judgeTarget !== undefined && node.label !== options.judgeTarget) continue;
       const found: RuleViolation[] = [];
       perNode.push(found);
-      if (failedNodeLabels.has(node.label)) continue;
+      if (gatedNodeLabels.has(node.label)) continue;
       const semantic = runnable.filter(
         (r) =>
           r.semantic !== undefined && applicable.get(r)?.includes(node) && !notEvaluable.has(`${r.id}\0${node.label}`),

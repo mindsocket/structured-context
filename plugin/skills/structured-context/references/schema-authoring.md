@@ -72,7 +72,7 @@ What a rule checks depends on which parts it has (a rule with neither is rejecte
 
 - `expression` — a JSONata test that must return `true` (see [JSONata rules](#jsonata-rules)). Always runs.
 - `semantic` — a model provider evaluates the node against `semantic.rubric` (falls back to `description`). Runs only with `--semantic`. `semantic: {}` takes every default.
-- Both — the `expression` is a cheap precondition: when it fails, the `semantic` part is skipped.
+- Both — the `expression` is a cheap precondition: unless it returns `true`, the `semantic` part is skipped. A gating violation on a node skips all of that node's `semantic` parts.
 
 Other rule fields:
 

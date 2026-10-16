@@ -13,8 +13,8 @@ import {
 import { ruleSeverities, ruleSeverity } from './rule-severity';
 
 /**
- * Whether a failure of this rule gates its subtree: explicit `gatesDescendants`, else true only for `error` severity.
- * `severity` is that of the failure: the rule's own for an expression, the verdict's for a semantic part.
+ * Whether a violation of this rule gates its subtree: explicit `gatesDescendants`, else true only for `error` severity.
+ * `severity` is that of the violation: the rule's own for an expression, the verdict's for a semantic part.
  */
 export function ruleGatesDescendants(rule: Rule, severity: RuleSeverity = ruleSeverity(rule)): boolean {
   return rule.gatesDescendants ?? severity === 'error';
@@ -242,7 +242,9 @@ export async function evaluateRulesWithGating(
       }
     }
 
-    // Cheap expressions first; a semantic part is only evaluated when its own expression passes.
+    // Cheap expressions first. A semantic part is evaluated only when its own expression passes, and not at all
+    // on a node with a gating violation.
+    const semantic: Rule[] = [];
     for (const rule of applicable) {
       if (rule.expression !== undefined) {
         const result = await evaluateRuleExpression(rule, node, nodes, nodeIndex);
@@ -254,8 +256,9 @@ export async function evaluateRulesWithGating(
           continue;
         }
       }
-      if (rule.semantic !== undefined && judge) prepared.semantic.push(rule);
+      if (rule.semantic !== undefined && judge) semantic.push(rule);
     }
+    if (!prepared.blockingRuleId) prepared.semantic = semantic;
     prepared.judged = (judgements) => {
       for (const j of judgements) {
         if (j.failed) {

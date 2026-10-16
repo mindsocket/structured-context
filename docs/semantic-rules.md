@@ -69,7 +69,7 @@ The order is `when`, then `expression`, then the `semantic` part.
 
 A failed `expression` reports the rule's `severity`, or the default for its category. The verdict severities do not apply to it.
 
-A failed `expression` [gates](rules.md#cascade-gating) the node's descendants as it does for any rule. It gates by default when it reports `error` severity. Set `gatesDescendants` to override that either way.
+An `expression` violation [gates](rules.md#cascade-gating) the node's descendants as it does for any rule, and then none of the node's semantic parts run. It gates by default when it reports `error` severity. Set `gatesDescendants` to override that either way.
 
 ## Verdicts
 

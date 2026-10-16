@@ -84,7 +84,9 @@ Prefer choosing the right category and relying on its default. Set `severity` on
 
 ### Order within a rule
 
-A rule runs its parts in this order: `when`, then `expression`, then the `semantic` part. If the `expression` fails, the `semantic` part does not run on that node.
+A rule runs its parts in this order: `when`, then `expression`, then the `semantic` part. If the `expression` does not return `true`, the `semantic` part does not run on that node.
+
+A node with a [gating](#cascade-gating) violation from an `expression` has none of its `semantic` parts evaluated. A non-gating violation, such as `info`, does not stop them.
 
 An error in a `when` or `expression` is reported as a non-gating `error` violation.
 
