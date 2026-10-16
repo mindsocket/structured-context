@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/0.12.0/_structured_context_schema_meta.json",
+  "$id": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/0.13.0/_structured_context_schema_meta.json",
   "title": "structured-context schema dialect",
   "description": "Extends JSON Schema 2020-12 with top-level $metadata for imports, hierarchy, relationships, aliases and rules.",
   "type": "object",
