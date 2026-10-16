@@ -1,6 +1,6 @@
 import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, SpaceNode } from '../types';
-import { contextKey, judgeContext, type RuleContext, ruleContext } from './context';
+import { judgeContext, type RuleContext, ruleContext } from './context';
 import type { SemanticJudgeInput, SemanticJudgeProvider } from './types';
 import { isJudgeError, resolveSemanticRule } from './verdicts';
 
@@ -70,7 +70,7 @@ function planUnits(graph: SpaceGraph, items: Array<{ node: SpaceNode; rules: Rul
     const groups = new Map<string, { context: RuleContext; positions: number[] }>();
     rules.forEach((rule, position) => {
       const context = ruleContext(rule);
-      const key = contextKey(context);
+      const key = `${context.content}|${context.scope.join(',')}`;
       const group = groups.get(key) ?? { context, positions: [] };
       group.positions.push(position);
       groups.set(key, group);
@@ -88,16 +88,6 @@ function planUnits(graph: SpaceGraph, items: Array<{ node: SpaceNode; rules: Rul
     }
   });
   return units;
-}
-
-/** Judge every given semantic rule on a node. */
-export async function judgeNode(
-  judge: SemanticJudgeProvider,
-  node: SpaceNode,
-  rules: Rule[],
-  graph: SpaceGraph,
-): Promise<NodeJudgement[]> {
-  return (await judgeNodes(judge, [{ node, rules }], graph))[0] ?? [];
 }
 
 /**

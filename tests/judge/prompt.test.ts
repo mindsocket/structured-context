@@ -11,7 +11,7 @@ describe('judge prompt and response parser', () => {
   });
 
   it('user prompt lists the rule, its allowed verdicts and the node', () => {
-    const prompt = buildJudgeUserPrompt(node, graded);
+    const prompt = buildJudgeUserPrompt({ node }, graded);
     expect(prompt).toContain('framing');
     expect(prompt).toContain('"weak": Vague need');
     expect(prompt).toContain('"solution": A solution in disguise');
@@ -21,8 +21,8 @@ describe('judge prompt and response parser', () => {
   });
 
   it('user prompt prefers the rubric over the description', () => {
-    expect(buildJudgeUserPrompt(node, passFailRule)).toContain('Needs to sound like a customer quote');
-    expect(buildJudgeUserPrompt(node, graded)).toContain('Rubric: Framing quality');
+    expect(buildJudgeUserPrompt({ node }, passFailRule)).toContain('Needs to sound like a customer quote');
+    expect(buildJudgeUserPrompt({ node }, graded)).toContain('Rubric: Framing quality');
   });
 
   const allowed = ['pass', 'fail'];
@@ -63,9 +63,15 @@ describe('judge prompt and response parser', () => {
 
 describe('related nodes in the chat prompt', () => {
   it('lists each related node with its relation', () => {
-    const prompt = buildJudgeUserPrompt(node, passFailRule, [
-      { relations: ['parent', 'ancestor'], title: 'Faster Tax Filing', type: 'goal', data: { owner: 'finance' } },
-    ]);
+    const prompt = buildJudgeUserPrompt(
+      {
+        node,
+        related: [
+          { relations: ['parent', 'ancestor'], title: 'Faster Tax Filing', type: 'goal', data: { owner: 'finance' } },
+        ],
+      },
+      passFailRule,
+    );
     expect(prompt).toContain('Related Nodes');
     expect(prompt).toContain('Faster Tax Filing');
     expect(prompt).toContain('Relation: parent, ancestor');
@@ -73,6 +79,6 @@ describe('related nodes in the chat prompt', () => {
   });
 
   it('has no related section without related nodes', () => {
-    expect(buildJudgeUserPrompt(node, passFailRule)).not.toContain('Related Nodes');
+    expect(buildJudgeUserPrompt({ node }, passFailRule)).not.toContain('Related Nodes');
   });
 });

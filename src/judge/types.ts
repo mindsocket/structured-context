@@ -15,8 +15,8 @@ export interface SemanticRuleSpec {
  * (`data.content`) is present only when the rules' `includeContent` asks for it.
  */
 export interface RelatedNode {
-  /** How it relates to the evaluated node: `parent`, `sibling`, `child`, `ancestor`, `descendant`. A node can have several. */
-  relations: string[];
+  /** How it relates to the evaluated node. A node can have several. */
+  relations: Array<'parent' | 'sibling' | 'child' | 'ancestor' | 'descendant'>;
   title: string;
   type: string;
   /** Schema data without `title` and `type`. */

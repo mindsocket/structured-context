@@ -114,7 +114,7 @@ const SEMANTIC_SCHEMA = {
      * Which node bodies are sent: `nodeOnly` (the evaluated node's), `fullScope` (it and every related node's),
      * or `true` for `fullScope`. Left out: no bodies.
      */
-    includeContent: { oneOf: [{ enum: ['nodeOnly', 'fullScope'] }, { const: true }] },
+    includeContent: { enum: ['nodeOnly', 'fullScope', true] },
   },
   additionalProperties: false,
 } as const;

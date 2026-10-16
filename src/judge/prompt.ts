@@ -1,4 +1,4 @@
-import type { RelatedNode, SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from './types';
+import type { SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from './types';
 
 function verdictList(rule: SemanticRuleSpec): string[] {
   return Object.entries(rule.verdicts).map(([name, description]) => `- "${name}": ${description}`);
@@ -27,9 +27,8 @@ export function buildJudgeSystemPrompt(): string {
 
 /** User prompt for one rule on one node. */
 export function buildJudgeUserPrompt(
-  node: SemanticJudgeInput['node'],
+  { node, related = [] }: Pick<SemanticJudgeInput, 'node' | 'related'>,
   rule: SemanticRuleSpec,
-  related: RelatedNode[] = [],
 ): string {
   const rubric = rule.rubric || rule.description;
   const lines: string[] = [

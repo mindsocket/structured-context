@@ -265,14 +265,7 @@
                         "uniqueItems": true
                       },
                       "includeContent": {
-                        "oneOf": [
-                          {
-                            "enum": ["nodeOnly", "fullScope"]
-                          },
-                          {
-                            "const": true
-                          }
-                        ]
+                        "enum": ["nodeOnly", "fullScope", true]
                       }
                     },
                     "additionalProperties": false
