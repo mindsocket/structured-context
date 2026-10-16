@@ -146,13 +146,42 @@ Scope sends node data only, never the verdicts of other rules, and [gating](rule
 
 A global rule cannot have a `semantic` part, so it has no scope.
 
+## Input size and trimming
+
+The input for one evaluated node is its data and its related nodes. It is limited by the **per-node input cap**: 32,000 estimated tokens (characters divided by 4, over the node data as JSON and the bodies). The cap is the same for every model provider and cannot be configured. The estimate is rough on purpose.
+
+When the input is over the cap, structured-context cuts node bodies and nothing else. It never cuts a field and never drops a node, so the model always knows which related nodes exist.
+
+1. It cuts related bodies first. One ceiling applies to all of them: bodies longer than the ceiling are cut to it, shorter bodies stay whole. The ceiling is as high as the cap allows.
+2. If the related bodies are all cut to nothing and the input is still over the cap, it cuts the evaluated node's body the same way.
+
+A cut ends at the last whitespace before the limit and appends a marker with the number of characters removed:
+
+```
+[RULE_EVALUATION_CONTENT_TRIMMED 6120 chars]
+```
+
+A body cut to nothing keeps the marker, so a trimmed body is always visible.
+
+If the input is still over the cap after every body is cut, structured-context does not call the model. It reports a violation for each rule that shares the input, with the suffix `(Semantic evaluation error: input over the per-node cap after trimming content)`. Large fields cause this; trimming does not touch them.
+
+### The `missing-context` verdict
+
+A rule with `semantic.scope` or `semantic.includeContent` also offers the model the verdict `missing-context`. The model chooses it only when a trim marker shows that content it needs was cut. A rule without either never offers it.
+
+`missing-context` reports a `warning` by default. Set `semantic.severity` to change it, for example `{ "missing-context": "info" }`, or `ignore` to report nothing.
+
+### Reporting
+
+A run that trims content prints one line in its summary, for example `Context trimmed for 3 node(s) across rules solution-addresses-opportunity, solution-fits-goal.` The `--json` output carries the same information as `contextTrimmed`, with `nodeCount` and `ruleIds`.
+
 ## How semantic evaluation works
 
 - **Order.** On each node, structured-context runs each rule's [`expression`](#combining-an-expression) first. It sends the semantic parts of the rules that pass to the model provider.
-- **Grouping.** A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates each node ruleset group (see [concepts](concepts.md#semantic-rules)) in as few decision requests as it can, with one decision question per node and rule. This includes the bundled `openrouter-openai-decisions` provider. A decision request is limited to about 32,000 estimated input tokens and 40 decision questions, so a larger group is split into several decision requests, never within a node. A node that fills a decision request on tokens is sent whole as its own decision request. A node with more than 40 rules has its rules split across decision requests. If a node's questions are split across several requests and one fails, all of that node's rules are reported as errors. Other providers, including `openai-decisions` and chat models, evaluate one node per request. Within a space, the nodes at one hierarchy depth are evaluated together, because their verdicts decide whether the next depth is evaluated. Grouping can shift verdicts and probabilities slightly compared with evaluating each node alone.
+- **Grouping.** A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates each node ruleset group (see [concepts](concepts.md#semantic-rules)) in as few decision requests as it can, with one decision question per node and rule. This includes the bundled `openrouter-openai-decisions` provider. The request packing limit is about 32,000 estimated input tokens and 40 decision questions per decision request, measured on the input after [trimming](#input-size-and-trimming). A larger group is split into several decision requests, never within a node. A node that fills a decision request on tokens is sent whole as its own decision request. A node with more than 40 rules has its rules split across decision requests. If a node's questions are split across several requests and one fails, all of that node's rules are reported as errors. Other providers, including `openai-decisions` and chat models, evaluate one node per request. Within a space, the nodes at one hierarchy depth are evaluated together, because their verdicts decide whether the next depth is evaluated. Grouping can shift verdicts and probabilities slightly compared with evaluating each node alone.
 - **Gating.** structured-context does not evaluate the semantic part on a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
 - **Evaluation errors.** If the model provider fails (for example, a network error or output that structured-context cannot read), structured-context reports a violation with the suffix `(Semantic evaluation error: ...)`. An evaluation error does not gate. If one decision request fails, only the rules on the nodes in that decision request report the error.
-- **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter. It gets the node's body, and any [related nodes](#related-nodes-and-content), only as the rule's `semantic.scope` and `semantic.includeContent` ask.
+- **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter. It gets the node's body, and any [related nodes](#related-nodes-and-content), only as the rule's `semantic.scope` and `semantic.includeContent` ask, [trimmed](#input-size-and-trimming) to the per-node input cap.
 - **Output.** A violation from a semantic verdict also includes the verdict, the model's evidence and any guidance.
 
 `sctx validate-file` evaluates the semantic part only for the file and the rules on its ancestors that can gate it. Thus one file costs at most one model call for each ancestor level, plus one.

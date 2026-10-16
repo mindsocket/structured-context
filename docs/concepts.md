@@ -183,6 +183,10 @@ A **decision request** is one call to a decisions API. It carries the state of o
 
 A **decision question** is one choice question about one node under one semantic rule, inside a decision request.
 
+The **per-node input cap** limits the input for one evaluated node: the node and its related nodes, measured in estimated tokens. It is the same for every model provider. When the input is over the cap, structured-context trims node bodies. See [Input size and trimming](semantic-rules.md#input-size-and-trimming).
+
+The **request packing limit** limits how much a model provider packs into one decision request: estimated input tokens and decision questions. It decides how a node ruleset group is split into decision requests, never within a node. It does not limit the input for a single node.
+
 ### Cascade gating
 
 **Cascade gating** is the mechanism by which a schema failure, hierarchy structure violation, or blocking rule violation on a node suppresses rule evaluation for that node's `hierarchy` subtree. It exists so downstream checks — especially costly semantic (model-judged) rules — aren't run against inputs already known to be invalid.
