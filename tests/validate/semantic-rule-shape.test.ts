@@ -214,21 +214,35 @@ describe('semantic rule check precondition', () => {
     expect(result.ruleViolations[0]?.verdict).toBeUndefined();
   });
 
-  it('gates descendants of a failing check only with an explicit gatesDescendants: true', async () => {
-    const taskRule = { ...gated, id: 'task-fit', type: 'task' };
-    const explicit = setup([taskRule, stepRule]);
-    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
-    const result = await validateSpace(explicit.context(), { judge });
-    expect(judgedLabels(judge)).toEqual([]);
-    expect(result.coverageGates[0]).toMatchObject({ reason: 'rule', ruleId: 'task-fit' });
-    expect(result.ruleViolations.map((v) => v.ruleId)).toEqual(['task-fit']);
+  it('gates descendants of a failing check like an expression rule: by severity, unless overridden', async () => {
+    const taskRule = { ...gated, id: 'task-fit', type: 'task', gatesDescendants: undefined };
+    const run = async (rule: Record<string, unknown>) => {
+      const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+      const result = await validateSpace(setup([rule, stepRule]).context(), { judge });
+      return { result, judged: judgedLabels(judge) };
+    };
 
-    const implicit = setup([{ ...taskRule, gatesDescendants: undefined, severity: 'error' }, stepRule]);
-    const open = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
-    const ungated = await validateSpace(implicit.context(), { judge: open });
-    expect(judgedLabels(open)).toEqual(['S.md']);
-    expect(ungated.coverageGates).toEqual([]);
-    expect(ungated.ruleViolations.map((v) => v.ruleId).sort()).toEqual(['step-fit', 'task-fit']);
+    // error severity gates by default
+    const byDefault = await run({ ...taskRule, severity: 'error' });
+    expect(byDefault.judged).toEqual([]);
+    expect(byDefault.result.coverageGates[0]).toMatchObject({ reason: 'rule', ruleId: 'task-fit' });
+    expect(byDefault.result.ruleViolations.map((v) => v.ruleId)).toEqual(['task-fit']);
+
+    // explicit false turns it off
+    const optedOut = await run({ ...taskRule, severity: 'error', gatesDescendants: false });
+    expect(optedOut.judged).toEqual(['S.md']);
+    expect(optedOut.result.coverageGates).toEqual([]);
+    expect(optedOut.result.ruleViolations.map((v) => v.ruleId).sort()).toEqual(['step-fit', 'task-fit']);
+
+    // warning severity does not gate by default
+    const warning = await run({ ...taskRule, severity: 'warning' });
+    expect(warning.judged).toEqual(['S.md']);
+    expect(warning.result.coverageGates).toEqual([]);
+
+    // explicit true gates a warning
+    const forced = await run({ ...taskRule, severity: 'warning', gatesDescendants: true });
+    expect(forced.judged).toEqual([]);
+    expect(forced.result.coverageGates[0]).toMatchObject({ reason: 'rule', ruleId: 'task-fit' });
   });
 
   it('gates the file when an ancestor check fails (single-file validation)', async () => {

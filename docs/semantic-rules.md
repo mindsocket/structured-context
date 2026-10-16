@@ -67,7 +67,7 @@ The order is `when`, then `check`, then the judge. Without a judge, the order is
 
 A failing `check` reports the severity that an expression rule would report: the rule's `severity`, or the default for its category. With a [severity map](#severity), it reports the most severe severity in the map. If every entry in the map is `ignore`, it reports `info`.
 
-A failing `check` [gates](rules.md#cascade-gating) the node's descendants only when the rule sets `gatesDescendants: true`. Without that, it does not gate, whatever its severity.
+A failing `check` [gates](rules.md#cascade-gating) the node's descendants as an expression rule does. It gates by default when it reports `error` severity. Set `gatesDescendants` to override that either way.
 
 `--rule-filter mode=semantic` selects these rules with or without a judge.
 

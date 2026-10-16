@@ -237,7 +237,7 @@ export async function evaluateRulesWithGating(
       else if (outcome.value !== true) report(rule);
     }
 
-    // A semantic rule's `check` fails fast before the judge. It gates descendants only on an explicit `gatesDescendants: true`.
+    // A semantic rule's `check` fails fast before the judge. Its violation gates like an expression rule's, at the severity it reports.
     const prechecked = await applySemanticChecks(
       applicable.filter((r) => r.mode === 'semantic'),
       node,
@@ -245,7 +245,7 @@ export async function evaluateRulesWithGating(
       nodeIndex,
     );
     violations.push(...prechecked.violations);
-    const gatingRule = prechecked.failed.find((r) => r.gatesDescendants === true);
+    const gatingRule = prechecked.failed.find((r) => ruleGatesDescendants(r));
     if (gatingRule && !blockingRuleId) blockingRuleId = gatingRule.id;
     const semantic = prechecked.judgeable;
     if (judge && semantic.length > 0) {
