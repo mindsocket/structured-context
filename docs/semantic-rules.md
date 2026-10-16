@@ -124,7 +124,7 @@ By default the model sees the evaluated node alone. Use `semantic.scope` to send
 | `descendants` | The children, their children, and so on |
 | `branch` | The ancestors and the descendants |
 
-Entries add together. A node that matches several entries is sent once, with every relation it has. An empty or absent `scope` sends the evaluated node alone. Other relationships are not followed. A schema without a hierarchy has no related nodes.
+Entries add together. A node that matches several entries is sent once, with every relation it has. `ancestors` includes `parent`, and `descendants` includes `children`, so a direct parent or child is always labelled as one. An empty or absent `scope` sends the evaluated node alone. Other relationships are not followed. A schema without a hierarchy has no related nodes.
 
 A wide scope can send many nodes, and every node sends all its schema data. Prefer to attach a rule at the level where `parent`, `children` or `ancestors` covers what it needs, rather than `descendants` or `branch` on a node near the top of a large tree.
 

@@ -14,7 +14,8 @@ export interface RuleContext {
 }
 
 /**
- * The related nodes and bodies a semantic rule asks for. `branch` expands to `ancestors` and `descendants`;
+ * The related nodes and bodies a semantic rule asks for. `branch` expands to `ancestors` and `descendants`, which
+ * imply `parent` and `children`;
  * `includeContent: true` means `fullScope`.
  */
 export function ruleContext(rule: Rule): RuleContext {
@@ -22,6 +23,9 @@ export function ruleContext(rule: Rule): RuleContext {
   const include = semantic?.includeContent;
   const asked = new Set<string>(semantic?.scope ?? []);
   if (asked.has('branch')) asked.add('ancestors').add('descendants');
+  // A wider scope implies the narrower one, so equal node sets give equal inputs and direct relations keep their label.
+  if (asked.has('ancestors')) asked.add('parent');
+  if (asked.has('descendants')) asked.add('children');
   return {
     scope: SEMANTIC_SCOPES.filter((s): s is SemanticScope => s !== 'branch' && asked.has(s)),
     content: include === undefined ? 'none' : include === true ? 'fullScope' : include,

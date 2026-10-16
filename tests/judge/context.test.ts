@@ -95,13 +95,12 @@ describe('ruleContext', () => {
     expect(ruleContext(rule({ includeContent: true })).content).toBe('fullScope');
   });
 
-  it('expands branch to ancestors and descendants', () => {
-    expect(ruleContext(rule({ scope: ['branch'] })).scope).toEqual(['ancestors', 'descendants']);
-    expect(ruleContext(rule({ scope: ['branch', 'parent', 'ancestors'] })).scope).toEqual([
-      'parent',
-      'ancestors',
-      'descendants',
-    ]);
+  it('expands branch, and wider scopes imply the direct relation', () => {
+    const all: RuleContext['scope'] = ['parent', 'children', 'ancestors', 'descendants'];
+    expect(ruleContext(rule({ scope: ['branch'] })).scope).toEqual(all);
+    expect(ruleContext(rule({ scope: ['branch', 'parent', 'ancestors'] })).scope).toEqual(all);
+    expect(ruleContext(rule({ scope: ['ancestors'] })).scope).toEqual(['parent', 'ancestors']);
+    expect(ruleContext(rule({ scope: ['descendants'] })).scope).toEqual(['children', 'descendants']);
   });
 });
 
