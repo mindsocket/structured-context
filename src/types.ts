@@ -134,7 +134,7 @@ export type BaseNode = {
   linkTargets: string[];
   /** Raw type string from content, as written by the user. */
   type: string;
-  /** Body content of the node, if any. First-class accessor mirroring schemaData.content. */
+  /** Markdown source of the node's body, if any. First-class accessor mirroring schemaData.content. */
   content?: string;
   /**
    * Links extracted from content body and non-edge string fields at parse time.
