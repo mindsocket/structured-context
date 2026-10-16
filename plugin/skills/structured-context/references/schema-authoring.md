@@ -1,7 +1,7 @@
 # Schema Authoring Reference
 
 Schema files use a 2020-12-based dialect with top-level `$metadata`.
-See `~/src/structured-context/schemas/` for examples (`strategy_general.json`, `strict_ost.json`, `_ost_strict.json`).
+See the bundled schemas shipped with `sctx` for examples (`strategy_general.json`, `strict_ost.json`, `_ost_strict.json`).
 
 ## `$metadata` (top-level)
 
