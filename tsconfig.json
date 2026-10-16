@@ -16,7 +16,6 @@
     "declaration": true,
     "outDir": "dist",
     "rootDir": ".",
-    "paths": { "@/*": ["./src/*"], "*": ["./*"] },
 
     // Best practices
     "strict": true,

@@ -80,6 +80,7 @@ For most development only the main unit tests need re-running regularly.
 - `bun run test:hook` — unit test plugin hooks (`hook-test/unit/`) - hook development only
 - `bun run test:hook:e2e` — test plugin hooks in Claude Code (`hook-test/`) - hook development only
 - `bun run test:smoke` — smoke tests run against locally configured spaces - only use when changes could affect compatibility.
+- `bun run test:package` — builds and packs the package, installs the tarball, and runs the installed CLI. Runs in CI and before every version bump; run it after changing the build, `tsconfig*.json` or `files`.
 - `bun run test:judge` — live judge tests (`tests/judge/live.test.ts`): one real provider call per provider whose API key is set. Costs money; use sparingly when changing judges or semantic rule behaviour.
 - `bun run test:models` — check that every bundled provider's configured model exists (no API keys)
 
