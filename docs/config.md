@@ -65,9 +65,9 @@ All plugin names must start with `sctx-` (the prefix is optional in config and n
 
 Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` directory (or `"sctx": { "schemas": "..." }` in `package.json`). If a space specifies a plugin-prefixed schema (e.g. `"sctx-wardley-mapping/wardley_map.json"`), schemas are resolved statically without executing plugin code, and the plugin's code hooks are loaded when parsing or rendering.
 
-## Model providers and judge
+## Model providers and semantic rules
 
-structured-context judges [semantic rules](semantic-rules.md) with a **model provider**: a named definition that says which wire API to speak, which model to use and where. A provider definition combines an `api`, explicit values or environment-variable names, and the key source.
+structured-context evaluates [semantic rules](semantic-rules.md) with a **model provider**: a named definition that says which wire API to speak, which model to use and where. A provider definition combines an `api`, explicit values or environment-variable names, and the key source.
 
 **Bundled providers** work without any configuration: a fixed model per vendor chosen by this project, plus `-env` variants that also read the vendor's usual model and endpoint variables (`OPENAI_MODEL`, `OPENAI_BASE_URL`, `ANTHROPIC_MODEL`), falling back to the bundle's defaults where a variable is unset. Bundles without `-env` read no environment beyond the key: they behave the same on every machine.
 
@@ -105,7 +105,7 @@ Bundled provider names follow the pattern:
 
 | Field | Description |
 |---|---|
-| `api` | **Required.** The wire API (see the table above and [Choosing a judge](semantic-rules.md#choosing-a-judge)), or `fake` (for tests). |
+| `api` | **Required.** The wire API (see the table above and [Choosing a model provider](semantic-rules.md#choosing-a-model-provider)), or `fake` (for tests). |
 | `model` | A fixed model. Its default depends on the API. |
 | `modelEnv` | Environment variable holding a model override. An explicit `model` wins; a variable set but empty is an error. |
 | `endpoint` | A fixed API URL. |
@@ -117,18 +117,18 @@ Resolution per field: the explicit value wins, then the named environment variab
 
 The environment holds only keys and the variables a `-env` bundle names. No environment variable selects a provider.
 
-The top-level `judge` names the model provider that judges semantic rules: a bundled provider or an entry in `modelProviders`. A space can set its own `judge`, which replaces the top-level one for that space, for example to keep a private space on a local model:
+The top-level `semantic.provider` names the model provider that evaluates semantic rules: a bundled provider or an entry in `modelProviders`. A space can set its own `semantic`, which replaces the top-level one for that space, for example to keep a private space on a local model:
 
 ```json
 {
-  "judge": { "provider": "openrouter-jev" },
+  "semantic": { "provider": "openrouter-jev" },
   "spaces": [
-    { "name": "private-notes", "path": "/path/to/notes", "judge": { "provider": "local" } }
+    { "name": "private-notes", "path": "/path/to/notes", "semantic": { "provider": "local" } }
   ]
 }
 ```
 
-Config does not turn judging on. Each run asks for it with `--semantic`, or with `--judge <provider>`, which also selects a different provider for that run.
+Config does not turn semantic evaluation on. Each run asks for it with `--semantic`. `--semantic <provider>` also selects a different provider for that run.
 
 ## Markdown plugin config
 

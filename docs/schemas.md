@@ -139,8 +139,8 @@ Top-level metadata shape:
         "id": "active-outcome-count",
         "category": "workflow",
         "description": "Only one outcome should be active at a time",
-        "scope": "global",
-        "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+        "global": true,
+        "expression": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
       }
     ]
   }
@@ -159,7 +159,7 @@ Top-level metadata shape:
 | `hierarchy.allowSkipLevels` | `boolean` | Optional; allows parent to be any ancestor level |
 | `relationships` | `Relationship[]` | Optional; defines related node links outside the primary hierarchy. A relationship may set `override: true` |
 | `aliases` | `Record<string, string \| { type, override }>` | Optional type alias map. Use `{ "type": "goal", "override": true }` to replace an imported alias |
-| `rules` | `Rule[]` | Optional flat rule array. Rules are `expression` (JSONata `check`, the default) or `semantic` (judged against a rubric); see [Rules](rules.md) |
+| `rules` | `Rule[]` | Optional flat rule array. A rule has an `expression` (a JSONata test), a `semantic` part (evaluated by a model against a rubric), or both; see [Rules](rules.md) |
 
 ### Relationships
 
@@ -369,8 +369,8 @@ How hierarchies are used:
         "override": true,
         "category": "workflow",
         "description": "Require exactly one active outcome",
-        "scope": "global",
-        "check": "$count(nodes[resolvedType='outcome' and status='active']) = 1"
+        "global": true,
+        "expression": "$count(nodes[resolvedType='outcome' and status='active']) = 1"
       }
     ]
   }

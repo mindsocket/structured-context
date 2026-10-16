@@ -163,17 +163,19 @@ Rules may be:
 
 Rules are distinct from schema validation: the schema checks structure; rules check meaning and quality.
 
+A rule's `when` is its **applicability condition**: a test that decides whether the rule applies to a node. Its `expression` is the test the node must pass.
+
 Each executable rule has a **category** (`validation`, `coherence`, `workflow`, `best-practice`) that supplies its default **severity** (`error`, `warning`, `info`). A rule may override its category's severity, but categories are the preferred grouping. Only `error` severity violations fail validation.
 
 See [docs/rules.md](rules.md) for the rules reference, including JSONata expression syntax and the full `$metadata` field reference.
 
 ### Semantic rules
 
-A **semantic rule** (`mode: semantic`) asks a model to judge a node, for example whether an opportunity is a customer need. It has a `rubric` and may have a `check`, an expression precondition that runs before the judge.
+A **semantic rule** is a rule with a `semantic` part. It asks a model to evaluate a node, for example whether an opportunity is a customer need. The `semantic` object can carry a `rubric`, `verdicts` and a verdict `severity` map. A rule can also have an `expression`, a JSONata test that runs before the model.
 
-A **judge** is the model that judges semantic rules: a decision model (Jev) or a chat model (Claude, OpenAI-compatible). For each rule, the judge gives one **verdict** from the rule's `verdicts`, for example `customer-need`, `vague` or `solution`. The rule's `severity` says which verdicts report a violation. Semantic rules cost money, so they are judged only when a run asks for it (`--semantic` or `--judge`); a rule's `check` always runs. The judge is a configured **model provider**: a bundled provider or an entry in `modelProviders`. See [docs/semantic-rules.md](semantic-rules.md).
+A **model provider** evaluates semantic rules: a decision model (Jev) or a chat model (Claude, OpenAI-compatible). It is a bundled provider or an entry in `modelProviders`. For each rule, the model gives one **verdict** from the rule's `semantic.verdicts`, for example `customer-need`, `vague` or `solution`. The rule's `semantic.severity` says which verdicts report a violation. Semantic rules cost money, so they are evaluated only when a run asks for it (`--semantic`); a rule's `expression` always runs. See [docs/semantic-rules.md](semantic-rules.md).
 
-A **node ruleset group** is the set of nodes that share the same semantic rules. It forms within one evaluation step of [cascade gating](#cascade-gating): one hierarchy depth, or the set of non-hierarchy nodes. Nodes are keyed on the rules left after `when` and `check` filtering. A judge on the `openrouter-decisions` or `typesafe-systemone` API judges one group in as few decision requests as it can.
+A **node ruleset group** is the set of nodes that share the same semantic rules. It forms within one evaluation step of [cascade gating](#cascade-gating): one hierarchy depth, or the set of non-hierarchy nodes. Nodes are keyed on the rules left after `when` and `expression` filtering. A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates one group in as few decision requests as it can.
 
 A **decision request** is one call to a decisions API. It carries the state of one or more nodes and a list of decision questions.
 
@@ -183,7 +185,7 @@ A **decision question** is one choice question about one node under one semantic
 
 **Cascade gating** is the mechanism by which a schema failure, hierarchy structure violation, or blocking rule violation on a node suppresses rule evaluation for that node's `hierarchy` subtree. It exists so downstream checks — especially costly semantic (model-judged) rules — aren't run against inputs already known to be invalid.
 
-A **coverage gate** records one instance of this: the gating node, what kind of failure triggered it (`schema`, `hierarchy`, or a specific rule `id`), and the set of nodes whose rule checks were suppressed as a result. `sctx validate` reports coverage gates so both humans and agents can see the validation "edge" — where evaluation stopped and why. See [docs/rules.md](rules.md#cascade-gating) for the full model, including the per-rule `gatesDescendants` field and the `--include-gated` / `--depth` CLI options.
+A **coverage gate** records one instance of this: the gating node, what kind of failure triggered it (`schema`, `hierarchy`, or a specific rule `id`), and the set of nodes whose rules were suppressed as a result. `sctx validate` reports coverage gates so both humans and agents can see the validation "edge" — where evaluation stopped and why. See [docs/rules.md](rules.md#cascade-gating) for the full model, including the per-rule `gatesDescendants` field and the `--include-gated` / `--depth` CLI options.
 
 ---
 

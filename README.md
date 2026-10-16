@@ -115,8 +115,8 @@ Schemas are JSON Schema 2020-12 plus a top-level `$metadata` block for hierarchy
       "id": "active-outcome-count",
       "category": "workflow",
       "description": "Only one outcome should be active at a time",
-      "scope": "global",
-      "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+      "global": true,
+      "expression": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
     }
   ]
 }
@@ -131,17 +131,17 @@ See [docs/schemas.md](docs/schemas.md) (`sctx docs schema`) for the dialect, com
 ### Validate nodes
 
 ```bash
-sctx validate <space> [--watch] [--depth <n>] [--include-gated] [--semantic] [--judge <provider>] [--rule-filter <dim=values>]
+sctx validate <space> [--watch] [--depth <n>] [--include-gated] [--semantic [provider]] [--rule-filter <dim=values>]
 ```
 
 Validates markdown files against the JSON schema:
 - Extracts YAML frontmatter from each `.md` file
 - Skips files without frontmatter or without a `type` field
 - Reports validation results with counts and per-file errors
-- Runs executable rules (`$metadata.rules`) with **cascade gating**: a schema, hierarchy, or blocking-rule failure on a node suppresses rule evaluation for that node's hierarchy subtree. Gated checks are reported in a Coverage section so you know what wasn't evaluated and why. See [docs/rules.md](docs/rules.md#cascade-gating) for details.
+- Runs executable rules (`$metadata.rules`) with **cascade gating**: a schema, hierarchy, or blocking-rule failure on a node suppresses rule evaluation for that node's hierarchy subtree. Gated rules are reported in a Coverage section so you know what wasn't evaluated and why. See [docs/rules.md](docs/rules.md#cascade-gating) for details.
 - `--depth <n>` limits evaluation to hierarchy nodes within `n` breadth-first levels from the top — useful for staged agentic fix loops (fix the top level, then request the next).
 - `--include-gated` evaluates rules even on gated nodes (still reported as gated) — for surfacing cheap bottom-up checks on request.
-- `--semantic` also evaluates `mode: semantic` rules with the configured judge (Jev, Anthropic or OpenAI-compatible); `--judge <provider>` uses that configured model provider instead and implies `--semantic`; `--rule-filter` narrows which rules run. See [docs/semantic-rules.md](docs/semantic-rules.md) (`sctx docs semantic-rules`).
+- `--semantic` also evaluates the `semantic` part of rules with the configured model provider (Jev, Anthropic or OpenAI-compatible); `--semantic <provider>` uses that configured model provider instead; `--rule-filter` narrows which rules run. See [docs/semantic-rules.md](docs/semantic-rules.md) (`sctx docs semantic-rules`).
 
 ### Render space
 
