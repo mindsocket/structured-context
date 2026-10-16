@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import { createModelProvider } from '../../../src/judge/factory';
-import { JEV_DECISION_REQUEST_MAX_QUESTIONS, JevJudgeProvider } from '../../../src/judge/provider/jev';
+import { JEV_REQUEST_PACKING_LIMIT_QUESTIONS, JevJudgeProvider } from '../../../src/judge/provider/jev';
 import { graded, node, passFailRule } from '../helpers';
 
 const realFetch = globalThis.fetch;
@@ -144,11 +144,11 @@ describe('JevJudgeProvider', () => {
 
     it('splits a NodeRulesetGroup by the question cap without splitting a node', async () => {
       const bodies = answering();
-      const count = JEV_DECISION_REQUEST_MAX_QUESTIONS + 5;
+      const count = JEV_REQUEST_PACKING_LIMIT_QUESTIONS + 5;
       const results = await jev().evaluateNodes(
         Array.from({ length: count }, (_, i) => ({ node: nodeNamed(`N${i}`), rules: [passFailRule] })),
       );
-      expect(bodies.map((b) => Object.keys(b.questions).length)).toEqual([JEV_DECISION_REQUEST_MAX_QUESTIONS, 5]);
+      expect(bodies.map((b) => Object.keys(b.questions).length)).toEqual([JEV_REQUEST_PACKING_LIMIT_QUESTIONS, 5]);
       expect(results).toHaveLength(count);
       expect(results.every((r) => 'verdict' in r['customer-voice']!)).toBe(true);
     });
@@ -199,10 +199,10 @@ describe('JevJudgeProvider', () => {
 
     it('splits a single node with more rules than the question cap across requests, sending its state whole each time', async () => {
       const bodies = answering();
-      const count = JEV_DECISION_REQUEST_MAX_QUESTIONS + 3;
+      const count = JEV_REQUEST_PACKING_LIMIT_QUESTIONS + 3;
       const rules = Array.from({ length: count }, (_, i) => ({ ...passFailRule, id: `r${i}` }));
       const results = await jev().evaluateNodes([{ node: nodeNamed('A'), rules }]);
-      expect(bodies.map((b) => Object.keys(b.questions).length)).toEqual([JEV_DECISION_REQUEST_MAX_QUESTIONS, 3]);
+      expect(bodies.map((b) => Object.keys(b.questions).length)).toEqual([JEV_REQUEST_PACKING_LIMIT_QUESTIONS, 3]);
       expect(bodies.every((b) => b.state.nodes === undefined)).toBe(true);
       expect(Object.keys(results[0]!)).toHaveLength(count);
       expect(Object.values(results[0]!).every((r) => 'verdict' in r)).toBe(true);

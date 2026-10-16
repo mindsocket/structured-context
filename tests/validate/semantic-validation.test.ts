@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Config } from '../../src/config';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
+import { PER_NODE_INPUT_CAP_TOKENS } from '../../src/judge/trim';
 import { bundledSchemasDir } from '../../src/schema/schema';
 import { createSpaceContext } from '../../src/space-context';
 import type { FileValidationResult } from '../../src/types';
@@ -227,5 +229,32 @@ describe('Semantic rules: verdicts, batching and rule filter', () => {
     });
     expect(fake.callHistory).toHaveLength(0);
     expect(expressionOnly.ruleViolations.some((v) => v.verdict !== undefined)).toBe(false);
+  });
+});
+
+describe('context trimming in a run', () => {
+  const scopedRule = {
+    id: 'task-fits-goal',
+    category: 'coherence',
+    description: 'The task serves its goal',
+    type: 'task',
+    semantic: { scope: ['parent'], includeContent: 'fullScope' },
+  };
+  let space: TempSpace;
+  beforeAll(() => {
+    space = makeTempSpace([scopedRule]);
+    writeFileSync(space.file('G.md'), `---\ntype: goal\n---\n${'word '.repeat(PER_NODE_INPUT_CAP_TOKENS * 2)}\n`);
+  });
+  afterAll(() => space.cleanup());
+
+  it('reports how many nodes were trimmed and for which rules', async () => {
+    const context = createSpaceContext('ts', space.config, { configDir: space.dir });
+    const result = await validateSpace(context, { judge: new FakeJudgeProvider({ pass: true }) });
+    expect(result.contextTrimmed).toEqual({ nodeCount: 1, ruleIds: ['task-fits-goal'] });
+  });
+
+  it('reports nothing without a judge', async () => {
+    const context = createSpaceContext('ts', space.config, { configDir: space.dir });
+    expect((await validateSpace(context)).contextTrimmed).toEqual({ nodeCount: 0, ruleIds: [] });
   });
 });

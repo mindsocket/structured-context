@@ -85,6 +85,7 @@ export async function validate(
           parseIssues: result.parseIssues,
           unresolvedContentLinks: result.unresolvedContentLinks,
           coverageGates: result.coverageGates,
+          contextTrimmed: result.contextTrimmed,
           skippedByDepth: result.skippedByDepth,
           depthLimit: result.depthLimit,
         },
@@ -235,6 +236,12 @@ export async function validate(
   if (result.skippedByDepth.length > 0) {
     console.log(`\nSkipped by depth limit (--depth ${result.depthLimit}):`);
     for (const { file } of result.skippedByDepth) console.log(`   ${file}`);
+  }
+
+  if (result.contextTrimmed.nodeCount > 0) {
+    console.log(
+      `\nContext trimmed for ${result.contextTrimmed.nodeCount} node(s) across rules ${result.contextTrimmed.ruleIds.join(', ')}.`,
+    );
   }
 
   console.log(`\n`);
