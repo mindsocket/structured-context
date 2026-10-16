@@ -126,7 +126,7 @@ By default the model sees the evaluated node alone. Use `semantic.scope` to send
 
 Entries add together, and each node is sent once. An empty or absent `scope` sends the evaluated node alone. Other relationships are not followed.
 
-A wide scope can send many nodes, and every node sends all its schema data. Prefer to attach a rule at the level where `parent`, `children` or `ancestors` covers what it needs, rather than `descendants` or `branch` on a node near the top of a large tree.
+A wide scope can send many nodes, and every node sends all its schema data, which [trimming](#input-size-and-trimming) never cuts. Prefer to attach a rule at the level where `parent`, `children` or `ancestors` covers what it needs, rather than `descendants` or `branch` on a node near the top of a large tree.
 
 Scope sends node data only, never the verdicts of other rules, and [gating](rules.md#cascade-gating) does not change which nodes it selects.
 
