@@ -112,3 +112,20 @@ describe('OpenAIDecisionsJudgeProvider', () => {
     expect(() => createModelProvider('openai-decisions', { api: 'openai-decisions' }, {})).toThrow('OPENAI_API_KEY');
   });
 });
+
+describe('OpenAIDecisionsJudgeProvider related nodes', () => {
+  it('lists related nodes with their relation in the input', async () => {
+    const calls = mockFetch({
+      answers: [{ type: 'choice', name: 'customer-voice', choice: 'pass', probabilities: [] }],
+    });
+    const provider = new OpenAIDecisionsJudgeProvider({ api: 'openai-decisions', apiKey: 'k' });
+    await provider.evaluate({
+      node,
+      related: [{ relations: ['child'], title: 'Receipt scanner', type: 'solution', data: { owner: 'finance' } }],
+      rules: [passFailRule],
+    });
+    const sent = JSON.parse(calls[0]?.init.body as string);
+    expect(sent.input).toContain('Related node (child): Receipt scanner');
+    expect(sent.input).toContain('owner: "finance"');
+  });
+});

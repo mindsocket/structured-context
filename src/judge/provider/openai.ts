@@ -1,5 +1,11 @@
 import { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from '../prompt';
-import type { HydratedProvider, SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from '../types';
+import type {
+  HydratedProvider,
+  RelatedNode,
+  SemanticJudgeInput,
+  SemanticJudgeResult,
+  SemanticRuleSpec,
+} from '../types';
 import { PerRuleJudgeProvider } from './per-rule';
 
 export interface OpenAIJudgeProviderOptions extends HydratedProvider {
@@ -29,9 +35,13 @@ export class OpenAIJudgeProvider extends PerRuleJudgeProvider {
     this.endpoint = base.endsWith('/chat/completions') ? base : `${base.replace(/\/+$/, '')}/chat/completions`;
   }
 
-  protected async judgeRule(node: SemanticJudgeInput['node'], rule: SemanticRuleSpec): Promise<SemanticJudgeResult> {
+  protected async judgeRule(
+    node: SemanticJudgeInput['node'],
+    rule: SemanticRuleSpec,
+    related: RelatedNode[],
+  ): Promise<SemanticJudgeResult> {
     const systemPrompt = buildJudgeSystemPrompt();
-    const userPrompt = buildJudgeUserPrompt(node, rule);
+    const userPrompt = buildJudgeUserPrompt(node, rule, related);
 
     const headers: Record<string, string> = {
       'content-type': 'application/json',

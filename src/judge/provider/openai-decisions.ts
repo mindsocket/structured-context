@@ -41,9 +41,13 @@ export class OpenAIDecisionsJudgeProvider implements SemanticJudgeProvider {
       `Title: ${node.title}`,
       `Type: ${node.resolvedType}`,
       ...(node.resolvedParents?.length ? [`Parents: ${node.resolvedParents.map((p) => p.title).join(', ')}`] : []),
-      ...Object.entries(node.schemaData ?? {})
-        .filter(([field]) => field !== 'title' && field !== 'type')
-        .map(([field, value]) => `${field}: ${JSON.stringify(value) ?? String(value)}`),
+      ...fieldLines(node.schemaData ?? {}),
+      ...(input.related ?? []).flatMap((r) => [
+        '',
+        `Related node (${r.relations.join(', ')}): ${r.title}`,
+        `Type: ${r.type}`,
+        ...fieldLines(r.data),
+      ]),
     ];
 
     const res = await fetch(this.endpoint, {
@@ -85,6 +89,12 @@ export class OpenAIDecisionsJudgeProvider implements SemanticJudgeProvider {
     }
     return results;
   }
+}
+
+function fieldLines(data: Record<string, unknown>): string[] {
+  return Object.entries(data)
+    .filter(([field]) => field !== 'title' && field !== 'type')
+    .map(([field, value]) => `${field}: ${JSON.stringify(value) ?? String(value)}`);
 }
 
 function describeDistribution(

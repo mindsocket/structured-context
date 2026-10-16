@@ -102,4 +102,21 @@ describe('rule contract: expression and semantic', () => {
     expect(() => load('expr-verdicts', { ...expr, verdicts: { a: 'A', b: 'B' } })).toThrow();
     expect(load('expr-when', { ...expr, when: 'true' }).rules).toHaveLength(1);
   });
+
+  it('accepts scope and includeContent on a semantic part, and nowhere else', () => {
+    const scope = ['parent', 'siblings', 'children', 'ancestors', 'descendants'];
+    expect(load('scope-ok', { ...base, semantic: { scope, includeContent: 'fullScope' } }).rules).toHaveLength(1);
+    expect(load('scope-empty', { ...base, semantic: { scope: [], includeContent: 'nodeOnly' } }).rules).toHaveLength(1);
+    expect(load('content-true', { ...base, semantic: { includeContent: true } }).rules).toHaveLength(1);
+    expect(() => load('scope-unknown', { ...base, semantic: { scope: ['cousins'] } })).toThrow();
+    expect(() => load('scope-dup', { ...base, semantic: { scope: ['parent', 'parent'] } })).toThrow();
+    expect(() => load('scope-string', { ...base, semantic: { scope: 'parent' } })).toThrow();
+    expect(() => load('content-false', { ...base, semantic: { includeContent: false } })).toThrow();
+    expect(() => load('content-unknown', { ...base, semantic: { includeContent: 'all' } })).toThrow();
+    expect(() => load('scope-top-level', { ...base, expression: 'true', scope: ['parent'] })).toThrow();
+  });
+
+  it('rejects scope on a global rule, which cannot have a semantic part', () => {
+    expect(() => load('global-scope', { ...base, global: true, semantic: { scope: ['parent'] } })).toThrow();
+  });
 });

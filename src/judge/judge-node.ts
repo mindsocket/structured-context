@@ -1,5 +1,7 @@
+import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, SpaceNode } from '../types';
-import type { SemanticJudgeProvider } from './types';
+import { contextKey, judgeContext, type RuleContext, ruleContext } from './context';
+import type { SemanticJudgeInput, SemanticJudgeProvider } from './types';
 import { isJudgeError, resolveSemanticRule } from './verdicts';
 
 export type NodeJudgement = {
@@ -58,51 +60,85 @@ function interpret(rules: Rule[], resolved: ResolvedRules, results: JudgeResults
 
 const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
-/** Judge every given semantic rule on a node in one provider call. */
+/** One provider input and the rules (by position in their node's rule list) it answers. */
+type Unit = { item: number; positions: number[]; rules: Rule[]; resolved: ResolvedRules; input: SemanticJudgeInput };
+
+/** Split each node's rules into inputs by the context they ask for; rules that share a context share an input. */
+function planUnits(graph: SpaceGraph, items: Array<{ node: SpaceNode; rules: Rule[] }>): Unit[] {
+  const units: Unit[] = [];
+  items.forEach(({ node, rules }, item) => {
+    const groups = new Map<string, { context: RuleContext; positions: number[] }>();
+    rules.forEach((rule, position) => {
+      const context = ruleContext(rule);
+      const key = contextKey(context);
+      const group = groups.get(key) ?? { context, positions: [] };
+      group.positions.push(position);
+      groups.set(key, group);
+    });
+    for (const { context, positions } of groups.values()) {
+      const unitRules = positions.map((p) => rules[p]!);
+      const resolved = resolveAll(unitRules);
+      units.push({
+        item,
+        positions,
+        rules: unitRules,
+        resolved,
+        input: { ...judgeContext(graph, node, context), rules: resolved.map((r) => r.spec) },
+      });
+    }
+  });
+  return units;
+}
+
+/** Judge every given semantic rule on a node. */
 export async function judgeNode(
   judge: SemanticJudgeProvider,
   node: SpaceNode,
   rules: Rule[],
+  graph: SpaceGraph,
 ): Promise<NodeJudgement[]> {
-  if (rules.length === 0) return [];
-  const resolved = resolveAll(rules);
-  let results: JudgeResults;
-  try {
-    results = await judge.evaluate({ node, rules: resolved.map((r) => r.spec) });
-  } catch (err) {
-    return errorJudgements(rules, errorMessage(err));
-  }
-  return interpret(rules, resolved, results);
+  return (await judgeNodes(judge, [{ node, rules }], graph))[0] ?? [];
 }
 
 /**
- * Judge several nodes at once. A judge with `evaluateNodes` gets every node in one call and may fold them into
- * fewer requests; any other judge is called once per node. Results align with `items`. A failure marks only the
- * affected node's rules as errors.
+ * Judge several nodes at once. A judge with `evaluateNodes` gets every input in one call and may fold them into
+ * fewer requests; any other judge is called once per input. A node's rules that share a context (related nodes
+ * and bodies) form one input. Results align with `items`, in rule order. A failure marks only the affected
+ * rules as errors.
  */
 export async function judgeNodes(
   judge: SemanticJudgeProvider,
   items: Array<{ node: SpaceNode; rules: Rule[] }>,
+  graph: SpaceGraph,
 ): Promise<NodeJudgement[][]> {
+  const units = planUnits(graph, items);
+  const out: NodeJudgement[][] = items.map(({ rules }) => new Array<NodeJudgement>(rules.length));
+  const place = (unit: Unit, judgements: NodeJudgement[]) => {
+    unit.positions.forEach((position, k) => {
+      out[unit.item]![position] = judgements[k]!;
+    });
+  };
+
   if (!judge.evaluateNodes) {
-    const out: NodeJudgement[][] = [];
-    for (const item of items) out.push(await judgeNode(judge, item.node, item.rules));
+    for (const unit of units) {
+      try {
+        place(unit, interpret(unit.rules, unit.resolved, await judge.evaluate(unit.input)));
+      } catch (err) {
+        place(unit, errorJudgements(unit.rules, errorMessage(err)));
+      }
+    }
     return out;
   }
-  const active = items
-    .map((item, index) => ({ ...item, index, resolved: resolveAll(item.rules) }))
-    .filter((a) => a.rules.length > 0);
-  const out: NodeJudgement[][] = items.map(() => []);
-  if (active.length === 0) return out;
-  let perNode: JudgeResults[];
+  if (units.length === 0) return out;
+  let perInput: JudgeResults[];
   try {
-    perNode = await judge.evaluateNodes(active.map((a) => ({ node: a.node, rules: a.resolved.map((r) => r.spec) })));
+    perInput = await judge.evaluateNodes(units.map((u) => u.input));
   } catch (err) {
-    for (const a of active) out[a.index] = errorJudgements(a.rules, errorMessage(err));
+    for (const unit of units) place(unit, errorJudgements(unit.rules, errorMessage(err)));
     return out;
   }
-  active.forEach((a, k) => {
-    out[a.index] = interpret(a.rules, a.resolved, perNode[k] ?? {});
+  units.forEach((unit, k) => {
+    place(unit, interpret(unit.rules, unit.resolved, perInput[k] ?? {}));
   });
   return out;
 }

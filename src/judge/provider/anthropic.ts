@@ -1,5 +1,11 @@
 import { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from '../prompt';
-import type { HydratedProvider, SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from '../types';
+import type {
+  HydratedProvider,
+  RelatedNode,
+  SemanticJudgeInput,
+  SemanticJudgeResult,
+  SemanticRuleSpec,
+} from '../types';
 import { PerRuleJudgeProvider } from './per-rule';
 
 export interface AnthropicJudgeProviderOptions extends HydratedProvider {
@@ -24,7 +30,11 @@ export class AnthropicJudgeProvider extends PerRuleJudgeProvider {
     this.endpoint = options.endpoint || ANTHROPIC_MESSAGES_ENDPOINT;
   }
 
-  protected async judgeRule(node: SemanticJudgeInput['node'], rule: SemanticRuleSpec): Promise<SemanticJudgeResult> {
+  protected async judgeRule(
+    node: SemanticJudgeInput['node'],
+    rule: SemanticRuleSpec,
+    related: RelatedNode[],
+  ): Promise<SemanticJudgeResult> {
     const res = await fetch(this.endpoint, {
       method: 'POST',
       headers: {
@@ -36,7 +46,7 @@ export class AnthropicJudgeProvider extends PerRuleJudgeProvider {
         model: this.model,
         max_tokens: 1024,
         system: buildJudgeSystemPrompt(),
-        messages: [{ role: 'user', content: buildJudgeUserPrompt(node, rule) }],
+        messages: [{ role: 'user', content: buildJudgeUserPrompt(node, rule, related) }],
       }),
     });
 

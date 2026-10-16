@@ -60,3 +60,19 @@ describe('judge prompt and response parser', () => {
     expect(parseJudgeResponse('I cannot decide', allowed)).toHaveProperty('error');
   });
 });
+
+describe('related nodes in the chat prompt', () => {
+  it('lists each related node with its relation', () => {
+    const prompt = buildJudgeUserPrompt(node, passFailRule, [
+      { relations: ['parent', 'ancestor'], title: 'Faster Tax Filing', type: 'goal', data: { owner: 'finance' } },
+    ]);
+    expect(prompt).toContain('Related Nodes');
+    expect(prompt).toContain('Faster Tax Filing');
+    expect(prompt).toContain('Relation: parent, ancestor');
+    expect(prompt).toContain('finance');
+  });
+
+  it('has no related section without related nodes', () => {
+    expect(buildJudgeUserPrompt(node, passFailRule)).not.toContain('Related Nodes');
+  });
+});

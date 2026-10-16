@@ -219,3 +219,19 @@ describe('JevJudgeProvider', () => {
     });
   });
 });
+
+describe('JevJudgeProvider related nodes', () => {
+  it('sends related nodes in the state with their relation', async () => {
+    const calls = mockFetch({ answers: { 'customer-voice': { type: 'choice', choice: 'pass' } } });
+    const jev = new JevJudgeProvider({ api: 'openrouter-decisions', apiKey: 'k' });
+    await jev.evaluate({
+      node,
+      related: [{ relations: ['parent'], title: 'Faster Tax Filing', type: 'goal', data: { owner: 'finance' } }],
+      rules: [passFailRule],
+    });
+    const sent = JSON.parse(calls[0]?.init.body as string);
+    expect(sent.state.relatedNodes).toEqual([
+      { relation: 'parent', title: 'Faster Tax Filing', type: 'goal', owner: 'finance' },
+    ]);
+  });
+});

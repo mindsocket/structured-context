@@ -10,9 +10,28 @@ export interface SemanticRuleSpec {
   verdicts: Record<string, string>;
 }
 
-/** One node and every semantic rule to judge on it. Judges may answer all rules in a single call. */
+/**
+ * A node related to the evaluated node by its rules' `scope`. It carries all the node's schema data; the body
+ * (`data.content`) is present only when the rules' `includeContent` asks for it.
+ */
+export interface RelatedNode {
+  /** How it relates to the evaluated node: `parent`, `sibling`, `child`, `ancestor`, `descendant`. A node can have several. */
+  relations: string[];
+  title: string;
+  type: string;
+  /** Schema data without `title` and `type`. */
+  data: Record<string, unknown>;
+}
+
+/**
+ * One node and the semantic rules to judge on it, which share one context: the same related nodes and the same
+ * bodies. Judges may answer all rules in a single call.
+ */
 export interface SemanticJudgeInput {
+  /** The evaluated node. Its body is in `schemaData.content` only when the rules' `includeContent` asks for it. */
   node: Pick<SpaceNode, 'label' | 'title' | 'type' | 'resolvedType' | 'schemaData' | 'resolvedParents'>;
+  /** Nodes the rules' `scope` adds, as a flat list. Absent when the scope is empty. */
+  related?: RelatedNode[];
   rules: SemanticRuleSpec[];
 }
 

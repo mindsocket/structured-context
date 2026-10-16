@@ -256,6 +256,23 @@
                           "enum": ["error", "warning", "info", "ignore"]
                         },
                         "minProperties": 1
+                      },
+                      "scope": {
+                        "type": "array",
+                        "items": {
+                          "enum": ["parent", "siblings", "children", "ancestors", "descendants"]
+                        },
+                        "uniqueItems": true
+                      },
+                      "includeContent": {
+                        "oneOf": [
+                          {
+                            "enum": ["nodeOnly", "fullScope"]
+                          },
+                          {
+                            "const": true
+                          }
+                        ]
                       }
                     },
                     "additionalProperties": false

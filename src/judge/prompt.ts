@@ -1,4 +1,4 @@
-import type { SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from './types';
+import type { RelatedNode, SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from './types';
 
 function verdictList(rule: SemanticRuleSpec): string[] {
   return Object.entries(rule.verdicts).map(([name, description]) => `- "${name}": ${description}`);
@@ -26,7 +26,11 @@ export function buildJudgeSystemPrompt(): string {
 }
 
 /** User prompt for one rule on one node. */
-export function buildJudgeUserPrompt(node: SemanticJudgeInput['node'], rule: SemanticRuleSpec): string {
+export function buildJudgeUserPrompt(
+  node: SemanticJudgeInput['node'],
+  rule: SemanticRuleSpec,
+  related: RelatedNode[] = [],
+): string {
   const rubric = rule.rubric || rule.description;
   const lines: string[] = [
     '# Rule to Evaluate',
@@ -48,6 +52,20 @@ export function buildJudgeUserPrompt(node: SemanticJudgeInput['node'], rule: Sem
   }
 
   lines.push('', '## Node Content & Frontmatter:', '```json', JSON.stringify(node.schemaData, null, 2), '```', '');
+  if (related.length > 0) {
+    lines.push('# Related Nodes', 'Each is listed with its relation to the node under evaluation.', '');
+    for (const r of related) {
+      lines.push(
+        `## ${r.title}`,
+        `- Relation: ${r.relations.join(', ')}`,
+        `- Type: ${r.type}`,
+        '```json',
+        JSON.stringify(r.data, null, 2),
+        '```',
+        '',
+      );
+    }
+  }
   lines.push('Evaluate this node against the rule. Return only JSON with "verdict", "confidence" and "evidence".');
   return lines.join('\n');
 }
