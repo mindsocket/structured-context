@@ -34,6 +34,12 @@ export type SemanticJudgeResult = SemanticJudgeVerdict | { error: string };
 export interface SemanticJudgeProvider {
   readonly name: string;
   evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>>;
+  /**
+   * Optional: judge many nodes in one call, so a provider can fold them into fewer model calls. Returns one
+   * result map per input, in order. A failure that affects only some inputs is reported as `{ error }`
+   * results for those inputs' rules; throw only when nothing could be judged.
+   */
+  evaluateNodes?(inputs: SemanticJudgeInput[]): Promise<Array<Record<string, SemanticJudgeResult>>>;
 }
 
 /** Wire APIs a provider can speak. Names the request shape, never the vendor or model. */

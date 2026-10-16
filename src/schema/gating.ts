@@ -1,4 +1,5 @@
-import { judgeNode } from '../judge/judge-node';
+import type { NodeJudgement } from '../judge/judge-node';
+import { judgeNodes } from '../judge/judge-node';
 import type { SemanticJudgeProvider } from '../judge/types';
 import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, RuleViolation, SpaceNode } from '../types';
@@ -205,10 +206,19 @@ export async function evaluateRulesWithGating(
     return applicable;
   }
 
-  async function evaluateApplicableRules(node: SpaceNode): Promise<{ blockingRuleId?: string }> {
-    let blockingRuleId: string | undefined;
+  /** A node whose deterministic rules have run and whose semantic rules await the judge. */
+  type PreparedNode = {
+    violations: RuleViolation[];
+    semantic: Rule[];
+    blockingRuleId?: string;
+    judged(judgements: NodeJudgement[]): void;
+  };
+
+  async function prepareNode(node: SpaceNode): Promise<PreparedNode> {
+    const local: RuleViolation[] = [];
+    const prepared: PreparedNode = { violations: local, semantic: [], judged: () => {} };
     const applicable = await applicableRules(node, (rule, error) =>
-      violations.push(expressionErrorViolation(rule, node.label, error)),
+      local.push(expressionErrorViolation(rule, node.label, error)),
     );
 
     function report(
@@ -216,7 +226,7 @@ export async function evaluateRulesWithGating(
       detail: { severity?: RuleSeverity; verdict?: string; guidance?: string; evidence?: string; error?: string } = {},
     ): void {
       const severity = detail.severity ?? ruleSeverity(rule);
-      violations.push({
+      local.push({
         file: node.label,
         ruleId: rule.id,
         category: rule.category,
@@ -227,13 +237,15 @@ export async function evaluateRulesWithGating(
         ...(detail.guidance !== undefined && { guidance: detail.guidance }),
       });
       // A judge error says nothing about the node, so it never gates.
-      if (!detail.error && ruleGatesDescendants(rule, severity) && !blockingRuleId) blockingRuleId = rule.id;
+      if (!detail.error && ruleGatesDescendants(rule, severity) && !prepared.blockingRuleId) {
+        prepared.blockingRuleId = rule.id;
+      }
     }
 
-    // Cheap deterministic rules first; the judge is only consulted afterwards, once per node.
+    // Cheap deterministic rules first; the judge is only consulted afterwards.
     for (const rule of applicable.filter((r) => r.mode !== 'semantic')) {
       const outcome = await tryEvaluateExpression(rule.check as string, buildEvalContext(node, nodes, nodeIndex));
-      if ('error' in outcome) violations.push(expressionErrorViolation(rule, node.label, outcome.error));
+      if ('error' in outcome) local.push(expressionErrorViolation(rule, node.label, outcome.error));
       else if (outcome.value !== true) report(rule);
     }
 
@@ -244,12 +256,12 @@ export async function evaluateRulesWithGating(
       nodes,
       nodeIndex,
     );
-    violations.push(...prechecked.violations);
+    local.push(...prechecked.violations);
     const gatingRule = prechecked.failed.find((r) => ruleGatesDescendants(r));
-    if (gatingRule && !blockingRuleId) blockingRuleId = gatingRule.id;
-    const semantic = prechecked.judgeable;
-    if (judge && semantic.length > 0) {
-      for (const j of await judgeNode(judge, node, semantic)) {
+    if (gatingRule && !prepared.blockingRuleId) prepared.blockingRuleId = gatingRule.id;
+    if (judge) prepared.semantic = prechecked.judgeable;
+    prepared.judged = (judgements) => {
+      for (const j of judgements) {
         if (j.failed) {
           report(j.rule, {
             severity: j.severity,
@@ -260,52 +272,77 @@ export async function evaluateRulesWithGating(
           });
         }
       }
+    };
+    return prepared;
+  }
+
+  /**
+   * Evaluate one set of nodes together, so their semantic rules go to the judge in one pass and a judge
+   * with `evaluateNodes` can share model calls. Gating for the set is already decided; violations are
+   * recorded in node order.
+   */
+  async function evaluateNodeSet(nodes: readonly SpaceNode[]): Promise<Array<{ blockingRuleId?: string }>> {
+    const prepared: PreparedNode[] = [];
+    for (const node of nodes) prepared.push(await prepareNode(node));
+    if (judge) {
+      const pending = nodes.map((node, i) => ({ node, rules: prepared[i]!.semantic }));
+      const judgements = await judgeNodes(judge, pending);
+      prepared.forEach((p, i) => {
+        p.judged(judgements[i] ?? []);
+      });
     }
-    return { blockingRuleId };
+    for (const p of prepared) violations.push(...p.violations);
+    return prepared.map((p) => ({ blockingRuleId: p.blockingRuleId }));
   }
 
   // Non-hierarchy nodes sit outside the subtree cascade — always evaluated, never gated.
-  for (const node of graph.nonHierarchy) {
-    await evaluateApplicableRules(node);
-  }
+  await evaluateNodeSet(graph.nonHierarchy);
 
   const visited = new Set<string>();
-  const queue: Array<{ node: SpaceNode; ancestorOrigin?: string }> = [];
+  // Hierarchy nodes are judged one depth at a time: a node's verdicts decide whether its children are evaluated.
+  let depthNodes: Array<{ node: SpaceNode; ancestorOrigin?: string }> = [];
   for (const node of [...graph.hierarchyRoots, ...graph.orphans]) {
-    queue.push({ node, ancestorOrigin: undefined });
+    depthNodes.push({ node, ancestorOrigin: undefined });
   }
 
-  let qi = 0;
-  while (qi < queue.length) {
-    const { node, ancestorOrigin } = queue[qi++]!;
-    if (visited.has(node.title)) continue;
-    visited.add(node.title);
-
-    const selfSeed = seedByTitle.get(node.title);
-    const isGatedByAncestor = ancestorOrigin !== undefined;
-    const isSelfBlocked = selfSeed !== undefined;
-    const isGated = isGatedByAncestor || isSelfBlocked;
-    const shouldEvaluate = !isGated || includeGated;
-
-    const { blockingRuleId } = shouldEvaluate ? await evaluateApplicableRules(node) : {};
-
-    let childOrigin: string | undefined = ancestorOrigin;
-    if (isGatedByAncestor) {
-      gateOrigins.get(ancestorOrigin!)!.gatedFiles.push(node.label);
-    } else if (isSelfBlocked) {
-      const origin = originFor(node.title, { file: selfSeed!.file, reason: selfSeed!.reason });
-      origin.gatedFiles.push(node.label);
-      childOrigin = node.title;
-    } else if (blockingRuleId) {
-      originFor(node.title, { file: node.label, reason: 'rule', ruleId: blockingRuleId });
-      childOrigin = node.title;
-    } else {
-      childOrigin = undefined;
+  while (depthNodes.length > 0) {
+    const current: typeof depthNodes = [];
+    for (const entry of depthNodes) {
+      if (visited.has(entry.node.title)) continue;
+      visited.add(entry.node.title);
+      current.push(entry);
     }
+    const isGated = (e: (typeof depthNodes)[number]) => e.ancestorOrigin !== undefined || seedByTitle.has(e.node.title);
+    const toEvaluate = current.filter((e) => !isGated(e) || includeGated);
+    const evaluated = await evaluateNodeSet(toEvaluate.map((e) => e.node));
+    const blockingByTitle = new Map(toEvaluate.map((e, i) => [e.node.title, evaluated[i]!.blockingRuleId]));
 
-    for (const child of graph.hierarchyChildren.get(node.title) ?? []) {
-      queue.push({ node: child, ancestorOrigin: childOrigin });
+    const next: typeof depthNodes = [];
+    for (const { node, ancestorOrigin } of current) {
+      const selfSeed = seedByTitle.get(node.title);
+      const isGatedByAncestor = ancestorOrigin !== undefined;
+      const isSelfBlocked = selfSeed !== undefined;
+      const blockingRuleId = blockingByTitle.get(node.title);
+
+      let childOrigin: string | undefined = ancestorOrigin;
+      if (isGatedByAncestor) {
+        gateOrigins.get(ancestorOrigin!)!.gatedFiles.push(node.label);
+      } else if (isSelfBlocked) {
+        const origin = originFor(node.title, { file: selfSeed!.file, reason: selfSeed!.reason });
+        origin.gatedFiles.push(node.label);
+        childOrigin = node.title;
+      } else if (blockingRuleId) {
+        originFor(node.title, { file: node.label, reason: 'rule', ruleId: blockingRuleId });
+        childOrigin = node.title;
+      } else {
+        childOrigin = undefined;
+      }
+
+      for (const child of graph.hierarchyChildren.get(node.title) ?? []) {
+        next.push({ node: child, ancestorOrigin: childOrigin });
+      }
     }
+    depthNodes = next;
   }
 
   return {
