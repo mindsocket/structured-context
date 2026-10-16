@@ -284,19 +284,7 @@ With this config, an application page may include `### capability` with wikilink
 - [[Zephyr]]             ← populates application.tools (fieldOn: parent)
 ```
 
-### Embedded node content
-
-A node's `content` is the markdown of its body, copied unchanged from the file: blank lines, list looseness, line endings and code fences all stay as written. The content of a list item node is dedented by the item's content indent, so it reads as markdown on its own. Leading blank lines and trailing whitespace are trimmed.
-
-A node owns the source from its heading or list item up to the next heading that ends its section, with these parts removed:
-
-- Its own heading line or list marker text.
-- The sections of nested embedded nodes.
-- Field syntax that supplies data: YAML blocks, and lines that hold only `key:: value` or `[key:: value]` fields. A field written inside a sentence stays in the prose, and its value is still read as a field.
-
-An untyped heading belongs to the content of the node whose section contains it. An untyped heading at the same level as an embedded node's heading, or at a higher level (fewer `#`), ends that node's section, so the heading and what follows it go to the enclosing node, or to the page. An untyped heading at a deeper level stays inside the section. Inline fields below an untyped heading are assigned the same way.
-
-In a `space_on_a_page` file, content before the first heading (the preamble) is not assigned to any node.
+A node's body becomes its `content`; see [Node content](concepts.md#node-content).
 
 ## Composition and merge semantics
 
