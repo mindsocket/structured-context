@@ -74,6 +74,8 @@ flowchart LR
 | Nodes → Output | Validated node set; output commands interpret as needed |
 | Config → Output | `fieldMap` (reverse) applied by template-sync for file field names |
 
+Validation runs as one pipeline over the whole space. `validateSpace` returns its full result, and `validateFile` returns the part that belongs to one file, so a file's results match its part of a full run.
+
 ---
 
 ## Field Remapping

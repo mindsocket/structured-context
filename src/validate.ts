@@ -188,7 +188,7 @@ type SpaceRuleEvaluation = {
 /**
  * Evaluate a space's rules. With a main hierarchy, evaluation cascades: schema, hierarchy
  * and gating-rule failures (the `seeds`) suppress rule evaluation for the failing node's subtree.
- * Shared by `validateSpace` and `validateFile` so both report identical rule results for a node.
+ * Called by `validateNodes`, the core behind `validateSpace` and `validateFile`, so both report identical rule results for a node.
  * Semantic rules run only when a `judge` is supplied.
  */
 async function evaluateSpaceRules(
@@ -220,6 +220,146 @@ async function evaluateSpaceRules(
   });
 }
 
+/** A node that failed type or schema validation. */
+interface NodeValidationFailure {
+  node: SpaceNode;
+  errors: ErrorObject[];
+  /** Set when the node's `type` is not one the schema allows (checked before full schema validation). */
+  invalidType?: { validTypes: string[] };
+}
+
+/** The outcome of validating a set of nodes, before either view shapes it. */
+interface SpaceValidationResult {
+  validCount: number;
+  nodeFailures: NodeValidationFailure[];
+  refErrors: ValidationResult['refErrors'];
+  duplicateErrors: ValidationResult['duplicateErrors'];
+  ruleViolations: RuleViolation[];
+  hierarchyViolations: GraphViolation[];
+  orphans: SpaceNode[];
+  unresolvedContentLinks: ValidationResult['unresolvedContentLinks'];
+  coverageGates: CoverageGate[];
+}
+
+/**
+ * The one validation pipeline: type and schema checks, duplicate titles, reference and hierarchy
+ * checks, cascade-gated rules, and unresolved content links. Returns every entry; `validateSpace`
+ * and `validateFile` are views over it, so a file's results match its entry in a full run.
+ * `judgeTarget` limits judging to one file (and the ancestors that can gate it).
+ */
+async function validateNodes(
+  context: SpaceContext,
+  nodes: SpaceNode[],
+  unresolvedRefs: ReadSpaceResult['unresolvedRefs'],
+  options: {
+    includeGated?: boolean;
+    ruleFilter?: RuleFilter;
+    judge?: SemanticJudgeProvider;
+    judgeTarget?: string;
+  } = {},
+): Promise<SpaceValidationResult> {
+  const { schema, schemaRefRegistry, schemaValidator } = context;
+  const metadata = schema.metadata;
+
+  // Pre-extract valid types for early type validation
+  const validTypes = Array.isArray(schema.oneOf) ? extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type) : [];
+
+  const result: SpaceValidationResult = {
+    validCount: 0,
+    nodeFailures: [],
+    refErrors: [],
+    duplicateErrors: [],
+    ruleViolations: [],
+    hierarchyViolations: [],
+    orphans: [],
+    unresolvedContentLinks: [],
+    coverageGates: [],
+  };
+
+  for (const node of nodes) {
+    // Early type validation - check before full AJV validation to prevent cascading errors
+    const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
+    if (nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType)) {
+      const sortedTypes = [...validTypes].sort();
+      result.nodeFailures.push({
+        node,
+        invalidType: { validTypes },
+        errors: [
+          {
+            instancePath: '/type',
+            keyword: 'enum',
+            message: `Invalid type "${nodeType}". Valid types are: ${sortedTypes.join(', ')}`,
+            params: { allowedValues: sortedTypes },
+            schemaPath: '#/oneOf',
+            data: nodeType,
+          } as ErrorObject,
+        ],
+      });
+      continue;
+    }
+
+    if (schemaValidator(node.schemaData)) {
+      result.validCount++;
+    } else {
+      result.nodeFailures.push({ node, errors: schemaValidator.errors || [] });
+    }
+  }
+
+  // Detect duplicate node keys (titles)
+  const titleToFiles = new Map<string, string[]>();
+  for (const node of nodes) {
+    if (!titleToFiles.has(node.title)) {
+      titleToFiles.set(node.title, []);
+    }
+    titleToFiles.get(node.title)!.push(node.label);
+  }
+  for (const [title, files] of titleToFiles) {
+    if (files.length > 1) {
+      result.duplicateErrors.push({ title, files });
+    }
+  }
+
+  // Validate all hierarchy constraints (field references and structure)
+  const hierarchyValidation = validateGraph(nodes, metadata, unresolvedRefs);
+  result.refErrors.push(...hierarchyValidation.refErrors);
+  result.hierarchyViolations = [...hierarchyValidation.violations];
+
+  // Calculate orphans across every hierarchy (informational, not a validation error)
+  for (const hierarchy of metadata.hierarchies ?? []) {
+    result.orphans.push(...buildSpaceGraph(nodes, hierarchy).orphans);
+  }
+
+  // Load and execute rules validation if schema defines rules (with cascade gating, see docs/rules.md).
+  if (metadata.rules) {
+    const seeds: GatingSeed[] = [
+      ...result.nodeFailures.map(({ node }): GatingSeed => {
+        const file = node.source?.file ?? node.label;
+        return { file, title: String(node.schemaData.title ?? file), reason: 'schema' };
+      }),
+      ...result.hierarchyViolations.map((v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' })),
+    ];
+    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, options);
+    result.ruleViolations = violations;
+    result.coverageGates = gates;
+  }
+
+  // Collect unresolved content links (warnings — not errors)
+  const seen = new Set<string>();
+  for (const node of nodes) {
+    for (const link of node.resolvedLinks) {
+      if (link.location === 'internal') {
+        const key = `${node.label}::${link.target}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.unresolvedContentLinks.push({ file: node.label, target: link.target });
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 /**
  * Run full validation on a space and return a structured result.
  * Does not output to console or call process.exit.
@@ -228,11 +368,9 @@ export async function validateSpace(
   context: SpaceContext,
   options: ValidateSpaceOptions = {},
 ): Promise<ValidationResult> {
-  const { schema, schemaRefRegistry, schemaValidator } = context;
-  const metadata = schema.metadata;
+  const metadata = context.schema.metadata;
 
   const readResult = options.readResult ?? (await readSpace(context));
-  const { parseIssues } = readResult;
   let nodes = readResult.nodes;
 
   // Depth limiting: evaluate only hierarchy nodes within N breadth-first levels from the
@@ -253,120 +391,32 @@ export async function validateSpace(
     nodes = included;
   }
 
-  // Pre-extract valid types for early type validation
-  const validTypes = Array.isArray(schema.oneOf) ? extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type) : [];
+  const result = await validateNodes(context, nodes, readResult.unresolvedRefs, {
+    includeGated: options.includeGated,
+    ruleFilter: options.ruleFilter,
+    judge: options.judge,
+  });
 
-  const result: ValidationResult = {
-    validCount: 0,
-    nodeErrorCount: 0,
-    nodeErrors: [],
-    refErrors: [],
-    duplicateErrors: [],
-    ruleViolations: [],
-    hierarchyViolations: [],
-    orphans: [],
-    parseIssues,
-    unresolvedContentLinks: [],
-    coverageGates: [],
+  return {
+    validCount: result.validCount,
+    nodeErrorCount: result.nodeFailures.length,
+    nodeErrors: result.nodeFailures.map(({ node, errors }) => ({
+      file: node.source?.file ?? node.label,
+      ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
+      errors,
+      nodeData: node.schemaData as Record<string, unknown>,
+    })),
+    refErrors: result.refErrors,
+    duplicateErrors: result.duplicateErrors,
+    ruleViolations: result.ruleViolations,
+    hierarchyViolations: result.hierarchyViolations,
+    orphans: result.orphans,
+    parseIssues: readResult.parseIssues,
+    unresolvedContentLinks: result.unresolvedContentLinks,
+    coverageGates: result.coverageGates,
     skippedByDepth,
     depthLimit: options.depth,
   };
-
-  for (const node of nodes) {
-    // Early type validation - check before full AJV validation to prevent cascading errors
-    const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
-    if (nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType)) {
-      result.nodeErrorCount++;
-      result.nodeErrors.push({
-        file: node.source?.file ?? node.label,
-        ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
-        errors: [
-          {
-            instancePath: '/type',
-            keyword: 'enum',
-            message: `Invalid type "${nodeType}". Valid types are: ${validTypes.sort().join(', ')}`,
-            params: { allowedValues: validTypes },
-            schemaPath: '#/oneOf',
-            data: nodeType,
-          } as ErrorObject,
-        ],
-        nodeData: node.schemaData as Record<string, unknown>,
-      });
-      continue;
-    }
-
-    const valid = schemaValidator(node.schemaData);
-
-    if (valid) {
-      result.validCount++;
-    } else {
-      result.nodeErrorCount++;
-      result.nodeErrors.push({
-        file: node.source?.file ?? node.label,
-        ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
-        errors: schemaValidator.errors || [],
-        nodeData: node.schemaData as Record<string, unknown>,
-      });
-    }
-  }
-
-  // Detect duplicate node keys (titles)
-  const titleToFiles = new Map<string, string[]>();
-  for (const node of nodes) {
-    const title = node.title;
-    if (!titleToFiles.has(title)) {
-      titleToFiles.set(title, []);
-    }
-    titleToFiles.get(title)!.push(node.label);
-  }
-  for (const [title, files] of titleToFiles) {
-    if (files.length > 1) {
-      result.duplicateErrors.push({ title, files });
-    }
-  }
-
-  // Validate all hierarchy constraints (field references and structure)
-  const hierarchyValidation = validateGraph(nodes, metadata, readResult.unresolvedRefs);
-  result.refErrors.push(...hierarchyValidation.refErrors);
-  result.hierarchyViolations = [...hierarchyValidation.violations];
-
-  // Calculate orphans across every hierarchy (informational, not a validation error)
-  for (const hierarchy of metadata.hierarchies ?? []) {
-    result.orphans.push(...buildSpaceGraph(nodes, hierarchy).orphans);
-  }
-
-  // Load and execute rules validation if schema defines rules (with cascade gating, see docs/rules.md).
-  if (metadata.rules) {
-    const seeds: GatingSeed[] = [
-      ...result.nodeErrors.map(
-        (e): GatingSeed => ({ file: e.file, title: String(e.nodeData.title ?? e.file), reason: 'schema' }),
-      ),
-      ...result.hierarchyViolations.map((v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' })),
-    ];
-    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, {
-      includeGated: options.includeGated,
-      ruleFilter: options.ruleFilter,
-      judge: options.judge,
-    });
-    result.ruleViolations = violations;
-    result.coverageGates = gates;
-  }
-
-  // Collect unresolved content links (warnings — not errors)
-  const seen = new Set<string>();
-  for (const node of nodes) {
-    for (const link of node.resolvedLinks) {
-      if (link.location === 'internal') {
-        const key = `${node.label}::${link.target}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          result.unresolvedContentLinks.push({ file: node.label, target: link.target });
-        }
-      }
-    }
-  }
-
-  return result;
 }
 
 /** Find which space a file belongs to by checking directory containment. */
@@ -395,6 +445,137 @@ export interface ValidateFileOptions {
 }
 
 /**
+ * Select one file's entries from a space's validation result: issues keyed and formatted, errors split from warnings.
+ * Pure — a file's entries are exactly its slice of the result.
+ */
+function issuesForFile(
+  result: SpaceValidationResult,
+  label: string,
+  context: SpaceContext,
+  includeGated: boolean | undefined,
+): { errors: Record<string, FileValidationIssue>; warnings: Record<string, FileValidationIssue> } {
+  const { schema, schemaRefRegistry } = context;
+  const errors: Record<string, FileValidationIssue> = {};
+  const warnings: Record<string, FileValidationIssue> = {};
+
+  for (const { node, errors: ajvErrors, invalidType } of result.nodeFailures) {
+    if (node.label !== label) continue;
+    const position = {
+      ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
+      ...(node.source?.column !== undefined ? { column: node.source.column } : {}),
+    };
+    if (invalidType) {
+      errors[`schema:type:${invalidType.validTypes.join(',')}`] = {
+        kind: 'schema',
+        message: ajvErrors[0]!.message!,
+        ...position,
+      };
+      continue;
+    }
+    const formatted = formatErrors(ajvErrors, schema, schemaRefRegistry, node.schemaData as Record<string, unknown>);
+    for (const { message, dedupeKey } of formatted) {
+      errors[`schema:${dedupeKey}`] = { kind: 'schema', message, ...position };
+    }
+  }
+
+  // Duplicate key errors — include if this file is one of the duplicates
+  for (const { title, files } of result.duplicateErrors) {
+    if (!files.includes(label)) continue;
+    const others = files.filter((f) => f !== label);
+    errors[`duplicate:${title}`] = {
+      kind: 'duplicate',
+      message: `Duplicate title "${title}" also exists in: ${others.join(', ')}`,
+    };
+  }
+
+  // Broken links and hierarchy violations from this file
+  for (const { file, parent, error } of result.refErrors) {
+    if (file === label) {
+      errors[`broken-link:${parent}`] = { kind: 'broken-link', message: `${parent} → ${error}` };
+    }
+  }
+  for (const v of result.hierarchyViolations) {
+    if (v.file === label) {
+      errors[`hierarchy:${v.description}`] = { kind: 'hierarchy', message: v.description };
+    }
+  }
+
+  // Rule violations — only error severity counts as an error.
+  for (const v of result.ruleViolations) {
+    if (v.file === label) {
+      const target = v.severity === 'error' ? errors : warnings;
+      target[`rule:${v.ruleId}`] = {
+        kind: 'rule',
+        message: ruleViolationMessage(v),
+        severity: v.severity,
+      };
+    }
+  }
+  // A gated file with no violations would otherwise look clean — say that its rules were not checked.
+  for (const gate of result.coverageGates) {
+    if (!gate.gatedFiles.includes(label)) continue;
+    const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
+    warnings[`gated:${gate.file}`] = {
+      kind: 'gated',
+      message: `Rule checks ${includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.file}`,
+      severity: 'info',
+    };
+  }
+
+  // Unresolved content links (warnings — do not affect errorCount)
+  for (const link of result.unresolvedContentLinks) {
+    if (link.file === label) {
+      warnings[`content-link:${link.target}`] = {
+        kind: 'content-link',
+        message: `Unresolved content link: ${link.target}`,
+      };
+    }
+  }
+
+  return { errors, warnings };
+}
+
+/** The result for a file that belongs to no configured space. */
+export function fileNotInSpace(filePath: string): FileNotInSpaceResult {
+  return {
+    file: filePath,
+    inSpace: false,
+    message: 'File does not belong to any configured space.',
+  };
+}
+
+/**
+ * Validate a file in an already-resolved space. Checks the whole space (required for graph
+ * correctness), judging only the file, then selects the file's issues from the result.
+ */
+export async function validateResolvedFile(
+  filePath: string,
+  label: string,
+  context: SpaceContext,
+  options: Omit<ValidateFileOptions, 'configDir'> = {},
+): Promise<FileValidationResult> {
+  const readResult = await readSpace(context);
+  const result = await validateNodes(context, readResult.nodes, readResult.unresolvedRefs, {
+    includeGated: options.includeGated,
+    ruleFilter: options.ruleFilter,
+    judge: options.judge,
+    judgeTarget: label,
+  });
+  const { errors, warnings } = issuesForFile(result, label, context, options.includeGated);
+
+  return {
+    file: isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath),
+    label,
+    space: context.space.name,
+    errors,
+    errorCount: Object.keys(errors).length,
+    warnings,
+    warningCount: Object.keys(warnings).length,
+    inSpace: true,
+  };
+}
+
+/**
  * Validate a single file within its space.
  *
  * Reads the full space (required for graph correctness) but filters all reported
@@ -409,163 +590,8 @@ export async function validateFile(
   options: ValidateFileOptions = {},
 ): Promise<ValidateFileOutput> {
   const resolved = resolveFileSpace(filePath, config);
+  if (!resolved) return fileNotInSpace(filePath);
 
-  if (!resolved) {
-    return {
-      file: filePath,
-      inSpace: false,
-      message: 'File does not belong to any configured space.',
-    } satisfies FileNotInSpaceResult;
-  }
-
-  const { space, label } = resolved;
-  const context = createSpaceContext(space.name, config, { configDir: options.configDir });
-  const { schema, schemaRefRegistry, schemaValidator } = context;
-  const metadata = schema.metadata;
-
-  const readResult = await readSpace(context);
-  const { nodes } = readResult;
-
-  // Pre-extract valid types for early type validation
-  const validTypes = Array.isArray(schema.oneOf) ? extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type) : [];
-
-  const errors: Record<string, FileValidationIssue> = {};
-  const warnings: Record<string, FileValidationIssue> = {};
-
-  // Schema validation errors for this node
-  for (const node of nodes) {
-    if (node.label !== label) continue;
-
-    // Early type validation - check before full AJV validation to prevent cascading errors
-    const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
-    if (nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType)) {
-      errors[`schema:type:${validTypes.join(',')}`] = {
-        kind: 'schema',
-        message: `Invalid type "${nodeType}". Valid types are: ${validTypes.sort().join(', ')}`,
-        ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
-        ...(node.source?.column !== undefined ? { column: node.source.column } : {}),
-      };
-      continue;
-    }
-
-    const valid = schemaValidator(node.schemaData);
-    if (!valid) {
-      const formatted = formatErrors(
-        schemaValidator.errors ?? [],
-        schema,
-        schemaRefRegistry,
-        node.schemaData as Record<string, unknown>,
-      );
-      for (const { message, dedupeKey } of formatted) {
-        errors[`schema:${dedupeKey}`] = {
-          kind: 'schema',
-          message,
-          ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
-          ...(node.source?.column !== undefined ? { column: node.source.column } : {}),
-        };
-      }
-    }
-  }
-
-  // Duplicate key errors — include if this file is one of the duplicates
-  const titleToFiles = new Map<string, string[]>();
-  for (const node of nodes) {
-    if (!titleToFiles.has(node.title)) titleToFiles.set(node.title, []);
-    titleToFiles.get(node.title)!.push(node.label);
-  }
-  for (const [title, files] of titleToFiles) {
-    if (files.length > 1 && files.includes(label)) {
-      const others = files.filter((f) => f !== label);
-      errors[`duplicate:${title}`] = {
-        kind: 'duplicate',
-        message: `Duplicate title "${title}" also exists in: ${others.join(', ')}`,
-      };
-    }
-  }
-
-  // Broken links and hierarchy violations from this file
-  const hierarchyValidation = validateGraph(nodes, metadata, readResult.unresolvedRefs);
-  for (const { file, parent, error } of hierarchyValidation.refErrors) {
-    if (file === label) {
-      errors[`broken-link:${parent}`] = { kind: 'broken-link', message: `${parent} → ${error}` };
-    }
-  }
-  for (const v of hierarchyValidation.violations) {
-    if (v.file === label) {
-      errors[`hierarchy:${v.description}`] = { kind: 'hierarchy', message: v.description };
-    }
-  }
-
-  // Rule violations for this node — only error severity counts as an error.
-  // Rules are evaluated for the whole space with the same cascade gating as `validateSpace`, then
-  // restricted to this file, so a file's rule results match its entry in a full `validate` run.
-  if (metadata.rules) {
-    const seeds: GatingSeed[] = [
-      ...nodes
-        .filter((node) => {
-          const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
-          const invalidType = nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType);
-          return invalidType || !schemaValidator(node.schemaData);
-        })
-        .map((node): GatingSeed => {
-          const file = node.source?.file ?? node.label;
-          return { file, title: String(node.schemaData.title ?? file), reason: 'schema' };
-        }),
-      ...hierarchyValidation.violations.map(
-        (v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' }),
-      ),
-    ];
-    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, {
-      includeGated: options.includeGated,
-      ruleFilter: options.ruleFilter,
-      judge: options.judge,
-      judgeTarget: label,
-    });
-    for (const v of violations) {
-      if (v.file === label) {
-        const target = v.severity === 'error' ? errors : warnings;
-        target[`rule:${v.ruleId}`] = {
-          kind: 'rule',
-          message: ruleViolationMessage(v),
-          severity: v.severity,
-        };
-      }
-    }
-    // A gated file with no violations would otherwise look clean — say that its rules were not checked.
-    for (const gate of gates) {
-      if (!gate.gatedFiles.includes(label)) continue;
-      const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
-      warnings[`gated:${gate.file}`] = {
-        kind: 'gated',
-        message: `Rule checks ${options.includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.file}`,
-        severity: 'info',
-      };
-    }
-  }
-
-  // Unresolved content links for this node (warnings — do not affect errorCount)
-  const targetNode = nodes.find((n) => n.label === label);
-  if (targetNode) {
-    const seen = new Set<string>();
-    for (const link of targetNode.resolvedLinks) {
-      if (link.location === 'internal' && !seen.has(link.target)) {
-        seen.add(link.target);
-        warnings[`content-link:${link.target}`] = {
-          kind: 'content-link',
-          message: `Unresolved content link: ${link.target}`,
-        };
-      }
-    }
-  }
-
-  return {
-    file: isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath),
-    label,
-    space: space.name,
-    errors,
-    errorCount: Object.keys(errors).length,
-    warnings,
-    warningCount: Object.keys(warnings).length,
-    inSpace: true,
-  } satisfies FileValidationResult;
+  const context = createSpaceContext(resolved.space.name, config, { configDir: options.configDir });
+  return validateResolvedFile(filePath, resolved.label, context, options);
 }
