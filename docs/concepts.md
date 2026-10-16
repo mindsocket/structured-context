@@ -51,7 +51,7 @@ Each `.md` file with a `type` frontmatter field is a **typed page** — it repre
 
 - **Heading with `[type:: x]`** or **anchor-implied type** (e.g. `## My Goal ^goal1`) → becomes a child node.
 - **Relationship headings** (e.g. `### Assumptions`) → when matched to a relationship definition in the schema, signals that following content (list items or table rows) should be typed as that relationship's child type, without requiring explicit inline annotations.
-- **Untyped headings** → update the depth stack for parent resolution but do not become nodes.
+- **Untyped headings** → update the depth stack for parent resolution but do not become nodes. They stay in the content of the node whose section contains them; see [Embedded node content](schemas.md#embedded-node-content).
 - **Typed bullet items** (`- [type:: solution] Title`) → become child nodes at any nesting depth.
 - **Table rows** under a relationship heading → become child nodes of the relationship type.
 - **YAML blocks** and **unbracketed `key:: value` paragraph fields** → merged into the current node's `schemaData`.
@@ -87,7 +87,7 @@ Key properties:
 
 #### Preamble
 
-**Preamble** is content in a `space on a page` document that appears before the first heading. It is parsed but discarded — not associated with any node.
+**Preamble** is content in a `space on a page` document that appears before the first heading. It is parsed but discarded — not associated with any node, and not part of any node's `content`.
 
 ---
 
@@ -99,7 +99,7 @@ Node types are defined by the schema in use and may vary across schemas. Example
 
 Each node retains its physical `source` location (`file`, and `line` / `column` where available) so that validation diagnostics, edge errors, and downstream tooling pinpoint the exact location in the vault.
 
-A node's `content` is the markdown source of its body, sliced verbatim from the file. It excludes the node's own heading or list marker, frontmatter, and any nested embedded nodes. Headings that do not define a node stay in the content of the node that contains them.
+A node's `content` is the markdown source of its body, sliced verbatim from the file. It excludes the node's own heading or list marker, frontmatter, and any nested embedded nodes. Headings that do not define a node stay in the content of the node that contains them. [Embedded node content](schemas.md#embedded-node-content) describes how sections are assigned.
 
 > `space_on_a_page` and `dashboard` are not `space node` types — they are `tooling types`.
 

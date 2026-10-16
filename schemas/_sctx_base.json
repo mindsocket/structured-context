@@ -9,7 +9,7 @@
     },
     "content": {
       "type": "string",
-      "description": "Body content"
+      "description": "Markdown source of the node's body, excluding its own heading or list marker and any nested embedded nodes"
     },
     "summary": {
       "type": "string",
