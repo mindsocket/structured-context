@@ -105,7 +105,7 @@ The verdict is a classification. The severity says what the verdict means for th
 - A verdict that is not in the map reports no violation. At least one verdict must report no violation.
 - `ignore` also reports no violation. Use it to show that you chose to ignore a verdict.
 - With the default verdicts, `fail` takes the rule's top-level `severity`, the same as for an `expression`. `fail` must not appear in `semantic.severity`.
-- With custom verdicts and no `expression`, the top-level `severity` has no failure to describe, so it is a schema error. With an `expression`, it sets the severity of the failed expression.
+- With custom verdicts and no `expression`, the top-level `severity` applies to nothing, so it is a schema error. With an `expression`, it sets the severity of the failed expression.
 
 Gating uses the severity of the verdict. A verdict with `error` severity gates the node's subtree, as for any rule. `gatesDescendants` changes this, as for any rule.
 

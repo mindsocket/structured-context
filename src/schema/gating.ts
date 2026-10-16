@@ -261,7 +261,7 @@ export async function evaluateRulesWithGating(
     if (!prepared.blockingRuleId) prepared.semantic = semantic;
     prepared.judged = (judgements) => {
       for (const j of judgements) {
-        if (j.failed) {
+        if (j.violated) {
           report(j.rule, {
             severity: j.severity,
             verdict: j.verdict,

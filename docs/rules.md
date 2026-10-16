@@ -138,7 +138,7 @@ $not($exists(current.due)) or $toMillis(current.due) > $millis()
 $toMillis(current.stale_after) > $toMillis(current.generated.at)
 ```
 
-A datetime without an offset (`2026-07-01T00:00:00`) is read in the machine's local time zone, so require an offset with `format: "date-time"` when results must not depend on where validation runs. `$toMillis()` also needs seconds: it cannot parse a minute-precision datetime such as `2026-07-01T09:15`, which `format: "date-or-date-time"` accepts. A value `$toMillis()` cannot parse makes the rule fail.
+A datetime without an offset (`2026-07-01T00:00:00`) is read in the machine's local time zone, so require an offset with `format: "date-time"` when results must not depend on where validation runs. `$toMillis()` also needs seconds: it cannot parse a minute-precision datetime such as `2026-07-01T09:15`, which `format: "date-or-date-time"` accepts. A value `$toMillis()` cannot parse makes the expression fail.
 
 The same applies to [filter expressions](concepts.md#filter-expressions): compare dates with `$toMillis()`, not as strings.
 
@@ -170,27 +170,28 @@ Example override:
 ## Cascade gating
 
 When a schema uses `$metadata.hierarchy`, rule evaluation cascades top-down through the
-hierarchy tree (breadth-first from roots and orphans). A **gate** occurs when a node fails
-in a way that makes its descendants' rules untrustworthy or wasteful to run:
+hierarchy tree (breadth-first from roots and orphans). A **gate** occurs when a node has
+a violation that makes its descendants' rules untrustworthy or wasteful to run:
 
-- **Schema validation failure** on a node — always gates. The node's own rules are
+- **Schema validation error** on a node — always gates. The node's own rules are
   suppressed too, since its data is structurally invalid.
 - **Hierarchy structure violation** on a node (e.g. an invalid parent) — always gates the
   node's subtree, though the node's own rules still run.
-- **A rule failure with `gatesDescendants: true`** — gates the node's subtree, though the
-  failing node's own other rules still run.
+- **A gating rule violation** — a violation with `error` severity, or any violation of a rule with
+  `gatesDescendants: true`. It gates the node's subtree and skips the node's own semantic rules; its other
+  expressions still run.
 
 Gating exists so that expensive or semantic downstream rules (see [Semantic rules](semantic-rules.md)) aren't wasted
 evaluating nodes whose ancestors are already known-bad, and so noise doesn't drown out the
-actionable failure. It is per-subtree: once a node is gated, its descendants inherit the same
+actionable violation. It is per-subtree: once a node is gated, its descendants inherit the same
 gate (the original blocker), rather than each generating a new one. Cascade gating only applies to nodes within the
 hierarchy DAG.
 
-A rule has one `gatesDescendants` setting. It applies to whichever part failed, the `expression` or the `semantic` part. Its default comes from the severity of that failure: `true` for `error`, and `false` for `warning` and `info`. Set it explicitly when that default doesn't fit.
+A rule has one `gatesDescendants` setting. It applies to whichever part reported the violation, the `expression` or the `semantic` part. Its default comes from the severity of that violation: `true` for `error`, and `false` for `warning` and `info`. Set it explicitly when that default doesn't fit.
 
 ### Coverage output
 
-`sctx validate` reports gating as **coverage gates**: which node's failure (schema,
+`sctx validate` reports gating as **coverage gates**: which node's violation (schema,
 hierarchy, or a specific `ruleId`) suppressed rule evaluation, and the list of files gated
 as a result. This makes the validation "edge" visible — e.g. "this blocked goal means all
 opportunities beneath it were not evaluated" — for both human reading and agent consumption

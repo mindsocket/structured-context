@@ -23,7 +23,7 @@ describe('per-node input cap in judgeNodes', () => {
     const trimmed = report();
     const rules = [rule('r', { scope: ['parent'], includeContent: 'fullScope' })];
     const out = await judgeNodes(fake, [{ node: nodes[1]!, rules }], buildSpaceGraph(nodes, hierarchy), trimmed);
-    expect(out[0]?.[0]?.failed).toBe(false);
+    expect(out[0]?.[0]?.violated).toBe(false);
     expect(fake.callHistory).toHaveLength(1);
     expect(String(fake.callHistory[0]?.related?.[0]?.data.content)).toContain('[RULE_EVALUATION_CONTENT_TRIMMED');
     expect(fake.callHistory[0]?.node.schemaData.content).toBe('short own body');
@@ -45,7 +45,7 @@ describe('per-node input cap in judgeNodes', () => {
     const out = await judgeNodes(fake, [{ node: huge, rules: [rule('r', {})] }], buildSpaceGraph([huge], hierarchy));
     expect(fake.callHistory).toHaveLength(0);
     expect(out[0]?.[0]).toMatchObject({
-      failed: true,
+      violated: true,
       error: 'input over the per-node cap after trimming content',
     });
   });
@@ -92,6 +92,6 @@ describe('missing-context verdict', () => {
       buildSpaceGraph(nodes, hierarchy),
     );
     expect(fake.callHistory[0]?.rules[0]?.verdicts['missing-context']).toContain('RULE_EVALUATION_CONTENT_TRIMMED');
-    expect(out[0]?.[0]).toMatchObject({ failed: true, verdict: 'missing-context', severity: 'warning' });
+    expect(out[0]?.[0]).toMatchObject({ violated: true, verdict: 'missing-context', severity: 'warning' });
   });
 });

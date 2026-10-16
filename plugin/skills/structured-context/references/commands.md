@@ -21,7 +21,7 @@ Validates all `.md` files in the space against the JSON schema. For each file:
 - Runs reference checks (wikilinks → known node titles)
 - Runs rules from `$metadata.rules` (each rule's `expression`; its `semantic` part only with
   `--semantic`), with cascade gating: a
-  schema, hierarchy, or blocking-rule failure on a node suppresses rule evaluation for its
+  schema, hierarchy or gating rule violation on a node suppresses rule evaluation for its
   hierarchy subtree. Gated nodes are reported in a coverage section (and `coverageGates` in
   `--json` output) so you know what wasn't checked and why.
 - Checks hierarchy ordering

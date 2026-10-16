@@ -116,7 +116,7 @@ export async function validateRules(
     const judged = await judgeNodes(judge, pending, buildSpaceGraph(nodes, undefined), options.trimReport);
     pending.forEach(({ node, found }, i) => {
       for (const j of judged[i] ?? []) {
-        if (!j.failed) continue;
+        if (!j.violated) continue;
         found.push({
           file: node.label,
           ruleId: j.rule.id,

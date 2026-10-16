@@ -36,7 +36,7 @@ describe('judgeNode', () => {
     );
     expect(judgements).toHaveLength(1);
     expect(judgements[0]).toMatchObject({
-      failed: true,
+      violated: true,
       error: expect.stringContaining('unknown verdict "unexpected"'),
     });
   });
@@ -88,9 +88,9 @@ describe('judgeNodes', () => {
       { node: other, rules: [rule] },
     ]);
     expect(calls).toBe(1);
-    expect(out[0]?.[0]).toMatchObject({ failed: false, verdict: 'pass' });
+    expect(out[0]?.[0]).toMatchObject({ violated: false, verdict: 'pass' });
     expect(out[1]).toEqual([]);
-    expect(out[2]?.[0]).toMatchObject({ failed: true, verdict: 'fail' });
+    expect(out[2]?.[0]).toMatchObject({ violated: true, verdict: 'fail' });
   });
 
   it('marks every rule as an error, not a pass, when the evaluateNodes call throws', async () => {
@@ -103,6 +103,6 @@ describe('judgeNodes', () => {
       { node: node as SpaceNode, rules: [rule] },
       { node: other, rules: [rule] },
     ]);
-    expect(out.flat().every((j) => j.failed && j.error === 'boom')).toBe(true);
+    expect(out.flat().every((j) => j.violated && j.error === 'boom')).toBe(true);
   });
 });

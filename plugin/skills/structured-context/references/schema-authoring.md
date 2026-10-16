@@ -78,7 +78,7 @@ Other rule fields:
 
 - `type` and `when` (a JSONata applicability condition) limit which nodes a rule applies to.
 - `global: true` runs an `expression` once for the whole space; it takes no `type`, `when` or `semantic`.
-- `gatesDescendants` controls whether a failure suppresses rules on the node's subtree (default: true for `error` severity).
+- `gatesDescendants` controls whether a violation of the rule suppresses rules on the node's subtree and the node's own semantic rules (default: true for `error` severity).
 
 ```json5
 {

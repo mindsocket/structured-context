@@ -7,9 +7,9 @@ import { isJudgeError, resolveSemanticRule } from './verdicts';
 
 export type NodeJudgement = {
   rule: Rule;
-  /** True when the verdict fails the rule (it has a severity), or the provider errored. */
-  failed: boolean;
-  /** Severity of the failing verdict; unset for a judge error, which takes the rule's own severity. */
+  /** True when the verdict has a severity (so it reports a violation), or the provider errored. */
+  violated: boolean;
+  /** Severity of the verdict; unset for a judge error, which takes the rule's own severity. */
   severity?: RuleSeverity;
   verdict?: string;
   /** User-facing guidance declared for the failing verdict. */
@@ -29,7 +29,7 @@ function resolveAll(rules: Rule[]) {
 function errorJudgements(rules: Rule[], message: string): NodeJudgement[] {
   return rules.map((rule) => ({
     rule,
-    failed: true,
+    violated: true,
     evidence: `Error during evaluation: ${message}`,
     error: message,
   }));
@@ -40,20 +40,20 @@ function interpret(rules: Rule[], resolved: ResolvedRules, results: JudgeResults
     const result = results[rule.id];
     if (!result || isJudgeError(result)) {
       const message = result ? result.error : 'Model provider returned no result for this rule';
-      return { rule, failed: true, evidence: `Error during evaluation: ${message}`, error: message };
+      return { rule, violated: true, evidence: `Error during evaluation: ${message}`, error: message };
     }
     const severity = resolved[i]!.severities[result.verdict];
     if (severity === undefined && !(result.verdict in resolved[i]!.spec.verdicts)) {
       const message = `Model provider returned unknown verdict "${result.verdict}" (allowed: ${Object.keys(resolved[i]!.spec.verdicts).join(', ')})`;
-      return { rule, failed: true, evidence: `Error during evaluation: ${message}`, error: message };
+      return { rule, violated: true, evidence: `Error during evaluation: ${message}`, error: message };
     }
-    const failed = severity !== undefined;
+    const violated = severity !== undefined;
     return {
       rule,
-      failed,
+      violated,
       severity,
       verdict: result.verdict,
-      guidance: failed ? resolved[i]!.guidance[result.verdict] : undefined,
+      guidance: violated ? resolved[i]!.guidance[result.verdict] : undefined,
       evidence: result.evidence,
     };
   });

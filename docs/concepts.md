@@ -187,9 +187,9 @@ The **per-node input cap** limits the input for one evaluated node and its relat
 
 ### Cascade gating
 
-**Cascade gating** is the mechanism by which a schema failure, hierarchy structure violation, or blocking rule violation on a node suppresses rule evaluation for that node's `hierarchy` subtree. It exists so downstream checks — especially costly semantic (model-judged) rules — aren't run against inputs already known to be invalid.
+**Cascade gating** is the mechanism by which a schema validation error, hierarchy structure violation, or gating rule violation on a node suppresses rule evaluation for that node's `hierarchy` subtree. It exists so downstream checks — especially costly semantic (model-judged) rules — aren't run against inputs already known to be invalid.
 
-A **coverage gate** records one instance of this: the gating node, what kind of failure triggered it (`schema`, `hierarchy`, or a specific rule `id`), and the set of nodes whose rules were suppressed as a result. `sctx validate` reports coverage gates so both humans and agents can see the validation "edge" — where evaluation stopped and why. See [docs/rules.md](rules.md#cascade-gating) for the full model, including the per-rule `gatesDescendants` field and the `--include-gated` / `--depth` CLI options.
+A **coverage gate** records one instance of this: the gating node, what kind of violation triggered it (`schema`, `hierarchy`, or a specific rule `id`), and the set of nodes whose rules were suppressed as a result. `sctx validate` reports coverage gates so both humans and agents can see the validation "edge" — where evaluation stopped and why. See [docs/rules.md](rules.md#cascade-gating) for the full model, including the per-rule `gatesDescendants` field and the `--include-gated` / `--depth` CLI options.
 
 ---
 
