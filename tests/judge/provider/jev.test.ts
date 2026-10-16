@@ -118,7 +118,7 @@ describe('JevJudgeProvider', () => {
         'framing__n1',
       ]);
       expect((bodies[0]!.questions.framing__n1 as { instructions: string }).instructions).toStartWith(
-        'For state.nodes.n1:',
+        'For node `nodes.n1`:',
       );
       expect(results.map((r) => Object.keys(r).sort())).toEqual([
         ['customer-voice', 'framing'],
@@ -165,6 +165,47 @@ describe('JevJudgeProvider', () => {
       ]);
       expect(bodies.map((b) => (b.state.nodes ? Object.keys(b.state.nodes).length : 1))).toEqual([2, 1, 1]);
       expect(JSON.stringify(bodies[2]!.state)).toContain('y'.repeat(200_000));
+    });
+
+    it('reports an error on the rules of a node with no answer in a batched response, leaving other nodes intact', async () => {
+      globalThis.fetch = (async () =>
+        new Response(
+          JSON.stringify({
+            answers: { 'customer-voice__n0': { choice: 'pass' }, 'customer-voice__n2': { choice: 'fail' } },
+          }),
+          { status: 200 },
+        )) as unknown as typeof fetch;
+      const results = await jev().evaluateNodes(
+        ['A', 'B', 'C'].map((title) => ({ node: nodeNamed(title), rules: [passFailRule] })),
+      );
+      expect(results[0]?.['customer-voice']).toMatchObject({ verdict: 'pass' });
+      expect(results[1]?.['customer-voice']).toHaveProperty('error');
+      expect(results[2]?.['customer-voice']).toMatchObject({ verdict: 'fail' });
+    });
+
+    it('resolves answers for a rule id that itself contains the node suffix', async () => {
+      const bodies = answering();
+      const tricky = { ...passFailRule, id: 'tricky__n0' };
+      const results = await jev().evaluateNodes([
+        { node: nodeNamed('A'), rules: [tricky] },
+        { node: nodeNamed('B'), rules: [tricky] },
+      ]);
+      expect(Object.keys(bodies[0]!.questions)).toEqual(['tricky__n0__n0', 'tricky__n0__n1']);
+      expect(results.map((r) => r.tricky__n0)).toEqual([
+        expect.objectContaining({ verdict: 'pass' }),
+        expect.objectContaining({ verdict: 'pass' }),
+      ]);
+    });
+
+    it('splits a single node with more rules than the question cap across requests, sending its state whole each time', async () => {
+      const bodies = answering();
+      const count = JEV_DECISION_REQUEST_MAX_QUESTIONS + 3;
+      const rules = Array.from({ length: count }, (_, i) => ({ ...passFailRule, id: `r${i}` }));
+      const results = await jev().evaluateNodes([{ node: nodeNamed('A'), rules }]);
+      expect(bodies.map((b) => Object.keys(b.questions).length)).toEqual([JEV_DECISION_REQUEST_MAX_QUESTIONS, 3]);
+      expect(bodies.every((b) => b.state.nodes === undefined)).toBe(true);
+      expect(Object.keys(results[0]!)).toHaveLength(count);
+      expect(Object.values(results[0]!).every((r) => 'verdict' in r)).toBe(true);
     });
 
     it('maps a failed request to errors on its own nodes only', async () => {

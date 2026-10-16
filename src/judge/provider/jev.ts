@@ -14,15 +14,10 @@ export const JEV_LATEST = 'jev-latest';
 
 export const OPENROUTER_DECISIONS_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
 
-/**
- * Estimated input-token cap (characters / 4) for one DecisionRequest's `state` plus `questions`. Conservative: issue #152 cites a
- * "32k token limit for state plus questions" for Jev, which is unverified. measured: a live probe accepted a
- * 250k-token state through OpenRouter with HTTP 200, so the real limit is higher and this cap is a cost and
- * latency guard, not a hard limit.
- */
+/** Estimated input-token cap (characters / 4) for one DecisionRequest's `state` plus `questions`: a conservative cost and latency guard. */
 export const JEV_DECISION_REQUEST_MAX_ESTIMATED_TOKENS = 32_000;
 
-/** Cap on the number of DecisionQuestions in one DecisionRequest. Sourced from the jev-rank reference client (20 pairs x 2 = 40 per request). */
+/** Cap on the number of DecisionQuestions in one DecisionRequest. */
 export const JEV_DECISION_REQUEST_MAX_QUESTIONS = 40;
 
 type JevChoiceAnswer = {
@@ -53,11 +48,15 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
 
   async evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>> {
     const { node, rules } = input;
-    const questions: Record<string, unknown> = {};
-    for (const rule of rules) questions[rule.id] = decisionQuestion(rule, rule.rubric || rule.description);
-    const data = await this.post(nodeState(node), questions);
     const results: Record<string, SemanticJudgeResult> = {};
-    for (const rule of rules) results[rule.id] = toResult(rule, data.answers?.[rule.id]);
+    // A node with more rules than one DecisionRequest allows is split by rule; the state is sent whole each time.
+    for (let start = 0; start < rules.length; start += JEV_DECISION_REQUEST_MAX_QUESTIONS) {
+      const part = rules.slice(start, start + JEV_DECISION_REQUEST_MAX_QUESTIONS);
+      const questions: Record<string, unknown> = {};
+      for (const rule of part) questions[rule.id] = decisionQuestion(rule, rule.rubric || rule.description);
+      const data = await this.post(nodeState(node), questions);
+      for (const rule of part) results[rule.id] = toResult(rule, data.answers?.[rule.id]);
+    }
     return results;
   }
 
@@ -66,7 +65,8 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
    * NodeRulesetGroup, sent as one DecisionRequest,
    * with every node under `state.nodes` and one DecisionQuestion per node and rule. A NodeRulesetGroup is split into DecisionRequests by
    * `JEV_DECISION_REQUEST_MAX_ESTIMATED_TOKENS` and `JEV_DECISION_REQUEST_MAX_QUESTIONS`, never within a node. A node alone in its DecisionRequest, even
-   * one over the cap, is sent as a plain single-node DecisionRequest. A failed DecisionRequest marks only its own nodes' rules
+   * one over the token cap, is sent whole as a plain single-node DecisionRequest; one with more rules than the question cap has its rules split
+   * across DecisionRequests. A failed DecisionRequest marks only its own nodes' rules
    * as errors.
    */
   async evaluateNodes(inputs: SemanticJudgeInput[]): Promise<Array<Record<string, SemanticJudgeResult>>> {
@@ -110,7 +110,7 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
       for (const rule of input.rules) {
         questions[`${rule.id}__n${k}`] = decisionQuestion(
           rule,
-          `For state.nodes.n${k}: ${rule.rubric || rule.description}`,
+          `For node \`nodes.n${k}\`: ${rule.rubric || rule.description}`,
         );
       }
     });

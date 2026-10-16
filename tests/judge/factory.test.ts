@@ -10,6 +10,7 @@ import { AnthropicJudgeProvider } from '../../src/judge/provider/anthropic';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { JevJudgeProvider } from '../../src/judge/provider/jev';
 import { OpenAIJudgeProvider } from '../../src/judge/provider/openai';
+import { passFailRule } from './helpers';
 
 describe('hydrateProvider', () => {
   it('prefers the explicit value over the env var and leaves unset fields undefined', () => {
@@ -64,7 +65,7 @@ describe('createModelProvider', () => {
             schemaData: {},
             resolvedParents: [],
           },
-          rules: [],
+          rules: [passFailRule],
         })
         .catch(() => {});
       expect(calls[0]).toBe('https://openrouter.ai/api/alpha/decisions');
