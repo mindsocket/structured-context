@@ -29,7 +29,7 @@ Issue #28 opened the door to reorganize schema metadata, rules, and composition 
 - Metadata is composed across `$ref` graph (DFS, root last) with deterministic merge semantics. *(Superseded by #121: metadata is composed only through explicit `$metadata.imports`; `$ref` is validation-only. See [schemas.md](schemas.md#composition-and-merge-semantics).)*
 - Rule conflict policy is error by default; explicit `override: true` enables replacement.
 - `$metadata.rules` supports `$ref` imports for specific rules and rule sets. *(Removed by #121: import a rules-only schema via `$metadata.imports` instead.)*
-- Metadata contract source is `src/metadata-contract.ts` (`json-schema-to-ts` types), with generated metaschema artifact in `schemas/generated/_ost_tools_schema_meta.json`.
+- Metadata contract source is `src/schema/metadata-contract.ts` (`json-schema-to-ts` types), with generated metaschema artifact in `schemas/generated/latest/_structured_context_schema_meta.json`.
 
 ## Decision Areas and Recommendations
 
@@ -322,10 +322,10 @@ Use TS-authored metadata contract as the source of truth (`as const`) and infer 
 
 Shipped workflow:
 
-- Author metadata schema contract in `src/metadata-contract.ts`.
+- Author metadata schema contract in `src/schema/metadata-contract.ts`.
 - Infer TS types from that contract via `json-schema-to-ts`.
 - Validate runtime metadata via AJV using the same contract object.
-- Generate `schemas/generated/_ost_tools_schema_meta.json` from the in-code contract (`bun run generate:schema-meta`).
+- Generate `schemas/generated/latest/_structured_context_schema_meta.json` from the in-code contract (`bun run generate:schema-meta`).
 
 This keeps one authoritative contract while still producing a portable schema artifact for tooling.
 
@@ -485,7 +485,7 @@ Stage D acceptance criteria:
 - **Breaking**: rule declarations migrated to flat `rules[]` with per-rule `category`.
 - **New**: metadata composition across `$ref` graph with deterministic merge semantics.
 - **New**: rule imports via `$metadata.rules` `$ref` entries and explicit rule override (`override: true`) behavior.
-- **Internal**: metadata contract source consolidated in `src/metadata-contract.ts` with generated metaschema artifact.
+- **Internal**: metadata contract source consolidated in `src/schema/metadata-contract.ts` with generated metaschema artifact.
 
 ## Open questions for decision
 

@@ -1,6 +1,7 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
+import type { TrimReport } from './judge/trim';
 import type { SemanticJudgeProvider } from './judge/types';
 import { readSpace } from './read/read-space';
 import { computeHierarchyDepths, evaluateRulesWithGating, type GatingSeed } from './schema/gating';
@@ -50,6 +51,8 @@ export interface ValidationResult {
    * See docs/rules.md for gating semantics.
    */
   coverageGates: CoverageGate[];
+  /** Semantic rule input that had content trimmed to fit the per-node input cap: the node count and the rule ids. */
+  contextTrimmed: { nodeCount: number; ruleIds: string[] };
   /** Nodes excluded from validation entirely by a `depth` limit (breadth-first from hierarchy roots). */
   skippedByDepth: Array<{ file: string; title: string }>;
   /** The depth limit applied, if any (undefined means the full space was validated). */
@@ -185,6 +188,11 @@ type SpaceRuleEvaluation = {
   gates: CoverageGate[];
 };
 
+const summariseTrim = (report: TrimReport): ValidationResult['contextTrimmed'] => ({
+  nodeCount: report.nodes.size,
+  ruleIds: [...report.ruleIds].sort(),
+});
+
 /**
  * Evaluate a space's rules. With a main hierarchy, evaluation cascades: schema, hierarchy
  * and gating-rule failures (the `seeds`) suppress rule evaluation for the failing node's subtree.
@@ -200,6 +208,7 @@ async function evaluateSpaceRules(
     judge?: SemanticJudgeProvider;
     judgeTarget?: string;
     ruleFilter?: RuleFilter;
+    trimReport?: TrimReport;
   } = {},
 ): Promise<SpaceRuleEvaluation> {
   const rules = metadata.rules && filterRules(metadata.rules, options.ruleFilter);
@@ -209,6 +218,7 @@ async function evaluateSpaceRules(
     const result = await validateRules(nodes, rules, {
       judge: provider,
       judgeTarget: options.judgeTarget,
+      trimReport: options.trimReport,
     });
     return { violations: result, gates: [] };
   }
@@ -217,6 +227,7 @@ async function evaluateSpaceRules(
     includeGated: options.includeGated,
     provider,
     judgeTarget: options.judgeTarget,
+    trimReport: options.trimReport,
   });
 }
 
@@ -239,6 +250,7 @@ interface SpaceValidationResult {
   orphans: SpaceNode[];
   unresolvedContentLinks: ValidationResult['unresolvedContentLinks'];
   coverageGates: CoverageGate[];
+  contextTrimmed: ValidationResult['contextTrimmed'];
 }
 
 /**
@@ -274,6 +286,7 @@ async function validateNodes(
     orphans: [],
     unresolvedContentLinks: [],
     coverageGates: [],
+    contextTrimmed: { nodeCount: 0, ruleIds: [] },
   };
 
   for (const node of nodes) {
@@ -338,9 +351,11 @@ async function validateNodes(
       }),
       ...result.hierarchyViolations.map((v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' })),
     ];
-    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, options);
+    const trimReport: TrimReport = { nodes: new Set(), ruleIds: new Set() };
+    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, { ...options, trimReport });
     result.ruleViolations = violations;
     result.coverageGates = gates;
+    result.contextTrimmed = summariseTrim(trimReport);
   }
 
   // Collect unresolved content links (warnings — not errors)
@@ -414,6 +429,7 @@ export async function validateSpace(
     parseIssues: readResult.parseIssues,
     unresolvedContentLinks: result.unresolvedContentLinks,
     coverageGates: result.coverageGates,
+    contextTrimmed: result.contextTrimmed,
     skippedByDepth,
     depthLimit: options.depth,
   };

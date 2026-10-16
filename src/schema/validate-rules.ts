@@ -1,4 +1,5 @@
 import { judgeNodes } from '../judge/judge-node';
+import type { TrimReport } from '../judge/trim';
 import type { SemanticJudgeProvider } from '../judge/types';
 import { buildSpaceGraph } from '../space-graph';
 import type { Rule, RuleViolation, SpaceNode } from '../types';
@@ -19,6 +20,7 @@ export interface ValidateRulesOptions {
   judgeTarget?: string;
   /** Set of node labels that have already failed upstream structural checks. */
   gatedNodeLabels?: Set<string>;
+  trimReport?: TrimReport;
 }
 
 /**
@@ -110,7 +112,7 @@ export async function validateRules(
     }
 
     // One provider call for every node, so a provider with `evaluateNodes` can share model calls.
-    const judged = await judgeNodes(judge, pending, buildSpaceGraph(nodes, undefined));
+    const judged = await judgeNodes(judge, pending, buildSpaceGraph(nodes, undefined), options.trimReport);
     pending.forEach(({ node, found }, i) => {
       for (const j of judged[i] ?? []) {
         if (!j.failed) continue;

@@ -1,5 +1,6 @@
 import type { NodeJudgement } from '../judge/judge-node';
 import { judgeNodes } from '../judge/judge-node';
+import type { TrimReport } from '../judge/trim';
 import type { SemanticJudgeProvider } from '../judge/types';
 import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, RuleViolation, SpaceNode } from '../types';
@@ -60,6 +61,7 @@ export type GatedRuleEvaluation = {
 };
 
 export interface GatingOptions {
+  trimReport?: TrimReport;
   /** Evaluate rules on gated nodes anyway (gates are still reported). */
   includeGated?: boolean;
   /** Evaluates `semantic` rules. Without it, a rule's semantic part is not evaluated. */
@@ -280,7 +282,7 @@ export async function evaluateRulesWithGating(
     for (const node of nodes) prepared.push(await prepareNode(node));
     if (judge) {
       const pending = nodes.map((node, i) => ({ node, rules: prepared[i]!.semantic }));
-      const judgements = await judgeNodes(judge, pending, graph);
+      const judgements = await judgeNodes(judge, pending, graph, options.trimReport);
       prepared.forEach((p, i) => {
         p.judged(judgements[i] ?? []);
       });

@@ -1,6 +1,7 @@
 import { RESERVED_VERDICTS } from '../schema/metadata-contract';
 import { ruleSemantic, ruleSeverity } from '../schema/rule-severity';
 import type { Rule, RuleSeverity } from '../types';
+import { ruleContext } from './context';
 import type { SemanticJudgeResult, SemanticRuleSpec } from './types';
 
 /** Verdicts for a semantic rule that declares none. */
@@ -8,6 +9,12 @@ export const DEFAULT_VERDICTS: Record<string, string> = {
   pass: 'The node meets the rubric.',
   fail: 'The node does not meet the rubric.',
 };
+
+/** The reserved verdict a rule with related nodes or bodies offers, for input a trim marker shows was cut. */
+const MISSING_CONTEXT_VERDICT = 'missing-context';
+
+const MISSING_CONTEXT_DESCRIPTION =
+  'Content needed to judge the rule was cut: a [RULE_EVALUATION_CONTENT_TRIMMED n chars] marker shows where. Choose this only when such a marker is present and the cut content is needed. Never choose it when no marker appears.';
 
 /** A semantic rule resolved for evaluation: what the judge sees, and what each verdict means for the user. */
 export interface ResolvedSemanticRule {
@@ -63,6 +70,13 @@ export function resolveSemanticRule(rule: Rule): ResolvedSemanticRule {
   }
   if (Object.keys(severities).filter((v) => v in verdicts).length >= Object.keys(verdicts).length) {
     throw new Error(`Semantic rule "${rule.id}" has no passing verdict: every verdict has a severity.`);
+  }
+
+  // A warning by default.
+  const context = ruleContext(rule);
+  if (context.scope.length > 0 || context.content !== 'none') {
+    verdicts[MISSING_CONTEXT_VERDICT] = MISSING_CONTEXT_DESCRIPTION;
+    if (!(MISSING_CONTEXT_VERDICT in mapping)) severities[MISSING_CONTEXT_VERDICT] = 'warning';
   }
 
   return {

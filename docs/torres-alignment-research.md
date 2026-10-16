@@ -173,7 +173,7 @@ My thoughts so far:
   "significant gap if the tool intends to model a complete OST per Torres"
   * I think we should also explore alternative schemas. We could `mkdir schemas && mv schema.json schemas/general.json` then add a `schemas/strict_ost.json` for the Torres version (limited
   parentage, opinionated names from Torres' work). We have '--schema' scafolding already. We could promote the schema in config.json to space level, and update the default so
-  `schemas/general.json` is used - partly for backward compatibility but mainly because I have stronger opinions about structure. Put common `refs` in a shared file to avoid repetition.
+  `schemas/strategy_general.json` is used - partly for backward compatibility but mainly because I have stronger opinions about structure. Put common `refs` in a shared file to avoid repetition.
   * Side note - there doesn't appear to be an IP (trademark) issue with "OST". We should be respectful and attribute Torres' work, while calling out these tools' applicability to a broader range of frameworks. The project already wants to explore adjacent and
   composite models anyway.
   * Taking that idea one further "general.json" might really be strategy_plus_ost.json or something.
