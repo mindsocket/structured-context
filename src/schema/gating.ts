@@ -2,7 +2,12 @@ import { judgeNode } from '../judge/judge-node';
 import type { SemanticJudgeProvider } from '../judge/types';
 import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, RuleViolation, SpaceNode } from '../types';
-import { buildEvalContext, expressionErrorViolation, tryEvaluateExpression } from './evaluate-rule';
+import {
+  applySemanticChecks,
+  buildEvalContext,
+  expressionErrorViolation,
+  tryEvaluateExpression,
+} from './evaluate-rule';
 import { ruleSeverities, ruleSeverity } from './rule-severity';
 
 /**
@@ -157,7 +162,7 @@ export async function evaluateRulesWithGating(
     }
   }
 
-  const perNodeRules = rules.filter((r) => r.scope !== 'global' && (r.mode !== 'semantic' || judge));
+  const perNodeRules = rules.filter((r) => r.scope !== 'global' && (r.mode !== 'semantic' || judge || r.check));
 
   // With a judge target, only the target and its hierarchy ancestors can need judging.
   const targetAncestors = new Set<string>();
@@ -232,7 +237,17 @@ export async function evaluateRulesWithGating(
       else if (outcome.value !== true) report(rule);
     }
 
-    const semantic = applicable.filter((r) => r.mode === 'semantic');
+    // A semantic rule's `check` fails fast before the judge. Its violation gates like an expression rule's, at the severity it reports.
+    const prechecked = await applySemanticChecks(
+      applicable.filter((r) => r.mode === 'semantic'),
+      node,
+      nodes,
+      nodeIndex,
+    );
+    violations.push(...prechecked.violations);
+    const gatingRule = prechecked.failed.find((r) => ruleGatesDescendants(r));
+    if (gatingRule && !blockingRuleId) blockingRuleId = gatingRule.id;
+    const semantic = prechecked.judgeable;
     if (judge && semantic.length > 0) {
       for (const j of await judgeNode(judge, node, semantic)) {
         if (j.failed) {

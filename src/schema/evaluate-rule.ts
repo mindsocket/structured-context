@@ -1,5 +1,6 @@
 import jsonata from 'jsonata';
 import type { Rule, RuleViolation, SpaceNode } from '../types';
+import { ruleSeverity } from './rule-severity';
 
 const expressionCache = new Map<string, ReturnType<typeof jsonata>>();
 
@@ -138,4 +139,44 @@ export function expressionErrorViolation(rule: Rule, file: string, error: string
     severity: 'error',
     description: `${rule.description} (Rule error: ${error})`,
   };
+}
+
+/**
+ * Applies the `check` precondition of semantic rules on a node. A rule whose `check` fails or errors reports a
+ * violation (at its own severity, or `error` for an evaluation failure) and is left out of `judgeable`, so the
+ * judge never sees it. A failing check's violation names the expression in its evidence, and its rule is listed in
+ * `failed` so the caller can honour `gatesDescendants`; an evaluation error is never listed.
+ */
+export async function applySemanticChecks(
+  rules: Rule[],
+  node: SpaceNode,
+  allNodes: SpaceNode[],
+  nodeIndex: Map<string, SpaceNode>,
+): Promise<{ judgeable: Rule[]; violations: RuleViolation[]; failed: Rule[] }> {
+  const judgeable: Rule[] = [];
+  const violations: RuleViolation[] = [];
+  const failed: Rule[] = [];
+  for (const rule of rules) {
+    if (!rule.check) {
+      judgeable.push(rule);
+      continue;
+    }
+    const outcome = await tryEvaluateExpression(rule.check, buildEvalContext(node, allNodes, nodeIndex));
+    if ('error' in outcome) {
+      violations.push(expressionErrorViolation(rule, node.label, outcome.error));
+    } else if (outcome.value !== true) {
+      violations.push({
+        file: node.label,
+        ruleId: rule.id,
+        category: rule.category,
+        severity: ruleSeverity(rule),
+        description: rule.description,
+        evidence: `expression check failed: ${rule.check}`,
+      });
+      failed.push(rule);
+    } else {
+      judgeable.push(rule);
+    }
+  }
+  return { judgeable, violations, failed };
 }

@@ -77,6 +77,7 @@ const RULE_SCHEMA = {
       ],
     },
     description: { type: 'string', minLength: 1 },
+    /** Expression rules: the test a node must pass. Semantic rules: a precondition evaluated after `when` and before the judge; a failing node is reported without judging. */
     check: { type: 'string', minLength: 1 },
     /** Optional JSONata applicability test, evaluated per node before the rule runs. The rule applies only when it returns true. */
     when: { type: 'string', minLength: 1 },
@@ -111,12 +112,12 @@ const RULE_SCHEMA = {
   required: ['id', 'category', 'description'],
   // A global rule has no node to test, so `when` needs a per-node rule.
   not: { required: ['when', 'scope'] },
-  // Semantic rules are judged per node (no `check`, not global) and with custom verdicts must map each failing
+  // Semantic rules are judged per node (not global, `check` optional) and with custom verdicts must map each failing
   // verdict to a severity. Every other rule needs a `check` and takes none of the semantic-only fields.
   if: { properties: { mode: { const: 'semantic' } }, required: ['mode'] },
   // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then`/`else` keyword, not a thenable
   then: {
-    not: { anyOf: [{ required: ['check'] }, { required: ['scope'] }] },
+    not: { required: ['scope'] },
     if: { required: ['verdicts'] },
     // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then`/`else` keyword, not a thenable
     then: { required: ['severity'], properties: { severity: { type: 'object' } } },

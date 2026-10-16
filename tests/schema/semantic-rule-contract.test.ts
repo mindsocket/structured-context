@@ -37,8 +37,8 @@ describe('rule contract: check and semantic mode', () => {
     expect(load('semantic-ok', { ...base, mode: 'semantic' }).rules).toHaveLength(1);
   });
 
-  it('rejects a semantic rule that also declares check', () => {
-    expect(() => load('semantic-check', { ...base, mode: 'semantic', check: 'true' })).toThrow();
+  it('accepts a semantic rule that declares a check precondition', () => {
+    expect(load('semantic-check', { ...base, mode: 'semantic', check: 'true' }).rules).toHaveLength(1);
   });
 
   it('rejects a global semantic rule', () => {

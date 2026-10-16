@@ -284,14 +284,7 @@
             },
             "then": {
               "not": {
-                "anyOf": [
-                  {
-                    "required": ["check"]
-                  },
-                  {
-                    "required": ["scope"]
-                  }
-                ]
+                "required": ["scope"]
               },
               "if": {
                 "required": ["verdicts"]

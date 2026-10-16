@@ -78,7 +78,7 @@ Prefer choosing the right category and relying on its default. Set `severity` on
   "when": "current.status = 'ready'", "check": "$exists(current.owner)" }
 ```
 
-`when` costs almost nothing, so use it to stop an expensive rule from running where it does not apply. For a semantic rule, this saves a model call on each node that `when` excludes.
+`when` costs almost nothing, so use it to stop an expensive rule from running where it does not apply. For a semantic rule, this saves a model call on each node that `when` excludes. A semantic rule can also carry a `check`; see [Preconditions](semantic-rules.md#preconditions-check) for the order.
 
 An error in a `when` or `check` is reported as a non-gating `error` violation.
 

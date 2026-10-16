@@ -35,16 +35,41 @@ Semantic rules cost money and send node content to the judge's provider. Thus th
 - `--semantic` runs them with the configured judge.
 - `--judge <provider>` runs them with a specific model provider instead.
 
+A semantic rule's [`check`](#preconditions-check) costs no model call, so it runs on every validation. Without a judge, only that expression runs.
+
 ## Rule fields
 
 | Field | Required | Description |
 |---|---|---|
 | `mode` | yes | `"semantic"` |
+| `check` | no | An expression that a node must pass before the judge sees it. Runs even without a judge. See [Preconditions](#preconditions-check) |
 | `rubric` | no | Tells the judge what to assess. Default: `description` |
 | `verdicts` | no | The answers the judge can give. Default: `pass` and `fail`. See [Verdicts](#verdicts) |
 | `severity` | if `verdicts` is set | The severity of each verdict. See [Severity](#severity) |
 
-A semantic rule cannot have `check` or `scope: "global"`.
+A semantic rule cannot have `scope: "global"`.
+
+## Preconditions (`check`)
+
+A `check` costs no model call. It uses the same [expression syntax and context](rules.md#writing-expressions) as an expression rule. Use it for a requirement that an expression can verify, so the judge only sees nodes worth the cost:
+
+```json
+{ "id": "opportunity-customer-voice", "category": "coherence", "type": "opportunity",
+  "mode": "semantic", "description": "Opportunity is framed in customer voice",
+  "check": "$exists(current.source)" }
+```
+
+The order is `when`, then `check`, then the judge. Without a judge, the order is `when`, then `check`.
+
+- If `check` returns `true`, the judge runs. Without a judge, nothing is reported. The verdict maps to a severity as usual.
+- If `check` does not return `true`, structured-context reports a violation and does not call the judge. The violation has no verdict, and its evidence reads `expression check failed: <the check expression>`.
+- If `check` cannot be evaluated, structured-context reports a non-gating `error` violation and does not call the judge.
+
+A failing `check` reports the severity that an expression rule would report: the rule's `severity`, or the default for its category. With a [severity map](#severity), it reports the most severe severity in the map. If every entry in the map is `ignore`, it reports `info`.
+
+A failing `check` [gates](rules.md#cascade-gating) the node's descendants as an expression rule does. It gates by default when it reports `error` severity. Set `gatesDescendants` to override that either way.
+
+`--rule-filter mode=semantic` selects these rules with or without a judge.
 
 ## Verdicts
 
@@ -83,7 +108,7 @@ Gating uses the severity of the verdict. A verdict with `error` severity gates t
 
 ## How judging works
 
-- **Order.** On each node, expression rules run first. Then structured-context sends all of the node's semantic rules to the judge in one call.
+- **Order.** On each node, expression rules run first. Then structured-context applies each semantic rule's [`check`](#preconditions-check) and sends the rules that pass to the judge in one call.
 - **Gating.** structured-context does not judge a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
 - **Judge errors.** If the judge fails (for example, a network error or output that structured-context cannot read), structured-context reports a violation. A judge error does not gate.
 - **Input.** The judge gets the node's title, type, parent titles and schema data, including frontmatter.
