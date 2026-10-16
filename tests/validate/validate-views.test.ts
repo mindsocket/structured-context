@@ -145,7 +145,7 @@ describe('invalid node type', () => {
 
   it('lists the allowed types alphabetically in the message and in allowedValues', async () => {
     const { nodeErrors } = await validateSpace(context);
-    const [error] = nodeErrors.flatMap((e) => e.errors).filter((e) => e.instancePath === '/type');
+    const [error] = nodeErrors.find((e) => e.nodeData.type === 'vision')?.errors ?? [];
     const sorted = ['assumption_test', 'opportunity', 'outcome', 'solution'];
     expect(error?.params.allowedValues).toEqual(sorted);
     expect(error?.message).toEndWith(`Valid types are: ${sorted.join(', ')}`);
