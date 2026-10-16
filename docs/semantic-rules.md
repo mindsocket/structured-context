@@ -124,11 +124,11 @@ By default the model sees the evaluated node alone. Use `semantic.scope` to send
 | `descendants` | The children, their children, and so on |
 | `branch` | The ancestors and the descendants |
 
-Entries add together. A node that matches several entries is sent once, with every relation it has. `ancestors` includes `parent`, and `descendants` includes `children`, so a direct parent or child is always labelled as one. An empty or absent `scope` sends the evaluated node alone. Other relationships are not followed. A schema without a hierarchy has no related nodes.
+Entries add together, and each node is sent once. An empty or absent `scope` sends the evaluated node alone. Other relationships are not followed.
 
 A wide scope can send many nodes, and every node sends all its schema data. Prefer to attach a rule at the level where `parent`, `children` or `ancestors` covers what it needs, rather than `descendants` or `branch` on a node near the top of a large tree.
 
-A related node carries all its schema data, including its title and type. The model provider gets the related nodes as a flat list, each with its relation to the evaluated node. Scope sends node data only, never the verdicts of other rules, and [gating](rules.md#cascade-gating) does not change which nodes it selects.
+Scope sends node data only, never the verdicts of other rules, and [gating](rules.md#cascade-gating) does not change which nodes it selects.
 
 `semantic.includeContent` chooses which node bodies (the markdown `content`) go to the model:
 
@@ -152,7 +152,7 @@ A global rule cannot have a `semantic` part, so it has no scope.
 - **Grouping.** A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates each node ruleset group (see [concepts](concepts.md#semantic-rules)) in as few decision requests as it can, with one decision question per node and rule. This includes the bundled `openrouter-openai-decisions` provider. A decision request is limited to about 32,000 estimated input tokens and 40 decision questions, so a larger group is split into several decision requests, never within a node. A node that fills a decision request on tokens is sent whole as its own decision request. A node with more than 40 rules has its rules split across decision requests. If a node's questions are split across several requests and one fails, all of that node's rules are reported as errors. Other providers, including `openai-decisions` and chat models, evaluate one node per request. Within a space, the nodes at one hierarchy depth are evaluated together, because their verdicts decide whether the next depth is evaluated. Grouping can shift verdicts and probabilities slightly compared with evaluating each node alone.
 - **Gating.** structured-context does not evaluate the semantic part on a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
 - **Evaluation errors.** If the model provider fails (for example, a network error or output that structured-context cannot read), structured-context reports a violation with the suffix `(Semantic evaluation error: ...)`. An evaluation error does not gate. If one decision request fails, only the rules on the nodes in that decision request report the error.
-- **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter. It gets the node's body, and any [related nodes](#related-nodes-and-content), only as the rule's `semantic.scope` and `semantic.includeContent` ask. Rules on one node that ask for the same related nodes and bodies share one input; rules that ask for different ones are evaluated separately.
+- **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter. It gets the node's body, and any [related nodes](#related-nodes-and-content), only as the rule's `semantic.scope` and `semantic.includeContent` ask.
 - **Output.** A violation from a semantic verdict also includes the verdict, the model's evidence and any guidance.
 
 `sctx validate-file` evaluates the semantic part only for the file and the rules on its ancestors that can gate it. Thus one file costs at most one model call for each ancestor level, plus one.
