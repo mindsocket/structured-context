@@ -16,10 +16,7 @@ export const JEV_LATEST = 'jev-latest';
 
 export const OPENROUTER_DECISIONS_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
 
-/**
- * Request packing limit: the estimated input tokens (characters / 4) packed into one DecisionRequest's `state`
- * plus `questions`. A conservative cost and latency guard. Not the per-node input cap, which bounds one node's input.
- */
+/** Request packing limit: estimated input tokens (characters / 4) in one DecisionRequest's `state` plus `questions`. */
 export const JEV_REQUEST_PACKING_LIMIT_TOKENS = 32_000;
 
 /** Request packing limit on the number of DecisionQuestions in one DecisionRequest. */

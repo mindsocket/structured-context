@@ -126,7 +126,7 @@ By default the model sees the evaluated node alone. Use `semantic.scope` to send
 
 Entries add together, and each node is sent once. An empty or absent `scope` sends the evaluated node alone. Other relationships are not followed.
 
-A wide scope can send many nodes, and every node sends all its schema data, which [trimming](#input-size-and-trimming) never cuts. Prefer to attach a rule at the level where `parent`, `children` or `ancestors` covers what it needs, rather than `descendants` or `branch` on a node near the top of a large tree.
+A wide scope can send many nodes, and every node sends all its schema data. Prefer to attach a rule at the level where `parent`, `children` or `ancestors` covers what it needs, rather than `descendants` or `branch` on a node near the top of a large tree.
 
 Scope sends node data only, never the verdicts of other rules, and [gating](rules.md#cascade-gating) does not change which nodes it selects.
 
@@ -148,29 +148,9 @@ A global rule cannot have a `semantic` part, so it has no scope.
 
 ## Input size and trimming
 
-The input for one evaluated node is its data and its related nodes. It is limited by the **per-node input cap** of about 32,000 tokens. The cap cannot be configured.
+The input for one evaluated node is capped at about 32,000 estimated tokens. Over the cap, structured-context cuts node bodies, longest related bodies first, and marks each cut with `[RULE_EVALUATION_CONTENT_TRIMMED n chars]`. If the input still does not fit, the rule reports a semantic evaluation error. A run that trims content says so in its summary.
 
-When the input is over the cap, structured-context cuts node bodies and nothing else. It never cuts a field and never drops a node, so the model always knows which related nodes exist.
-
-It cuts the longest related bodies first. It cuts the evaluated node's body only when the related bodies are cut to nothing.
-
-Each cut ends with a marker that gives the number of characters removed:
-
-```
-[RULE_EVALUATION_CONTENT_TRIMMED 6120 chars]
-```
-
-If the input is still over the cap after every body is cut, structured-context does not call the model and reports a violation with the suffix `(Semantic evaluation error: input over the per-node cap after trimming content)`. Large fields cause this.
-
-### The `missing-context` verdict
-
-A rule with `semantic.scope` or `semantic.includeContent` also offers the model the verdict `missing-context`. The model chooses it only when a trim marker shows that content it needs was cut. A rule without either never offers it.
-
-`missing-context` reports a `warning` by default. Set `semantic.severity` to change it, for example `{ "missing-context": "info" }`, or `ignore` to report nothing.
-
-### Reporting
-
-A run that trims content prints one line in its summary, for example `Context trimmed for 3 node(s) across rules solution-addresses-opportunity, solution-fits-goal.` The `--json` output carries the same information as `contextTrimmed`, with `nodeCount` and `ruleIds`.
+A rule with `semantic.scope` or `semantic.includeContent` can return `missing-context` when content it needs was cut. It is a `warning` by default; change it in `semantic.severity`.
 
 ## How semantic evaluation works
 
@@ -178,7 +158,7 @@ A run that trims content prints one line in its summary, for example `Context tr
 - **Grouping.** A model provider on a decisions API (`openrouter-decisions` or `typesafe-systemone`) evaluates nodes that share the same rules together, in as few requests as it can, to save cost. Grouping can shift verdicts and probabilities slightly compared with evaluating each node alone.
 - **Gating.** structured-context does not evaluate the semantic part on a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
 - **Evaluation errors.** If the model provider fails (for example, a network error or output that structured-context cannot read), structured-context reports a violation with the suffix `(Semantic evaluation error: ...)`. An evaluation error does not gate.
-- **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter. It gets the node's body, and any [related nodes](#related-nodes-and-content), only as the rule's `semantic.scope` and `semantic.includeContent` ask, [trimmed](#input-size-and-trimming) to the per-node input cap.
+- **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter. It gets the node's body, and any [related nodes](#related-nodes-and-content), only as the rule's `semantic.scope` and `semantic.includeContent` ask ([trimmed](#input-size-and-trimming) to fit).
 - **Output.** A violation from a semantic verdict also includes the verdict, the model's evidence and any guidance.
 
 `sctx validate-file` evaluates the semantic part only for the file and the rules on its ancestors that can gate it. Thus one file costs at most one model call for each ancestor level, plus one.

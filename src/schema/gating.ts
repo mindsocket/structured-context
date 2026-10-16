@@ -61,7 +61,6 @@ export type GatedRuleEvaluation = {
 };
 
 export interface GatingOptions {
-  /** Collects the nodes and rules whose input had content trimmed to fit the per-node input cap. */
   trimReport?: TrimReport;
   /** Evaluate rules on gated nodes anyway (gates are still reported). */
   includeGated?: boolean;

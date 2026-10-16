@@ -37,42 +37,36 @@ describe('cutBody', () => {
 describe('trimToCap', () => {
   it('does nothing under the cap', () => {
     const i = input('body', ['rel']);
-    expect(trimToCap(i, 10_000)).toEqual({ input: i, trimmed: false, overCap: false });
+    expect(trimToCap(i, 10_000)).toEqual({ input: i, trimmed: false });
   });
 
   it('cuts the longest related bodies to one ceiling and keeps shorter ones whole', () => {
     const short = words(10);
     const i = input('own', [words(2000), short, words(1500)]);
     const cap = Math.ceil(estimateTokens(i) / 2);
-    const out = trimToCap(i, cap);
+    const out = trimToCap(i, cap)!;
     expect(out.trimmed).toBe(true);
-    expect(out.overCap).toBe(false);
     expect(estimateTokens(out.input)).toBeLessThanOrEqual(cap);
     expect(relatedBody(out.input, 1)).toBe(short);
     expect(relatedBody(out.input, 0)).toContain('[RULE_EVALUATION_CONTENT_TRIMMED');
     expect(relatedBody(out.input, 2)).toContain('[RULE_EVALUATION_CONTENT_TRIMMED');
     expect(out.input.node.schemaData.content).toBe('own');
     expect(out.input.related).toHaveLength(3);
+    expect(out.input.related?.[0]?.data.owner).toBe('team');
   });
 
   it('cuts the evaluated node body only once related bodies are exhausted', () => {
     const own = words(3000);
     const i = input(own, [words(50)]);
     const withoutBodies = estimateTokens(input('', ['']));
-    const out = trimToCap(i, withoutBodies + 200);
-    expect(out.overCap).toBe(false);
+    const out = trimToCap(i, withoutBodies + 200)!;
     expect(relatedBody(out.input, 0)).toBe(trimMarker(words(50).length));
     expect(String(out.input.node.schemaData.content)).toContain('[RULE_EVALUATION_CONTENT_TRIMMED');
     expect(String(out.input.node.schemaData.content).length).toBeLessThan(own.length);
   });
 
-  it('never cuts fields or drops nodes, and reports an input that still does not fit', () => {
-    const i = input(words(100), [words(100)]);
-    const out = trimToCap(i, 10);
-    expect(out.overCap).toBe(true);
-    expect(out.input.related).toHaveLength(1);
-    expect(out.input.related?.[0]?.data.owner).toBe('team');
-    expect(out.input.node.schemaData.source).toBe(node.schemaData.source);
+  it('returns nothing for an input that does not fit with every body cut', () => {
+    expect(trimToCap(input(words(100), [words(100)]), 10)).toBeUndefined();
   });
 
   it('does not mutate its input', () => {

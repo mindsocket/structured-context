@@ -11,7 +11,7 @@ export const DEFAULT_VERDICTS: Record<string, string> = {
 };
 
 /** The reserved verdict a rule with related nodes or bodies offers, for input a trim marker shows was cut. */
-export const MISSING_CONTEXT_VERDICT = 'missing-context';
+const MISSING_CONTEXT_VERDICT = 'missing-context';
 
 const MISSING_CONTEXT_DESCRIPTION =
   'Content needed to judge the rule was cut: a [RULE_EVALUATION_CONTENT_TRIMMED n chars] marker shows where. Choose this only when such a marker is present and the cut content is needed. Never choose it when no marker appears.';
@@ -72,7 +72,7 @@ export function resolveSemanticRule(rule: Rule): ResolvedSemanticRule {
     throw new Error(`Semantic rule "${rule.id}" has no passing verdict: every verdict has a severity.`);
   }
 
-  // A rule that asks for related nodes or bodies offers `missing-context` (a static property of the rule), a warning by default.
+  // A warning by default.
   const context = ruleContext(rule);
   if (context.scope.length > 0 || context.content !== 'none') {
     verdicts[MISSING_CONTEXT_VERDICT] = MISSING_CONTEXT_DESCRIPTION;

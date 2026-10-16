@@ -52,33 +52,25 @@ function largestFitting(max: number, fits: (limit: number) => boolean): number {
   return low;
 }
 
-export interface TrimResult {
-  input: NodeInput;
-  /** True when any body was cut. */
-  trimmed: boolean;
-  /** True when the input is still over the cap with every body cut to nothing. */
-  overCap: boolean;
-}
-
 /**
- * Bring a node's input under the per-node input cap by cutting bodies only: never fields, never a whole node.
- * Related bodies are cut first, with one ceiling for all of them (longer bodies are cut to it, shorter ones stay
- * whole) set as high as the cap allows. If that reaches zero and the input is still over, the evaluated node's
- * body is cut the same way. Every cut body ends with the trim marker.
+ * Fit a node's input under the per-node input cap by cutting bodies only: related bodies to one shared ceiling
+ * first, then the evaluated node's body. Undefined when the input does not fit even with every body cut.
  */
-export function trimToCap(input: NodeInput, cap = PER_NODE_INPUT_CAP_TOKENS): TrimResult {
-  if (estimateTokens(input) <= cap) return { input, trimmed: false, overCap: false };
+export function trimToCap(
+  input: NodeInput,
+  cap = PER_NODE_INPUT_CAP_TOKENS,
+): { input: NodeInput; trimmed: boolean } | undefined {
+  if (estimateTokens(input) <= cap) return { input, trimmed: false };
 
   const nodeLength = bodyLength(input.node.schemaData);
   const relatedMax = Math.max(0, ...(input.related ?? []).map((r) => bodyLength(r.data)));
   const fitsRelated = (limit: number) => estimateTokens(limitBodies(input, limit, nodeLength)) <= cap;
   const relatedLimit = largestFitting(relatedMax, fitsRelated);
-  if (relatedLimit >= 0) return { input: limitBodies(input, relatedLimit, nodeLength), trimmed: true, overCap: false };
+  if (relatedLimit >= 0) return { input: limitBodies(input, relatedLimit, nodeLength), trimmed: true };
 
   const fitsNode = (limit: number) => estimateTokens(limitBodies(input, 0, limit)) <= cap;
   const nodeLimit = largestFitting(nodeLength, fitsNode);
-  if (nodeLimit >= 0) return { input: limitBodies(input, 0, nodeLimit), trimmed: true, overCap: false };
-  return { input: limitBodies(input, 0, 0), trimmed: true, overCap: true };
+  return nodeLimit >= 0 ? { input: limitBodies(input, 0, nodeLimit), trimmed: true } : undefined;
 }
 
 /** What a run trimmed: the nodes (by label) and the rules whose input had a body cut. */

@@ -20,7 +20,6 @@ export interface ValidateRulesOptions {
   judgeTarget?: string;
   /** Set of node labels that have already failed upstream structural checks. */
   gatedNodeLabels?: Set<string>;
-  /** Collects the nodes and rules whose input had content trimmed to fit the per-node input cap. */
   trimReport?: TrimReport;
 }
 

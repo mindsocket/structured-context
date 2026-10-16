@@ -61,29 +61,24 @@ function interpret(rules: Rule[], resolved: ResolvedRules, results: JudgeResults
 
 const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
-/** Reported for a node whose input is over the per-node input cap even with every body cut. */
 const OVER_CAP_MESSAGE = 'input over the per-node cap after trimming content';
 
-/**
- * One provider input and the rules (by position in their node's rule list) it answers. `trimmed` is set when
- * a body was cut to fit the per-node input cap; `overCap` when that was not enough, so the input is not sent.
- */
-type Unit = {
-  item: number;
-  positions: number[];
-  rules: Rule[];
-  resolved: ResolvedRules;
-  input: SemanticJudgeInput;
-  trimmed: boolean;
-  overCap: boolean;
-};
+/** Rules (by position in their node's rule list) of one node that share an input. */
+type Slot = { item: number; positions: number[]; rules: Rule[] };
+/** One provider input and the rules it answers. */
+type Unit = Slot & { resolved: ResolvedRules; input: SemanticJudgeInput };
 
 /**
- * Split each node's rules into inputs by the context they ask for; rules that share a context share an input.
- * Each input is trimmed to the per-node input cap.
+ * Split each node's rules into inputs by the context they ask for, trimmed to the per-node input cap; rules that
+ * share a context share an input. Inputs that cannot fit go to `overCap`; trimmed ones are added to `report`.
  */
-function planUnits(graph: SpaceGraph, items: Array<{ node: SpaceNode; rules: Rule[] }>): Unit[] {
+function planUnits(
+  graph: SpaceGraph,
+  items: Array<{ node: SpaceNode; rules: Rule[] }>,
+  report?: TrimReport,
+): { units: Unit[]; overCap: Slot[] } {
   const units: Unit[] = [];
+  const overCap: Slot[] = [];
   items.forEach(({ node, rules }, item) => {
     const groups = new Map<string, { context: RuleContext; positions: number[] }>();
     rules.forEach((rule, position) => {
@@ -96,27 +91,32 @@ function planUnits(graph: SpaceGraph, items: Array<{ node: SpaceNode; rules: Rul
     for (const { context, positions } of groups.values()) {
       const unitRules = positions.map((p) => rules[p]!);
       const resolved = resolveAll(unitRules);
-      const { input, trimmed, overCap } = trimToCap(judgeContext(graph, node, context));
+      const fitted = trimToCap(judgeContext(graph, node, context));
+      if (!fitted) {
+        overCap.push({ item, positions, rules: unitRules });
+        continue;
+      }
+      if (fitted.trimmed && report) {
+        report.nodes.add(node.label);
+        for (const rule of unitRules) report.ruleIds.add(rule.id);
+      }
       units.push({
         item,
         positions,
         rules: unitRules,
         resolved,
-        input: { ...input, rules: resolved.map((r) => r.spec) },
-        trimmed,
-        overCap,
+        input: { ...fitted.input, rules: resolved.map((r) => r.spec) },
       });
     }
   });
-  return units;
+  return { units, overCap };
 }
 
 /**
  * Judge several nodes at once. A judge with `evaluateNodes` gets every input in one call and may fold them into
  * fewer requests; any other judge is called once per input. A node's rules that share a context (related nodes
- * and bodies) form one input. An input over the per-node input cap has bodies trimmed; one still over is not sent
- * and marks its rules as errors. Trimmed nodes and rules are added to `report`. Results align with `items`, in
- * rule order. A failure marks only the affected rules as errors.
+ * and bodies) form one input; an input that cannot fit the per-node input cap is not sent. Results align with
+ * `items`, in rule order. A failure marks only the affected rules as errors.
  */
 export async function judgeNodes(
   judge: SemanticJudgeProvider,
@@ -124,22 +124,15 @@ export async function judgeNodes(
   graph: SpaceGraph,
   report?: TrimReport,
 ): Promise<NodeJudgement[][]> {
-  const planned = planUnits(graph, items);
-  const units = planned.filter((u) => !u.overCap);
+  const { units, overCap } = planUnits(graph, items, report);
   const out: NodeJudgement[][] = items.map(({ rules }) => new Array<NodeJudgement>(rules.length));
-  const place = (unit: Unit, judgements: NodeJudgement[]) => {
+  const place = (unit: Slot, judgements: NodeJudgement[]) => {
     unit.positions.forEach((position, k) => {
       out[unit.item]![position] = judgements[k]!;
     });
   };
 
-  for (const unit of planned) {
-    if (unit.overCap) place(unit, errorJudgements(unit.rules, OVER_CAP_MESSAGE));
-    else if (unit.trimmed && report) {
-      report.nodes.add(items[unit.item]!.node.label);
-      for (const rule of unit.rules) report.ruleIds.add(rule.id);
-    }
-  }
+  for (const slot of overCap) place(slot, errorJudgements(slot.rules, OVER_CAP_MESSAGE));
 
   if (!judge.evaluateNodes) {
     for (const unit of units) {
