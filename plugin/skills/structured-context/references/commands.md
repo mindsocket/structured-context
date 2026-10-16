@@ -19,7 +19,8 @@ Validates all `.md` files in the space against the JSON schema. For each file:
 - Skips files with no frontmatter or no `type` field (after `fieldMap` remapping)
 - Runs JSON schema validation
 - Runs reference checks (wikilinks → known node titles)
-- Runs executable rules (JSONata expressions in `$metadata.rules`), with cascade gating: a
+- Runs rules from `$metadata.rules` (each rule's `expression`; its `semantic` part only with
+  `--semantic`), with cascade gating: a
   schema, hierarchy, or blocking-rule failure on a node suppresses rule evaluation for its
   hierarchy subtree. Gated nodes are reported in a coverage section (and `coverageGates` in
   `--json` output) so you know what wasn't checked and why.
@@ -29,9 +30,11 @@ Validates all `.md` files in the space against the JSON schema. For each file:
 the top — useful for fixing a space level by level (fix the top, re-run with a deeper
 `--depth`, repeat). `--include-gated` evaluates rules on gated nodes anyway, still reporting
 them as gated — use it to surface cheap bottom-up checks even when an upstream blocker fired.
-`--semantic` also evaluates the `semantic` part of rules through a configured model provider (costly; off by
-default; `--semantic <provider>` uses that configured model provider instead), and `--rule-filter <dimension>=<values>` (repeatable; category, severity, type, id)
-narrows which rules run. `validate-file` accepts the same two flags.
+`--semantic` also evaluates the `semantic` part of rules through the configured model provider
+(costly; off by default; `--semantic <provider>` uses that configured provider instead; `sctx providers`
+lists them). When input for a node exceeds the per-node input cap, node bodies are trimmed and the run
+summary says which rules were affected. `--rule-filter <dimension>=<values>` (repeatable; category,
+severity, type, id) narrows which rules run. `--json` prints machine-readable results.
 
 Exit codes: `0` = clean (warning and info rule violations don't fail), `1` = validation errors found.
 
@@ -44,6 +47,18 @@ sctx validate <space>
 # Watch mode — re-validates on file changes
 sctx validate <space> --watch
 ```
+
+## validate-file
+
+```bash
+sctx validate-file <path> [--json] [--include-gated] [--semantic [provider]] [--rule-filter <dim=values>]
+```
+
+Validates one file within its space: the space is found from the configured space paths, and
+the whole space is read so links, hierarchy and gating resolve as in `validate`. Reports only
+that file's issues; with `--semantic`, only that file's nodes are sent to the model provider.
+Takes a file path, not a space name. A file outside every space reports nothing and exits `0`.
+Use it after editing a single file.
 
 ## show
 
@@ -208,6 +223,6 @@ sctx template-sync <space> --create-missing
 }
 ```
 
-All commands require a registered space name (not an arbitrary path).
+All commands except `validate-file` require a registered space name (not an arbitrary path).
 
 Schema resolution order: space `schema` > global `schema`. Schema resolution fails if none is configured.

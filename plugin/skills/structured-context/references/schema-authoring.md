@@ -64,9 +64,42 @@ Relationships define how sub-entities (nodes inside other files) are parsed and 
 
 **`fieldOn: "parent"` pattern** — use when the content model lists children on the parent (e.g. `activity.tasks: ["[[Task A]]"]`). Embedded parsing appends child wikilinks to the parent's `field` array rather than setting a `parent` field on each child. Validation checks each array entry resolves to a node of `type`.
 
+### Rules (`$metadata.rules`)
+
 Rules are a flat array. Each rule's `category` (`validation`, `coherence`, `workflow`, `best-practice`) supplies its default severity: `validation` → `error`, `coherence` and `workflow` → `warning`, `best-practice` → `info`. Only `error` violations fail validation; warnings and info are reported only. An optional per-rule `severity` (`error` | `warning` | `info`) overrides the category default — prefer picking the right category over overriding.
 
-A rule has an `expression` (a JSONata test that must return `true`), a `semantic` object (a model evaluates the node against a `rubric`, which falls back to `description`), or both; a rule with neither is rejected. `global: true` runs an `expression` once for the space (no `when`, `type` or `semantic`). `semantic: {}` takes every default; it may declare `verdicts` (verdict → description, or `{ description, guidance }`; default `pass`/`fail`) with a `semantic.severity` map saying which verdicts are `error`/`warning`/`info`/`ignore` (required with custom verdicts). `semantic.scope` (a list of `parent`, `siblings`, `children`, `ancestors`, `descendants`, `branch` (ancestors plus descendants) along the main hierarchy) sends related nodes with the evaluated node; `semantic.includeContent` (`nodeOnly` or `fullScope`/`true`) sends node bodies, and without it no body is sent; such a rule may return `missing-context` (default `warning`) when its input was trimmed to fit. The top-level `severity` is that of a failed `expression` and of the default `fail` verdict. A rule's `expression` always runs and, when it fails, the `semantic` part is skipped; the `semantic` part runs only with `--semantic`. Run `sctx docs semantic-rules` for the full semantic rule reference. A `when` JSONata test (the applicability condition, any rule) limits a rule to the nodes where it returns true. An optional `gatesDescendants` controls whether a failure suppresses rules on the node's subtree (default: true for `error` severity).
+What a rule checks depends on which parts it has (a rule with neither is rejected):
+
+- `expression` — a JSONata test that must return `true` (see [JSONata rules](#jsonata-rules)). Always runs.
+- `semantic` — a model provider evaluates the node against `semantic.rubric` (falls back to `description`). Runs only with `--semantic`. `semantic: {}` takes every default.
+- Both — the `expression` is a cheap precondition: when it fails, the `semantic` part is skipped.
+
+Other rule fields:
+
+- `type` and `when` (a JSONata applicability condition) limit which nodes a rule applies to.
+- `global: true` runs an `expression` once for the whole space; it takes no `type`, `when` or `semantic`.
+- `gatesDescendants` controls whether a failure suppresses rules on the node's subtree (default: true for `error` severity).
+
+```json5
+{
+  "id": "solution-addresses-opportunity",
+  "category": "coherence",
+  "type": "solution",
+  "description": "A solution addresses the opportunity it sits under",
+  "expression": "$exists(current.summary)",   // optional precondition
+  "semantic": {
+    "scope": ["parent"],          // send the parent opportunity too
+    "includeContent": "nodeOnly"  // send this node's body; omit to send no bodies
+  }
+}
+```
+
+`semantic` options, in brief (run `sctx docs semantic-rules` for the full reference):
+
+- `verdicts` (verdict → description, or `{ description, guidance }`; default `pass`/`fail`) with a `severity` map giving each verdict `error`/`warning`/`info`/`ignore` (required with custom verdicts). The rule's top-level `severity` applies to a failed `expression` and to the default `fail` verdict.
+- `scope` — related nodes to send along the main hierarchy: `parent`, `siblings`, `children`, `ancestors`, `descendants`, `branch` (ancestors plus descendants). Prefer the narrowest scope that answers the rubric.
+- `includeContent` — `nodeOnly` (the evaluated node's body) or `fullScope`/`true` (every body in scope). Without it, no body is sent.
+- A rule with `scope` or `includeContent` may return `missing-context` (default `warning`) when its input was trimmed to fit.
 
 ## Metadata composition semantics
 

@@ -32,8 +32,20 @@ There are several places that need reviewing and updating with any new feature o
 
 - README.md - overview, kept brief; detail belongs in docs/. Shown by `sctx docs`
 - AGENTS.md - this file
-- docs/* - `sctx docs <topic>` shows concepts.md, config.md, schemas.md (`schema`) and rules.md; also architecture.md, api.md
+- docs/* - `sctx docs <topic>` shows concepts.md, config.md, schemas.md (`schema`), rules.md and semantic-rules.md; also architecture.md, api.md
 - plugin/* - skills, commands, hooks, and scripts; update any affected parts
+
+"Affected" includes files the change does not touch. Search for old names, then reread each file below for meaning, not only for renamed words:
+
+| Change | Check |
+|---|---|
+| CLI command, flag or output | `docs/*` for the command; `plugin/skills/structured-context/references/commands.md`; the command list in `plugin/skills/structured-context/SKILL.md`; `plugin/commands/*` |
+| Rule, schema or `$metadata` shape | `docs/schemas.md`, `docs/rules.md`, `docs/semantic-rules.md`; `references/schema-authoring.md`, `references/schema-design.md`; bundled `schemas/` |
+| User-visible error or warning message | the troubleshooting table in `SKILL.md` |
+| Config key or space config | `docs/config.md`; the config example in `references/commands.md` |
+| `validate --json` output | `plugin/scripts/state.ts` (the hooks parse it) and `bun run test:hook` |
+| Parsing or node content | `docs/concepts.md`; the embedded nodes section in `SKILL.md` |
+| New term | `docs/concepts.md` |
 
 ## Planning & Design Principles
 
