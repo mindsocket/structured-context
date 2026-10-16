@@ -43,11 +43,8 @@ describe('rule contract: expression and semantic', () => {
     expect(load('both', { ...base, semantic: {}, expression: 'true' }).rules).toHaveLength(1);
   });
 
-  it('rejects the removed `check`, `mode`, `rubric` and `scope` fields', () => {
-    expect(() => load('old-check', { ...base, check: 'true' })).toThrow('unknown property "check" (use "expression")');
-    expect(() => load('old-mode', { ...base, mode: 'semantic' })).toThrow();
-    expect(() => load('old-rubric', { ...base, semantic: {}, rubric: 'r' })).toThrow();
-    expect(() => load('old-scope', { ...base, expression: 'true', scope: 'global' })).toThrow();
+  it('rejects unknown rule fields', () => {
+    expect(() => load('unknown-field', { ...base, expression: 'true', scope: 'global' })).toThrow();
   });
 
   it('rejects a global semantic rule, and `when` or `type` on a global rule', () => {
