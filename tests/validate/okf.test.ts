@@ -6,6 +6,7 @@ import { makeSpaceContext } from '../helpers/context';
 
 const OKF_SCHEMA_PATH = join(bundledSchemasDir, 'okf.json');
 const BUNDLE_DIR = join(import.meta.dir, '../fixtures/okf/bundle');
+const KNOWN_LIMITATIONS_DIR = join(import.meta.dir, '../fixtures/okf/known-limitations');
 const RULE_VIOLATIONS_DIR = join(import.meta.dir, '../fixtures/okf/rule-violations');
 
 const validateNode = createValidator(OKF_SCHEMA_PATH);
@@ -95,5 +96,12 @@ describe('OKF bundle validation', () => {
       'stale-before-generated.md:okf-stale-after-generated',
       'usage-without-window.md:okf-usage-count-window',
     ]);
+  });
+
+  it('passes okf-computation-present on a `# Computation` line inside a code fence (known limitation)', async () => {
+    // The rule matches the heading text with a regex, so it cannot tell a fenced comment from a real heading.
+    const result = await validateSpace(makeSpaceContext(KNOWN_LIMITATIONS_DIR, OKF_SCHEMA_PATH));
+    expect(result.nodeErrors).toEqual([]);
+    expect(result.ruleViolations).toEqual([]);
   });
 });
