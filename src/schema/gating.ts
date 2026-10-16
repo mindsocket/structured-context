@@ -277,14 +277,15 @@ export async function evaluateRulesWithGating(
   }
 
   /**
-   * Evaluate a set of nodes whose gating is already decided. Their semantic rules go to the judge together,
-   * so a judge with `evaluateNodes` can share model calls; violations are recorded in node order.
+   * Evaluate one set of nodes together, so their semantic rules go to the judge in one pass and a judge
+   * with `evaluateNodes` can share model calls. Gating for the set is already decided; violations are
+   * recorded in node order.
    */
-  async function evaluateNodes(wave: readonly SpaceNode[]): Promise<Array<{ blockingRuleId?: string }>> {
+  async function evaluateNodeSet(nodes: readonly SpaceNode[]): Promise<Array<{ blockingRuleId?: string }>> {
     const prepared: PreparedNode[] = [];
-    for (const node of wave) prepared.push(await prepareNode(node));
+    for (const node of nodes) prepared.push(await prepareNode(node));
     if (judge) {
-      const pending = wave.map((node, i) => ({ node, rules: prepared[i]!.semantic }));
+      const pending = nodes.map((node, i) => ({ node, rules: prepared[i]!.semantic }));
       const judgements = await judgeNodes(judge, pending);
       prepared.forEach((p, i) => {
         p.judged(judgements[i] ?? []);
@@ -295,28 +296,28 @@ export async function evaluateRulesWithGating(
   }
 
   // Non-hierarchy nodes sit outside the subtree cascade — always evaluated, never gated.
-  await evaluateNodes(graph.nonHierarchy);
+  await evaluateNodeSet(graph.nonHierarchy);
 
   const visited = new Set<string>();
   // Hierarchy nodes are judged one depth at a time: a node's verdicts decide whether its children are evaluated.
-  let wave: Array<{ node: SpaceNode; ancestorOrigin?: string }> = [];
+  let depthNodes: Array<{ node: SpaceNode; ancestorOrigin?: string }> = [];
   for (const node of [...graph.hierarchyRoots, ...graph.orphans]) {
-    wave.push({ node, ancestorOrigin: undefined });
+    depthNodes.push({ node, ancestorOrigin: undefined });
   }
 
-  while (wave.length > 0) {
-    const current: typeof wave = [];
-    for (const entry of wave) {
+  while (depthNodes.length > 0) {
+    const current: typeof depthNodes = [];
+    for (const entry of depthNodes) {
       if (visited.has(entry.node.title)) continue;
       visited.add(entry.node.title);
       current.push(entry);
     }
-    const isGated = (e: (typeof wave)[number]) => e.ancestorOrigin !== undefined || seedByTitle.has(e.node.title);
+    const isGated = (e: (typeof depthNodes)[number]) => e.ancestorOrigin !== undefined || seedByTitle.has(e.node.title);
     const toEvaluate = current.filter((e) => !isGated(e) || includeGated);
-    const evaluated = await evaluateNodes(toEvaluate.map((e) => e.node));
+    const evaluated = await evaluateNodeSet(toEvaluate.map((e) => e.node));
     const blockingByTitle = new Map(toEvaluate.map((e, i) => [e.node.title, evaluated[i]!.blockingRuleId]));
 
-    const next: typeof wave = [];
+    const next: typeof depthNodes = [];
     for (const { node, ancestorOrigin } of current) {
       const selfSeed = seedByTitle.get(node.title);
       const isGatedByAncestor = ancestorOrigin !== undefined;
@@ -341,7 +342,7 @@ export async function evaluateRulesWithGating(
         next.push({ node: child, ancestorOrigin: childOrigin });
       }
     }
-    wave = next;
+    depthNodes = next;
   }
 
   return {
