@@ -128,7 +128,7 @@ The top-level `judge` names the model provider that judges semantic rules: a bun
 }
 ```
 
-Config does not turn semantic rules on. Each run asks for them with `--semantic`, or with `--judge <provider>`, which also selects a different provider for that run.
+Config does not turn judging on. Each run asks for it with `--semantic`, or with `--judge <provider>`, which also selects a different provider for that run.
 
 ## Markdown plugin config
 
