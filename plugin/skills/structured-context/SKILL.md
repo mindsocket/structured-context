@@ -11,6 +11,7 @@ description: >
 
 `structured-context` validates Obsidian markdown frontmatter against JSON schemas. Content lives in
 **spaces** (directories of `.md` files or a single "on-a-page" format); schemas define entity types, properties, and rules.
+Rules are JSONata expressions, semantic rules evaluated by a model provider (only with `--semantic`), or both.
 
 ## Version compatibility
 
@@ -48,6 +49,8 @@ sctx schemas show <filename>                      # inspect a bundled partial (e
 sctx docs                                         # full README
 sctx docs config                                  # plugin config reference (fieldMap, typeInference, etc.)
 sctx docs concepts                                # terminology reference
+sctx docs semantic-rules                          # semantic rule reference
+sctx providers --config <cfg>                     # model providers for --semantic
 ```
 
 `spaces` is the starting point — it shows each space as a block with its schema name, `fieldMap`
@@ -65,15 +68,17 @@ partials.
 
 ```
 validate <space>       Validate space content against schema (--watch for live)
+validate-file <path>   Validate one file within its space (after a single-file edit)
 show <space>           Output the node hierarchy
 dump <space>           Output parsed node data as JSON
 diagram <space>        Generate Mermaid diagram (--output <file>)
+render <space> <fmt>   Render a space in a given format
 miro-sync <space>      Sync to Miro board (requires MIRO_TOKEN env var + miro plugin config with boardId)
 template-sync <space>  Sync Obsidian templates from schema examples
 plugins                List available plugins
 ```
 
-All commands require a registered space name. Run `sctx --help` or `sctx <command> --help` for flags.
+All commands except `validate-file` require a registered space name. Run `sctx --help` or `sctx <command> --help` for flags.
 
 **`dump` is the key debugging tool.** Use it to verify `fieldMap` remapping is working or to
 inspect exactly what JSONata rules see when a rule fires unexpectedly.
@@ -85,6 +90,7 @@ Embedded nodes are nodes that live physically inside another node's file (via ta
 **Adjacent Relationships** determine how these are parsed:
 - **Heading matching:** When a heading matches a relationship `matcher` (case-insensitive or `/regex/`), following tables/lists are parsed as that child type.
 - **Agnostic parsing:** The parser uses the semantic grandparent as the parent for items matched via a relationship heading.
+- **Node content:** an embedded node's `content` is the markdown it owns; the containing page's `content` is the body outside its embedded nodes. Run `sctx docs concepts` (Node content) for the exact rules.
 - **`fieldOn` direction:** Relationships support two link directions. `fieldOn: "child"` (default) sets the relationship field on each child node. `fieldOn: "parent"` instead populates the parent node's array field with `[[Child]]` wikilinks — use this when the content model lists children on the parent (e.g. `activity.tasks`). When `fieldOn: "parent"`, child nodes do not get a `parent` field from the relationship.
 
 **When to use sub-entities:**
@@ -102,8 +108,8 @@ When writing or editing Obsidian markdown frontmatter:
 
 ## Non-obvious issues
 
-**All files appear as "Non-space (no type field)"** — the space uses a different field name for the entity discriminator
-(e.g., `record_type`). Configure `fieldMap` in the space config to remap it to `type`.
+**Files missing from results (low `Valid` count)** — files without a `type` field are not nodes and are skipped silently. The space may use a different field name for the entity discriminator
+(e.g., `record_type`): configure `fieldMap` in the space config to remap it to `type`, or `typeInference` to infer types from folders.
 
 **Rule violations on every node of a type** — the rule may be too strict or misconfigured. Use `dump` to verify
 what the rule actually sees in the `current` object, then adjust the rule in the schema.
@@ -114,10 +120,11 @@ what the rule actually sees in the `current` object, then adjust the rule in the
 
 | Error Message | Likely Cause | Solution |
 |---------------|--------------|----------|
-| `File has no type field` | Discriminator field missing or named differently | Check `fieldMap` in config or add `type` to frontmatter |
-| `must have property 'X'` | Required schema property missing | Check `schemas show --space` to see required properties |
-| `could not find node '[[Title]]'` | Broken wikilink | Fix the title in the link or ensure the target file exists and has that title |
-| `JSONata error: ...` | Syntax error in schema `$metadata.rules` | Verify the expression with `dump` and a JSONata tester |
+| `Invalid type "X". Valid types are: ...` | Type not defined in the schema (or a typo) | Check `schemas show --space`; fix the type or add an alias |
+| `must have required property 'X'` | Required schema property missing | Check `schemas show --space` to see required properties |
+| `Link target "X" in field "parent" not found` | Broken wikilink | Fix the title in the link or ensure the target file exists and has that title |
+| `[rule-id] ... (Rule error: ...)` | A rule's `expression` failed to evaluate (syntax or runtime error) | Verify the expression with `dump` and a JSONata tester |
+| `[rule-id] ... (Semantic evaluation error: ...)` | The model provider call failed, or input is still over the per-node input cap after trimming | Check `sctx providers` and the API key; narrow `semantic.scope` or drop `includeContent` |
 
 ## Plugins
 
@@ -131,7 +138,7 @@ sctx docs config
 
 ## References
 
-- **`references/schema-authoring.md`** — schema file structure, `$metadata`, JSONata rules (run `sctx docs schema` for schema dialect reference)
+- **`references/schema-authoring.md`** — schema file structure, `$metadata`, rules (expression and semantic) (run `sctx docs schema` for schema dialect reference)
 - **`references/schema-design.md`** — process for designing a schema from existing content
 
 For CLI and config reference, use `sctx docs <topic>` (topics: `concepts`, `config`, `schema`, `rules`, `semantic-rules`).
