@@ -8,7 +8,7 @@
         "category": "workflow",
         "severity": "critical",
         "description": "Invalid severity should fail schema validation",
-        "check": "true"
+        "expression": "true"
       }
     ]
   },

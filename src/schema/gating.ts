@@ -4,16 +4,16 @@ import type { SemanticJudgeProvider } from '../judge/types';
 import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, RuleViolation, SpaceNode } from '../types';
 import {
-  applySemanticChecks,
   buildEvalContext,
+  evaluateRuleExpression,
   expressionErrorViolation,
   tryEvaluateExpression,
 } from './evaluate-rule';
 import { ruleSeverities, ruleSeverity } from './rule-severity';
 
 /**
- * Whether a violation of this rule gates its subtree: explicit `gatesDescendants`, else true only for `error` severity.
- * `severity` is that of the violation; a semantic rule's verdicts can differ.
+ * Whether a failure of this rule gates its subtree: explicit `gatesDescendants`, else true only for `error` severity.
+ * `severity` is that of the failure: the rule's own for an expression, the verdict's for a semantic part.
  */
 export function ruleGatesDescendants(rule: Rule, severity: RuleSeverity = ruleSeverity(rule)): boolean {
   return rule.gatesDescendants ?? severity === 'error';
@@ -62,12 +62,12 @@ export type GatedRuleEvaluation = {
 export interface GatingOptions {
   /** Evaluate rules on gated nodes anyway (gates are still reported). */
   includeGated?: boolean;
-  /** Judge for `mode: semantic` rules. Without it, semantic rules are not evaluated. */
+  /** Evaluates `semantic` rules. Without it, a rule's semantic part is not evaluated. */
   provider?: SemanticJudgeProvider;
   /**
    * Label of the one node whose result is wanted (`validate-file`). Gating is still computed over the
    * whole space, but the judge is only consulted for that node and for its hierarchy ancestors' gate-capable
-   * semantic rules (top-down, so a gated ancestor stops the walk). Other nodes' semantic rules are not judged.
+   * semantic rules (top-down, so a gated ancestor stops the walk). Other nodes' semantic rules are not evaluated.
    */
   judgeTarget?: string;
 }
@@ -103,7 +103,7 @@ export function computeHierarchyDepths(graph: SpaceGraph): Map<string, number> {
  *
  * Traversal is breadth-first from hierarchy roots and orphans. Non-hierarchy nodes
  * (not part of the hierarchy DAG) are always evaluated — cascade gating only applies
- * within hierarchy subtrees. Global-scope rules always run, unaffected by gating.
+ * within hierarchy subtrees. Global rules always run, unaffected by gating.
  */
 export async function evaluateRulesWithGating(
   nodes: SpaceNode[],
@@ -143,27 +143,18 @@ export async function evaluateRulesWithGating(
     return origin;
   }
 
-  const globalRules = rules.filter((r) => r.scope === 'global' && r.mode !== 'semantic');
+  const globalRules = rules.filter((r) => r.global && r.expression !== undefined);
   const sentinel = nodes[0];
   if (sentinel) {
     for (const rule of globalRules) {
-      const context = buildEvalContext(sentinel, nodes, nodeIndex);
-      const outcome = await tryEvaluateExpression(rule.check as string, context);
-      if ('error' in outcome) {
-        violations.push(expressionErrorViolation(rule, '', outcome.error));
-      } else if (outcome.value !== true) {
-        violations.push({
-          file: '',
-          ruleId: rule.id,
-          category: rule.category,
-          severity: ruleSeverity(rule),
-          description: rule.description,
-        });
-      }
+      const result = await evaluateRuleExpression(rule, sentinel, nodes, nodeIndex, '');
+      if (!result.passed) violations.push(result.violation);
     }
   }
 
-  const perNodeRules = rules.filter((r) => r.scope !== 'global' && (r.mode !== 'semantic' || judge || r.check));
+  const perNodeRules = rules.filter(
+    (r) => !r.global && (r.expression !== undefined || (r.semantic !== undefined && judge)),
+  );
 
   // With a judge target, only the target and its hierarchy ancestors can need judging.
   const targetAncestors = new Set<string>();
@@ -189,7 +180,12 @@ export async function evaluateRulesWithGating(
     const applicable: Rule[] = [];
     for (const r of perNodeRules) {
       if (r.type && r.type !== node.resolvedType) continue;
-      if (r.mode === 'semantic' && options.judgeTarget !== undefined && node.label !== options.judgeTarget) {
+      if (
+        judge &&
+        r.semantic !== undefined &&
+        options.judgeTarget !== undefined &&
+        node.label !== options.judgeTarget
+      ) {
         // Ancestors only matter through the gates they could raise.
         if (!(targetAncestors.has(node.title) && ruleCanGate(r))) continue;
       }
@@ -206,7 +202,7 @@ export async function evaluateRulesWithGating(
     return applicable;
   }
 
-  /** A node whose deterministic rules have run and whose semantic rules await the judge. */
+  /** A node whose expressions have run and whose semantic parts await the judge. */
   type PreparedNode = {
     violations: RuleViolation[];
     semantic: Rule[];
@@ -225,41 +221,39 @@ export async function evaluateRulesWithGating(
       rule: Rule,
       detail: { severity?: RuleSeverity; verdict?: string; guidance?: string; evidence?: string; error?: string } = {},
     ): void {
-      const severity = detail.severity ?? ruleSeverity(rule);
+      const severity = detail.severity ?? ruleSeverities(rule)[0] ?? ruleSeverity(rule);
       local.push({
         file: node.label,
         ruleId: rule.id,
         category: rule.category,
         severity,
-        description: detail.error ? `${rule.description} (Judge error: ${detail.error})` : rule.description,
+        description: detail.error
+          ? `${rule.description} (Semantic evaluation error: ${detail.error})`
+          : rule.description,
         ...(detail.evidence !== undefined && { evidence: detail.evidence }),
         ...(detail.verdict !== undefined && { verdict: detail.verdict }),
         ...(detail.guidance !== undefined && { guidance: detail.guidance }),
       });
-      // A judge error says nothing about the node, so it never gates.
+      // An evaluation error says nothing about the node, so it never gates.
       if (!detail.error && ruleGatesDescendants(rule, severity) && !prepared.blockingRuleId) {
         prepared.blockingRuleId = rule.id;
       }
     }
 
-    // Cheap deterministic rules first; the judge is only consulted afterwards.
-    for (const rule of applicable.filter((r) => r.mode !== 'semantic')) {
-      const outcome = await tryEvaluateExpression(rule.check as string, buildEvalContext(node, nodes, nodeIndex));
-      if ('error' in outcome) local.push(expressionErrorViolation(rule, node.label, outcome.error));
-      else if (outcome.value !== true) report(rule);
+    // Cheap expressions first; a semantic part is only evaluated when its own expression passes.
+    for (const rule of applicable) {
+      if (rule.expression !== undefined) {
+        const result = await evaluateRuleExpression(rule, node, nodes, nodeIndex);
+        if (!result.passed) {
+          local.push(result.violation);
+          if (result.failed && ruleGatesDescendants(rule, result.violation.severity) && !prepared.blockingRuleId) {
+            prepared.blockingRuleId = rule.id;
+          }
+          continue;
+        }
+      }
+      if (rule.semantic !== undefined && judge) prepared.semantic.push(rule);
     }
-
-    // A semantic rule's `check` fails fast before the judge. Its violation gates like an expression rule's, at the severity it reports.
-    const prechecked = await applySemanticChecks(
-      applicable.filter((r) => r.mode === 'semantic'),
-      node,
-      nodes,
-      nodeIndex,
-    );
-    local.push(...prechecked.violations);
-    const gatingRule = prechecked.failed.find((r) => ruleGatesDescendants(r));
-    if (gatingRule && !prepared.blockingRuleId) prepared.blockingRuleId = gatingRule.id;
-    if (judge) prepared.semantic = prechecked.judgeable;
     prepared.judged = (judgements) => {
       for (const j of judgements) {
         if (j.failed) {

@@ -1,7 +1,7 @@
 import type { Rule } from '../types';
 import { ruleSeverities } from './rule-severity';
 
-export const RULE_FILTER_DIMENSIONS = ['mode', 'category', 'severity', 'type', 'id'] as const;
+export const RULE_FILTER_DIMENSIONS = ['category', 'severity', 'type', 'id'] as const;
 export type RuleFilterDimension = (typeof RULE_FILTER_DIMENSIONS)[number];
 
 /** Narrows which rules are evaluated. Dimensions combine with AND; values within a dimension with OR. */
@@ -28,8 +28,6 @@ export function parseRuleFilter(specs: string[]): RuleFilter {
 
 function dimensionValues(rule: Rule, dimension: RuleFilterDimension): string[] {
   switch (dimension) {
-    case 'mode':
-      return [rule.mode ?? 'expression'];
     case 'severity':
       return ruleSeverities(rule);
     case 'category':

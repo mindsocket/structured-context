@@ -80,7 +80,7 @@ export function parseJudgeResponse(rawText: string, allowed: string[]): Semantic
 
   if (verdict === undefined || !allowed.includes(verdict)) {
     return {
-      error: `Judge returned ${verdict === undefined ? 'no verdict' : `unknown verdict "${verdict}"`} (allowed: ${allowed.join(', ')}): ${rawText.slice(0, 200)}`,
+      error: `Model provider returned ${verdict === undefined ? 'no verdict' : `unknown verdict "${verdict}"`} (allowed: ${allowed.join(', ')}): ${rawText.slice(0, 200)}`,
     };
   }
   return {

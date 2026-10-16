@@ -4,7 +4,7 @@ import { isJudgeError, resolveSemanticRule } from './verdicts';
 
 export type NodeJudgement = {
   rule: Rule;
-  /** True when the verdict fails the rule (it has a severity), or the judge errored. */
+  /** True when the verdict fails the rule (it has a severity), or the provider errored. */
   failed: boolean;
   /** Severity of the failing verdict; unset for a judge error, which takes the rule's own severity. */
   severity?: RuleSeverity;
@@ -36,12 +36,12 @@ function interpret(rules: Rule[], resolved: ResolvedRules, results: JudgeResults
   return rules.map((rule, i) => {
     const result = results[rule.id];
     if (!result || isJudgeError(result)) {
-      const message = result ? result.error : 'Judge returned no result for this rule';
+      const message = result ? result.error : 'Model provider returned no result for this rule';
       return { rule, failed: true, evidence: `Error during evaluation: ${message}`, error: message };
     }
     const severity = resolved[i]!.severities[result.verdict];
     if (severity === undefined && !(result.verdict in resolved[i]!.spec.verdicts)) {
-      const message = `Judge returned unknown verdict "${result.verdict}" (allowed: ${Object.keys(resolved[i]!.spec.verdicts).join(', ')})`;
+      const message = `Model provider returned unknown verdict "${result.verdict}" (allowed: ${Object.keys(resolved[i]!.spec.verdicts).join(', ')})`;
       return { rule, failed: true, evidence: `Error during evaluation: ${message}`, error: message };
     }
     const failed = severity !== undefined;

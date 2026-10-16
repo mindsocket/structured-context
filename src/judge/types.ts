@@ -81,7 +81,7 @@ export interface HydratedProvider {
   keyEnv?: string;
 }
 
-/** Which model provider judges semantic rules: config `judge`, at the top level or on a space. */
+/** Which model provider evaluates semantic rules: config `semantic`, at the top level or on a space. */
 export interface JudgeConfig {
   /** Name of an entry in `modelProviders`, or a bundled provider. */
   provider?: string;

@@ -55,15 +55,16 @@ describe('validateRules - semantic evaluation', () => {
       id: 'active-opportunity-count',
       category: 'workflow',
       description: 'At most 2 active opportunities',
-      check: '$count(nodes[resolvedType="opportunity" and status="active"]) <= 2',
+      expression: '$count(nodes[resolvedType="opportunity" and status="active"]) <= 2',
     },
     {
       id: 'opportunity-customer-voice',
       category: 'best-practice',
-      mode: 'semantic',
       type: 'opportunity',
       description: 'Opportunity must be framed in customer voice, not a solution or business goal',
-      rubric: 'Must describe a customer pain point or need in customer language, not a solution to build.',
+      semantic: {
+        rubric: 'Must describe a customer pain point or need in customer language, not a solution to build.',
+      },
     },
   ];
 
@@ -124,13 +125,13 @@ describe('validateRules - semantic evaluation', () => {
         id: 'require-interviews-source',
         category: 'validation',
         type: 'opportunity',
-        check: '$contains(current.source, "interview") = true',
+        expression: '$contains(current.source, "interview") = true',
         description: 'Source must mention interview',
       },
       {
         id: 'opportunity-customer-voice',
         category: 'best-practice',
-        mode: 'semantic',
+        semantic: {},
         type: 'opportunity',
         description: 'Must be in customer voice',
       },
@@ -158,9 +159,9 @@ describe('validateRules - semantic evaluation', () => {
       {
         id: 'opportunity-customer-voice',
         category: 'best-practice',
-        mode: 'semantic',
+        semantic: {},
         type: 'opportunity',
-        check: 'current.source = "User interview with Jane"',
+        expression: 'current.source = "User interview with Jane"',
         description: 'Must be in customer voice',
       },
     ];
@@ -168,18 +169,18 @@ describe('validateRules - semantic evaluation', () => {
 
     const violations = await validateRules(sampleNodes, checked, { judge: fake });
 
-    // bad-opp.md fails the check: reported at the rule severity, never sent to the judge.
+    // bad-opp.md fails the expression: reported at the rule severity, never sent to the judge.
     expect(fake.callHistory.map((c) => c.node.label)).toEqual(['valid-opp.md']);
     expect(violations).toEqual([
-      expect.objectContaining({ file: 'valid-opp.md', evidence: 'Not customer voice' }),
       {
         file: 'bad-opp.md',
         ruleId: 'opportunity-customer-voice',
         category: 'best-practice',
         severity: 'info',
         description: 'Must be in customer voice',
-        evidence: 'expression check failed: current.source = "User interview with Jane"',
+        evidence: 'expression failed: current.source = "User interview with Jane"',
       },
+      expect.objectContaining({ file: 'valid-opp.md', evidence: 'Not customer voice' }),
     ]);
   });
 
@@ -187,10 +188,10 @@ describe('validateRules - semantic evaluation', () => {
     const checked: Rule = {
       id: 'opportunity-source-interview',
       category: 'coherence',
-      mode: 'semantic',
+      semantic: {},
       type: 'opportunity',
       description: 'Opportunity comes from an interview',
-      check: '$contains(current.source, "interview")',
+      expression: '$contains(current.source, "interview")',
     };
 
     it('runs the check without a judge: failing reports, passing is silent', async () => {
@@ -200,14 +201,16 @@ describe('validateRules - semantic evaluation', () => {
           file: 'bad-opp.md',
           ruleId: checked.id,
           severity: 'warning',
-          evidence: 'expression check failed: $contains(current.source, "interview")',
+          evidence: 'expression failed: $contains(current.source, "interview")',
         }),
       ]);
     });
 
     it('reports an unevaluable check as an error', async () => {
       const fake = new FakeJudgeProvider();
-      const violations = await validateRules(sampleNodes, [{ ...checked, check: '$notAFunction(' }], { judge: fake });
+      const violations = await validateRules(sampleNodes, [{ ...checked, expression: '$notAFunction(' }], {
+        judge: fake,
+      });
       expect(fake.callHistory).toHaveLength(0);
       expect(violations.map((v) => v.severity)).toEqual(['error', 'error']);
       expect(violations[0]?.description).toContain('Rule error');

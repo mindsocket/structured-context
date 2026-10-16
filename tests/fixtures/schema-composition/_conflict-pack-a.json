@@ -10,8 +10,8 @@
         "id": "active-outcome-count",
         "category": "workflow",
         "description": "Conflict pack A",
-        "scope": "global",
-        "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+        "global": true,
+        "expression": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
       }
     ]
   },

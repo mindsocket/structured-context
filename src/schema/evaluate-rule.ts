@@ -68,7 +68,7 @@ export class ExpressionError extends Error {
   }
 }
 
-/** Result of evaluating a rule's `check` or `when`: a value, or the error that stopped it (never thrown). */
+/** Result of evaluating a rule's `expression` or `when`: a value, or the error that stopped it (never thrown). */
 export type ExpressionOutcome = { value: boolean | string | number } | { error: string };
 
 /** Like {@link evaluateExpression} but reports a failure as data, so callers can turn it into a violation. */
@@ -130,7 +130,7 @@ export function buildEvalContext(
   };
 }
 
-/** The violation reported when a rule's `check` or `when` cannot be evaluated: an authoring error, so always `error`. */
+/** The violation reported when a rule's `expression` or `when` cannot be evaluated: an authoring error, so always `error`. */
 export function expressionErrorViolation(rule: Rule, file: string, error: string): RuleViolation {
   return {
     file,
@@ -141,42 +141,40 @@ export function expressionErrorViolation(rule: Rule, file: string, error: string
   };
 }
 
+/** The outcome of a rule's `expression` on one node. */
+export type ExpressionRuleResult =
+  | { passed: true }
+  /** `failed` is the expression returning something other than true; otherwise it could not be evaluated. */
+  | { passed: false; violation: RuleViolation; failed: boolean };
+
 /**
- * Applies the `check` precondition of semantic rules on a node. A rule whose `check` fails or errors reports a
- * violation (at its own severity, or `error` for an evaluation failure) and is left out of `judgeable`, so the
- * judge never sees it. A failing check's violation names the expression in its evidence, and its rule is listed in
- * `failed` so the caller can honour `gatesDescendants`; an evaluation error is never listed.
+ * Evaluate a rule's `expression` against a node (`file` empty and `node` a sentinel for a global rule). A failure
+ * reports the rule's severity; a rule with a semantic part names the expression in the evidence, so the
+ * violation is not mistaken for a verdict. An evaluation error reports `error` and is not a `failed` result.
  */
-export async function applySemanticChecks(
-  rules: Rule[],
+export async function evaluateRuleExpression(
+  rule: Rule,
   node: SpaceNode,
   allNodes: SpaceNode[],
   nodeIndex: Map<string, SpaceNode>,
-): Promise<{ judgeable: Rule[]; violations: RuleViolation[]; failed: Rule[] }> {
-  const judgeable: Rule[] = [];
-  const violations: RuleViolation[] = [];
-  const failed: Rule[] = [];
-  for (const rule of rules) {
-    if (!rule.check) {
-      judgeable.push(rule);
-      continue;
-    }
-    const outcome = await tryEvaluateExpression(rule.check, buildEvalContext(node, allNodes, nodeIndex));
-    if ('error' in outcome) {
-      violations.push(expressionErrorViolation(rule, node.label, outcome.error));
-    } else if (outcome.value !== true) {
-      violations.push({
-        file: node.label,
-        ruleId: rule.id,
-        category: rule.category,
-        severity: ruleSeverity(rule),
-        description: rule.description,
-        evidence: `expression check failed: ${rule.check}`,
-      });
-      failed.push(rule);
-    } else {
-      judgeable.push(rule);
-    }
+  file: string = node.label,
+): Promise<ExpressionRuleResult> {
+  const expression = rule.expression as string;
+  const outcome = await tryEvaluateExpression(expression, buildEvalContext(node, allNodes, nodeIndex));
+  if ('error' in outcome) {
+    return { passed: false, failed: false, violation: expressionErrorViolation(rule, file, outcome.error) };
   }
-  return { judgeable, violations, failed };
+  if (outcome.value === true) return { passed: true };
+  return {
+    passed: false,
+    failed: true,
+    violation: {
+      file,
+      ruleId: rule.id,
+      category: rule.category,
+      severity: ruleSeverity(rule),
+      description: rule.description,
+      ...(rule.semantic !== undefined && { evidence: `expression failed: ${expression}` }),
+    },
+  };
 }

@@ -8,8 +8,8 @@
         "override": true,
         "category": "workflow",
         "description": "Override pack B",
-        "scope": "global",
-        "check": "$count(nodes[resolvedType='outcome' and status='active']) = 1"
+        "global": true,
+        "expression": "$count(nodes[resolvedType='outcome' and status='active']) = 1"
       }
     ]
   },

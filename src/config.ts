@@ -28,7 +28,7 @@ const MODEL_PROVIDER_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-const JUDGE_CONFIG_SCHEMA = {
+const SEMANTIC_CONFIG_SCHEMA = {
   type: 'object',
   properties: { provider: { type: 'string', minLength: 1 } },
   additionalProperties: false,
@@ -55,7 +55,7 @@ const CONFIG_SCHEMA = {
               additionalProperties: false,
             },
           },
-          judge: JUDGE_CONFIG_SCHEMA,
+          semantic: SEMANTIC_CONFIG_SCHEMA,
         },
         required: ['name', 'path'],
         additionalProperties: false,
@@ -64,7 +64,7 @@ const CONFIG_SCHEMA = {
     schema: { type: 'string' },
     includeSpacesFrom: { type: 'array', items: { type: 'string' } },
     modelProviders: { type: 'object', additionalProperties: MODEL_PROVIDER_SCHEMA },
-    judge: JUDGE_CONFIG_SCHEMA,
+    semantic: SEMANTIC_CONFIG_SCHEMA,
   },
   anyOf: [{ required: ['spaces'] }, { required: ['includeSpacesFrom'] }],
   additionalProperties: false,
@@ -78,8 +78,8 @@ export type SpaceConfig = {
   plugins?: Record<string, Record<string, unknown>>;
   /** Named filter views for this space. Keys are view names; values contain the filter expression. */
   views?: Record<string, { expression: string }>;
-  /** Judge for this space's semantic rules; overrides the top-level `judge`. */
-  judge?: JudgeConfig;
+  /** Model provider for this space's semantic rules; overrides the top-level `semantic`. */
+  semantic?: JudgeConfig;
   /**
    * Directory of the config file that defined this space, used to anchor relative plugin-config
    * paths. Set by loadConfig; absent for a hand-assembled Config, whose callers must pass an
@@ -94,8 +94,8 @@ export type Config = {
   includeSpacesFrom?: string[];
   /** Model providers by name: how to reach each model. */
   modelProviders?: Record<string, ModelProviderConfig>;
-  /** Judge for semantic rules (a model provider name). A space's `judge` overrides it. */
-  judge?: JudgeConfig;
+  /** Model provider for semantic rules (a provider name). A space's `semantic` overrides it. */
+  semantic?: JudgeConfig;
 };
 
 let _configPathOverride: string | undefined;

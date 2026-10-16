@@ -13,36 +13,37 @@
         "id": "active-outcome-count",
         "category": "workflow",
         "description": "Only one outcome should be active at a time",
-        "scope": "global",
-        "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+        "global": true,
+        "expression": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
       },
       {
         "id": "active-opportunity-count",
         "category": "workflow",
         "description": "Only one target opportunity should be active at a time",
-        "scope": "global",
-        "check": "$count(nodes[resolvedType='opportunity' and status='active']) <= 1"
+        "global": true,
+        "expression": "$count(nodes[resolvedType='opportunity' and status='active']) <= 1"
       },
       {
         "id": "active-node-parent-active",
         "category": "workflow",
         "description": "An active node's parent should also be active",
-        "check": "current.status != 'active' or $exists(parent) = false or parent.status = 'active'"
+        "expression": "current.status != 'active' or $exists(parent) = false or parent.status = 'active'"
       },
       {
         "id": "solution-quantity",
         "category": "best-practice",
         "description": "Explore multiple candidate solutions (aim for at least three) for the target opportunity",
         "type": "opportunity",
-        "check": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
+        "expression": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
       },
       {
         "id": "opportunity-customer-voice",
         "category": "best-practice",
-        "mode": "semantic",
         "type": "opportunity",
         "description": "Opportunity must be framed in the customer's voice (something a customer would actually say) as a need or pain point, not a solution or business goal",
-        "rubric": "Verify that the opportunity is stated from the customer's perspective as a problem, pain point, or desire. It must not be a solution in disguise (e.g. 'build X feature') or a business metric (e.g. 'increase revenue')."
+        "semantic": {
+          "rubric": "Verify that the opportunity is stated from the customer's perspective as a problem, pain point, or desire. It must not be a solution in disguise (e.g. 'build X feature') or a business metric (e.g. 'increase revenue')."
+        }
       }
     ]
   },

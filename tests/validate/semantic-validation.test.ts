@@ -133,7 +133,7 @@ describe('validateFile judges only the target and its gate-capable ancestor rule
   const rule = (id: string, type: string, severity: string) => ({
     id,
     type,
-    mode: 'semantic',
+    semantic: {},
     category: 'validation',
     severity,
     description: id,
@@ -209,21 +209,21 @@ describe('Semantic rules: verdicts, batching and rule filter', () => {
     const fake = new FakeJudgeProvider({ error: 'rate limited' });
     const result = await validateSpace(context, { judge: fake });
     const violation = result.ruleViolations.find((v) => v.ruleId === 'opportunity-customer-voice');
-    expect(violation?.description).toContain('Judge error: rate limited');
+    expect(violation?.description).toContain('Semantic evaluation error: rate limited');
     expect(result.coverageGates.filter((g) => g.ruleId === 'opportunity-customer-voice')).toEqual([]);
   });
 
-  it('--rule-filter narrows evaluation: semantic-only runs no expression rules, expression-only runs no judge', async () => {
+  it('--rule-filter narrows evaluation: filtering to the semantic rule runs no expression rules, filtering it out runs no judge', async () => {
     const semanticOnly = await validateSpace(context, {
       judge: new FakeJudgeProvider({ pass: false }),
-      ruleFilter: { mode: ['semantic'] },
+      ruleFilter: { id: ['opportunity-customer-voice'] },
     });
     expect(semanticOnly.ruleViolations.every((v) => v.ruleId === 'opportunity-customer-voice')).toBe(true);
 
     const fake = new FakeJudgeProvider();
     const expressionOnly = await validateSpace(context, {
       judge: fake,
-      ruleFilter: { mode: ['expression'] },
+      ruleFilter: { category: ['workflow'] },
     });
     expect(fake.callHistory).toHaveLength(0);
     expect(expressionOnly.ruleViolations.some((v) => v.verdict !== undefined)).toBe(false);

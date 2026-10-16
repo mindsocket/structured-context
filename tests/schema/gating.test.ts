@@ -46,20 +46,20 @@ describe('evaluateRulesWithGating', () => {
     id: 'always-fail',
     category: 'validation',
     description: 'always fails',
-    check: 'false',
+    expression: 'false',
   };
   const nonBlockingFailRule: Rule = {
     id: 'non-gating',
     category: 'validation',
     description: 'fails but does not block',
-    check: 'false',
+    expression: 'false',
     gatesDescendants: false,
   };
   const passRule: Rule = {
     id: 'always-pass',
     category: 'validation',
     description: 'always passes',
-    check: 'true',
+    expression: 'true',
   };
 
   function buildTree() {
@@ -125,8 +125,8 @@ describe('evaluateRulesWithGating', () => {
   });
 
   it('gatesDescendants defaults from severity: error gates, warning and info do not, explicit value overrides', async () => {
-    const advisory: Rule = { id: 'advisory', category: 'best-practice', description: 'info', check: 'false' };
-    const warning: Rule = { id: 'warn', category: 'coherence', description: 'warning', check: 'false' };
+    const advisory: Rule = { id: 'advisory', category: 'best-practice', description: 'info', expression: 'false' };
+    const warning: Rule = { id: 'warn', category: 'coherence', description: 'warning', expression: 'false' };
     expect(ruleGatesDescendants(alwaysFailRule)).toBe(true);
     expect(ruleGatesDescendants(advisory)).toBe(false);
     expect(ruleGatesDescendants(warning)).toBe(false);
@@ -177,8 +177,8 @@ describe('evaluateRulesWithGating', () => {
       id: 'global-fail',
       category: 'workflow',
       description: 'fails globally',
-      check: 'false',
-      scope: 'global',
+      expression: 'false',
+      global: true,
     };
     const seeds: GatingSeed[] = [{ file: goal.label, title: goal.title, reason: 'schema' }];
 
@@ -192,9 +192,7 @@ describe('evaluateRulesWithGating', () => {
       id: 'sem',
       category: 'best-practice',
       description: 'semantic',
-      mode: 'semantic',
-      severity: { fail: 'error' },
-      verdicts: { pass: 'ok', fail: 'not ok' },
+      semantic: { verdicts: { pass: 'ok', fail: 'not ok' }, severity: { fail: 'error' } },
     } as unknown as Rule;
 
     it('judges each depth in one evaluateNodes call and still gates children of a failing node', async () => {

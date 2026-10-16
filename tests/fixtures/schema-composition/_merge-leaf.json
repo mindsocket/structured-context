@@ -13,7 +13,7 @@
         "id": "leaf-rule",
         "category": "coherence",
         "description": "Leaf coherence rule",
-        "check": "true"
+        "expression": "true"
       }
     ]
   },

@@ -30,8 +30,8 @@ See `~/src/structured-context/schemas/` for examples (`strategy_general.json`, `
       "id": "active-outcome-count",
       "category": "workflow",
       "description": "Only one outcome should be active at a time",
-      "scope": "global",
-      "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+      "global": true,
+      "expression": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
     }
   ]
 }
@@ -66,7 +66,7 @@ Relationships define how sub-entities (nodes inside other files) are parsed and 
 
 Rules are a flat array. Each rule's `category` (`validation`, `coherence`, `workflow`, `best-practice`) supplies its default severity: `validation` → `error`, `coherence` and `workflow` → `warning`, `best-practice` → `info`. Only `error` violations fail validation; warnings and info are reported only. An optional per-rule `severity` (`error` | `warning` | `info`) overrides the category default — prefer picking the right category over overriding.
 
-Rules default to `mode: "expression"` (a JSONata `check`). Set `mode: "semantic"` for rules an LLM or decision model judges against a `rubric` (falls back to `description`): they take no `scope` and may take a `check` (a JSONata precondition that runs before the judge, and even without `--semantic`; a failing `check` reports a violation without calling the judge), may declare `verdicts` (verdict → description, or `{ description, guidance }`; default `pass`/`fail`) with a `severity` map saying which verdicts are `error`/`warning`/`info`/`ignore`, and are judged only with `--semantic` or `--judge`. Run `sctx docs semantic-rules` for the full semantic rule reference. A `when` JSONata test (any rule) limits a rule to the nodes where it returns true. An optional `gatesDescendants` controls whether a violation suppresses rule checks on the node's subtree (default: true for `error` severity).
+A rule has an `expression` (a JSONata test that must return `true`), a `semantic` object (a model evaluates the node against a `rubric`, which falls back to `description`), or both; a rule with neither is rejected. `global: true` runs an `expression` once for the space (no `when`, `type` or `semantic`). `semantic: {}` takes every default; it may declare `verdicts` (verdict → description, or `{ description, guidance }`; default `pass`/`fail`) with a `semantic.severity` map saying which verdicts are `error`/`warning`/`info`/`ignore` (required with custom verdicts). The top-level `severity` is that of a failed `expression` and of the default `fail` verdict. A rule's `expression` always runs and, when it fails, the `semantic` part is skipped; the `semantic` part runs only with `--semantic`. Run `sctx docs semantic-rules` for the full semantic rule reference. A `when` JSONata test (the applicability condition, any rule) limits a rule to the nodes where it returns true. An optional `gatesDescendants` controls whether a failure suppresses rules on the node's subtree (default: true for `error` severity).
 
 ## Metadata composition semantics
 

@@ -1,16 +1,16 @@
 # Semantic Rules
 
-A semantic rule asks a model to judge a node, for example "Is this opportunity a customer need, or a solution in disguise?". Use a semantic rule for a check that an expression cannot do.
+A semantic rule asks a model to evaluate a node, for example "Is this opportunity a customer need, or a solution in disguise?". Use a semantic rule for a test that an expression cannot do.
 
-This page assumes you know [Rules](rules.md). Semantic rules use the same fields, severities, [`when`](rules.md#conditional-rules-when) and [cascade gating](rules.md#cascade-gating) as expression rules. This page gives only the differences.
+A rule is semantic when it has a `semantic` object. This page assumes you know [Rules](rules.md). A semantic rule uses the same severities, [`when`](rules.md#conditional-rules-when) and [cascade gating](rules.md#cascade-gating) as any other rule. This page gives only the differences.
 
 ## Quick start
 
 1. Set `OPENROUTER_API_KEY` in your environment.
-2. Choose Jev as the judge in `config.json`. Jev is a decision model and the recommended judge (see [Choosing a judge](#choosing-a-judge)):
+2. Choose Jev as the model provider in `config.json`. Jev is a decision model and the recommended provider (see [Choosing a model provider](#choosing-a-model-provider)):
 
    ```json
-   { "judge": { "provider": "openrouter-jev" } }
+   { "semantic": { "provider": "openrouter-jev" } }
    ```
 
    `openrouter-jev` is a bundled provider. To use Claude instead, set `"provider": "anthropic"` and `ANTHROPIC_API_KEY`.
@@ -20,113 +20,114 @@ This page assumes you know [Rules](rules.md). Semantic rules use the same fields
    {
      "id": "opportunity-customer-need",
      "category": "best-practice",
-     "mode": "semantic",
      "type": "opportunity",
-     "description": "The opportunity is a customer need or pain point, not a solution or a business metric"
+     "description": "The opportunity is a customer need or pain point, not a solution or a business metric",
+     "semantic": {}
    }
    ```
 
 4. Run `sctx validate <space> --semantic`.
 
-## Run `sctx validate` or `sctx validate-file` with semantic rule checking
+## Run `sctx validate` or `sctx validate-file` with semantic rules
 
-Semantic rules cost money and send node content to the judge's provider. Thus they run only when you ask, on each run:
+Semantic rules cost money and send node content to the model provider. Thus they run only when you ask, on each run:
 
-- `--semantic` runs them with the configured judge.
-- `--judge <provider>` runs them with a specific model provider instead.
+- `--semantic` runs them with the configured model provider.
+- `--semantic <provider>` runs them with a specific model provider instead.
 
-A semantic rule's [`check`](#preconditions-check) costs no model call, so it runs on every validation. Without a judge, only that expression runs.
+A rule's `expression` costs no model call, so it runs on every validation. Without `--semantic`, a rule with both an `expression` and a `semantic` part runs only the expression, and a rule with only a `semantic` part does not run.
 
 ## Rule fields
 
+A semantic rule has the [common rule fields](rules.md) and a `semantic` object. `semantic: {}` takes every default.
+
 | Field | Required | Description |
 |---|---|---|
-| `mode` | yes | `"semantic"` |
-| `check` | no | An expression that a node must pass before the judge sees it. Runs even without a judge. See [Preconditions](#preconditions-check) |
-| `rubric` | no | Tells the judge what to assess. Default: `description` |
-| `verdicts` | no | The answers the judge can give. Default: `pass` and `fail`. See [Verdicts](#verdicts) |
-| `severity` | if `verdicts` is set | The severity of each verdict. See [Severity](#severity) |
+| `semantic.rubric` | no | Tells the model what to assess. Default: `description` |
+| `semantic.verdicts` | no | The answers the model can give. Default: `pass` and `fail`. See [Verdicts](#verdicts) |
+| `semantic.severity` | if `semantic.verdicts` is set | The severity of each verdict. See [Severity](#severity) |
 
-A semantic rule cannot have `scope: "global"`.
+A semantic rule cannot be `global`. A rule can also have an `expression`; see [Combining an expression](#combining-an-expression).
 
-## Preconditions (`check`)
+## Combining an expression
 
-A `check` costs no model call. It uses the same [expression syntax and context](rules.md#writing-expressions) as an expression rule. Use it for a requirement that an expression can verify, so the judge only sees nodes worth the cost:
+A rule can have both an `expression` and a `semantic` part. An `expression` costs no model call. It uses the same [expression syntax and context](rules.md#writing-expressions) as any other rule. Use it for a requirement that an expression can verify, so the model only sees nodes worth the cost:
 
 ```json
 { "id": "opportunity-customer-voice", "category": "coherence", "type": "opportunity",
-  "mode": "semantic", "description": "Opportunity is framed in customer voice",
-  "check": "$exists(current.source)" }
+  "description": "Opportunity is framed in customer voice",
+  "expression": "$exists(current.source)", "semantic": {} }
 ```
 
-The order is `when`, then `check`, then the judge. Without a judge, the order is `when`, then `check`.
+The order is `when`, then `expression`, then the `semantic` part.
 
-- If `check` returns `true`, the judge runs. Without a judge, nothing is reported. The verdict maps to a severity as usual.
-- If `check` does not return `true`, structured-context reports a violation and does not call the judge. The violation has no verdict, and its evidence reads `expression check failed: <the check expression>`.
-- If `check` cannot be evaluated, structured-context reports a non-gating `error` violation and does not call the judge.
+- If the `expression` returns `true`, the model runs. Without `--semantic`, nothing is reported.
+- If the `expression` does not return `true`, structured-context reports a violation and does not call the model. The violation has no verdict, and its evidence reads `expression failed: <the expression>`.
+- If the `expression` cannot be evaluated, structured-context reports a non-gating `error` violation and does not call the model.
 
-A failing `check` reports the severity that an expression rule would report: the rule's `severity`, or the default for its category. With a [severity map](#severity), it reports the most severe severity in the map. If every entry in the map is `ignore`, it reports `info`.
+A failed `expression` reports the rule's `severity`, or the default for its category. The verdict severities do not apply to it.
 
-A failing `check` [gates](rules.md#cascade-gating) the node's descendants as an expression rule does. It gates by default when it reports `error` severity. Set `gatesDescendants` to override that either way.
-
-`--rule-filter mode=semantic` selects these rules with or without a judge.
+A failed `expression` [gates](rules.md#cascade-gating) the node's descendants as it does for any rule. It gates by default when it reports `error` severity. Set `gatesDescendants` to override that either way.
 
 ## Verdicts
 
-For each node, the judge gives exactly one verdict for each rule. The verdict must come from the rule's `verdicts`. A fixed set of verdicts makes results comparable between runs.
+For each node, the model gives exactly one verdict for each rule. The verdict must come from the rule's `semantic.verdicts`. A fixed set of verdicts makes results comparable between runs.
 
 Each verdict has a purpose for one audience:
 
-- The **description** tells the judge when to choose that verdict.
-- The **guidance** (optional) tells the user what to do when the judge chooses that verdict. structured-context shows it with the violation and does not send it to the judge.
+- The **description** tells the model when to choose that verdict.
+- The **guidance** (optional) tells the user what to do when the model chooses that verdict. structured-context shows it with the violation and does not send it to the model.
 
 A verdict is a description string, or an object with `description` and `guidance`:
 
 ```json
-"verdicts": {
-  "customer-need": "A customer need or pain point",
-  "vague": {
-    "description": "A need, but too vague to act on",
-    "guidance": "Say who has the need and what they are trying to do."
+"semantic": {
+  "verdicts": {
+    "customer-need": "A customer need or pain point",
+    "vague": {
+      "description": "A need, but too vague to act on",
+      "guidance": "Say who has the need and what they are trying to do."
+    },
+    "solution": "A solution or business goal in disguise"
   },
-  "solution": "A solution or business goal in disguise"
-},
-"severity": { "vague": "info", "solution": "warning" }
+  "severity": { "vague": "info", "solution": "warning" }
+}
 ```
 
 ## Severity
 
 The verdict is a classification. The severity says what the verdict means for the user.
 
-- With custom verdicts, `severity` is a map from verdict to `error`, `warning`, `info` or `ignore`.
+- With custom verdicts, `semantic.severity` is a map from verdict to `error`, `warning`, `info` or `ignore`. It is required.
 - A verdict with `error`, `warning` or `info` reports a violation at that severity.
 - A verdict that is not in the map reports no violation. At least one verdict must report no violation.
 - `ignore` also reports no violation. Use it to show that you chose to ignore a verdict.
-- With the default verdicts, `severity` is one value for `fail`, the same as for an expression rule.
+- With the default verdicts, `fail` takes the rule's top-level `severity`, the same as for an `expression`. `fail` must not appear in `semantic.severity`.
+- With custom verdicts and no `expression`, the top-level `severity` has no failure to describe, so it is a schema error. With an `expression`, it sets the severity of the failed expression.
 
 Gating uses the severity of the verdict. A verdict with `error` severity gates the node's subtree, as for any rule. `gatesDescendants` changes this, as for any rule.
 
-## How judging works
+## How semantic evaluation works
 
-- **Order.** On each node, expression rules run first. Then structured-context applies each semantic rule's [`check`](#preconditions-check) and sends the rules that pass to the judge.
-- **Grouping.** A judge on the `openrouter-decisions` or `typesafe-systemone` API judges each node ruleset group (see [concepts](concepts.md#semantic-rules)) in as few decision requests as it can, with one decision question per node and rule. This includes the bundled `openrouter-openai-decisions` provider. A decision request is limited to about 32,000 estimated input tokens and 40 decision questions, so a larger group is split into several decision requests, never within a node. A node that fills a decision request on tokens is sent whole as its own decision request. A node with more than 40 rules has its rules split across decision requests. If a node's questions are split across several requests and one fails, all of that node's rules are reported as errors. Other providers, including `openai-decisions` and chat models, judge one node per request. Within a space, the nodes at one hierarchy depth are judged together, because their verdicts decide whether the next depth is judged. Grouping can shift verdicts and probabilities slightly compared with judging each node alone.
-- **Gating.** structured-context does not judge a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
-- **Judge errors.** If the judge fails (for example, a network error or output that structured-context cannot read), structured-context reports a violation. A judge error does not gate. If one decision request fails, only the rules on the nodes in that decision request report the error.
-- **Input.** The judge gets the node's title, type, parent titles and schema data, including frontmatter.
-- **Output.** A violation from a semantic rule also includes the verdict, the judge's evidence and any guidance.
+- **Order.** On each node, structured-context runs each rule's [`expression`](#combining-an-expression) first. It sends the semantic parts of the rules that pass to the model provider.
+- **Grouping.** A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates each node ruleset group (see [concepts](concepts.md#semantic-rules)) in as few decision requests as it can, with one decision question per node and rule. This includes the bundled `openrouter-openai-decisions` provider. A decision request is limited to about 32,000 estimated input tokens and 40 decision questions, so a larger group is split into several decision requests, never within a node. A node that fills a decision request on tokens is sent whole as its own decision request. A node with more than 40 rules has its rules split across decision requests. If a node's questions are split across several requests and one fails, all of that node's rules are reported as errors. Other providers, including `openai-decisions` and chat models, evaluate one node per request. Within a space, the nodes at one hierarchy depth are evaluated together, because their verdicts decide whether the next depth is evaluated. Grouping can shift verdicts and probabilities slightly compared with evaluating each node alone.
+- **Gating.** structured-context does not evaluate the semantic part on a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
+- **Evaluation errors.** If the model provider fails (for example, a network error or output that structured-context cannot read), structured-context reports a violation with the suffix `(Semantic evaluation error: ...)`. An evaluation error does not gate. If one decision request fails, only the rules on the nodes in that decision request report the error.
+- **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter.
+- **Output.** A violation from a semantic verdict also includes the verdict, the model's evidence and any guidance.
 
-`sctx validate-file` judges only the file and the rules on its ancestors that can gate it. Thus one file costs at most one judge call for each ancestor level, plus one.
+`sctx validate-file` evaluates the semantic part only for the file and the rules on its ancestors that can gate it. Thus one file costs at most one model call for each ancestor level, plus one.
 
-## Choosing a judge
+## Choosing a model provider
 
 Use a decision model when you can. Its results are repeatable and cheap, and they include a confidence. Use a chat model when the rubric needs open reasoning or a written explanation.
 
 Bundled providers give you a model with no configuration; the decision models among them speak a decisions API. Run `sctx providers` for the full list with effective models, endpoints and key variables.
 
-structured-context uses only the provider that you configure. It does not choose a provider from the keys in your environment. To override models, endpoints or keys, add an entry of the same name to `modelProviders`, or define a new one (see [Model providers and judge](config.md#model-providers-and-judge)).
+structured-context uses only the provider that you configure. It does not choose a provider from the keys in your environment. To override models, endpoints or keys, add an entry of the same name to `modelProviders`, or define a new one (see [Model providers and semantic rules](config.md#model-providers-and-semantic-rules)).
 
-A rule does not choose its judge: that is configuration, not schema. To use a different provider for one run, name it with `--judge`. For example, to get a second opinion from a chat model on one rule and one file:
+A rule does not choose its model provider: that is configuration, not schema. To use a different provider for one run, name it with `--semantic <provider>`. For example, to get a second opinion from a chat model on one rule and one file:
 
 ```bash
-sctx validate-file <file> --rule-filter id=<rule-id> --judge claude
+sctx validate-file <file> --rule-filter id=<rule-id> --semantic claude
 ```

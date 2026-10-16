@@ -14,13 +14,13 @@ export { validateFile } from '../validate';
  */
 export async function validateFileCommand(
   filePath: string,
-  options: { json?: boolean; includeGated?: boolean; semantic?: boolean; judge?: string; ruleFilter?: string[] } = {},
+  options: { json?: boolean; includeGated?: boolean; semantic?: boolean | string; ruleFilter?: string[] } = {},
 ): Promise<number> {
   const config = loadConfig();
   const resolved = resolveFileSpace(filePath, config);
   let result: ValidateFileOutput;
   if (resolved) {
-    const judge = judgeForRun(config, resolved.space, options);
+    const judge = judgeForRun(config, resolved.space, options.semantic);
     result = await validateResolvedFile(filePath, resolved.label, createSpaceContext(resolved.space.name, config), {
       includeGated: options.includeGated,
       judge,

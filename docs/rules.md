@@ -4,10 +4,12 @@ title: "Executable Rules"
 
 # Executable Rules
 
-Rules check content after JSON Schema validation, for example cross-node checks and workflow constraints. A schema declares rules in `$metadata.rules`. There are two kinds of rule:
+Rules check content after JSON Schema validation, for example cross-node checks and workflow constraints. A schema declares rules in `$metadata.rules`. A rule has an `expression`, a `semantic` part, or both:
 
-- An **expression rule** (the default) is a JSONata `check` that must return `true`.
-- A **semantic rule** asks a model to judge a node. See [Semantic rules](semantic-rules.md).
+- An **`expression`** is a JSONata test that must return `true`.
+- A **`semantic`** part asks a model to evaluate a node. See [Semantic rules](semantic-rules.md).
+
+A rule with neither is a schema error.
 
 For metadata structure and composition behavior, see [docs/schemas.md](schemas.md).
 
@@ -21,8 +23,8 @@ Rules are a flat array.
     "id": "active-outcome-count",
     "category": "workflow",
     "description": "Only one outcome should be active at a time",
-    "scope": "global",
-    "check": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
+    "global": true,
+    "expression": "$count(nodes[resolvedType='outcome' and status='active']) <= 1"
   }
 ]
 ```
@@ -36,7 +38,7 @@ Every rule has a category, which describes its intent and supplies a default sev
 | `workflow` | Process/operating-discipline checks | `warning` |
 | `best-practice` | Advisory quality checks | `info` |
 
-Severity can also be set per rule.
+Severity can also be set per rule. It applies to a failed `expression` and to the default `fail` verdict of a [semantic rule](semantic-rules.md#severity).
 
 | Severity | Meaning | Fails validation |
 |---|---|---|
@@ -55,7 +57,7 @@ Prefer choosing the right category and relying on its default. Set `severity` on
   "severity": "error",
   "description": "Goals must not be left blocked",
   "type": "goal",
-  "check": "current.status != 'blocked'"
+  "expression": "current.status != 'blocked'"
 }
 ```
 
@@ -63,28 +65,32 @@ Prefer choosing the right category and relying on its default. Set `severity` on
 
 ## Selecting nodes
 
-- A rule with `scope: "global"` runs once for the space.
+- A rule with `global: true` runs once for the space. It needs an `expression`, and it cannot have `when`, `type` or `semantic`.
 - Other rules run once for each node.
 - `type` limits a rule to nodes with that `resolvedType`.
-- `when` limits a rule to nodes where a test returns `true`. See [Conditional rules](#conditional-rules-when).
+- `when` limits a rule to nodes where the applicability condition returns `true`. See [Conditional rules](#conditional-rules-when).
 
 ### Conditional rules (`when`)
 
-`when` is a JSONata test that determines whether a rule runs on a node. It has the same context as `check` and runs before it. Use `when` when `type` cannot select the nodes a rule applies to:
+`when` is the rule's applicability condition: a JSONata test that determines whether a rule applies to a node. It has the same context as `expression` and runs before it. Use `when` when `type` cannot select the nodes a rule applies to:
 
 ```json
 { "id": "ready-has-owner", "category": "workflow", "type": "task",
   "description": "Ready tasks have an owner",
-  "when": "current.status = 'ready'", "check": "$exists(current.owner)" }
+  "when": "current.status = 'ready'", "expression": "$exists(current.owner)" }
 ```
 
-`when` costs almost nothing, so use it to stop an expensive rule from running where it does not apply. For a semantic rule, this saves a model call on each node that `when` excludes. A semantic rule can also carry a `check`; see [Preconditions](semantic-rules.md#preconditions-check) for the order.
+`when` costs almost nothing, so use it to stop an expensive rule from running where it does not apply. For a semantic rule, this saves a model call on each node that `when` excludes.
 
-An error in a `when` or `check` is reported as a non-gating `error` violation.
+### Order within a rule
+
+A rule runs its parts in this order: `when`, then `expression`, then the `semantic` part. If the `expression` fails, the `semantic` part does not run on that node.
+
+An error in a `when` or `expression` is reported as a non-gating `error` violation.
 
 ## Writing expressions
 
-An expression rule's `check` (and `when`) is JSONata. This section covers what an expression can see and how to write checks.
+An `expression` (and `when`) is JSONata. This section covers what an expression can see and how to write expressions.
 
 ### Expression context
 
@@ -154,8 +160,8 @@ Example override:
   "override": true,
   "category": "workflow",
   "description": "Require exactly one active outcome",
-  "scope": "global",
-  "check": "$count(nodes[resolvedType='outcome' and status='active']) = 1"
+  "global": true,
+  "expression": "$count(nodes[resolvedType='outcome' and status='active']) = 1"
 }
 ```
 
@@ -163,22 +169,22 @@ Example override:
 
 When a schema uses `$metadata.hierarchy`, rule evaluation cascades top-down through the
 hierarchy tree (breadth-first from roots and orphans). A **gate** occurs when a node fails
-in a way that makes its descendants' checks untrustworthy or wasteful to run:
+in a way that makes its descendants' rules untrustworthy or wasteful to run:
 
-- **Schema validation failure** on a node — always gates. The node's own rule checks are
+- **Schema validation failure** on a node — always gates. The node's own rules are
   suppressed too, since its data is structurally invalid.
 - **Hierarchy structure violation** on a node (e.g. an invalid parent) — always gates the
   node's subtree, though the node's own rules still run.
-- **A rule violation with `gatesDescendants: true`** — gates the node's subtree, though the
-  violating node's own other rules still run.
+- **A rule failure with `gatesDescendants: true`** — gates the node's subtree, though the
+  failing node's own other rules still run.
 
-Gating exists so that expensive or semantic downstream checks (see [Semantic rules](semantic-rules.md)) aren't wasted
+Gating exists so that expensive or semantic downstream rules (see [Semantic rules](semantic-rules.md)) aren't wasted
 evaluating nodes whose ancestors are already known-bad, and so noise doesn't drown out the
 actionable failure. It is per-subtree: once a node is gated, its descendants inherit the same
 gate (the original blocker), rather than each generating a new one. Cascade gating only applies to nodes within the
 hierarchy DAG.
 
-The default is `gatesDescendants: true` for `error`-severity rules and `false` for `warning` and `info` rules. Set it explicitly when that default doesn't fit.
+A rule has one `gatesDescendants` setting. It applies to whichever part failed, the `expression` or the `semantic` part. Its default comes from the severity of that failure: `true` for `error`, and `false` for `warning` and `info`. Set it explicitly when that default doesn't fit.
 
 ### Coverage output
 
@@ -196,9 +202,9 @@ don't depend on an ancestor being valid.
 
 `sctx validate-file <path>` applies the same gating as `sctx validate`, so a file's rule results match its entry in a full run.
 
-- Expression rules are evaluated for the whole space; the output is restricted to the file.
-- Semantic rules are judged only for the file and its gating ancestors (see [Semantic rules](semantic-rules.md#single-file-validation)).
-- If the file is gated, its rule checks are skipped and a `gated:<file>` entry under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway.
+- Expressions are evaluated for the whole space; the output is restricted to the file.
+- Semantic parts are evaluated only for the file and its gating ancestors (see [Semantic rules](semantic-rules.md#how-semantic-evaluation-works)).
+- If the file is gated, its rules are skipped and a `gated:<file>` entry under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway.
 
 ## Controlling validation runs
 
@@ -208,9 +214,9 @@ These options restrict which rules run, without changing rule definitions.
 
 `--rule-filter <dimension>=<value>[,<value>]` runs only the rules that match. It works on `sctx validate` and `sctx validate-file`.
 
-- Dimensions: `mode`, `category`, `severity`, `type` and `id`.
+- Dimensions: `category`, `severity`, `type` and `id`.
 - Values in one dimension combine with OR. Repeat the option to add a dimension; dimensions combine with AND.
-- A semantic rule with a severity map matches each severity that it can report.
+- A rule matches each severity that it can report, including the severities in a semantic verdict map.
 - Gating comes only from the rules that ran.
 
 For example, `--rule-filter category=workflow,coherence --rule-filter severity=error` runs only workflow and coherence rules that can report an error.
@@ -225,7 +231,7 @@ the next). Excluded nodes are reported under `skippedByDepth`, separate from gat
 ## Output
 
 - **`sctx validate`** — the summary counts rule violations per severity, and details are grouped by severity with each line showing the rule's category and id.
-- **`sctx validate --json`** — `errors` includes only `error` severity rule violations (keyed `rule:<id>`, with a `severity` field). A `ruleViolations` array lists every violation with `file`, `ruleId`, `category`, `severity` and `description` (`file` is empty for global rules).
+- **`sctx validate --json`** — `errors` includes only `error` severity rule violations (keyed `rule:<id>`, with a `severity` field). A `ruleViolations` array lists every violation with `file`, `ruleId`, `category`, `severity` and `description` (`file` is empty for global rules). A violation from a failed `expression` has the evidence `expression failed: <expression>` when the rule also has a `semantic` part, and no verdict.
 - **`sctx validate-file`** — `error` severity violations appear under `errors`; `warning` and `info` violations appear under `warnings`. Rule entries carry a `severity` field.
 
 Gated files: see [Single-file validation](#single-file-validation).

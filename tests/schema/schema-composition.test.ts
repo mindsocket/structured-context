@@ -68,7 +68,7 @@ describe('schema composition metadata', () => {
     expect(metadata.rules).toHaveLength(1);
     expect(metadata.rules?.[0]).toMatchObject({
       id: 'active-outcome-count',
-      check: "$count(nodes[resolvedType='outcome' and status='active']) = 1",
+      expression: "$count(nodes[resolvedType='outcome' and status='active']) = 1",
     });
     expect((metadata.rules?.[0] as Record<string, unknown> | undefined)?.override).toBeUndefined();
   });

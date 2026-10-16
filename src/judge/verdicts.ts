@@ -1,4 +1,5 @@
-import { ruleSeverity } from '../schema/rule-severity';
+import { RESERVED_VERDICTS } from '../schema/metadata-contract';
+import { ruleSemantic, ruleSeverity } from '../schema/rule-severity';
 import type { Rule, RuleSeverity } from '../types';
 import type { SemanticJudgeResult, SemanticRuleSpec } from './types';
 
@@ -23,7 +24,9 @@ export interface ResolvedSemanticRule {
  * and work out which verdicts fail at what severity. Throws on an inconsistent rule.
  */
 export function resolveSemanticRule(rule: Rule): ResolvedSemanticRule {
-  const declared = rule.verdicts ?? DEFAULT_VERDICTS;
+  const semantic = ruleSemantic(rule);
+  if (!semantic) throw new Error(`Rule "${rule.id}" has no semantic part.`);
+  const declared = semantic.verdicts ?? DEFAULT_VERDICTS;
   const verdicts: Record<string, string> = {};
   const guidance: Record<string, string> = {};
   for (const [name, value] of Object.entries(declared)) {
@@ -36,25 +39,29 @@ export function resolveSemanticRule(rule: Rule): ResolvedSemanticRule {
   }
 
   let mapping: Record<string, RuleSeverity | 'ignore'>;
-  if (typeof rule.severity === 'object') {
-    mapping = rule.severity;
-  } else if (rule.verdicts) {
-    throw new Error(
-      `Semantic rule "${rule.id}" declares verdicts, so its severity must map the failing verdicts, e.g. { "${Object.keys(verdicts)[0]}": "warning" }.`,
-    );
+  if (semantic.verdicts) {
+    if (!semantic.severity) {
+      throw new Error(
+        `Semantic rule "${rule.id}" declares verdicts, so semantic.severity must map the failing verdicts, e.g. { "${Object.keys(verdicts)[0]}": "warning" }.`,
+      );
+    }
+    mapping = semantic.severity;
   } else {
-    mapping = { fail: ruleSeverity(rule) };
+    mapping = { ...semantic.severity, fail: ruleSeverity(rule) };
   }
 
-  const unknown = Object.keys(mapping).filter((v) => !(v in verdicts));
+  const reserved: readonly string[] = RESERVED_VERDICTS;
+  const unknown = Object.keys(mapping).filter((v) => !(v in verdicts) && !reserved.includes(v));
   if (unknown.length > 0) {
-    throw new Error(`Semantic rule "${rule.id}" has severity for verdicts not in its verdicts: ${unknown.join(', ')}.`);
+    throw new Error(
+      `Semantic rule "${rule.id}" has semantic.severity for verdicts not in its verdicts: ${unknown.join(', ')}.`,
+    );
   }
   const severities: Record<string, RuleSeverity> = {};
   for (const [verdict, severity] of Object.entries(mapping)) {
     if (severity !== 'ignore') severities[verdict] = severity;
   }
-  if (Object.keys(severities).length >= Object.keys(verdicts).length) {
+  if (Object.keys(severities).filter((v) => v in verdicts).length >= Object.keys(verdicts).length) {
     throw new Error(`Semantic rule "${rule.id}" has no passing verdict: every verdict has a severity.`);
   }
 
@@ -62,7 +69,7 @@ export function resolveSemanticRule(rule: Rule): ResolvedSemanticRule {
     spec: {
       id: rule.id,
       description: rule.description,
-      rubric: rule.rubric,
+      rubric: semantic.rubric,
       category: rule.category,
       verdicts,
     },

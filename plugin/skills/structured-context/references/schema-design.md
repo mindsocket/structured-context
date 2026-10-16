@@ -111,7 +111,7 @@ This signals the field has identity and makes it easy to add an enum later:
 
 For each wikilink or array-of-wikilink field, consider writing a rule:
 
-| Relationship | Rule type | Example check |
+| Relationship | Rule type | Example expression |
 |-------------|----------|--------------|
 | Required single link | workflow | `$exists(current.phase) = true` |
 | Required array (min 1) | workflow | `$count(current.performed_by) >= 1` |

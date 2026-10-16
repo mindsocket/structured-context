@@ -38,7 +38,7 @@ export function buildSpaceContext(spaceName: string): SpaceContext {
   }
 }
 
-/** Run a validate command, reporting a misconfigured judge as a plain error rather than a stack trace. */
+/** Run a validate command, reporting a misconfigured model provider as a plain error rather than a stack trace. */
 async function reportJudgeConfigErrors(run: () => Promise<number>): Promise<number> {
   try {
     return await run();
@@ -75,18 +75,16 @@ program
   )
   .option(
     '--rule-filter <dimension=values>',
-    'Evaluate only matching rules; dimensions: mode, category, severity, type, id (repeatable, e.g. mode=semantic)',
+    'Evaluate only matching rules; dimensions: category, severity, type, id (repeatable, e.g. severity=error)',
     (v: string, prev: string[] = []) => [...prev, v],
   )
-  .option('--semantic', 'Evaluate semantic rules with the configured judge')
-  .option('--judge <provider>', 'Judge semantic rules with this model provider (implies --semantic)')
+  .option('--semantic [provider]', 'Evaluate semantic rules, with the configured model provider or the one named')
   .action(async (filePath, options) => {
     process.exitCode = await reportJudgeConfigErrors(() =>
       validateFileCommand(filePath, {
         json: options.json,
         includeGated: options.includeGated,
         semantic: options.semantic,
-        judge: options.judge,
         ruleFilter: options.ruleFilter,
       }),
     );
@@ -109,11 +107,10 @@ program
   )
   .option(
     '--rule-filter <dimension=values>',
-    'Evaluate only matching rules; dimensions: mode, category, severity, type, id (repeatable, e.g. mode=semantic)',
+    'Evaluate only matching rules; dimensions: category, severity, type, id (repeatable, e.g. severity=error)',
     (v: string, prev: string[] = []) => [...prev, v],
   )
-  .option('--semantic', 'Evaluate semantic rules with the configured judge')
-  .option('--judge <provider>', 'Judge semantic rules with this model provider (implies --semantic)')
+  .option('--semantic [provider]', 'Evaluate semantic rules, with the configured model provider or the one named')
   .action(async (spaceName, options) => {
     const context = buildSpaceContext(spaceName);
     if (options.watch) {
@@ -126,7 +123,6 @@ program
           depth: options.depth,
           includeGated: options.includeGated,
           semantic: options.semantic,
-          judge: options.judge,
           ruleFilter: options.ruleFilter,
         }),
       );

@@ -11,14 +11,14 @@
         "category": "best-practice",
         "description": "Best-practice rule that always fails (default severity: info)",
         "type": "goal",
-        "check": "false"
+        "expression": "false"
       },
       {
         "id": "always-warning",
         "category": "coherence",
         "description": "Coherence rule that always fails (default severity: warning)",
         "type": "goal",
-        "check": "false"
+        "expression": "false"
       },
       {
         "id": "not-blocked",
@@ -26,7 +26,7 @@
         "severity": "error",
         "description": "Goals must not be blocked (workflow rule overridden to error)",
         "type": "goal",
-        "check": "current.status != 'blocked'"
+        "expression": "current.status != 'blocked'"
       }
     ]
   },

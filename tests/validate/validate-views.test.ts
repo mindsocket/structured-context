@@ -80,7 +80,7 @@ describe('judging a node that fails an expression rule', () => {
       {
         id: 'always-fails',
         type: 'item',
-        check: 'false',
+        expression: 'false',
         category: 'validation',
         severity: 'error',
         description: 'always fails',
@@ -88,7 +88,7 @@ describe('judging a node that fails an expression rule', () => {
       {
         id: 'sound',
         type: 'item',
-        mode: 'semantic',
+        semantic: {},
         category: 'validation',
         severity: 'warning',
         description: 'sound',
