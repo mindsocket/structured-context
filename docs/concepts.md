@@ -51,7 +51,7 @@ Each `.md` file with a `type` frontmatter field is a **typed page** — it repre
 
 - **Heading with `[type:: x]`** or **anchor-implied type** (e.g. `## My Goal ^goal1`) → becomes a child node.
 - **Relationship headings** (e.g. `### Assumptions`) → when matched to a relationship definition in the schema, signals that following content (list items or table rows) should be typed as that relationship's child type, without requiring explicit inline annotations.
-- **Untyped headings** → update the depth stack for parent resolution but do not become nodes.
+- **Untyped headings** → update the depth stack for parent resolution but do not become nodes. They stay in the content of the node whose section contains them; see [Node content](#node-content).
 - **Typed bullet items** (`- [type:: solution] Title`) → become child nodes at any nesting depth.
 - **Table rows** under a relationship heading → become child nodes of the relationship type.
 - **YAML blocks** and **unbracketed `key:: value` paragraph fields** → merged into the current node's `schemaData`.
@@ -87,7 +87,7 @@ Key properties:
 
 #### Preamble
 
-**Preamble** is content in a `space on a page` document that appears before the first heading. It is parsed but discarded — not associated with any node.
+**Preamble** is content in a `space on a page` document that appears before the first heading. It is parsed but discarded — not associated with any node, and not part of any node's `content`.
 
 ---
 
@@ -99,6 +99,8 @@ Node types are defined by the schema in use and may vary across schemas. Example
 
 Each node retains its physical `source` location (`file`, and `line` / `column` where available) so that validation diagnostics, edge errors, and downstream tooling pinpoint the exact location in the vault.
 
+A node's `content` is the markdown source of its body; see [Node content](#node-content).
+
 > `space_on_a_page` and `dashboard` are not `space node` types — they are `tooling types`.
 
 ### Embedded node
@@ -106,6 +108,20 @@ Each node retains its physical `source` location (`file`, and `line` / `column` 
 An **embedded node** is a `space node` defined *within* a containing document rather than as its own file. Embedded nodes are declared using markdown heading syntax with inline field annotations (e.g. `[type:: goal]`) or `anchor-implied types`, and are extracted at parse time.
 
 A `typed page` may contain embedded nodes in its body. Those nodes become full members of the parsed node set, with `parent references` wired to their containing page or enclosing heading.
+
+### Node content
+
+A node's `content` is the markdown of its body, copied unchanged from the file: blank lines, list looseness, line endings and code fences all stay as written. The content of a list item node is dedented by the item's content indent, so it reads as markdown on its own. Leading blank lines and trailing whitespace are trimmed.
+
+A node owns the source from its heading or list item up to the next heading that ends its section, with these parts removed:
+
+- Its own heading line or list marker text.
+- The sections of nested embedded nodes.
+- Field syntax that supplies data: frontmatter and other YAML blocks, and lines that hold only `key:: value` or `[key:: value]` fields. A field written inside a sentence stays in the prose, and its value is still read as a field.
+
+An untyped heading belongs to the content of the node whose section contains it. An untyped heading at the same level as an embedded node's heading, or at a higher level (fewer `#`), ends that node's section, so the heading and what follows it go to the enclosing node, or to the page. An untyped heading at a deeper level stays inside the section. Inline fields below an untyped heading are assigned the same way.
+
+In a `space_on_a_page` file, content before the first heading (the preamble) is not assigned to any node.
 
 ### Type alias
 
@@ -117,7 +133,7 @@ A `space node`'s resolved type (`resolvedType`) is its canonical type after alia
 
 ## Typed page
 
-A **typed page** is a markdown file whose frontmatter declares a `space node` type (e.g. `type: goal`). The file itself represents one node, and its body may additionally contain `embedded nodes`. Body content appearing before any embedded headings (or the entire body when no embedded headings are present) is preserved as the page node's `content`.
+A **typed page** is a markdown file whose frontmatter declares a `space node` type (e.g. `type: goal`). The file itself represents one node, and its body may additionally contain `embedded nodes`. The page node's `content` is the body markdown outside any embedded node (the entire body when there are none).
 
 Typed pages are distinct from `space on a page` files: a typed page *is* a `space node`; a `space_on_a_page` file is merely a container.
 

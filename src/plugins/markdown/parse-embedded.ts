@@ -26,6 +26,8 @@ type StackEntry = {
   nodeType: string;
   /** Preferred wikilink key used when this heading acts as a parent. */
   refTarget: string;
+  /** Node whose section this heading opens; absent for untyped placeholders and the page's own entry. */
+  node?: BaseNode;
 };
 
 /**
@@ -197,13 +199,107 @@ export function defaultNodeType(stack: StackEntry[], hierarchy: readonly string[
   return hierarchy[idx + 1]!;
 }
 
-function appendContent(node: BaseNode, text: string): void {
-  if (!text) return;
-  const existing = node.schemaData.content as string | undefined;
-  const updated = existing ? `${existing}\n${text}` : text;
-  node.schemaData.content = updated;
-  node.content = updated;
+type Position = NonNullable<Heading['position']>;
+
+/** A half-open `[start, end)` range of offsets into the markdown body. */
+type SourceRange = { start: number; end: number };
+
+/**
+ * Tracks which parts of the body source each node owns. A node's content is its ranges sliced
+ * from the body and joined, so it stays contiguous, verbatim source minus whatever other nodes
+ * (or consumed field syntax) took out of it.
+ */
+type SourceClaims = {
+  ranges: Map<BaseNode, SourceRange[]>;
+  /** Nodes whose next claim starts at its block, because a consumed block already kept the blank lines before it. */
+  gapKept: Set<BaseNode>;
+  /** List item nodes mapped to the column where their content starts; their content is dedented by it. */
+  contentIndent: Map<BaseNode, number>;
+};
+
+/** Start and end offsets of an mdast node. Throws when the parser gave no position. */
+function offsetsOf(node: { type: string; position?: Position }): SourceRange {
+  const start = node.position?.start.offset;
+  const end = node.position?.end.offset;
+  if (start === undefined || end === undefined) {
+    throw new Error(`Markdown ${node.type} node has no source position; cannot slice its content`);
+  }
+  return { start, end };
 }
+
+function addRange(claims: SourceClaims, node: BaseNode, start: number, end: number): void {
+  if (end <= start) return;
+  const ranges = claims.ranges.get(node) ?? [];
+  const last = ranges[ranges.length - 1];
+  if (last && last.end === start) last.end = end;
+  else ranges.push({ start, end });
+  claims.ranges.set(node, ranges);
+}
+
+/**
+ * Give a node a block of source, plus the blank lines between `from` and the block's `start`.
+ * Those lines are skipped when a consumed block just before already kept its own.
+ */
+function claim(claims: SourceClaims, node: BaseNode, from: number, start: number, end: number): void {
+  addRange(claims, node, claims.gapKept.delete(node) ? start : from, end);
+}
+
+/**
+ * Take a block out of a node's content (it was consumed as a node, field or other syntax).
+ * The blank lines before it stay, so the content on either side does not run together.
+ */
+function consume(claims: SourceClaims, node: BaseNode, from: number, start: number): void {
+  addRange(claims, node, claims.gapKept.delete(node) ? start : from, start);
+  claims.gapKept.add(node);
+}
+
+/** Sets each node's content from its claimed source. Leading blank lines and trailing whitespace are dropped. */
+function applyClaims(claims: SourceClaims, body: string): void {
+  for (const [node, ranges] of claims.ranges) {
+    let content = ranges
+      .map((r) => body.slice(r.start, r.end))
+      .join('')
+      .replace(/^(?:[ \t]*\r?\n)+/, '')
+      .trimEnd();
+    const indent = claims.contentIndent.get(node);
+    if (indent) {
+      const strip = new RegExp(`^[ \\t]{1,${indent}}`);
+      content = content
+        .split(/(?<=\n)/)
+        .map((line) => line.replace(strip, ''))
+        .join('');
+    }
+    if (!content) continue;
+    node.schemaData.content = content;
+    node.content = content;
+  }
+}
+
+/** Source lines (with terminators) of a range, as absolute offsets. */
+function sourceLines(body: string, range: SourceRange): (SourceRange & { text: string })[] {
+  const lines: (SourceRange & { text: string })[] = [];
+  const re = /[^\n]*\n|[^\n]+$/g;
+  const text = body.slice(range.start, range.end);
+  for (const m of text.matchAll(re)) {
+    lines.push({
+      start: range.start + m.index,
+      end: range.start + m.index + m[0].length,
+      text: m[0].replace(/\r?\n$/, ''),
+    });
+  }
+  return lines;
+}
+
+/** Whether a line holds only inline fields: bracketed `[key:: value]` pieces, or one `key:: value`. */
+function isFieldOnlyLine(line: string): boolean {
+  const { cleanText, fields } = extractBracketedFields(line);
+  const hasBracketed = Object.keys(fields).length > 0;
+  if (cleanText === '') return hasBracketed;
+  return /^[a-zA-Z][a-zA-Z0-9_-]*:: *.*$/.test(cleanText);
+}
+
+/** Cursor over the body while embedded list items are walked: everything before `pos` is already assigned. */
+type ListWalk = { claims: SourceClaims; pos: number };
 
 function processListItem(
   item: ListItem,
@@ -213,17 +309,20 @@ function processListItem(
   makeLabel: (title: string) => string,
   buildLinkTargets: (title: string) => string[],
   typeAliases: Record<string, string>,
-  fieldMap?: Record<string, string>,
-  pendingType?: string,
-  parentFieldAppend?: { node: BaseNode; field: string },
-  activeNodeFieldAppend?: { node: BaseNode; field: string },
-  file?: string,
-  lineOffset?: number,
+  fieldMap: Record<string, string> | undefined,
+  pendingType: string | undefined,
+  parentFieldAppend: { node: BaseNode; field: string } | undefined,
+  activeNodeFieldAppend: { node: BaseNode; field: string } | undefined,
+  file: string | undefined,
+  lineOffset: number | undefined,
+  walk: ListWalk,
 ): void {
+  const itemEnd = offsetsOf(item).end;
   const firstPara = item.children.find((c) => c.type === 'paragraph') as Paragraph | undefined;
 
   if (!firstPara) {
-    appendContent(contentTarget, `- ${mdastToString(item)}`);
+    claim(walk.claims, contentTarget, walk.pos, offsetsOf(item).start, itemEnd);
+    walk.pos = itemEnd;
     return;
   }
 
@@ -234,11 +333,15 @@ function processListItem(
   if (wikiTarget) {
     const linkRef = `[[${wikiTarget}]]`;
     if (parentFieldAppend) {
+      consume(walk.claims, contentTarget, walk.pos, offsetsOf(item).start);
       appendParentField(parentFieldAppend.node, parentFieldAppend.field, linkRef);
+      walk.pos = itemEnd;
       return;
     }
     if (activeNodeFieldAppend) {
+      consume(walk.claims, contentTarget, walk.pos, offsetsOf(item).start);
       appendParentField(activeNodeFieldAppend.node, activeNodeFieldAppend.field, linkRef);
+      walk.pos = itemEnd;
       return;
     }
     // No field append context — fall through to node creation or content append
@@ -281,13 +384,18 @@ function processListItem(
       ...(source ? { source } : {}),
     };
     nodes.push(newNode);
+    const contentColumn = firstPara.position?.start.column;
+    if (contentColumn !== undefined) walk.claims.contentIndent.set(newNode, contentColumn - 1);
 
     if (parentFieldAppend) {
       appendParentField(parentFieldAppend.node, parentFieldAppend.field, `[[${linkTargets[0] ?? title}]]`);
     }
 
     const nestedParentRef = `[[${linkTargets[0] ?? title}]]`;
+    consume(walk.claims, contentTarget, walk.pos, offsetsOf(item).start);
+    walk.pos = offsetsOf(firstPara).end;
     for (const child of item.children) {
+      if (child === firstPara) continue;
       if (child.type === 'list') {
         for (const subItem of (child as List).children) {
           processListItem(
@@ -304,13 +412,19 @@ function processListItem(
             undefined,
             file,
             lineOffset,
+            walk,
           );
         }
+      } else {
+        const { start, end } = offsetsOf(child);
+        claim(walk.claims, newNode, walk.pos, start, end);
+        walk.pos = end;
       }
     }
   } else {
-    appendContent(contentTarget, `- ${rawText}`);
+    claim(walk.claims, contentTarget, walk.pos, offsetsOf(item).start, itemEnd);
   }
+  walk.pos = itemEnd;
 }
 
 export interface ExtractEmbeddedOptions {
@@ -569,7 +683,30 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   let grouping: GroupingState | null = null;
   let activeNode: BaseNode = rootNode;
 
+  const claims: SourceClaims = { ranges: new Map(), gapKept: new Set(), contentIndent: new Map() };
+  /** End of the previous top-level block; a block's span starts here so the blank lines before it stay with it. */
+  let prevEnd = 0;
+
   for (const child of tree.children) {
+    const { start: blockStart, end: blockEnd } = offsetsOf(child);
+    const spanStart = prevEnd;
+    prevEnd = blockEnd;
+    /** Give a node this block as source content, minus any `removed` ranges inside it. */
+    const claimBlock = (node: BaseNode, removed: SourceRange[] = []): void => {
+      let from = blockStart;
+      let first = true;
+      for (const gap of removed) {
+        if (first) claim(claims, node, spanStart, blockStart, gap.start);
+        else addRange(claims, node, from, gap.start);
+        first = false;
+        from = gap.end;
+      }
+      if (first) claim(claims, node, spanStart, blockStart, blockEnd);
+      else addRange(claims, node, from, blockEnd);
+    };
+    /** Take this whole block out of a node's content, keeping the blank lines before it. */
+    const consumeBlock = (node: BaseNode): void => consume(claims, node, spanStart, blockStart);
+
     if (parseState === 'done') {
       if (child.type === 'heading') {
         const rawTitle = mdastToString(child);
@@ -588,7 +725,10 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     if (child.type === 'heading') {
       const heading = child as Heading;
       const depth = heading.depth;
-      if (depth > 5) continue;
+      if (depth > 5) {
+        if (parseState === 'active') claimBlock(activeNode);
+        continue;
+      }
 
       parseState = 'active';
 
@@ -610,6 +750,10 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         stack.push({ depth, title, nodeType: '', refTarget: title });
         // Discard any pending grouping (untyped heading has no implied type)
         grouping = null;
+        // An untyped heading is part of the body of the nearest enclosing node. Popping above removed every
+        // node at the same or a higher level, so those sections end here; deeper nodes' sections continue.
+        activeNode = stack.findLast((entry) => entry.node)?.node ?? rootNode;
+        claimBlock(activeNode);
         continue;
       }
 
@@ -655,7 +799,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
       // Push to stack BEFORE resolving semantic parent — stack[-2] is the correct parent.
       const refTarget = linkTargets[0] ?? title;
-      stack.push({ depth, title, nodeType: type, refTarget });
+      stack.push({ depth, title, nodeType: type, refTarget, node: headingNode });
 
       // If this match came from a relationship/hierarchy and no explicit type was given,
       // create a grouping — delay adding the node until we see the following content.
@@ -699,6 +843,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             ? { node: semanticParent.node, field: definition.field }
             : undefined;
 
+        const walk: ListWalk = { claims, pos: spanStart };
         for (const item of list.children) {
           processListItem(
             item,
@@ -714,10 +859,12 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             activeNodeFieldAppendArg,
             options.file,
             options.lineOffset,
+            walk,
           );
         }
         grouping = null;
       } else {
+        const walk: ListWalk = { claims, pos: spanStart };
         for (const item of list.children) {
           processListItem(
             item,
@@ -733,6 +880,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             undefined,
             options.file,
             options.lineOffset,
+            walk,
           );
         }
       }
@@ -853,7 +1001,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
           }
           grouping = null;
         } else {
-          appendContent(activeNode, mdastToString(child));
+          claimBlock(activeNode);
         }
       }
     } else {
@@ -867,7 +1015,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       if (child.type === 'paragraph') {
         const rawText = mdastToString(child);
         const { cleanText: afterBracketed, fields: bracketedFields } = extractBracketedFields(rawText);
-        const { remainingText, fields: unbracketedFields } = extractUnbracketedFields(afterBracketed);
+        const { fields: unbracketedFields } = extractUnbracketedFields(afterBracketed);
         const allFields = applyFieldMap({ ...unbracketedFields, ...bracketedFields }, fieldMap);
 
         if ('type' in allFields) {
@@ -878,7 +1026,21 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         }
 
         Object.assign(activeNode.schemaData, allFields);
-        if (remainingText) appendContent(activeNode, remainingText);
+        // Lines holding only fields are consumed as fields; any other line, including prose that mentions a field, is content.
+        const lines = sourceLines(body, { start: blockStart, end: blockEnd });
+        const fieldLines = lines.filter((l) => isFieldOnlyLine(l.text));
+        if (fieldLines.length === lines.length) {
+          consumeBlock(activeNode);
+        } else {
+          // Each field line goes with its terminator; a last line without one takes the preceding line break instead.
+          claimBlock(
+            activeNode,
+            fieldLines.map((l) => {
+              if (/\n$/.test(body.slice(l.start, l.end))) return { start: l.start, end: l.end };
+              return { start: l.start - (body[l.start - 2] === '\r' ? 2 : 1), end: l.end };
+            }),
+          );
+        }
         activeNode.contentLinks ??= [];
         activeNode.contentLinks.push(...extractLinksFromAstNode(child));
       } else if (child.type === 'code' && (child as Code).lang?.trim() === 'yaml') {
@@ -886,19 +1048,21 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         const parsed = parseYaml(code.value);
         if (parsed && !Array.isArray(parsed) && typeof parsed === 'object') {
           Object.assign(activeNode.schemaData, applyFieldMap(parsed as Record<string, unknown>, fieldMap));
+          consumeBlock(activeNode);
         } else if (Array.isArray(parsed)) {
           throw new Error(`YAML block must be an object at "${activeNode.label}".`);
         } else {
-          appendContent(activeNode, code.value);
+          claimBlock(activeNode);
         }
       } else {
-        appendContent(activeNode, mdastToString(child));
+        claimBlock(activeNode);
         activeNode.contentLinks ??= [];
         activeNode.contentLinks.push(...extractLinksFromAstNode(child));
       }
     }
   }
 
+  applyClaims(claims, body);
   const preambleContent = rootNode.schemaData.content as string | undefined;
   const { type: _rootType, content: _rootContent, ...preambleFields } = rootNode.schemaData;
   return {

@@ -71,7 +71,7 @@ Main types:
 
 ### `okf.json`
 
-[Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) (OKF v0.2) bundles, validated as plain markdown spaces. Any concept `type` is accepted and unknown fields are tolerated; provenance (`sources`), trust (`generated`, `verified`), lifecycle (`status`, `stale_after`) and the Attested Computation contract are checked when present. Reserved `index.md` and `log.md` are reported as excluded during parsing.
+[Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) (OKF v0.2) bundles, validated as plain markdown spaces. Any concept `type` is accepted and unknown fields are tolerated; provenance (`sources`), trust (`generated`, `verified`), lifecycle (`status`, `stale_after`) and the Attested Computation contract are checked when present. An Attested Computation needs its computation: a `computation` field, or a `# Computation` section in the body (found by matching that line in the body text, so a `# Computation` line inside a code fence also counts). Reserved `index.md` and `log.md` are reported as excluded during parsing.
 
 ## Custom format annotations
 
@@ -283,6 +283,8 @@ With this config, an application page may include `### capability` with wikilink
 ### tool
 - [[Zephyr]]             ← populates application.tools (fieldOn: parent)
 ```
+
+A node's body becomes its `content`; see [Node content](concepts.md#node-content).
 
 ## Composition and merge semantics
 
