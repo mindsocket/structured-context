@@ -144,16 +144,18 @@ export function expressionErrorViolation(rule: Rule, file: string, error: string
 /**
  * Applies the `check` precondition of semantic rules on a node. A rule whose `check` fails or errors reports a
  * violation (at its own severity, or `error` for an evaluation failure) and is left out of `judgeable`, so the
- * judge never sees it.
+ * judge never sees it. A failing check's violation names the expression in its evidence, and its rule is listed in
+ * `failed` so the caller can honour `gatesDescendants`; an evaluation error is never listed.
  */
 export async function applySemanticChecks(
   rules: Rule[],
   node: SpaceNode,
   allNodes: SpaceNode[],
   nodeIndex: Map<string, SpaceNode>,
-): Promise<{ judgeable: Rule[]; violations: RuleViolation[] }> {
+): Promise<{ judgeable: Rule[]; violations: RuleViolation[]; failed: Rule[] }> {
   const judgeable: Rule[] = [];
   const violations: RuleViolation[] = [];
+  const failed: Rule[] = [];
   for (const rule of rules) {
     if (!rule.check) {
       judgeable.push(rule);
@@ -169,10 +171,12 @@ export async function applySemanticChecks(
         category: rule.category,
         severity: ruleSeverity(rule),
         description: rule.description,
+        evidence: `expression check failed: ${rule.check}`,
       });
+      failed.push(rule);
     } else {
       judgeable.push(rule);
     }
   }
-  return { judgeable, violations };
+  return { judgeable, violations, failed };
 }

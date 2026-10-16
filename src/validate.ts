@@ -169,7 +169,7 @@ export interface ValidateSpaceOptions {
   includeGated?: boolean;
   /** Evaluate only rules matching this filter (see `parseRuleFilter`). */
   ruleFilter?: RuleFilter;
-  /** Judge for `mode: semantic` rules. Without one, semantic rules are not evaluated. */
+  /** Judge for `mode: semantic` rules. Without one, a semantic rule runs only its `check`. */
   judge?: SemanticJudgeProvider;
 }
 
@@ -440,7 +440,7 @@ export interface ValidateFileOptions {
   includeGated?: boolean;
   /** Evaluate only rules matching this filter (see `parseRuleFilter`). */
   ruleFilter?: RuleFilter;
-  /** Judge for `mode: semantic` rules. Without one, semantic rules are not evaluated. */
+  /** Judge for `mode: semantic` rules. Without one, a semantic rule runs only its `check`. */
   judge?: SemanticJudgeProvider;
 }
 

@@ -12,7 +12,7 @@ import { ruleSeverity } from './rule-severity';
 export { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity } from './rule-severity';
 
 export interface ValidateRulesOptions {
-  /** Judge for semantic rules. Without one, semantic rules are not evaluated. */
+  /** Judge for semantic rules. Without one, a semantic rule runs only its `check`. */
   judge?: SemanticJudgeProvider;
   /** Label of the only node to judge (`validate-file`); other nodes' semantic rules are skipped. */
   judgeTarget?: string;
@@ -113,13 +113,14 @@ export async function validateRules(
     }
   }
 
-  // 2. Evaluate semantic rules only when a judge is supplied
+  // 2. Evaluate semantic rules. Without a judge only their `check` runs.
   const judge = options.judge;
-  if (judge) {
+  const runnableSemanticRules = judge ? semanticRules : semanticRules.filter((r) => r.check);
+  if (runnableSemanticRules.length > 0) {
     for (const node of nodes) {
       if (options.judgeTarget !== undefined && node.label !== options.judgeTarget) continue;
       const applicable: Rule[] = [];
-      for (const r of semanticRules) {
+      for (const r of runnableSemanticRules) {
         if (r.type && r.type !== node.resolvedType) continue;
         if (r.when) {
           const when = await tryEvaluateExpression(r.when, buildEvalContext(node, nodes, nodeIndex));
@@ -136,9 +137,10 @@ export async function validateRules(
       // Safe cascading default: gate semantic evaluation if node failed upstream checks
       if (failedNodeLabels.has(node.label)) continue;
 
-      // A semantic rule's `check` fails fast before the judge; its violation does not gate.
+      // A semantic rule's `check` fails fast before the judge.
       const prechecked = await applySemanticChecks(applicable, node, nodes, nodeIndex);
       violations.push(...prechecked.violations);
+      if (!judge) continue;
 
       for (const j of await judgeNode(judge, node, prechecked.judgeable)) {
         if (!j.failed) continue;

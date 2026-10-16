@@ -153,7 +153,7 @@ describe('validateRules - semantic evaluation', () => {
     expect(fake.callHistory[0]?.node.label).toBe('valid-opp.md');
   });
 
-  it('applies a semantic rule check before the judge without gating the node', async () => {
+  it('applies a semantic rule check before the judge', async () => {
     const checked: Rule[] = [
       {
         id: 'opportunity-customer-voice',
@@ -178,7 +178,49 @@ describe('validateRules - semantic evaluation', () => {
         category: 'best-practice',
         severity: 'info',
         description: 'Must be in customer voice',
+        evidence: 'expression check failed: current.source = "User interview with Jane"',
       },
     ]);
+  });
+
+  describe('check precondition (no hierarchy)', () => {
+    const checked: Rule = {
+      id: 'opportunity-source-interview',
+      category: 'coherence',
+      mode: 'semantic',
+      type: 'opportunity',
+      description: 'Opportunity comes from an interview',
+      check: '$contains(current.source, "interview")',
+    };
+
+    it('runs the check without a judge: failing reports, passing is silent', async () => {
+      const violations = await validateRules(sampleNodes, [checked]);
+      expect(violations).toEqual([
+        expect.objectContaining({
+          file: 'bad-opp.md',
+          ruleId: checked.id,
+          severity: 'warning',
+          evidence: 'expression check failed: $contains(current.source, "interview")',
+        }),
+      ]);
+    });
+
+    it('reports an unevaluable check as an error', async () => {
+      const fake = new FakeJudgeProvider();
+      const violations = await validateRules(sampleNodes, [{ ...checked, check: '$notAFunction(' }], { judge: fake });
+      expect(fake.callHistory).toHaveLength(0);
+      expect(violations.map((v) => v.severity)).toEqual(['error', 'error']);
+      expect(violations[0]?.description).toContain('Rule error');
+    });
+
+    it('evaluates when before check, and judges only nodes whose check passes', async () => {
+      const fake = new FakeJudgeProvider();
+      const whenFalse = await validateRules(sampleNodes, [{ ...checked, when: 'false' }], { judge: fake });
+      expect(whenFalse).toEqual([]);
+      expect(fake.callHistory).toHaveLength(0);
+
+      await validateRules(sampleNodes, [checked], { judge: fake });
+      expect(fake.callHistory.map((c) => c.node.label)).toEqual(['valid-opp.md']);
+    });
   });
 });

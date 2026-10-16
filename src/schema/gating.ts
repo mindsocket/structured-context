@@ -162,7 +162,7 @@ export async function evaluateRulesWithGating(
     }
   }
 
-  const perNodeRules = rules.filter((r) => r.scope !== 'global' && (r.mode !== 'semantic' || judge));
+  const perNodeRules = rules.filter((r) => r.scope !== 'global' && (r.mode !== 'semantic' || judge || r.check));
 
   // With a judge target, only the target and its hierarchy ancestors can need judging.
   const targetAncestors = new Set<string>();
@@ -237,7 +237,7 @@ export async function evaluateRulesWithGating(
       else if (outcome.value !== true) report(rule);
     }
 
-    // A semantic rule's `check` fails fast before the judge; its violation never gates.
+    // A semantic rule's `check` fails fast before the judge. It gates descendants only on an explicit `gatesDescendants: true`.
     const prechecked = await applySemanticChecks(
       applicable.filter((r) => r.mode === 'semantic'),
       node,
@@ -245,6 +245,8 @@ export async function evaluateRulesWithGating(
       nodeIndex,
     );
     violations.push(...prechecked.violations);
+    const gatingRule = prechecked.failed.find((r) => r.gatesDescendants === true);
+    if (gatingRule && !blockingRuleId) blockingRuleId = gatingRule.id;
     const semantic = prechecked.judgeable;
     if (judge && semantic.length > 0) {
       for (const j of await judgeNode(judge, node, semantic)) {

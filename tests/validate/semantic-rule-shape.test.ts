@@ -200,6 +200,7 @@ describe('semantic rule check precondition', () => {
         category: 'coherence',
         severity: 'warning',
         description: 'Step fits its task',
+        evidence: 'expression check failed: $exists(current.owner)',
       },
     ]);
   });
@@ -213,12 +214,74 @@ describe('semantic rule check precondition', () => {
     expect(result.ruleViolations[0]?.verdict).toBeUndefined();
   });
 
-  it('does not gate descendants when the check fails', async () => {
-    const { context } = setup([{ ...gated, id: 'task-fit', type: 'task' }, stepRule]);
+  it('gates descendants of a failing check only with an explicit gatesDescendants: true', async () => {
+    const taskRule = { ...gated, id: 'task-fit', type: 'task' };
+    const explicit = setup([taskRule, stepRule]);
     const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
-    const result = await validateSpace(context(), { judge });
-    expect(judgedLabels(judge)).toEqual(['S.md']);
-    expect(result.ruleViolations.map((v) => v.ruleId).sort()).toEqual(['step-fit', 'task-fit']);
+    const result = await validateSpace(explicit.context(), { judge });
+    expect(judgedLabels(judge)).toEqual([]);
+    expect(result.coverageGates[0]).toMatchObject({ reason: 'rule', ruleId: 'task-fit' });
+    expect(result.ruleViolations.map((v) => v.ruleId)).toEqual(['task-fit']);
+
+    const implicit = setup([{ ...taskRule, gatesDescendants: undefined, severity: 'error' }, stepRule]);
+    const open = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+    const ungated = await validateSpace(implicit.context(), { judge: open });
+    expect(judgedLabels(open)).toEqual(['S.md']);
+    expect(ungated.coverageGates).toEqual([]);
+    expect(ungated.ruleViolations.map((v) => v.ruleId).sort()).toEqual(['step-fit', 'task-fit']);
+  });
+
+  it('gates the file when an ancestor check fails (single-file validation)', async () => {
+    const { space } = setup([{ ...gated, id: 'task-fit', type: 'task' }, stepRule]);
+    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+    const result = (await validateFile(space.file('S.md'), space.config, {
+      judge,
+      configDir: space.dir,
+    })) as FileValidationResult;
+    // T.md's failing check gates S.md, so S.md is not judged and only reports the gate.
+    expect(judgedLabels(judge)).toEqual([]);
+    expect(Object.keys(result.warnings)).toEqual(['gated:T.md']);
+    expect(result.warnings['gated:T.md']?.message).toContain('task-fit');
+  });
+
+  describe('without a judge', () => {
+    it('reports a failing check, marked as an expression check failure', async () => {
+      const { context } = setup([gated]);
+      const result = await validateSpace(context(), {});
+      expect(result.ruleViolations).toEqual([
+        expect.objectContaining({
+          ruleId: 'step-fit',
+          file: 'S.md',
+          evidence: 'expression check failed: $exists(current.owner)',
+        }),
+      ]);
+    });
+
+    it('reports nothing when the check passes', async () => {
+      const { context } = setup([gated], { frontmatter: { S: 'owner: sam' } });
+      const result = await validateSpace(context(), {});
+      expect(result.ruleViolations).toEqual([]);
+    });
+
+    it('still skips a semantic rule that has no check', async () => {
+      const { context } = setup([stepRule]);
+      expect((await validateSpace(context(), {})).ruleViolations).toEqual([]);
+    });
+
+    it('honours --rule-filter mode=semantic', async () => {
+      const { context } = setup([gated]);
+      const kept = await validateSpace(context(), { ruleFilter: { mode: ['semantic'] } });
+      expect(kept.ruleViolations).toHaveLength(1);
+      const dropped = await validateSpace(context(), { ruleFilter: { mode: ['expression'] } });
+      expect(dropped.ruleViolations).toEqual([]);
+    });
+  });
+
+  it('reports a failing check with an all-ignore severity map at info', async () => {
+    const rule = { ...stepRule, severity: { minor: 'ignore', major: 'ignore' }, check: '$exists(current.owner)' };
+    const { context } = setup([rule]);
+    const result = await validateSpace(context(), {});
+    expect(result.ruleViolations).toEqual([expect.objectContaining({ ruleId: 'step-fit', severity: 'info' })]);
   });
 
   it('evaluates when before check', async () => {
