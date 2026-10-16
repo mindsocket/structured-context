@@ -83,8 +83,47 @@ Page level notes.
 `;
     const { nodes } = extractEmbeddedNodes(body, { pageTitle: 'Page', pageType: 'goal', metadata });
     const task = nodes.find((n) => n.title === 'Write **docs**'.replace(/\*/g, ''));
-    expect(task?.content).toBe('  Extra detail for the task.');
+    expect(task?.content).toBe('Extra detail for the task.');
     expect(nodes.find((n) => n.title === 'Sub task')).toBeDefined();
+  });
+});
+
+describe('extractEmbeddedNodes - list item content is dedented', () => {
+  const task = (items: string) => `# Goal [type:: goal]\n\n### task\n\n${items}`;
+  const run = (body: string) => extractEmbeddedNodes(body, { pageTitle: 'Page', pageType: 'goal', metadata });
+  const contentOf = (body: string) => run(body).nodes.find((n) => n.title === 'Write docs')?.content;
+
+  it('dedents a continuation paragraph by the item content indent', () => {
+    expect(contentOf(task('- Write docs\n\n  First para.\n\n  Second para.\n'))).toBe(
+      'First para.\n\n  Second para.'.replace('  ', ''),
+    );
+  });
+
+  it('dedents by the content column of an ordered item', () => {
+    expect(contentOf(task('10. Write docs\n\n    Detail.\n'))).toBe('Detail.');
+  });
+
+  it('keeps relative indent for a nested plain sub-list', () => {
+    expect(
+      contentOf('# Goal [type:: goal]\n\n- Write docs [type:: task]\n\n  Detail.\n\n  - plain one\n    - plain two\n'),
+    ).toBe('Detail.\n\n- plain one\n  - plain two');
+  });
+
+  it('dedents a fenced code block and keeps extra indent inside it', () => {
+    expect(contentOf(task('- Write docs\n\n  ```js\n  if (x) {\n    y();\n  }\n  ```\n'))).toBe(
+      '```js\nif (x) {\n  y();\n}\n```',
+    );
+  });
+
+  it('preserves CRLF line endings', () => {
+    expect(contentOf(task('- Write docs\r\n\r\n  Line one.\r\n\r\n    indented\r\n'))).toBe(
+      'Line one.\r\n\r\n  indented',
+    );
+  });
+
+  it('leaves heading content unchanged', () => {
+    const body = '# Goal [type:: goal]\n\n## Child [type:: task]\n\n  Indented text.\n';
+    expect(run(body).nodes.find((n) => n.title === 'Child')?.content).toBe('  Indented text.');
   });
 });
 

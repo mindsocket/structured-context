@@ -213,6 +213,8 @@ type SourceClaims = {
   ranges: Map<BaseNode, SourceRange[]>;
   /** Nodes whose next claim starts at its block, because a consumed block already kept the blank lines before it. */
   gapKept: Set<BaseNode>;
+  /** List item nodes mapped to the column where their content starts; their content is dedented by it. */
+  contentIndent: Map<BaseNode, number>;
 };
 
 /** Start and end offsets of an mdast node. Throws when the parser gave no position. */
@@ -254,11 +256,19 @@ function consume(claims: SourceClaims, node: BaseNode, from: number, start: numb
 /** Sets each node's content from its claimed source. Leading blank lines and trailing whitespace are dropped. */
 function applyClaims(claims: SourceClaims, body: string): void {
   for (const [node, ranges] of claims.ranges) {
-    const content = ranges
+    let content = ranges
       .map((r) => body.slice(r.start, r.end))
       .join('')
       .replace(/^(?:[ \t]*\r?\n)+/, '')
       .trimEnd();
+    const indent = claims.contentIndent.get(node);
+    if (indent) {
+      const strip = new RegExp(`^[ \\t]{1,${indent}}`);
+      content = content
+        .split(/(?<=\n)/)
+        .map((line) => line.replace(strip, ''))
+        .join('');
+    }
     if (!content) continue;
     node.schemaData.content = content;
     node.content = content;
@@ -374,6 +384,8 @@ function processListItem(
       ...(source ? { source } : {}),
     };
     nodes.push(newNode);
+    const contentColumn = firstPara.position?.start.column;
+    if (contentColumn !== undefined) walk.claims.contentIndent.set(newNode, contentColumn - 1);
 
     if (parentFieldAppend) {
       appendParentField(parentFieldAppend.node, parentFieldAppend.field, `[[${linkTargets[0] ?? title}]]`);
@@ -671,7 +683,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   let grouping: GroupingState | null = null;
   let activeNode: BaseNode = rootNode;
 
-  const claims: SourceClaims = { ranges: new Map(), gapKept: new Set() };
+  const claims: SourceClaims = { ranges: new Map(), gapKept: new Set(), contentIndent: new Map() };
   /** End of the previous top-level block; a block's span starts here so the blank lines before it stay with it. */
   let prevEnd = 0;
 

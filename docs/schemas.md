@@ -286,7 +286,7 @@ With this config, an application page may include `### capability` with wikilink
 
 ### Embedded node content
 
-A node's `content` is the markdown of its body, copied unchanged from the file: blank lines, list looseness, line endings and code fences all stay as written. Leading blank lines and trailing whitespace are trimmed.
+A node's `content` is the markdown of its body, copied unchanged from the file: blank lines, list looseness, line endings and code fences all stay as written. The content of a list item node is dedented by the item's content indent, so it reads as markdown on its own. Leading blank lines and trailing whitespace are trimmed.
 
 A node owns the source from its heading or list item up to the next heading that ends its section, with these parts removed:
 
