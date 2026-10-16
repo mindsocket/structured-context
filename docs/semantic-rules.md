@@ -46,6 +46,8 @@ A semantic rule has the [common rule fields](rules.md) and a `semantic` object. 
 | `semantic.rubric` | no | Tells the model what to assess. Default: `description` |
 | `semantic.verdicts` | no | The answers the model can give. Default: `pass` and `fail`. See [Verdicts](#verdicts) |
 | `semantic.severity` | if `semantic.verdicts` is set | The severity of each verdict. See [Severity](#severity) |
+| `semantic.scope` | no | The related nodes to send with the evaluated node. Default: none. See [Related nodes and content](#related-nodes-and-content) |
+| `semantic.includeContent` | no | Which node bodies to send. Default: none. See [Related nodes and content](#related-nodes-and-content) |
 
 A semantic rule cannot be `global`. A rule can also have an `expression`; see [Combining an expression](#combining-an-expression).
 
@@ -107,13 +109,47 @@ The verdict is a classification. The severity says what the verdict means for th
 
 Gating uses the severity of the verdict. A verdict with `error` severity gates the node's subtree, as for any rule. `gatesDescendants` changes this, as for any rule.
 
+## Related nodes and content
+
+By default the model sees the evaluated node alone. Use `semantic.scope` to send related nodes too, so the model can judge coherence across the tree, for example whether a solution addresses its parent opportunity.
+
+`semantic.scope` is a list. Each entry adds nodes along the edges of the schema's main hierarchy:
+
+| Entry | Adds |
+|---|---|
+| `parent` | The direct parents |
+| `siblings` | The other children of the node's parents |
+| `children` | The direct children |
+| `ancestors` | The parents, their parents, and so on |
+| `descendants` | The children, their children, and so on |
+
+Entries add together. A node that matches several entries is sent once, with every relation it has. An empty or absent `scope` sends the evaluated node alone. Other relationships are not followed. A schema without a hierarchy has no related nodes.
+
+A related node carries all its schema data, including its title and type. The model provider gets the related nodes as a flat list, each with its relation to the evaluated node. Scope sends node data only, never the verdicts of other rules, and [gating](rules.md#cascade-gating) does not change which nodes it selects.
+
+`semantic.includeContent` chooses which node bodies (the markdown `content`) go to the model:
+
+| Value | Sends |
+|---|---|
+| absent | No bodies, not even the evaluated node's |
+| `nodeOnly` | The evaluated node's body |
+| `fullScope` | The bodies of the evaluated node and of every related node. `true` means the same |
+
+```json
+{ "id": "solution-addresses-opportunity", "category": "coherence", "type": "solution",
+  "description": "The solution addresses the opportunity it sits under",
+  "semantic": { "scope": ["parent"], "includeContent": "fullScope" } }
+```
+
+A global rule cannot have a `semantic` part, so it has no scope.
+
 ## How semantic evaluation works
 
 - **Order.** On each node, structured-context runs each rule's [`expression`](#combining-an-expression) first. It sends the semantic parts of the rules that pass to the model provider.
 - **Grouping.** A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates each node ruleset group (see [concepts](concepts.md#semantic-rules)) in as few decision requests as it can, with one decision question per node and rule. This includes the bundled `openrouter-openai-decisions` provider. A decision request is limited to about 32,000 estimated input tokens and 40 decision questions, so a larger group is split into several decision requests, never within a node. A node that fills a decision request on tokens is sent whole as its own decision request. A node with more than 40 rules has its rules split across decision requests. If a node's questions are split across several requests and one fails, all of that node's rules are reported as errors. Other providers, including `openai-decisions` and chat models, evaluate one node per request. Within a space, the nodes at one hierarchy depth are evaluated together, because their verdicts decide whether the next depth is evaluated. Grouping can shift verdicts and probabilities slightly compared with evaluating each node alone.
 - **Gating.** structured-context does not evaluate the semantic part on a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
 - **Evaluation errors.** If the model provider fails (for example, a network error or output that structured-context cannot read), structured-context reports a violation with the suffix `(Semantic evaluation error: ...)`. An evaluation error does not gate. If one decision request fails, only the rules on the nodes in that decision request report the error.
-- **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter.
+- **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter. It gets the node's body, and any [related nodes](#related-nodes-and-content), only as the rule's `semantic.scope` and `semantic.includeContent` ask. Rules on one node that ask for the same related nodes and bodies share one input; rules that ask for different ones are evaluated separately.
 - **Output.** A violation from a semantic verdict also includes the verdict, the model's evidence and any guidance.
 
 `sctx validate-file` evaluates the semantic part only for the file and the rules on its ancestors that can gate it. Thus one file costs at most one model call for each ancestor level, plus one.
