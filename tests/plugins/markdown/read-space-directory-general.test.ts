@@ -211,7 +211,7 @@ describe('readSpaceDirectory', () => {
       expect(issue?.type).toBe('parse');
       expect(issue?.message).toBeTruthy();
       expect(issue?.line).toBe(2);
-      expect(issue?.column).toBe(7);
+      expect(issue?.column).toBe(8);
     });
 
     it('continues parsing other files after a YAML error', async () => {

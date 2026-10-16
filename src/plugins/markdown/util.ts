@@ -1,5 +1,18 @@
 import { posix } from 'node:path';
-import { DEFAULT_SCHEMA, type DumpOptions, dump, load, Schema, type Type } from 'js-yaml';
+import {
+  binaryTag,
+  CORE_SCHEMA,
+  type DumpOptions,
+  defineScalarTag,
+  dump,
+  load,
+  mergeTag,
+  omapTag,
+  pairsTag,
+  type Schema,
+  setTag,
+  visit,
+} from 'js-yaml';
 import type { TypeInferenceConfig } from '.';
 
 export function inferTypeFromPath(
@@ -52,32 +65,62 @@ export function inferTypeFromPath(
   return undefined;
 }
 
-// js-yaml schemas expose their type lists (and types their tag) at runtime, but @types/js-yaml does not declare them.
-const defaultTypes = DEFAULT_SCHEMA as unknown as { implicit: (Type & { tag: string })[]; explicit: Type[] };
+const dateTag = defineScalarTag('tag:yaml.org,2002:timestamp', {
+  identify: (data: unknown) => data instanceof Date,
+  represent: (data: unknown) => (data as Date).toISOString(),
+  resolve: (source: string) => source,
+});
 
 /**
- * YAML schema for frontmatter and embedded YAML blocks: js-yaml's default schema without the
- * `timestamp` type. Dates and datetimes stay as the strings written (e.g. `2026-03-31`,
- * `2026-06-20T22:53:05+10:00`) rather than becoming Date objects, which lose precision and offset
- * and are not valid JSON.
+ * YAML schema for frontmatter and embedded YAML blocks: YAML 1.2 Core schema extended with
+ * YAML 1.1 merge keys (`<<`), collections (binary, omap, pairs, set), and custom Date scalar
+ * handling that avoids js-yaml's timestamp type. Dates and datetimes stay as the strings
+ * written (e.g. `2026-03-31`, `2026-06-20T22:53:05+10:00`) rather than becoming Date objects,
+ * which lose precision and offset and are not valid JSON.
  */
-export const YAML_SCHEMA = new Schema({
-  implicit: defaultTypes.implicit.filter((type) => type.tag !== 'tag:yaml.org,2002:timestamp'),
-  explicit: defaultTypes.explicit,
-});
+export const YAML_SCHEMA: Schema = CORE_SCHEMA.withTags(mergeTag, binaryTag, omapTag, pairsTag, setTag, dateTag);
 
 export function parseYaml(text: string): unknown {
   return load(text, { schema: YAML_SCHEMA });
 }
 
+export type DumpYamlOptions = DumpOptions & {
+  replacer?: (key: string, value: unknown) => unknown;
+};
+
+function applyReplacer(key: string, value: unknown, replacer: (key: string, value: unknown) => unknown): unknown {
+  const replaced = replacer(key, value);
+  if (Array.isArray(replaced)) {
+    return replaced.map((item, index) => applyReplacer(String(index), item, replacer));
+  }
+  if (replaced !== null && typeof replaced === 'object' && Object.getPrototypeOf(replaced) === Object.prototype) {
+    const res: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(replaced)) {
+      const vReplaced = applyReplacer(k, v, replacer);
+      if (vReplaced !== undefined) {
+        res[k] = vReplaced;
+      }
+    }
+    return res;
+  }
+  return replaced;
+}
+
 /** Dumps with YAML_SCHEMA. Date values (e.g. from non-markdown plugins) are written as ISO 8601 strings. */
-export function dumpYaml(data: unknown, options?: DumpOptions): string {
-  return dump(data, {
-    ...options,
+export function dumpYaml(data: unknown, options?: DumpYamlOptions): string {
+  const input = options?.replacer ? applyReplacer('', data, options.replacer) : data;
+  const { replacer: _ignored, transform, ...dumpOpts } = options ?? {};
+  return dump(input, {
+    ...dumpOpts,
     schema: YAML_SCHEMA,
-    replacer: (key, value) => {
-      const replaced = options?.replacer ? options.replacer(key, value) : value;
-      return replaced instanceof Date ? replaced.toISOString() : replaced;
+    transform: (docs) => {
+      visit(docs, (node) => {
+        if (node.kind === 'scalar' && (node.tag === '!!timestamp' || node.tag === 'tag:yaml.org,2002:timestamp')) {
+          node.tagged = false;
+          node.tag = 'tag:yaml.org,2002:str';
+        }
+      });
+      transform?.(docs);
     },
   });
 }
