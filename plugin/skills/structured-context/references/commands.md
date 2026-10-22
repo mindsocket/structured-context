@@ -115,8 +115,8 @@ sctx dump <space> [--filter <view-or-expression>] [--hierarchy <name>]
 ```
 
 Outputs `{ nodes, source, diagnostics }` as strict JSON. Each node includes resolved fields:
-- `label` — source identifier; the same key `validate --json` uses for its `errors` map
-- `title`, `resolvedType` — canonical title and type after alias resolution
+- `id` — unique node key; for a page it is the path `validate --json` uses for its `errors` map
+- `title`, `resolvedType` — display title and type after alias resolution
 - `resolvedParents` — parent refs after link resolution, with the edge field and source
 
 Unfiltered output includes schema-invalid nodes. `--filter` works the same as in `show`/`render`
@@ -131,7 +131,7 @@ sctx dump <space> | jq '.nodes[] | select(.title == "My Node Title")'
 
 # Join nodes with their validation errors
 sctx validate <space> --json > v.json
-sctx dump <space> | jq --slurpfile v v.json '.nodes[] | {label, resolvedType, errors: $v[0].errors[.label]}'
+sctx dump <space> | jq --slurpfile v v.json '.nodes[] | {id, resolvedType, errors: $v[0].errors[.id]}'
 ```
 
 ## diagram

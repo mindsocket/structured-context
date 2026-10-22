@@ -37,14 +37,17 @@ export type Relationship = Omit<MetadataContractRelationship, 'field' | 'fieldOn
   multiple: boolean;
 };
 
+/** Unique key of a node within a space. Supplied by the plugin that produced the node. */
+export type NodeId = string & { readonly __brand: 'NodeId' };
+
 /**
- * A resolved parent reference, capturing not just the parent title but the edge context
+ * A resolved parent reference, capturing not just the parent id but the edge context
  * from which it was resolved. All hierarchy levels and relationships produce entries of
  * this type, forming a single labelled graph rather than separate structures.
  */
 export type ResolvedParentRef = {
-  /** Canonical title of the parent node. */
-  title: string;
+  /** Id of the parent node. */
+  id: NodeId;
   /** The field name that contained the wikilink (e.g. 'parent', 'key_activities', 'produces_data'). */
   field: string;
   /** Whether this edge originates from a hierarchy level or a relationship definition. */
@@ -67,8 +70,8 @@ export type SourceLocation = {
 };
 
 export type UnresolvedRef = {
-  /** Source identifier of the node containing the broken link. */
-  label: string;
+  /** Id of the node containing the broken link. */
+  id: NodeId;
   /** Raw wikilink value (or String(rawField) for invalid_shape). */
   ref: string;
   /** Field name that contained the link. */
@@ -124,9 +127,9 @@ export type ResolvedContentLink = ContentLinkBase & {
  * Core enriches this into a SpaceNode after parsing.
  */
 export type BaseNode = {
-  /** Source identifier for error messages (filename or heading title) */
-  label: string;
-  /** Canonical title of the node (from schemaData.title). First-class accessor. */
+  /** Unique key of the node: graph key, parent lookup, gating, duplicate detection and the file in messages. Supplied by the plugin. */
+  id: NodeId;
+  /** Display title (from schemaData.title). May repeat across nodes. */
   title: string;
   /** Fields validated against the active schema. */
   schemaData: Record<string, unknown>;
@@ -154,7 +157,7 @@ export type SpaceNode = BaseNode & {
   resolvedType: string;
   /**
    * Resolved parent references derived from all edge fields (hierarchy levels + relationships).
-   * Each entry carries the parent title, the field it came from, and its edge context.
+   * Each entry carries the parent id, the field it came from, and its edge context.
    * Always present, empty if no parents resolved.
    */
   resolvedParents: ResolvedParentRef[];
@@ -195,7 +198,7 @@ export type { CoverageGate, GatingSeed } from './schema/gating';
 export type { Rule } from './schema/metadata-contract';
 
 export type RuleViolation = {
-  /** Node label, or empty string for global-scope rules. */
+  /** Node id, or empty string for global-scope rules. */
   file: string;
   ruleId: string;
   category: RuleCategory;

@@ -20,7 +20,7 @@ export async function buildDump(context: SpaceContext, options: DumpOptions = {}
   if (!options.filter) return readResult;
 
   const graph = await assembleSpaceGraph(context, { ...options, readResult });
-  const nodes = readResult.nodes.filter((node) => graph.nodes.get(node.title) === node);
+  const nodes = readResult.nodes.filter((node) => graph.nodes.get(node.id) === node);
   return { ...readResult, nodes };
 }
 

@@ -1,13 +1,21 @@
 import type { SemanticJudgeInput, SemanticRuleSpec } from '../../src/judge/types';
+import type { NodeId, SpaceNode } from '../../src/types';
 
-export const node: SemanticJudgeInput['node'] = {
-  label: 'opp1.md',
+export const node: SemanticJudgeInput['node'] & Pick<SpaceNode, 'resolvedParents'> = {
+  id: 'opp1.md' as NodeId,
   title: 'I cannot find my receipts',
   type: 'opportunity',
   resolvedType: 'opportunity',
   schemaData: { title: 'I cannot find my receipts', type: 'opportunity', source: 'User interview with Alice' },
+  parentTitles: ['Faster Tax Filing'],
   resolvedParents: [
-    { title: 'Faster Tax Filing', field: 'parent', source: 'hierarchy', selfRef: false, fieldOn: 'child' },
+    {
+      id: 'Faster Tax Filing' as NodeId,
+      field: 'parent',
+      source: 'hierarchy',
+      selfRef: false,
+      fieldOn: 'child',
+    },
   ],
 };
 

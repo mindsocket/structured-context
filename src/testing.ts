@@ -1,13 +1,13 @@
-import type { BaseNode, Hierarchy, HierarchyLevel, Relationship, ResolvedParentRef, SpaceNode } from './types';
+import type { BaseNode, Hierarchy, HierarchyLevel, NodeId, Relationship, ResolvedParentRef, SpaceNode } from './types';
 
 /**
  * Creates a ResolvedParentRef with sensible defaults for use in tests.
  * Override any field to represent specific edge contexts.
  */
-export const makeParentRef = (title: string, overrides: Partial<ResolvedParentRef> = {}): ResolvedParentRef => {
+export const makeParentRef = (id: string, overrides: Partial<ResolvedParentRef> = {}): ResolvedParentRef => {
   const source = overrides.source ?? 'hierarchy';
   return {
-    title,
+    id: id as NodeId,
     field: 'parent',
     source,
     ...(source === 'hierarchy' ? { hierarchy: 'main' } : {}),
@@ -74,7 +74,7 @@ export const makeNode = (
   extra: Record<string, unknown> = {},
   linkTargets?: string[],
 ): BaseNode => ({
-  label: `${title}.md`,
+  id: title as NodeId,
   title,
   schemaData: { title, type, ...extra },
   linkTargets: linkTargets ?? [title],

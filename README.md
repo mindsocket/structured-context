@@ -27,7 +27,7 @@ Content and structure
   Valid                                   16
   Schema validation errors                 0
   Broken links                             1
-  Duplicate keys                           0
+  Duplicate ids                            0
   Rule violations (error)                  0
   Rule violations (warning)                1
   Rule violations (info)                   1

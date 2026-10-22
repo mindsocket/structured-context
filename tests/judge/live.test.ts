@@ -87,7 +87,7 @@ describe.skipIf(process.env.SCTX_LIVE_JUDGE_TESTS !== '1')('live judges: batchin
             });
             if (a.verdict !== b.verdict) flips++;
             lines.push(
-              `${input.node.label} ${rule.id}: single=${a.verdict} batched=${b.verdict}${a.verdict === b.verdict ? '' : ' (FLIP)'}; delta ${deltas.join(', ')}`,
+              `${input.node.id} ${rule.id}: single=${a.verdict} batched=${b.verdict}${a.verdict === b.verdict ? '' : ' (FLIP)'}; delta ${deltas.join(', ')}`,
             );
           }
         });

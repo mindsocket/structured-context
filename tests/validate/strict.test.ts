@@ -254,31 +254,31 @@ describe('Strict OST schema validation', () => {
     });
 
     it('rejects vision type (not allowed in strict_ost)', () => {
-      const node = nodes.find((n) => n.label === 'invalid-vision-type.md');
+      const node = nodes.find((n) => n.id === 'invalid-vision-type.md');
       expect(node).toBeDefined();
       expect(validateNode(node?.schemaData)).toBe(false);
     });
 
     it('rejects outcome missing required metric field', () => {
-      const node = nodes.find((n) => n.label === 'outcome-no-metric.md');
+      const node = nodes.find((n) => n.id === 'outcome-no-metric.md');
       expect(node).toBeDefined();
       expect(validateNode(node?.schemaData)).toBe(false);
     });
 
     it('rejects opportunity missing required source field', () => {
-      const node = nodes.find((n) => n.label === 'opportunity-no-source.md');
+      const node = nodes.find((n) => n.id === 'opportunity-no-source.md');
       expect(node).toBeDefined();
       expect(validateNode(node?.schemaData)).toBe(false);
     });
 
     it('rejects experiment missing required assumption field', () => {
-      const node = nodes.find((n) => n.label === 'invalid-experiment-no-assumption.md');
+      const node = nodes.find((n) => n.id === 'invalid-experiment-no-assumption.md');
       expect(node).toBeDefined();
       expect(validateNode(node?.schemaData)).toBe(false);
     });
 
     it('rejects experiment with invalid category enum', () => {
-      const node = nodes.find((n) => n.label === 'experiment-invalid-category.md');
+      const node = nodes.find((n) => n.id === 'experiment-invalid-category.md');
       expect(node).toBeDefined();
       expect(validateNode(node?.schemaData)).toBe(false);
     });

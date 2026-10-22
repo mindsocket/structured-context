@@ -48,7 +48,7 @@ describe('validateFile is a view over the validateSpace core', () => {
               (f) => `schema:${f.dedupeKey}`,
             ),
           ),
-        ...space.duplicateErrors.filter((d) => d.files.includes(file)).map((d) => `duplicate:${d.title}`),
+        ...space.duplicateErrors.filter((d) => d.files.includes(file)).map((d) => `duplicate:${d.id}`),
         ...space.refErrors.filter((r) => r.file === file).map((r) => `broken-link:${r.parent}`),
         ...space.hierarchyViolations.filter((v) => v.file === file).map((v) => `hierarchy:${v.description}`),
         ...space.ruleViolations.filter((v) => v.file === file).map((v) => `rule:${v.ruleId}`),

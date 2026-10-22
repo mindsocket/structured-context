@@ -1,5 +1,5 @@
 import type { SpaceGraph } from '../../space-graph';
-import type { SpaceNode } from '../../types';
+import type { NodeId, SpaceNode } from '../../types';
 
 const LEVEL_PALETTE = [
   { fill: '#ff9999', stroke: '#ff0000' },
@@ -21,7 +21,7 @@ function safeNodeId(id: string): string {
 }
 
 export function renderMermaid(graph: SpaceGraph): string {
-  const { hierarchyRoots, orphans, hierarchyChildren: children, hierarchyTitles: hierarchyNodeSet } = graph;
+  const { hierarchyRoots, orphans, hierarchyChildren: children, hierarchyIds: hierarchyNodeSet } = graph;
   const levels = graph.hierarchy?.levels ?? [];
 
   let mmd = 'graph TD\n';
@@ -32,16 +32,16 @@ export function renderMermaid(graph: SpaceGraph): string {
     mmd += `  classDef ${level.type} fill:${color.fill},stroke:${color.stroke},stroke-width:2px\n`;
   }
 
-  const addedNodes = new Set<string>();
+  const addedNodes = new Set<NodeId>();
 
   function addNodeAndChildren(node: SpaceNode) {
-    const nodeId = node.title;
+    const nodeId = node.id;
     if (addedNodes.has(nodeId)) return;
     addedNodes.add(nodeId);
 
     const type = node.resolvedType;
     const priority = node.schemaData.priority as string | undefined;
-    const label = priority ? `${nodeId} (${priority})` : nodeId;
+    const label = priority ? `${node.title} (${priority})` : node.title;
 
     const safeId = safeNodeId(nodeId);
     const escapedLabel = escapeMermaidString(label);
@@ -50,9 +50,8 @@ export function renderMermaid(graph: SpaceGraph): string {
 
     const nodeChildren = children.get(nodeId) ?? [];
     for (const child of nodeChildren) {
-      const childTitle = child.title;
-      if (hierarchyNodeSet.has(childTitle)) {
-        const safeChildId = safeNodeId(childTitle);
+      if (hierarchyNodeSet.has(child.id)) {
+        const safeChildId = safeNodeId(child.id);
         mmd += `  ${safeId} --> ${safeChildId}\n`;
         addNodeAndChildren(child);
       }

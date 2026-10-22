@@ -25,24 +25,24 @@ describe('readSpaceDirectory', () => {
     });
 
     it('injects title from filename for file-based nodes', () => {
-      const vision = result.nodes.find((n) => n.label === 'Personal Vision.md');
+      const vision = result.nodes.find((n) => n.id === 'Personal Vision.md');
       expect(vision?.schemaData.title).toBe('Personal Vision');
     });
 
     it('preserves body content on file-based nodes', () => {
-      const vision = result.nodes.find((n) => n.label === 'Personal Vision.md');
+      const vision = result.nodes.find((n) => n.id === 'Personal Vision.md');
       expect(vision?.content).toBe('Vision body content here.');
       expect(vision?.schemaData.content).toBe('Vision body content here.');
     });
 
     it('leaves content undefined when file has no body text', () => {
-      const learn = result.nodes.find((n) => n.label === 'Learn TypeScript.md');
+      const learn = result.nodes.find((n) => n.id === 'Learn TypeScript.md');
       expect(learn?.content).toBeUndefined();
       expect(learn?.schemaData.content).toBeUndefined();
     });
 
     it('attaches source location to file-based nodes', () => {
-      const vision = result.nodes.find((n) => n.label === 'Personal Vision.md');
+      const vision = result.nodes.find((n) => n.id === 'Personal Vision.md');
       expect(vision?.source).toEqual({ file: 'Personal Vision.md', line: 1 });
     });
 
@@ -62,15 +62,15 @@ describe('readSpaceDirectory', () => {
     });
 
     it('skipped files do not appear in nodes', () => {
-      expect(result.nodes.every((n) => n.label !== 'no-frontmatter.md')).toBe(true);
+      expect(result.nodes.every((n) => n.id !== 'no-frontmatter.md')).toBe(true);
     });
 
     it('nonSpace files do not appear in nodes', () => {
-      expect(result.nodes.every((n) => n.label !== 'meeting-notes.md')).toBe(true);
+      expect(result.nodes.every((n) => n.id !== 'meeting-notes.md')).toBe(true);
     });
 
     it('preserves numeric frontmatter fields on Technical Skills', () => {
-      const ts = result.nodes.find((n) => n.label === 'Technical Skills.md');
+      const ts = result.nodes.find((n) => n.id === 'Technical Skills.md');
       expect(ts?.schemaData.impact).toBe(4);
       expect(ts?.schemaData.feasibility).toBe(3);
       expect(ts?.schemaData.resources).toBe(2);
@@ -78,7 +78,7 @@ describe('readSpaceDirectory', () => {
     });
 
     it('Community OST.md (ost_on_a_page) is excluded from nodes', () => {
-      expect(result.nodes.every((n) => n.label !== 'Community OST.md')).toBe(true);
+      expect(result.nodes.every((n) => n.id !== 'Community OST.md')).toBe(true);
     });
 
     it('Community OST.md does not appear in parseIssues', () => {
@@ -95,7 +95,7 @@ describe('readSpaceDirectory', () => {
     });
 
     it('includes vision_page.md as its own node with preamble body content', () => {
-      const node = resolvedNodes.find((n) => n.label === 'vision_page.md');
+      const node = resolvedNodes.find((n) => n.id === 'vision_page.md');
       expect(node).toBeDefined();
       expect(node?.schemaData.type).toBe('vision');
       expect(node?.schemaData.title).toBe('vision_page');
@@ -104,7 +104,7 @@ describe('readSpaceDirectory', () => {
     });
 
     it('extracts embedded mission with plain title and body content', () => {
-      const node = resolvedNodes.find((n) => n.label === 'Embedded Mission');
+      const node = resolvedNodes.find((n) => n.title === 'Embedded Mission');
       expect(node).toBeDefined();
       expect(node?.schemaData.type).toBe('mission');
       expect(node?.schemaData.title).toBe('Embedded Mission');
@@ -113,19 +113,19 @@ describe('readSpaceDirectory', () => {
     });
 
     it('embedded mission parent points to the containing page', () => {
-      const node = resolvedNodes.find((n) => n.label === 'Embedded Mission');
+      const node = resolvedNodes.find((n) => n.title === 'Embedded Mission');
       expect(node?.schemaData.parent).toBe('[[vision_page]]');
-      expect(node?.resolvedParents[0]?.title).toBe('vision_page');
+      expect(node?.resolvedParents[0]?.id as string).toBe('vision_page.md');
     });
 
     it('stores navigation targets for embedded mission', () => {
-      const node = resolvedNodes.find((n) => n.label === 'Embedded Mission');
+      const node = resolvedNodes.find((n) => n.title === 'Embedded Mission');
       expect(node?.linkTargets).toContain('vision_page#^embmission');
       expect(node?.linkTargets).toContain('vision_page#[type mission] Embedded Mission embmission');
     });
 
     it('extracts nested embedded goal with plain title and body content', () => {
-      const node = resolvedNodes.find((n) => n.label === 'Embedded Goal');
+      const node = resolvedNodes.find((n) => n.title === 'Embedded Goal');
       expect(node).toBeDefined();
       expect(node?.schemaData.type).toBe('goal');
       expect(node?.content).toBe('The goal body content.');
@@ -133,20 +133,20 @@ describe('readSpaceDirectory', () => {
     });
 
     it('embedded goal parent is stored as an implied section target and resolved to title', () => {
-      const node = resolvedNodes.find((n) => n.label === 'Embedded Goal');
+      const node = resolvedNodes.find((n) => n.title === 'Embedded Goal');
       expect(node?.schemaData.parent).toBe('[[vision_page#[type mission] Embedded Mission embmission]]');
-      expect(node?.resolvedParents[0]?.title).toBe('Embedded Mission');
+      expect(node?.resolvedParents[0]?.id as string).toBe('vision_page.md#Embedded Mission');
     });
 
     it('solution_page.md keeps source parent link and resolves to embedded goal title', () => {
-      const node = resolvedNodes.find((n) => n.label === 'solution_page.md');
+      const node = resolvedNodes.find((n) => n.id === 'solution_page.md');
       expect(node?.schemaData.parent).toBe('[[vision_page#^embgoal]]');
-      expect(node?.resolvedParents[0]?.title).toBe('Embedded Goal');
+      expect(node?.resolvedParents[0]?.id as string).toBe('vision_page.md#Embedded Goal');
     });
 
     it('attaches containing file and line/column source location to embedded nodes', () => {
-      const mission = resolvedNodes.find((n) => n.label === 'Embedded Mission');
-      const goal = resolvedNodes.find((n) => n.label === 'Embedded Goal');
+      const mission = resolvedNodes.find((n) => n.title === 'Embedded Mission');
+      const goal = resolvedNodes.find((n) => n.title === 'Embedded Goal');
       expect(mission?.source).toEqual({ file: 'vision_page.md', line: 9, column: 1 });
       expect(goal?.source).toEqual({ file: 'vision_page.md', line: 13, column: 1 });
     });
@@ -161,20 +161,20 @@ describe('readSpaceDirectory', () => {
     });
 
     it('infers type "mission" from ^mission anchor', () => {
-      const node = resolvedNodes.find((n) => n.label === 'Our Mission');
+      const node = resolvedNodes.find((n) => n.title === 'Our Mission');
       expect(node?.schemaData.type).toBe('mission');
       expect(node?.schemaData.title).toBe('Our Mission');
     });
 
     it('infers type "goal" from ^goal1 anchor', () => {
-      const node = resolvedNodes.find((n) => n.label === 'Another Goal');
+      const node = resolvedNodes.find((n) => n.title === 'Another Goal');
       expect(node?.schemaData.type).toBe('goal');
       expect(node?.schemaData.title).toBe('Another Goal');
     });
 
     it('stores both section and anchor navigation targets when heading has a block anchor', () => {
-      const mission = resolvedNodes.find((n) => n.label === 'Our Mission');
-      const goal = resolvedNodes.find((n) => n.label === 'Another Goal');
+      const mission = resolvedNodes.find((n) => n.title === 'Our Mission');
+      const goal = resolvedNodes.find((n) => n.title === 'Another Goal');
       expect(mission?.linkTargets).toContain('anchor_vision#^mission');
       expect(mission?.linkTargets).toContain('anchor_vision#Our Mission mission');
       expect(goal?.linkTargets).toContain('anchor_vision#^goal1');
@@ -182,16 +182,16 @@ describe('readSpaceDirectory', () => {
     });
 
     it('does not include untyped preamble heading as a node', () => {
-      expect(resolvedNodes.map((n) => n.label)).not.toContain('Preamble (ignored)');
+      expect(resolvedNodes.map((n) => n.title)).not.toContain('Preamble (ignored)');
     });
 
     it('resolves section/anchor parent links to canonical parent titles without mutating source links', () => {
-      const goal = resolvedNodes.find((n) => n.label === 'Embedded Goal');
-      const solutionPage = resolvedNodes.find((n) => n.label === 'solution_page.md');
+      const goal = resolvedNodes.find((n) => n.title === 'Embedded Goal');
+      const solutionPage = resolvedNodes.find((n) => n.id === 'solution_page.md');
       expect(goal?.schemaData.parent).toBe('[[vision_page#[type mission] Embedded Mission embmission]]');
-      expect(goal?.resolvedParents[0]?.title).toBe('Embedded Mission');
+      expect(goal?.resolvedParents[0]?.id as string).toBe('vision_page.md#Embedded Mission');
       expect(solutionPage?.schemaData.parent).toBe('[[vision_page#^embgoal]]');
-      expect(solutionPage?.resolvedParents[0]?.title).toBe('Embedded Goal');
+      expect(solutionPage?.resolvedParents[0]?.id as string).toBe('vision_page.md#Embedded Goal');
     });
   });
 

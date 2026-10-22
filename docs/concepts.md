@@ -97,11 +97,29 @@ A **space node** (or **node** for short) is a single entity in a `space` — a n
 
 Node types are defined by the schema in use and may vary across schemas. Examples from the default schema: `vision`, `mission`, `goal`, `opportunity`, `solution`. The tooling is not prescriptive about which types exist — schemas are designed to be extended and replaced.
 
+Each node has an `id` (its unique key), a `title` (its display name) and `linkTargets` (the names wikilinks may use to reach it). See [Node key](#node-key).
+
 Each node retains its physical `source` location (`file`, and `line` / `column` where available) so that validation diagnostics, edge errors, and downstream tooling pinpoint the exact location in the vault.
 
 A node's `content` is the markdown source of its body; see [Node content](#node-content).
 
 > `space_on_a_page` and `dashboard` are not `space node` types — they are `tooling types`.
+
+### Node key
+
+Three values on every node do separate jobs:
+
+| Value | Job | Unique? | Markdown source |
+|---|---|---|---|
+| `id` | Identifies the node: graph key, parent lookup, gating, duplicate detection, and the file shown in messages | Yes. Two nodes with the same `id` are a duplicate error | Path relative to the space root, with extension (`projects/alpha/Overview.md`). Embedded nodes use `<page id>#<heading>` |
+| `title` | Display name in `show`, rendered output and judge prompts | No | `title:` frontmatter, else the containing folder's name for a [folder index](#folder-index), else the file's basename |
+| `linkTargets` | The names a wikilink may use to reach the node | Per name. A name shared by several nodes is reported as ambiguous where a link uses it | The explicit `title:`, the basename, and every path suffix without `.md` |
+
+A wikilink is looked up in `linkTargets`, and the result is stored as the target node's `id`. Other values hold the rest of the picture: `source` is where the node is defined, `resolvedParents` lists parents by `id`, and `resolvedLinks` classifies content links. A parent field resolves exactly as a link does.
+
+### Folder index
+
+A **folder index** is a page that stands for its folder: `Overview.md` or `index.md` inside `projects/alpha/`. Obsidian has no container pages, so a node with child pages is a folder plus an index page. Listing the index basenames in the markdown plugin's [`folderIndex`](config.md#folderindex) config gives each folder index the folder's name as its `title`. The derived title is for display only and never a link target.
 
 ### Embedded node
 
@@ -288,7 +306,7 @@ A **wikilink** is the `[[Title]]` linking syntax (compatible with Obsidian) used
 
 | Form | Example | Resolves to |
 |---|---|---|
-| Plain title | `[[My Goal]]` | The `space node` whose title equals `My Goal` |
+| Name or path | `[[My Goal]]`, `[[alpha/Overview]]` | The `space node` with that name in its `linkTargets`. A bare name shared by several nodes is ambiguous; add enough of the path to make it unique, as Obsidian does |
 | Anchor ref | `[[vision_page#^goal1]]` | The `embedded node` with `anchor` `goal1` inside `vision_page.md` |
 
 ### Resolved parents
@@ -299,7 +317,7 @@ Each entry is a `ResolvedParentRef` object:
 
 | Field | Type | Description |
 |---|---|---|
-| `title` | `string` | The parent node's title |
+| `id` | `NodeId` | The parent node's `id` |
 | `field` | `string` | The frontmatter field that held the wikilink |
 | `source` | `'hierarchy' \| 'relationship'` | Whether the edge came from a hierarchy level or a relationship |
 | `hierarchy` | `string` | Name of the hierarchy the edge belongs to; present only when `source` is `'hierarchy'` |
@@ -356,12 +374,12 @@ Keywords (`WHERE`, `SELECT`) are case-insensitive.
 
 ### Predicate context
 
-The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression evaluated per node. Node fields (from `schemaData`) are accessible directly — e.g. `resolvedType`, `status`. `label` (relative file path, e.g. `"solutions/My Solution.md"`) and `title` are always available regardless of schema. Additionally, two pre-computed traversal arrays are available:
+The WHERE predicate is a [JSONata](https://docs.jsonata.org/overview) expression evaluated per node. Node fields (from `schemaData`) are accessible directly — e.g. `resolvedType`, `status`. `id` (e.g. `"solutions/My Solution.md"`) and `title` are always available regardless of schema. `resolvedParentIds` lists the `id` of each parent and `resolvedParentTitles` their titles. Additionally, two pre-computed traversal arrays are available:
 
 | Field | Description |
 |-------|-------------|
-| `ancestors[]` | Flat array of ancestor nodes, nearest first, deduplicated by title |
-| `descendants[]` | Flat array of descendant nodes, nearest first, deduplicated by title |
+| `ancestors[]` | Flat array of ancestor nodes, nearest first, deduplicated by `id` |
+| `descendants[]` | Flat array of descendant nodes, nearest first, deduplicated by `id` |
 
 Each entry in `ancestors[]` or `descendants[]` includes all schema fields of the target node, plus edge metadata:
 

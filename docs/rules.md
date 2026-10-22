@@ -107,8 +107,9 @@ Each evaluation receives:
 
 Useful resolved fields on nodes:
 - `resolvedType`
-- `resolvedParentTitle`
-- `resolvedParentTitles`
+- `id`: the node's unique key. Compare nodes by `id`, since titles may repeat.
+- `resolvedParentId`, `resolvedParentIds`: the `id` of the first parent, and of all parents
+- `resolvedParentTitle`, `resolvedParentTitles`: the display titles of the same parents
 
 Prefer `resolvedType` over raw `type` so aliases are handled correctly.
 
@@ -117,7 +118,7 @@ Prefer `resolvedType` over raw `type` so aliases are handled correctly.
 Inside `nodes[...]`, bare names refer to each candidate node. Use `$$` to reference outer variables:
 
 ```jsonata
-$count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
+$count(nodes[resolvedParentId=$$.current.id and resolvedType='solution'])
 ```
 
 ### Common patterns

@@ -27,7 +27,7 @@ describe('per-node input cap in judgeNodes', () => {
     expect(fake.callHistory).toHaveLength(1);
     expect(String(fake.callHistory[0]?.related?.[0]?.data.content)).toContain('[RULE_EVALUATION_CONTENT_TRIMMED');
     expect(fake.callHistory[0]?.node.schemaData.content).toBe('short own body');
-    expect([...trimmed.nodes]).toEqual(['Opp.md']);
+    expect([...trimmed.nodes]).toEqual(['Opp']);
     expect([...trimmed.ruleIds]).toEqual(['r']);
   });
 

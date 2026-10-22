@@ -1,5 +1,5 @@
 import { resolveNodeType } from '../schema/schema';
-import type { GraphViolation, Hierarchy, SchemaMetadata, SpaceNode, UnresolvedRef } from '../types';
+import type { GraphViolation, Hierarchy, NodeId, SchemaMetadata, SpaceNode, UnresolvedRef } from '../types';
 
 export interface GraphValidationResult {
   violations: GraphViolation[];
@@ -16,7 +16,7 @@ export function validateGraph(
   unresolvedRefs: UnresolvedRef[] = [],
 ): GraphValidationResult {
   const refErrors = unresolvedRefs.map((u) => ({
-    file: u.source?.file ?? u.label,
+    file: u.source?.file ?? u.id,
     ...(u.source?.line !== undefined ? { line: u.source.line } : {}),
     parent: u.ref,
     error: u.message,
@@ -82,22 +82,19 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
     }
   }
 
-  const nodeIndex = new Map<string, SpaceNode>();
-  for (const node of nodes) {
-    const title = node.title;
-    if (title) nodeIndex.set(title, node);
-  }
+  const nodeIndex = new Map<NodeId, SpaceNode>();
+  for (const node of nodes) nodeIndex.set(node.id, node);
 
   for (const node of nodes) {
     const nodeType = node.resolvedType;
     const nodeTitle = node.title;
 
     for (const parentRef of node.resolvedParents) {
-      const parentNode = nodeIndex.get(parentRef.title);
+      const parentNode = nodeIndex.get(parentRef.id);
       if (!parentNode) continue;
 
       const parentType = parentNode.resolvedType;
-      const parentTitle = parentRef.title;
+      const parentTitle = parentNode.title;
 
       if (parentRef.fieldOn === 'parent') {
         // Field is on the parent node; validate that this node's type matches the expected child type.
@@ -106,7 +103,7 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
         if (allowedChildTypes && !allowedChildTypes.has(nodeType)) {
           const expected = [...allowedChildTypes].join(' or ');
           violations.push({
-            file: parentNode.label,
+            file: parentNode.id,
             nodeType: parentType,
             nodeTitle: parentTitle,
             parentType: nodeType,
@@ -120,7 +117,7 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
         if (allowedTypes && !allowedTypes.has(parentType)) {
           const expected = [...allowedTypes].join(' or ');
           violations.push({
-            file: node.label,
+            file: node.id,
             nodeType,
             nodeTitle,
             parentType,
@@ -157,7 +154,7 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
 
         if (!isValidHierarchy) {
           violations.push({
-            file: node.label,
+            file: node.id,
             nodeType,
             nodeTitle,
             parentType,

@@ -113,7 +113,7 @@ Store rules as a flat array; make category an attribute.
       "id": "solution-quantity",
       "category": "best-practice",
       "type": "opportunity",
-      "check": "$count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
+      "check": "$count(nodes[resolvedParentId=$$.current.id and resolvedType='solution']) >= 3"
     }
   ]
 }

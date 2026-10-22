@@ -17,7 +17,11 @@ describe('extractEmbeddedNodes - content is markdown source', () => {
 const x = 1;
 \`\`\`
 `;
-    const { preambleContent } = extractEmbeddedNodes(body, { pageTitle: 'Page', pageType: 'goal', metadata });
+    const { preambleContent } = extractEmbeddedNodes(body, {
+      page: { id: 'Page.md', targets: ['Page'] },
+      pageType: 'goal',
+      metadata,
+    });
     expect(preambleContent).toBe(
       'Some **bold** text with a [link](https://example.com).\n\n- item one\n- item two\n\n```ts\nconst x = 1;\n```',
     );
@@ -34,7 +38,11 @@ const x = 1;
 
 More.
 `;
-    const { preambleContent } = extractEmbeddedNodes(body, { pageTitle: 'Page', pageType: 'goal', metadata });
+    const { preambleContent } = extractEmbeddedNodes(body, {
+      page: { id: 'Page.md', targets: ['Page'] },
+      pageType: 'goal',
+      metadata,
+    });
     expect(preambleContent).toBe('Intro.\n\n# Computation\n\n    SELECT 1\n\n## Detail\n\nMore.');
   });
 
@@ -50,7 +58,11 @@ Child text with \`code\`.
 - [type:: task] Do it
 - plain item
 `;
-    const { nodes } = extractEmbeddedNodes(body, { pageTitle: 'Page', pageType: 'goal', metadata });
+    const { nodes } = extractEmbeddedNodes(body, {
+      page: { id: 'Page.md', targets: ['Page'] },
+      pageType: 'goal',
+      metadata,
+    });
     expect(nodes.find((n) => n.title === 'Parent')?.content).toBe('Parent *text*.');
     expect(nodes.find((n) => n.title === 'Child')?.content).toBe('Child text with `code`.\n\n- plain item');
     expect(nodes.find((n) => n.title === 'Do it')?.content).toBeUndefined();
@@ -65,7 +77,11 @@ Child text.
 
 Page level notes.
 `;
-    const { nodes, preambleContent } = extractEmbeddedNodes(body, { pageTitle: 'Page', pageType: 'goal', metadata });
+    const { nodes, preambleContent } = extractEmbeddedNodes(body, {
+      page: { id: 'Page.md', targets: ['Page'] },
+      pageType: 'goal',
+      metadata,
+    });
     expect(nodes.find((n) => n.title === 'Child')?.content).toBe('Child text.');
     expect(preambleContent).toBe('# Notes\n\nPage level notes.');
   });
@@ -81,7 +97,11 @@ Page level notes.
 
   - Sub task
 `;
-    const { nodes } = extractEmbeddedNodes(body, { pageTitle: 'Page', pageType: 'goal', metadata });
+    const { nodes } = extractEmbeddedNodes(body, {
+      page: { id: 'Page.md', targets: ['Page'] },
+      pageType: 'goal',
+      metadata,
+    });
     const task = nodes.find((n) => n.title === 'Write **docs**'.replace(/\*/g, ''));
     expect(task?.content).toBe('Extra detail for the task.');
     expect(nodes.find((n) => n.title === 'Sub task')).toBeDefined();
@@ -90,7 +110,8 @@ Page level notes.
 
 describe('extractEmbeddedNodes - list item content is dedented', () => {
   const task = (items: string) => `# Goal [type:: goal]\n\n### task\n\n${items}`;
-  const run = (body: string) => extractEmbeddedNodes(body, { pageTitle: 'Page', pageType: 'goal', metadata });
+  const run = (body: string) =>
+    extractEmbeddedNodes(body, { page: { id: 'Page.md', targets: ['Page'] }, pageType: 'goal', metadata });
   const contentOf = (body: string) => run(body).nodes.find((n) => n.title === 'Write docs')?.content;
 
   it('dedents a continuation paragraph by the item content indent', () => {
@@ -127,7 +148,8 @@ describe('extractEmbeddedNodes - list item content is dedented', () => {
   });
 });
 
-const extract = (body: string) => extractEmbeddedNodes(body, { pageTitle: 'Page', pageType: 'goal', metadata });
+const extract = (body: string) =>
+  extractEmbeddedNodes(body, { page: { id: 'Page.md', targets: ['Page'] }, pageType: 'goal', metadata });
 const contentOf = (body: string, title: string) => extract(body).nodes.find((n) => n.title === title)?.content;
 
 describe('extractEmbeddedNodes - content is contiguous source', () => {

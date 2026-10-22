@@ -203,11 +203,12 @@ Each rule evaluation receives: `nodes`, `current`, `parent`, `parents`.
 Use `resolvedType` in comparisons (not raw `type`) so aliases are respected.
 
 Each node also carries convenience fields for common queries:
-- `resolvedParentTitle` — title of the first resolved parent (or `undefined`)
-- `resolvedParentTitles` — array of all resolved parent titles
+- `id` — the node's unique key; compare nodes by `id`, since titles may repeat
+- `resolvedParentId` / `resolvedParentIds` — `id` of the first resolved parent (or `undefined`) / of all parents
+- `resolvedParentTitle` / `resolvedParentTitles` — display titles of the same parents
 
-`resolvedParents` on the raw node is an array of `ResolvedParentRef` objects (`{ title, field, source, hierarchy?, selfRef }`, where `hierarchy` names the hierarchy of a hierarchy edge); use the convenience fields for simple title-matching.
+`resolvedParents` on the raw node is an array of `ResolvedParentRef` objects (`{ id, field, source, hierarchy?, selfRef }`, where `hierarchy` names the hierarchy of a hierarchy edge); use the convenience fields for simple matching.
 
 ```jsonata
-$count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution'])
+$count(nodes[resolvedParentId=$$.current.id and resolvedType='solution'])
 ```

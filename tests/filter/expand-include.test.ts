@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { augmentNode } from '../../src/filter/augment-nodes';
 import { expandInclude, parseIncludeSpec } from '../../src/filter/expand-include';
 import { buildSpaceGraph } from '../../src/space-graph';
-import type { SpaceNode } from '../../src/types';
+import type { NodeId, SpaceNode } from '../../src/types';
 import { makeParentRef } from '../test-helpers';
 
 // ---------------------------------------------------------------------------
@@ -11,7 +11,7 @@ import { makeParentRef } from '../test-helpers';
 
 function makeNode(title: string, type: string, extra: Record<string, unknown> = {}): SpaceNode {
   return {
-    label: `${title}.md`,
+    id: title as NodeId,
     title,
     schemaData: { title, type, ...extra },
     linkTargets: [title],
@@ -27,7 +27,7 @@ function buildContext(nodes: SpaceNode[]) {
   const graph = buildSpaceGraph(nodes, undefined);
   const nodeIndex = graph.nodes;
   const childrenIndex = graph.children;
-  const augmented = new Map(nodes.map((n) => [n.title, augmentNode(n, nodeIndex, childrenIndex)]));
+  const augmented = new Map(nodes.map((n) => [n.id, augmentNode(n, nodeIndex, childrenIndex)]));
   return { nodeIndex, childrenIndex, augmented };
 }
 

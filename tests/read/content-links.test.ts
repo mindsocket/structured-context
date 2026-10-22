@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { readSpaceDirectory } from '../../src/plugins/markdown/read-space';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { bundledSchemasDir, loadMetadata } from '../../src/schema/schema';
-import type { ContentLink, SpaceNode } from '../../src/types';
+import type { ContentLink, NodeId, SpaceNode } from '../../src/types';
 import { makePluginContext } from '../helpers/context';
 
 const VALID_DIR = join(import.meta.dir, '../fixtures/general/valid-ost');
@@ -117,7 +117,7 @@ describe('contentLinks and resolvedLinks integration', () => {
     let node: SpaceNode;
 
     beforeAll(() => {
-      node = nodes.find((n) => n.label === 'links_opportunity.md')!;
+      node = nodes.find((n) => n.id === 'links_opportunity.md')!;
       expect(node).toBeDefined();
     });
 
@@ -180,7 +180,7 @@ describe('contentLinks and resolvedLinks integration', () => {
   });
 
   it('nodes without body links have empty resolvedLinks (or only frontmatter links)', () => {
-    const vision = nodes.find((n) => n.label === 'Personal Vision.md')!;
+    const vision = nodes.find((n) => n.id === 'Personal Vision.md')!;
     expect(vision).toBeDefined();
     // Personal Vision has no links in body content — may have frontmatter links if any fields contain them
     // The summary field is plain text, so resolvedLinks should be empty
@@ -204,7 +204,7 @@ describe('link location classification', () => {
 
   function makeBaseNode(title: string, type: string, links: ContentLink[] = []) {
     return {
-      label: `${title}.md`,
+      id: title as NodeId,
       title,
       type,
       schemaData: { title, type },
@@ -273,7 +273,7 @@ describe('link location classification', () => {
 
   it('classifies wikilink with anchor to known node as node', () => {
     const goal = {
-      label: 'vision.md',
+      id: 'vision.md' as NodeId,
       title: 'Vision',
       type: 'goal',
       schemaData: { title: 'Vision', type: 'goal' },

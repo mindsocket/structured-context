@@ -1,6 +1,6 @@
 import jsonata from 'jsonata';
 import { buildSpaceGraph, type SpaceGraph } from '../space-graph';
-import type { SpaceNode } from '../types';
+import type { NodeId, SpaceNode } from '../types';
 import { type AugmentedFlatNode, augmentNode } from './augment-nodes';
 import { expandInclude, parseIncludeSpec } from './expand-include';
 import { parseFilterExpression } from './parse-expression';
@@ -33,9 +33,9 @@ export async function filterNodes(expression: string, graph: SpaceGraph): Promis
   const childrenIndex = graph.children;
 
   // Pre-augment all nodes once (ancestors/descendants needed for WHERE predicates and SELECT expansion)
-  const augmented = new Map<string, AugmentedFlatNode>();
+  const augmented = new Map<NodeId, AugmentedFlatNode>();
   for (const node of nodeIndex.values()) {
-    augmented.set(node.title, augmentNode(node, nodeIndex, childrenIndex));
+    augmented.set(node.id, augmentNode(node, nodeIndex, childrenIndex));
   }
 
   // Step 1: apply WHERE clause to get the matched set
@@ -55,7 +55,7 @@ export async function filterNodes(expression: string, graph: SpaceGraph): Promis
 
     matched = [];
     for (const node of nodeIndex.values()) {
-      const current = augmented.get(node.title);
+      const current = augmented.get(node.id);
       if (!current) continue;
 
       // Spread current node fields at root level so bare field names work in expressions

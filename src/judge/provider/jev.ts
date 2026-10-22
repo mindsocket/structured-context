@@ -144,7 +144,7 @@ function nodeState(node: SemanticJudgeInput['node'], related: RelatedNode[] = []
   return {
     title: node.title,
     type: node.resolvedType,
-    parents: node.resolvedParents?.map((p) => p.title) ?? [],
+    parents: node.parentTitles,
     ...node.schemaData,
     ...(related.length > 0 && {
       relatedNodes: related.map((r) => ({

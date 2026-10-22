@@ -40,7 +40,7 @@ export class OpenAIDecisionsJudgeProvider implements SemanticJudgeProvider {
     const stateLines = [
       `Title: ${node.title}`,
       `Type: ${node.resolvedType}`,
-      ...(node.resolvedParents?.length ? [`Parents: ${node.resolvedParents.map((p) => p.title).join(', ')}`] : []),
+      ...(node.parentTitles.length ? [`Parents: ${node.parentTitles.join(', ')}`] : []),
       ...fieldLines(node.schemaData ?? {}),
       ...(input.related ?? []).flatMap((r) => [
         '',

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'bun:test';
 import { filterNodes } from '../../src/filter/filter-nodes';
 import { buildSpaceGraph } from '../../src/space-graph';
-import type { SpaceNode } from '../../src/types';
+import type { NodeId, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef } from '../test-helpers';
 
 const levels = [makeLevel('goal'), makeLevel('opportunity'), makeLevel('solution')];
 
 function makeNode(title: string, type: string, extra: Record<string, unknown> = {}): SpaceNode {
   return {
-    label: `${title}.md`,
+    id: title as NodeId,
     title,
     schemaData: { title, type, ...extra },
     linkTargets: [title],

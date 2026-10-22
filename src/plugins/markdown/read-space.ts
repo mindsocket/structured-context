@@ -4,12 +4,12 @@ import fg from 'fast-glob';
 import matter from 'gray-matter';
 import type { BaseNode } from '../../api';
 import { extractSchemaTypeNames } from '../../schema/schema';
-import type { ParseIssue } from '../../types';
+import type { NodeId, ParseIssue } from '../../types';
 import type { ParseResult, PluginContext } from '../util';
 import type { MarkdownPluginConfig } from '.';
 import { extractLinksFromBody, extractLinksFromFrontmatter, getEdgeFieldNames } from './extract-content-links';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
-import { applyFieldMap, inferTypeFromPath, MATTER_OPTIONS } from './util';
+import { applyFieldMap, defaultPageTitle, inferTypeFromPath, MATTER_OPTIONS, pathLinkTargets } from './util';
 
 type ReadSpaceDirectoryOptions = {
   includeOnAPageFiles?: boolean;
@@ -40,13 +40,12 @@ export function readSpaceOnAPage(context: PluginContext): ParseResult {
     );
   }
 
-  const pageTitle = basename(filePath, '.md');
   const fmMatch = raw.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
   const lineOffset = fmMatch ? (fmMatch[0].match(/\n/g) || []).length : 0;
   const fileName = basename(filePath);
 
   const { nodes, preambleNodeCount, terminatedHeadings } = extractEmbeddedNodes(body, {
-    pageTitle,
+    page: { id: fileName, targets: pathLinkTargets(fileName) },
     pageType: 'space_on_a_page',
     metadata,
     file: fileName,
@@ -142,16 +141,18 @@ export async function readSpaceDirectory(
     }
 
     const pageType = data.type as string;
-    const fileBase = basename(file, '.md');
-    const title = (data.title as string) ?? fileBase;
+    const explicitTitle = data.title as string | undefined;
+    const title = explicitTitle ?? defaultPageTitle(file, mdCfg.folderIndex);
+    const pathTargets = pathLinkTargets(file);
     const fmMatch = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
     const lineOffset = fmMatch ? (fmMatch[0].match(/\n/g) || []).length : 0;
 
     const pageNode: BaseNode = {
-      label: file,
+      id: file as NodeId,
       title,
       schemaData: { title, ...data },
-      linkTargets: [title, fileBase],
+      // A title derived from a folder index is display only, never a link target.
+      linkTargets: [...new Set([...(explicitTitle !== undefined ? [explicitTitle] : []), ...pathTargets])],
       type: pageType,
       source: { file, line: 1 },
       ...(data.content !== undefined ? { content: data.content as string } : {}),
@@ -165,7 +166,7 @@ export async function readSpaceDirectory(
         preambleFields,
         terminatedHeadings,
       } = extractEmbeddedNodes(parsed.content, {
-        pageTitle: fileBase,
+        page: { id: file, targets: pathTargets },
         pageType,
         metadata,
         fieldMap,

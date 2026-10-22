@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'bun:test';
 import { renderBullets } from '../../src/plugins/markdown/render-bullets';
 import { buildSpaceGraph } from '../../src/space-graph';
-import type { SpaceNode } from '../../src/types';
+import type { NodeId, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef } from '../test-helpers';
 
 const levels = [makeLevel('goal'), makeLevel('opportunity'), makeLevel('solution')];
 
 function makeNode(title: string, type: string): SpaceNode {
   return {
-    label: `${title}.md`,
+    id: title as NodeId,
     title,
     schemaData: { title, type },
     linkTargets: [title],

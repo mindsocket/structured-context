@@ -1,5 +1,5 @@
 import jsonata from 'jsonata';
-import type { Rule, RuleViolation, SpaceNode } from '../types';
+import type { NodeId, Rule, RuleViolation, SpaceNode } from '../types';
 import { ruleSeverity } from './rule-severity';
 
 const expressionCache = new Map<string, ReturnType<typeof jsonata>>();
@@ -87,12 +87,16 @@ export async function tryEvaluateExpression(expr: string, context: EvalContext):
  * @param node - The node to flatten
  * @returns Flattened node with properties directly accessible
  */
-function flattenNode(node: SpaceNode): Record<string, unknown> {
+function flattenNode(node: SpaceNode, nodeIndex: Map<NodeId, SpaceNode>): Record<string, unknown> {
+  const parentTitle = (r: SpaceNode['resolvedParents'][number]) => nodeIndex.get(r.id)?.title ?? r.id;
   return {
     ...node.schemaData,
+    id: node.id,
     resolvedType: node.resolvedType,
-    resolvedParentTitle: node.resolvedParents[0]?.title, // first parent or undefined, provided for convenience
-    resolvedParentTitles: node.resolvedParents.map((r) => r.title), // full array of parent titles
+    resolvedParentId: node.resolvedParents[0]?.id, // first parent or undefined, provided for convenience
+    resolvedParentIds: node.resolvedParents.map((r) => r.id), // full array of parent ids
+    resolvedParentTitle: node.resolvedParents[0] && parentTitle(node.resolvedParents[0]), // display title of the first parent
+    resolvedParentTitles: node.resolvedParents.map(parentTitle), // display titles of all parents
     resolvedLinks: node.resolvedLinks,
   };
 }
@@ -102,29 +106,29 @@ function flattenNode(node: SpaceNode): Record<string, unknown> {
  *
  * @param node - The node to build context for
  * @param allNodes - All nodes in the space
- * @param nodeIndex - Map of node titles to nodes for efficient lookup
+ * @param nodeIndex - Map of node ids to nodes for efficient lookup
  * @returns Evaluation context for the node
  */
 export function buildEvalContext(
   node: SpaceNode,
   allNodes: SpaceNode[],
-  nodeIndex: Map<string, SpaceNode>,
+  nodeIndex: Map<NodeId, SpaceNode>,
 ): EvalContext {
   // Flatten all nodes for JSONata access
-  const flattenedNodes = allNodes.map(flattenNode);
+  const flattenedNodes = allNodes.map((n) => flattenNode(n, nodeIndex));
 
   // Build all parent objects from resolvedParents array
   const flattenedParents: Record<string, unknown>[] = [];
-  for (const { title: parentTitle } of node.resolvedParents) {
-    const parentNode = nodeIndex.get(parentTitle);
+  for (const { id: parentId } of node.resolvedParents) {
+    const parentNode = nodeIndex.get(parentId);
     if (parentNode) {
-      flattenedParents.push(flattenNode(parentNode));
+      flattenedParents.push(flattenNode(parentNode, nodeIndex));
     }
   }
 
   return {
     nodes: flattenedNodes,
-    $$: flattenNode(node),
+    $$: flattenNode(node, nodeIndex),
     parent: flattenedParents[0],
     parents: flattenedParents.length > 0 ? flattenedParents : undefined,
   };
@@ -156,8 +160,8 @@ export async function evaluateRuleExpression(
   rule: Rule,
   node: SpaceNode,
   allNodes: SpaceNode[],
-  nodeIndex: Map<string, SpaceNode>,
-  file: string = node.label,
+  nodeIndex: Map<NodeId, SpaceNode>,
+  file: string = node.id,
 ): Promise<ExpressionRuleResult> {
   const expression = rule.expression as string;
   const outcome = await tryEvaluateExpression(expression, buildEvalContext(node, allNodes, nodeIndex));

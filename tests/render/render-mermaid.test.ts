@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { renderMermaid } from '../../src/plugins/mermaid/render-mermaid';
 import { buildSpaceGraph } from '../../src/space-graph';
-import type { SpaceNode } from '../../src/types';
+import type { NodeId, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef } from '../test-helpers';
 
 const levels = [
@@ -14,7 +14,7 @@ const levels = [
 
 function makeNode(title: string, type: string, status = 'active'): SpaceNode {
   return {
-    label: `${title}.md`,
+    id: title as NodeId,
     title,
     schemaData: { title, type, status },
     linkTargets: [title],

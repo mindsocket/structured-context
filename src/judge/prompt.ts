@@ -41,13 +41,13 @@ export function buildJudgeUserPrompt(
     ...verdictList(rule),
     '',
     '# Node Under Evaluation',
-    `- File / Label: ${node.label}`,
+    `- Id: ${node.id}`,
     `- Title: ${node.title}`,
     `- Type: ${node.type} (resolved: ${node.resolvedType})`,
   ];
 
-  if (node.resolvedParents && node.resolvedParents.length > 0) {
-    lines.push(`- Parents: ${node.resolvedParents.map((p) => p.title).join(', ')}`);
+  if (node.parentTitles.length > 0) {
+    lines.push(`- Parents: ${node.parentTitles.join(', ')}`);
   }
 
   lines.push('', '## Node Content & Frontmatter:', '```json', JSON.stringify(node.schemaData, null, 2), '```', '');

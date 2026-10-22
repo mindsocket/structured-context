@@ -17,6 +17,7 @@ import type {
   FileValidationIssue,
   FileValidationResult,
   GraphViolation,
+  NodeId,
   ParseIssue,
   ReadSpaceResult,
   RuleViolation,
@@ -37,7 +38,7 @@ export interface ValidationResult {
   nodeErrorCount: number;
   nodeErrors: Array<{ file: string; line?: number; errors: ErrorObject[]; nodeData: Record<string, unknown> }>;
   refErrors: Array<{ file: string; line?: number; parent: string; error: string }>;
-  duplicateErrors: Array<{ title: string; files: string[] }>;
+  duplicateErrors: Array<{ id: NodeId; files: string[] }>;
   /** All rule violations with their effective severity. Only `error` severity fails validation. */
   ruleViolations: RuleViolation[];
   hierarchyViolations: GraphViolation[];
@@ -318,17 +319,17 @@ async function validateNodes(
     }
   }
 
-  // Detect duplicate node keys (titles)
-  const titleToFiles = new Map<string, string[]>();
+  // Detect duplicate node ids. Display titles may repeat.
+  const idToFiles = new Map<NodeId, string[]>();
   for (const node of nodes) {
-    if (!titleToFiles.has(node.title)) {
-      titleToFiles.set(node.title, []);
+    if (!idToFiles.has(node.id)) {
+      idToFiles.set(node.id, []);
     }
-    titleToFiles.get(node.title)!.push(node.label);
+    idToFiles.get(node.id)!.push(node.id);
   }
-  for (const [title, files] of titleToFiles) {
+  for (const [id, files] of idToFiles) {
     if (files.length > 1) {
-      result.duplicateErrors.push({ title, files });
+      result.duplicateErrors.push({ id, files });
     }
   }
 
@@ -346,10 +347,11 @@ async function validateNodes(
   if (metadata.rules) {
     const seeds: GatingSeed[] = [
       ...result.nodeFailures.map(({ node }): GatingSeed => {
-        const file = node.source?.file ?? node.label;
-        return { file, title: String(node.schemaData.title ?? file), reason: 'schema' };
+        return { file: node.source?.file ?? node.id, id: node.id, reason: 'schema' };
       }),
-      ...result.hierarchyViolations.map((v): GatingSeed => ({ file: v.file, title: v.nodeTitle, reason: 'hierarchy' })),
+      ...result.hierarchyViolations.map(
+        (v): GatingSeed => ({ file: v.file, id: v.file as NodeId, reason: 'hierarchy' }),
+      ),
     ];
     const trimReport: TrimReport = { nodes: new Set(), ruleIds: new Set() };
     const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, { ...options, trimReport });
@@ -363,10 +365,10 @@ async function validateNodes(
   for (const node of nodes) {
     for (const link of node.resolvedLinks) {
       if (link.location === 'internal') {
-        const key = `${node.label}::${link.target}`;
+        const key = `${node.id}::${link.target}`;
         if (!seen.has(key)) {
           seen.add(key);
-          result.unresolvedContentLinks.push({ file: node.label, target: link.target });
+          result.unresolvedContentLinks.push({ file: node.id, target: link.target });
         }
       }
     }
@@ -396,9 +398,9 @@ export async function validateSpace(
     const depths = computeHierarchyDepths(fullGraph);
     const included: SpaceNode[] = [];
     for (const node of nodes) {
-      const nodeDepth = depths.get(node.title);
+      const nodeDepth = depths.get(node.id);
       if (nodeDepth !== undefined && nodeDepth > options.depth) {
-        skippedByDepth.push({ file: node.label, title: node.title });
+        skippedByDepth.push({ file: node.id, title: node.title });
       } else {
         included.push(node);
       }
@@ -416,7 +418,7 @@ export async function validateSpace(
     validCount: result.validCount,
     nodeErrorCount: result.nodeFailures.length,
     nodeErrors: result.nodeFailures.map(({ node, errors }) => ({
-      file: node.source?.file ?? node.label,
+      file: node.source?.file ?? node.id,
       ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
       errors,
       nodeData: node.schemaData as Record<string, unknown>,
@@ -475,7 +477,7 @@ function issuesForFile(
   const warnings: Record<string, FileValidationIssue> = {};
 
   for (const { node, errors: ajvErrors, invalidType } of result.nodeFailures) {
-    if (node.label !== label) continue;
+    if (node.id !== label) continue;
     const position = {
       ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
       ...(node.source?.column !== undefined ? { column: node.source.column } : {}),
@@ -495,12 +497,12 @@ function issuesForFile(
   }
 
   // Duplicate key errors — include if this file is one of the duplicates
-  for (const { title, files } of result.duplicateErrors) {
+  for (const { id, files } of result.duplicateErrors) {
     if (!files.includes(label)) continue;
     const others = files.filter((f) => f !== label);
-    errors[`duplicate:${title}`] = {
+    errors[`duplicate:${id}`] = {
       kind: 'duplicate',
-      message: `Duplicate title "${title}" also exists in: ${others.join(', ')}`,
+      message: `Duplicate id "${id}" also exists in: ${others.join(', ')}`,
     };
   }
 

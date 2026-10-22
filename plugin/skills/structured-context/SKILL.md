@@ -122,7 +122,8 @@ what the rule actually sees in the `current` object, then adjust the rule in the
 |---------------|--------------|----------|
 | `Invalid type "X". Valid types are: ...` | Type not defined in the schema (or a typo) | Check `schemas show --space`; fix the type or add an alias |
 | `must have required property 'X'` | Required schema property missing | Check `schemas show --space` to see required properties |
-| `Link target "X" in field "parent" not found` | Broken wikilink | Fix the title in the link or ensure the target file exists and has that title |
+| `Link target "X" in field "parent" not found` | Broken wikilink | Fix the link, or ensure the target file exists and has that name |
+| `Link target "X" in field "parent" is ambiguous (matches multiple nodes)` | Several nodes share that name, for example `Overview.md` in different folders | Link with enough of the path to be unique, such as `[[alpha/Overview]]` |
 | `[rule-id] ... (Rule error: ...)` | A rule's `expression` failed to evaluate (syntax or runtime error) | Verify the expression with `dump` and a JSONata tester |
 | `[rule-id] ... (Semantic evaluation error: ...)` | The model provider call failed, or input is still over the per-node input cap after trimming | Check `sctx providers` and the API key; narrow `semantic.scope` or drop `includeContent` |
 
@@ -130,7 +131,7 @@ what the rule actually sees in the `current` object, then adjust the rule in the
 
 structured-context supports **plugins** for extending capabilities. Currently, parse plugins allow reading spaces from sources other than markdown (which is a built-in plugin).
 
-For full plugin and markdown plugin config reference (fieldMap, typeInference, templateDir, filter views), run:
+For full plugin and markdown plugin config reference (fieldMap, typeInference, folderIndex, templateDir, filter views), run:
 
 ```bash
 sctx docs config

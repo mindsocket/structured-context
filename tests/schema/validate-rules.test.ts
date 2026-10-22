@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'bun:test';
 import { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity, validateRules } from '../../src/schema/validate-rules';
-import type { Rule, SpaceNode } from '../../src/types';
+import type { NodeId, Rule, SpaceNode } from '../../src/types';
 import { makeParentRef } from '../test-helpers';
 
 describe('validate-rules', () => {
   describe('validateRules', () => {
     const mockNodes: SpaceNode[] = [
       {
-        label: 'outcome.md',
+        id: 'Outcome' as NodeId,
         title: 'Outcome',
         type: 'outcome',
         schemaData: { title: 'Outcome', type: 'outcome', status: 'active', metric: 'Increase X' },
@@ -17,7 +17,7 @@ describe('validate-rules', () => {
         resolvedType: 'goal', // outcome is an alias for goal
       },
       {
-        label: 'opportunity.md',
+        id: 'Opportunity' as NodeId,
         title: 'Opportunity',
         type: 'opportunity',
         schemaData: {
@@ -33,7 +33,7 @@ describe('validate-rules', () => {
         resolvedType: 'opportunity',
       },
       {
-        label: 'solution.md',
+        id: 'Solution' as NodeId,
         title: 'Solution',
         type: 'solution',
         schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
@@ -43,7 +43,7 @@ describe('validate-rules', () => {
         resolvedType: 'solution',
       },
       {
-        label: 'bad-solution.md',
+        id: 'Bad Solution' as NodeId,
         title: 'Bad Solution',
         type: 'solution',
         schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },
@@ -53,7 +53,7 @@ describe('validate-rules', () => {
         resolvedType: 'solution',
       },
       {
-        label: 'experiment.md',
+        id: 'Experiment' as NodeId,
         title: 'Experiment',
         type: 'experiment',
         schemaData: {
@@ -69,7 +69,7 @@ describe('validate-rules', () => {
         resolvedType: 'experiment',
       },
       {
-        label: 'bad-experiment.md',
+        id: 'Bad Experiment' as NodeId,
         title: 'Bad Experiment',
         type: 'experiment',
         schemaData: {
@@ -113,25 +113,25 @@ describe('validate-rules', () => {
       ];
 
       it('passes validation when all rules are satisfied', async () => {
-        const validNodes = mockNodes.filter((n) => n.label === 'solution.md');
+        const validNodes = mockNodes.filter((n) => n.id === 'Solution');
         const violations = await validateRules(validNodes, validationRules);
         expect(violations).toHaveLength(0);
       });
 
       it('detects solution with non-opportunity parent', async () => {
-        const badSolutionNode = mockNodes.find((n) => n.label === 'bad-solution.md');
-        const parentNode = mockNodes.find((n) => n.label === 'solution.md');
+        const badSolutionNode = mockNodes.find((n) => n.id === 'Bad Solution');
+        const parentNode = mockNodes.find((n) => n.id === 'Solution');
         // Pass both nodes so the parent can be found in the index
         const violations = await validateRules([badSolutionNode!, parentNode!], validationRules);
         expect(violations).toHaveLength(1);
         expect(violations[0]?.ruleId).toBe('solution-parent-type');
         expect(violations[0]?.category).toBe('validation');
-        expect(violations[0]?.file).toBe('bad-solution.md');
+        expect(violations[0]?.file).toBe('Bad Solution');
       });
 
       it('detects experiment with non-solution parent', async () => {
-        const badExperimentNode = mockNodes.find((n) => n.label === 'bad-experiment.md');
-        const parentNode = mockNodes.find((n) => n.label === 'opportunity.md');
+        const badExperimentNode = mockNodes.find((n) => n.id === 'Bad Experiment');
+        const parentNode = mockNodes.find((n) => n.id === 'Opportunity');
         // Pass both nodes so the parent can be found in the index
         const violations = await validateRules([badExperimentNode!, parentNode!], validationRules);
         expect(violations).toHaveLength(1);
@@ -141,7 +141,7 @@ describe('validate-rules', () => {
 
       it('detects outcome with parent', async () => {
         const outcomeWithParent: SpaceNode = {
-          label: 'bad-outcome.md',
+          id: 'Bad Outcome' as NodeId,
           title: 'Bad Outcome',
           type: 'outcome',
           schemaData: { title: 'Bad Outcome', type: 'outcome', status: 'active', parent: '[[Vision]]' },
@@ -151,7 +151,7 @@ describe('validate-rules', () => {
           resolvedType: 'outcome',
         };
         const visionNode: SpaceNode = {
-          label: 'vision.md',
+          id: 'Vision' as NodeId,
           title: 'Vision',
           type: 'vision',
           schemaData: { title: 'Vision', type: 'vision', status: 'active' },
@@ -180,7 +180,7 @@ describe('validate-rules', () => {
 
       it('passes when opportunity has enough solutions', async () => {
         const opportunityNode: SpaceNode = {
-          label: 'opportunity.md',
+          id: 'Opportunity' as NodeId,
           title: 'Opportunity',
           type: 'opportunity',
           schemaData: {
@@ -197,7 +197,7 @@ describe('validate-rules', () => {
         };
 
         const solutions: SpaceNode[] = Array.from({ length: 3 }, (_, i) => ({
-          label: `solution${i}.md`,
+          id: `solution${i}.md` as NodeId,
           title: `Solution ${i}`,
           type: 'solution',
           schemaData: {
@@ -219,7 +219,7 @@ describe('validate-rules', () => {
 
       it('detects opportunity with too few solutions', async () => {
         const opportunityNode: SpaceNode = {
-          label: 'opportunity.md',
+          id: 'Opportunity' as NodeId,
           title: 'Opportunity',
           type: 'opportunity',
           schemaData: {
@@ -236,7 +236,7 @@ describe('validate-rules', () => {
         };
 
         const singleSolution: SpaceNode = {
-          label: 'solution.md',
+          id: 'Solution' as NodeId,
           title: 'Solution',
           type: 'solution',
           schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
@@ -280,7 +280,7 @@ describe('validate-rules', () => {
       it('detects multiple active outcomes (global scope)', async () => {
         const multipleActiveOutcomes: SpaceNode[] = [
           {
-            label: 'outcome1.md',
+            id: 'Outcome 1' as NodeId,
             title: 'Outcome 1',
             type: 'outcome',
             schemaData: { title: 'Outcome 1', type: 'outcome', status: 'active', metric: 'X' },
@@ -290,7 +290,7 @@ describe('validate-rules', () => {
             resolvedType: 'outcome',
           },
           {
-            label: 'outcome2.md',
+            id: 'Outcome 2' as NodeId,
             title: 'Outcome 2',
             type: 'outcome',
             schemaData: { title: 'Outcome 2', type: 'outcome', status: 'active', metric: 'Y' },
@@ -300,7 +300,7 @@ describe('validate-rules', () => {
             resolvedType: 'outcome',
           },
           {
-            label: 'unrelated.md',
+            id: 'Unrelated' as NodeId,
             title: 'Unrelated',
             type: 'solution',
             schemaData: { title: 'Unrelated', type: 'solution', status: 'exploring' },
@@ -319,7 +319,7 @@ describe('validate-rules', () => {
 
       it('detects active node with non-active parent', async () => {
         const parentNode: SpaceNode = {
-          label: 'outcome.md',
+          id: 'Outcome' as NodeId,
           title: 'Outcome',
           type: 'outcome',
           schemaData: { title: 'Outcome', type: 'outcome', status: 'inactive', metric: 'X' },
@@ -329,7 +329,7 @@ describe('validate-rules', () => {
           resolvedType: 'outcome',
         };
         const childNode: SpaceNode = {
-          label: 'opportunity.md',
+          id: 'Opportunity' as NodeId,
           title: 'Opportunity',
           type: 'opportunity',
           schemaData: {
@@ -348,12 +348,12 @@ describe('validate-rules', () => {
         expect(violations).toHaveLength(1);
         expect(violations[0]?.ruleId).toBe('active-node-parent-active');
         expect(violations[0]?.category).toBe('workflow');
-        expect(violations[0]?.file).toBe('opportunity.md');
+        expect(violations[0]?.file).toBe('Opportunity');
       });
 
       it('passes active node when parent is also active', async () => {
         const parentNode: SpaceNode = {
-          label: 'outcome.md',
+          id: 'Outcome' as NodeId,
           title: 'Outcome',
           type: 'outcome',
           schemaData: { title: 'Outcome', type: 'outcome', status: 'active', metric: 'X' },
@@ -363,7 +363,7 @@ describe('validate-rules', () => {
           resolvedType: 'outcome',
         };
         const childNode: SpaceNode = {
-          label: 'opportunity.md',
+          id: 'Opportunity' as NodeId,
           title: 'Opportunity',
           type: 'opportunity',
           schemaData: {
@@ -405,7 +405,7 @@ describe('validate-rules', () => {
       it('collects violations from multiple categories', async () => {
         const nodes: SpaceNode[] = [
           {
-            label: 'outcome1.md',
+            id: 'Outcome 1' as NodeId,
             title: 'Outcome 1',
             type: 'outcome',
             schemaData: { title: 'Outcome 1', type: 'outcome', status: 'active', metric: 'X' },
@@ -415,7 +415,7 @@ describe('validate-rules', () => {
             resolvedType: 'outcome',
           },
           {
-            label: 'outcome2.md',
+            id: 'Outcome 2' as NodeId,
             title: 'Outcome 2',
             type: 'outcome',
             schemaData: { title: 'Outcome 2', type: 'outcome', status: 'active', metric: 'Y' },
@@ -425,7 +425,7 @@ describe('validate-rules', () => {
             resolvedType: 'outcome',
           },
           {
-            label: 'solution.md',
+            id: 'Solution' as NodeId,
             title: 'Solution',
             type: 'solution',
             schemaData: { title: 'Solution', type: 'solution', status: 'exploring', parent: '[[Opportunity]]' },
@@ -435,7 +435,7 @@ describe('validate-rules', () => {
             resolvedType: 'solution',
           },
           {
-            label: 'bad-solution.md',
+            id: 'Bad Solution' as NodeId,
             title: 'Bad Solution',
             type: 'solution',
             schemaData: { title: 'Bad Solution', type: 'solution', status: 'exploring', parent: '[[Solution]]' },

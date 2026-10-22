@@ -159,3 +159,25 @@ export function applyFieldMap(
 export function invertFieldMap(fieldMap: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(fieldMap).map(([src, canonical]) => [canonical, src]));
 }
+
+/**
+ * Link targets for a page, most specific first: the space-relative path without `.md` and every shorter
+ * path suffix down to the basename. Obsidian writes these when a bare name is ambiguous.
+ */
+export function pathLinkTargets(file: string): string[] {
+  const segments = file.replace(/\\/g, '/').replace(/\.md$/i, '').split('/');
+  return segments.map((_, i) => segments.slice(i).join('/'));
+}
+
+/**
+ * Display title for a page without an explicit `title`: the containing folder's name when the file is a
+ * folder index (its basename is listed in `folderIndex`, case-insensitively), otherwise the basename.
+ * An index at the space root has no folder to name it and keeps its basename.
+ */
+export function defaultPageTitle(file: string, folderIndex: string[] | undefined): string {
+  const segments = file.replace(/\\/g, '/').replace(/\.md$/i, '').split('/');
+  const base = segments[segments.length - 1]!;
+  const folder = segments[segments.length - 2];
+  if (folder !== undefined && folderIndex?.some((name) => name.toLowerCase() === base.toLowerCase())) return folder;
+  return base;
+}

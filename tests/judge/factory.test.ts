@@ -10,6 +10,7 @@ import { AnthropicJudgeProvider } from '../../src/judge/provider/anthropic';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { JevJudgeProvider } from '../../src/judge/provider/jev';
 import { OpenAIJudgeProvider } from '../../src/judge/provider/openai';
+import type { NodeId } from '../../src/types';
 import { passFailRule } from './helpers';
 
 describe('hydrateProvider', () => {
@@ -60,12 +61,12 @@ describe('createModelProvider', () => {
       await judge
         .evaluate({
           node: {
-            label: 'n',
+            id: 'n' as NodeId,
             title: 't',
             type: 'opportunity',
             resolvedType: 'opportunity',
             schemaData: {},
-            resolvedParents: [],
+            parentTitles: [],
           },
           rules: [passFailRule],
         })
