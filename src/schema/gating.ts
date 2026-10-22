@@ -3,7 +3,7 @@ import { judgeNodes } from '../judge/judge-node';
 import type { TrimReport } from '../judge/trim';
 import type { SemanticJudgeProvider } from '../judge/types';
 import type { SpaceGraph } from '../space-graph';
-import type { Rule, RuleSeverity, RuleViolation, SpaceNode } from '../types';
+import type { NodeId, Rule, RuleSeverity, RuleViolation, SpaceNode } from '../types';
 import {
   buildEvalContext,
   evaluateRuleExpression,
@@ -30,10 +30,10 @@ function ruleCanGate(rule: Rule): boolean {
  * (schema validation or hierarchy structure) that failed on a specific node.
  */
 export type GatingSeed = {
-  /** Label (file) of the failing node. */
+  /** Id (file) of the failing node. */
   file: string;
-  /** Title of the failing node. */
-  title: string;
+  /** Id of the failing node. */
+  id: NodeId;
   /** Which always-run layer produced the failure. */
   reason: 'schema' | 'hierarchy';
 };
@@ -43,10 +43,10 @@ export type GatingSeed = {
  * rule evaluation for itself (if schema/hierarchy caused it) and/or its hierarchy subtree.
  */
 export type CoverageGate = {
-  /** Label (file) of the node whose failure triggered this gate. */
+  /** Id (file) of the node whose failure triggered this gate. */
   file: string;
-  /** Title of the blocking node. */
-  nodeTitle: string;
+  /** Id of the blocking node. */
+  nodeId: NodeId;
   /** What kind of check triggered the gate. */
   reason: 'schema' | 'hierarchy' | 'rule';
   /** Rule id responsible, when `reason` is `'rule'`. */
@@ -78,20 +78,20 @@ export interface GatingOptions {
  * Compute breadth-first depth (1-based, from hierarchy roots and orphans) for every
  * hierarchy-typed node in the graph. Non-hierarchy nodes are not included.
  */
-export function computeHierarchyDepths(graph: SpaceGraph): Map<string, number> {
-  const depths = new Map<string, number>();
-  const queue: Array<{ title: string; depth: number }> = [];
+export function computeHierarchyDepths(graph: SpaceGraph): Map<NodeId, number> {
+  const depths = new Map<NodeId, number>();
+  const queue: Array<{ id: NodeId; depth: number }> = [];
   for (const node of [...graph.hierarchyRoots, ...graph.orphans]) {
-    queue.push({ title: node.title, depth: 1 });
+    queue.push({ id: node.id, depth: 1 });
   }
 
   let i = 0;
   while (i < queue.length) {
-    const { title, depth } = queue[i++]!;
-    if (depths.has(title)) continue;
-    depths.set(title, depth);
-    for (const child of graph.hierarchyChildren.get(title) ?? []) {
-      if (!depths.has(child.title)) queue.push({ title: child.title, depth: depth + 1 });
+    const { id, depth } = queue[i++]!;
+    if (depths.has(id)) continue;
+    depths.set(id, depth);
+    for (const child of graph.hierarchyChildren.get(id) ?? []) {
+      if (!depths.has(child.id)) queue.push({ id: child.id, depth: depth + 1 });
     }
   }
 
@@ -116,31 +116,31 @@ export async function evaluateRulesWithGating(
 ): Promise<GatedRuleEvaluation> {
   const includeGated = options.includeGated ?? false;
 
-  const nodeIndex = new Map<string, SpaceNode>();
+  const nodeIndex = new Map<NodeId, SpaceNode>();
   for (const node of nodes) {
-    if (node.title) nodeIndex.set(node.title, node);
+    if (node.id) nodeIndex.set(node.id, node);
   }
 
   // When a node has both a schema and hierarchy failure, report schema as the reason.
-  const seedByTitle = new Map<string, GatingSeed>();
+  const seedById = new Map<NodeId, GatingSeed>();
   for (const seed of seeds) {
-    if (!seedByTitle.has(seed.title) || seed.reason === 'schema') {
-      seedByTitle.set(seed.title, seed);
+    if (!seedById.has(seed.id) || seed.reason === 'schema') {
+      seedById.set(seed.id, seed);
     }
   }
 
   const judge = options.provider;
   const violations: RuleViolation[] = [];
-  const gateOrigins = new Map<string, CoverageGate>();
+  const gateOrigins = new Map<NodeId, CoverageGate>();
 
   function originFor(
-    title: string,
+    id: NodeId,
     seed: { file: string; reason: CoverageGate['reason']; ruleId?: string },
   ): CoverageGate {
-    let origin = gateOrigins.get(title);
+    let origin = gateOrigins.get(id);
     if (!origin) {
-      origin = { file: seed.file, nodeTitle: title, reason: seed.reason, ruleId: seed.ruleId, gatedFiles: [] };
-      gateOrigins.set(title, origin);
+      origin = { file: seed.file, nodeId: id, reason: seed.reason, ruleId: seed.ruleId, gatedFiles: [] };
+      gateOrigins.set(id, origin);
     }
     return origin;
   }
@@ -159,14 +159,14 @@ export async function evaluateRulesWithGating(
   );
 
   // With a judge target, only the target and its hierarchy ancestors can need judging.
-  const targetAncestors = new Set<string>();
+  const targetAncestors = new Set<NodeId>();
   if (options.judgeTarget !== undefined) {
-    const parentsOf = new Map<string, string[]>();
+    const parentsOf = new Map<NodeId, NodeId[]>();
     for (const [parent, children] of graph.hierarchyChildren) {
-      for (const child of children) parentsOf.set(child.title, [...(parentsOf.get(child.title) ?? []), parent]);
+      for (const child of children) parentsOf.set(child.id, [...(parentsOf.get(child.id) ?? []), parent]);
     }
-    const target = nodes.find((n) => n.label === options.judgeTarget);
-    const pending = target ? [target.title] : [];
+    const target = nodes.find((n) => n.id === options.judgeTarget);
+    const pending = target ? [target.id] : [];
     while (pending.length > 0) {
       for (const parent of parentsOf.get(pending.pop()!) ?? []) {
         if (!targetAncestors.has(parent)) {
@@ -182,14 +182,9 @@ export async function evaluateRulesWithGating(
     const applicable: Rule[] = [];
     for (const r of perNodeRules) {
       if (r.type && r.type !== node.resolvedType) continue;
-      if (
-        judge &&
-        r.semantic !== undefined &&
-        options.judgeTarget !== undefined &&
-        node.label !== options.judgeTarget
-      ) {
+      if (judge && r.semantic !== undefined && options.judgeTarget !== undefined && node.id !== options.judgeTarget) {
         // Ancestors only matter through the gates they could raise.
-        if (!(targetAncestors.has(node.title) && ruleCanGate(r))) continue;
+        if (!(targetAncestors.has(node.id) && ruleCanGate(r))) continue;
       }
       if (r.when) {
         const outcome = await tryEvaluateExpression(r.when, buildEvalContext(node, nodes, nodeIndex));
@@ -216,7 +211,7 @@ export async function evaluateRulesWithGating(
     const local: RuleViolation[] = [];
     const prepared: PreparedNode = { violations: local, semantic: [], judged: () => {} };
     const applicable = await applicableRules(node, (rule, error) =>
-      local.push(expressionErrorViolation(rule, node.label, error)),
+      local.push(expressionErrorViolation(rule, node.id, error)),
     );
 
     function report(
@@ -225,7 +220,7 @@ export async function evaluateRulesWithGating(
     ): void {
       const severity = detail.severity ?? ruleSeverities(rule)[0] ?? ruleSeverity(rule);
       local.push({
-        file: node.label,
+        file: node.id,
         ruleId: rule.id,
         category: rule.category,
         severity,
@@ -299,7 +294,7 @@ export async function evaluateRulesWithGating(
 
   const visited = new Set<string>();
   // Hierarchy nodes are judged one depth at a time: a node's verdicts decide whether its children are evaluated.
-  let depthNodes: Array<{ node: SpaceNode; ancestorOrigin?: string }> = [];
+  let depthNodes: Array<{ node: SpaceNode; ancestorOrigin?: NodeId }> = [];
   for (const node of [...graph.hierarchyRoots, ...graph.orphans]) {
     depthNodes.push({ node, ancestorOrigin: undefined });
   }
@@ -307,37 +302,37 @@ export async function evaluateRulesWithGating(
   while (depthNodes.length > 0) {
     const current: typeof depthNodes = [];
     for (const entry of depthNodes) {
-      if (visited.has(entry.node.title)) continue;
-      visited.add(entry.node.title);
+      if (visited.has(entry.node.id)) continue;
+      visited.add(entry.node.id);
       current.push(entry);
     }
-    const isGated = (e: (typeof depthNodes)[number]) => e.ancestorOrigin !== undefined || seedByTitle.has(e.node.title);
+    const isGated = (e: (typeof depthNodes)[number]) => e.ancestorOrigin !== undefined || seedById.has(e.node.id);
     const toEvaluate = current.filter((e) => !isGated(e) || includeGated);
     const evaluated = await evaluateNodeSet(toEvaluate.map((e) => e.node));
-    const blockingByTitle = new Map(toEvaluate.map((e, i) => [e.node.title, evaluated[i]!.blockingRuleId]));
+    const blockingById = new Map(toEvaluate.map((e, i) => [e.node.id, evaluated[i]!.blockingRuleId]));
 
     const next: typeof depthNodes = [];
     for (const { node, ancestorOrigin } of current) {
-      const selfSeed = seedByTitle.get(node.title);
+      const selfSeed = seedById.get(node.id);
       const isGatedByAncestor = ancestorOrigin !== undefined;
       const isSelfBlocked = selfSeed !== undefined;
-      const blockingRuleId = blockingByTitle.get(node.title);
+      const blockingRuleId = blockingById.get(node.id);
 
-      let childOrigin: string | undefined = ancestorOrigin;
+      let childOrigin: NodeId | undefined = ancestorOrigin;
       if (isGatedByAncestor) {
-        gateOrigins.get(ancestorOrigin!)!.gatedFiles.push(node.label);
+        gateOrigins.get(ancestorOrigin!)!.gatedFiles.push(node.id);
       } else if (isSelfBlocked) {
-        const origin = originFor(node.title, { file: selfSeed!.file, reason: selfSeed!.reason });
-        origin.gatedFiles.push(node.label);
-        childOrigin = node.title;
+        const origin = originFor(node.id, { file: selfSeed!.file, reason: selfSeed!.reason });
+        origin.gatedFiles.push(node.id);
+        childOrigin = node.id;
       } else if (blockingRuleId) {
-        originFor(node.title, { file: node.label, reason: 'rule', ruleId: blockingRuleId });
-        childOrigin = node.title;
+        originFor(node.id, { file: node.id, reason: 'rule', ruleId: blockingRuleId });
+        childOrigin = node.id;
       } else {
         childOrigin = undefined;
       }
 
-      for (const child of graph.hierarchyChildren.get(node.title) ?? []) {
+      for (const child of graph.hierarchyChildren.get(node.id) ?? []) {
         next.push({ node: child, ancestorOrigin: childOrigin });
       }
     }

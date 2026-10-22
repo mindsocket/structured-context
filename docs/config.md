@@ -147,6 +147,14 @@ Maps file/frontmatter field names to canonical schema field names:
 - `templateDir` — directory containing template files (used by `template-sync` and excluded when parsing)
 - `templatePrefix` — filename prefix for templates (default blank)
 
+### `folderIndex`
+
+Names the pages that stand for their folder (see [Folder index](concepts.md#folder-index)). A page whose basename matches, case-insensitively, takes the containing folder's name as its `title` (eg `Project A/index.md` is parsed to `Project A`). An explicit `title:` still wins. A match at the space root keeps its basename. When empty or absent, titles come from the basename.
+
+```json
+{ "plugins": { "markdown": { "folderIndex": ["Overview", "index"] } } }
+```
+
 ### `typeInference`
 
 Automatically assigns a node type based on folder structure when no `type` field is present in frontmatter. Explicit `type:` always takes precedence.

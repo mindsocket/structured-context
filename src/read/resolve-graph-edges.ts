@@ -3,6 +3,7 @@ import type {
   BaseNode,
   ContentLink,
   EdgeDefinition,
+  NodeId,
   ResolvedContentLink,
   ResolvedParentRef,
   SchemaMetadata,
@@ -54,11 +55,11 @@ function resolveEdge(
   const childType = resolveNodeType(rawChildType, typeAliases);
   const parentType = resolveNodeType(rawParentType, typeAliases);
 
-  function pushParentRef(childNode: SpaceNode, parentTitle: string): void {
-    // Deduplicate by (field, title) — same parent via different fields is intentional
-    if (!childNode.resolvedParents.some((r) => r.field === field && r.title === parentTitle)) {
+  function pushParentRef(childNode: SpaceNode, parentId: NodeId): void {
+    // Deduplicate by (field, id) — same parent via different fields is intentional
+    if (!childNode.resolvedParents.some((r) => r.field === field && r.id === parentId)) {
       childNode.resolvedParents.push({
-        title: parentTitle,
+        id: parentId,
         field,
         fieldOn,
         source,
@@ -71,7 +72,7 @@ function resolveEdge(
   function checkShape(ownerNode: SpaceNode, rawField: unknown): boolean {
     if (multiple && !Array.isArray(rawField)) {
       unresolvedRefs.push({
-        label: ownerNode.label,
+        id: ownerNode.id,
         ref: String(rawField),
         field,
         reason: 'invalid_shape',
@@ -81,7 +82,7 @@ function resolveEdge(
     }
     if (!multiple && typeof rawField !== 'string') {
       unresolvedRefs.push({
-        label: ownerNode.label,
+        id: ownerNode.id,
         ref: String(rawField),
         field,
         reason: 'invalid_shape',
@@ -98,7 +99,7 @@ function resolveEdge(
     const resolved = targetIndex.get(target);
     if (resolved === undefined) {
       unresolvedRefs.push({
-        label: ownerNode.label,
+        id: ownerNode.id,
         ref,
         field,
         reason: 'not_found',
@@ -109,7 +110,7 @@ function resolveEdge(
     }
     if (resolved === null) {
       unresolvedRefs.push({
-        label: ownerNode.label,
+        id: ownerNode.id,
         ref,
         field,
         reason: 'ambiguous',
@@ -133,9 +134,7 @@ function resolveEdge(
       for (const ref of refs) {
         const childNode = checkAndRecordRef(parentNode, ref);
         if (!childNode) continue;
-        const parentTitle = parentNode.schemaData.title;
-        if (typeof parentTitle !== 'string') continue;
-        pushParentRef(childNode, parentTitle);
+        pushParentRef(childNode, parentNode.id);
       }
     }
   } else {
@@ -149,9 +148,7 @@ function resolveEdge(
       for (const ref of refs) {
         const parentNode = checkAndRecordRef(childNode, ref);
         if (!parentNode) continue;
-        const parentTitle = parentNode.schemaData.title;
-        if (typeof parentTitle !== 'string') continue;
-        pushParentRef(childNode, parentTitle);
+        pushParentRef(childNode, parentNode.id);
       }
     }
   }
@@ -310,12 +307,12 @@ export function resolveGraphEdges(
     node.resolvedLinks = (node.contentLinks ?? []).map((link) => classifyContentLink(link, targetIndex));
   }
 
-  // Deduplicate by (label, field, ref) — the same broken link may be encountered across
+  // Deduplicate by (id, field, ref) — the same broken link may be encountered across
   // multiple resolveEdge calls (e.g. selfRef + regular hierarchy share the same field).
   const seen = new Set<string>();
   const deduped: UnresolvedRef[] = [];
   for (const u of unresolvedRefs) {
-    const key = `${u.label}\0${u.field}\0${u.ref}`;
+    const key = `${u.id}\0${u.field}\0${u.ref}`;
     if (!seen.has(key)) {
       seen.add(key);
       deduped.push(u);

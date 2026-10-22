@@ -3,7 +3,7 @@ import { judgeNodes as judgeNodesIn, type NodeJudgement } from '../../src/judge/
 import type { SemanticJudgeProvider, SemanticJudgeResult } from '../../src/judge/types';
 import type { Rule } from '../../src/schema/metadata-contract';
 import { buildSpaceGraph } from '../../src/space-graph';
-import type { SpaceNode } from '../../src/types';
+import type { NodeId, SpaceNode } from '../../src/types';
 import { node, passFailRule } from './helpers';
 
 /** Provider returning canned results keyed by rule id, bypassing response parsing. */
@@ -31,7 +31,7 @@ describe('judgeNode', () => {
     } as unknown as Rule;
     const judgements: NodeJudgement[] = await judgeNode(
       canned({ 'customer-voice': { verdict: 'unexpected', evidence: 'hmm' } }),
-      node as SpaceNode,
+      node as unknown as SpaceNode,
       [rule],
     );
     expect(judgements).toHaveLength(1);
@@ -49,7 +49,7 @@ describe('judgeNodes', () => {
     category: passFailRule.category,
     semantic: { verdicts: passFailRule.verdicts, severity: { fail: 'error' } },
   } as unknown as Rule;
-  const other = { ...node, title: 'Other', label: 'other.md' } as SpaceNode;
+  const other = { ...node, title: 'Other', id: 'other.md' as NodeId } as unknown as SpaceNode;
 
   it('calls a judge without evaluateNodes once per node', async () => {
     const seen: string[] = [];
@@ -61,7 +61,7 @@ describe('judgeNodes', () => {
       },
     };
     const out = await judgeNodes(judge, [
-      { node: node as SpaceNode, rules: [rule] },
+      { node: node as unknown as SpaceNode, rules: [rule] },
       { node: other, rules: [rule] },
     ]);
     expect(seen).toEqual([node.title, 'Other']);
@@ -83,7 +83,7 @@ describe('judgeNodes', () => {
       },
     };
     const out = await judgeNodes(judge, [
-      { node: node as SpaceNode, rules: [rule] },
+      { node: node as unknown as SpaceNode, rules: [rule] },
       { node: other, rules: [] },
       { node: other, rules: [rule] },
     ]);
@@ -100,7 +100,7 @@ describe('judgeNodes', () => {
       evaluateNodes: () => Promise.reject(new Error('boom')),
     };
     const out = await judgeNodes(judge, [
-      { node: node as SpaceNode, rules: [rule] },
+      { node: node as unknown as SpaceNode, rules: [rule] },
       { node: other, rules: [rule] },
     ]);
     expect(out.flat().every((j) => j.violated && j.error === 'boom')).toBe(true);

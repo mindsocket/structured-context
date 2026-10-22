@@ -1,4 +1,4 @@
-import type { Hierarchy, ResolvedParentRef, SpaceNode } from './types';
+import type { Hierarchy, NodeId, ResolvedParentRef, SpaceNode } from './types';
 
 /**
  * A navigable graph over a set of SpaceNodes.
@@ -10,8 +10,8 @@ import type { Hierarchy, ResolvedParentRef, SpaceNode } from './types';
  * so consumers don't need to build their own indexes.
  */
 export type SpaceGraph = {
-  /** All nodes, keyed by title. Preserves insertion order. */
-  readonly nodes: ReadonlyMap<string, SpaceNode>;
+  /** All nodes, keyed by id. Preserves insertion order. */
+  readonly nodes: ReadonlyMap<NodeId, SpaceNode>;
 
   /** Hierarchy roots: nodes of the root type with no valid hierarchy parents. */
   readonly hierarchyRoots: readonly SpaceNode[];
@@ -22,14 +22,14 @@ export type SpaceGraph = {
   /** Non-hierarchy nodes: type not in the hierarchy levels definition. */
   readonly nonHierarchy: readonly SpaceNode[];
 
-  /** Hierarchy children map: parent title → direct children connected via this hierarchy's edges only. */
-  readonly hierarchyChildren: ReadonlyMap<string, readonly SpaceNode[]>;
+  /** Hierarchy children map: parent id → direct children connected via this hierarchy's edges only. */
+  readonly hierarchyChildren: ReadonlyMap<NodeId, readonly SpaceNode[]>;
 
-  /** All-edges children map: parent title → direct children connected via any edge (hierarchy + relationship). */
-  readonly children: ReadonlyMap<string, readonly SpaceNode[]>;
+  /** All-edges children map: parent id → direct children connected via any edge (hierarchy + relationship). */
+  readonly children: ReadonlyMap<NodeId, readonly SpaceNode[]>;
 
-  /** Set of all node titles that are part of the hierarchy (roots + their descendants + orphans). */
-  readonly hierarchyTitles: ReadonlySet<string>;
+  /** Set of all node ids that are part of the hierarchy (roots + their descendants + orphans). */
+  readonly hierarchyIds: ReadonlySet<NodeId>;
 
   /** The hierarchy used to build this graph, if the schema has one. */
   readonly hierarchy: Hierarchy | undefined;
@@ -42,9 +42,9 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
   const rootType = levels[0]?.type;
   const isHierarchyEdge = (r: ResolvedParentRef) => r.source === 'hierarchy' && r.hierarchy === hierarchy?.name;
 
-  const nodesMap = new Map<string, SpaceNode>();
-  const hierarchyChildrenMap = new Map<string, SpaceNode[]>();
-  const childrenMap = new Map<string, SpaceNode[]>();
+  const nodesMap = new Map<NodeId, SpaceNode>();
+  const hierarchyChildrenMap = new Map<NodeId, SpaceNode[]>();
+  const childrenMap = new Map<NodeId, SpaceNode[]>();
 
   const hierarchyRoots: SpaceNode[] = [];
   const orphans: SpaceNode[] = [];
@@ -52,22 +52,22 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
 
   // First pass: register all nodes and init adjacency lists
   for (const node of nodes) {
-    nodesMap.set(node.title, node);
-    hierarchyChildrenMap.set(node.title, []);
-    childrenMap.set(node.title, []);
+    nodesMap.set(node.id, node);
+    hierarchyChildrenMap.set(node.id, []);
+    childrenMap.set(node.id, []);
   }
 
   // Second pass: build children maps (inverted from resolvedParents)
   for (const node of nodes) {
     for (const parentRef of node.resolvedParents) {
       // All-edges map
-      if (!childrenMap.has(parentRef.title)) childrenMap.set(parentRef.title, []);
-      childrenMap.get(parentRef.title)!.push(node);
+      if (!childrenMap.has(parentRef.id)) childrenMap.set(parentRef.id, []);
+      childrenMap.get(parentRef.id)!.push(node);
 
       // Hierarchy-only map
       if (isHierarchyEdge(parentRef)) {
-        if (!hierarchyChildrenMap.has(parentRef.title)) hierarchyChildrenMap.set(parentRef.title, []);
-        hierarchyChildrenMap.get(parentRef.title)!.push(node);
+        if (!hierarchyChildrenMap.has(parentRef.id)) hierarchyChildrenMap.set(parentRef.id, []);
+        hierarchyChildrenMap.get(parentRef.id)!.push(node);
       }
     }
   }
@@ -92,7 +92,7 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
       }
     } else {
       // Check if at least one hierarchy parent is actually in the node set
-      const hasValidParent = hierarchyParents.some((r: ResolvedParentRef) => nodesMap.has(r.title));
+      const hasValidParent = hierarchyParents.some((r: ResolvedParentRef) => nodesMap.has(r.id));
       if (!hasValidParent) {
         // All hierarchy parents are dangling — treat as orphan
         orphans.push(node);
@@ -100,13 +100,13 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
     }
   }
 
-  // Build hierarchyTitles: BFS from roots + orphans through hierarchyChildren
-  const hierarchyTitles = new Set<string>();
+  // Build hierarchyIds: BFS from roots + orphans through hierarchyChildren
+  const hierarchyIds = new Set<NodeId>();
 
   function addHierarchySubtree(node: SpaceNode) {
-    if (hierarchyTitles.has(node.title)) return;
-    hierarchyTitles.add(node.title);
-    for (const child of hierarchyChildrenMap.get(node.title) ?? []) {
+    if (hierarchyIds.has(node.id)) return;
+    hierarchyIds.add(node.id);
+    for (const child of hierarchyChildrenMap.get(node.id) ?? []) {
       addHierarchySubtree(child);
     }
   }
@@ -121,7 +121,7 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
     nonHierarchy,
     hierarchyChildren: hierarchyChildrenMap,
     children: childrenMap,
-    hierarchyTitles,
+    hierarchyIds,
     hierarchy,
   };
 }

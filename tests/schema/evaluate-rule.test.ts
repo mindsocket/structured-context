@@ -5,13 +5,13 @@ import {
   evaluateExpression,
   tryEvaluateExpression,
 } from '../../src/schema/evaluate-rule';
-import type { SpaceNode } from '../../src/types';
+import type { NodeId, SpaceNode } from '../../src/types';
 import { makeParentRef } from '../test-helpers';
 
 describe('evaluate-rule', () => {
   describe('evaluateExpression', () => {
     const mockNode: SpaceNode = {
-      label: 'test.md',
+      id: 'Test Node' as NodeId,
       title: 'Test Node',
       type: 'solution',
       schemaData: {
@@ -27,7 +27,7 @@ describe('evaluate-rule', () => {
     };
 
     const mockParent: SpaceNode = {
-      label: 'parent.md',
+      id: 'Parent Opportunity' as NodeId,
       title: 'Parent Opportunity',
       type: 'opportunity',
       schemaData: {
@@ -41,9 +41,9 @@ describe('evaluate-rule', () => {
       resolvedLinks: [],
     };
 
-    const mockNodeIndex = new Map<string, SpaceNode>([
-      ['Test Node', mockNode],
-      ['Parent Opportunity', mockParent],
+    const mockNodeIndex = new Map<NodeId, SpaceNode>([
+      ['Test Node' as NodeId, mockNode],
+      ['Parent Opportunity' as NodeId, mockParent],
     ]);
 
     const allNodes = [mockNode, mockParent];
@@ -92,7 +92,7 @@ describe('evaluate-rule', () => {
 
     it('evaluates expression with $exists check for missing parent', async () => {
       const nodeWithoutParent: SpaceNode = {
-        label: 'orphan.md',
+        id: 'Orphan Node' as NodeId,
         title: 'Orphan Node',
         type: 'outcome',
         schemaData: {
@@ -125,7 +125,7 @@ describe('evaluate-rule', () => {
 
   describe('buildEvalContext', () => {
     const childNode: SpaceNode = {
-      label: 'child.md',
+      id: 'Child' as NodeId,
       title: 'Child',
       type: 'solution',
       schemaData: { title: 'Child', type: 'solution', parent: '[[Parent]]' },
@@ -136,7 +136,7 @@ describe('evaluate-rule', () => {
     };
 
     const parentNode: SpaceNode = {
-      label: 'parent.md',
+      id: 'Parent' as NodeId,
       title: 'Parent',
       type: 'opportunity',
       schemaData: { title: 'Parent', type: 'opportunity' },
@@ -148,9 +148,9 @@ describe('evaluate-rule', () => {
 
     const mockNodes = [childNode, parentNode];
 
-    const nodeIndex = new Map<string, SpaceNode>([
-      ['Child', childNode],
-      ['Parent', parentNode],
+    const nodeIndex = new Map<NodeId, SpaceNode>([
+      ['Child' as NodeId, childNode],
+      ['Parent' as NodeId, parentNode],
     ]);
 
     it('builds context with all nodes', () => {
@@ -177,7 +177,7 @@ describe('evaluate-rule', () => {
 
     it('sets parent to undefined when node has no resolved parent', () => {
       const orphanNode: SpaceNode = {
-        label: 'orphan.md',
+        id: 'Orphan' as NodeId,
         title: 'Orphan',
         type: 'outcome',
         schemaData: { title: 'Orphan', type: 'outcome' },

@@ -97,7 +97,7 @@ function planUnits(
         continue;
       }
       if (fitted.trimmed && report) {
-        report.nodes.add(node.label);
+        report.nodes.add(node.id);
         for (const rule of unitRules) report.ruleIds.add(rule.id);
       }
       units.push({

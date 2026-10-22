@@ -1,7 +1,7 @@
 import { SEMANTIC_SCOPES } from '../schema/metadata-contract';
 import { ruleSemantic } from '../schema/rule-severity';
 import type { SpaceGraph } from '../space-graph';
-import type { Rule, SpaceNode } from '../types';
+import type { NodeId, Rule, SpaceNode } from '../types';
 import type { RelatedNode, SemanticJudgeInput } from './types';
 
 export type SemanticScope = Exclude<(typeof SEMANTIC_SCOPES)[number], 'branch'>;
@@ -36,14 +36,14 @@ function dataWithBody(node: SpaceNode, withBody: boolean): Record<string, unknow
 }
 
 /** The evaluated node as a judge sees it. */
-function judgeNodeView(node: SpaceNode, withBody: boolean): SemanticJudgeInput['node'] {
+function judgeNodeView(node: SpaceNode, withBody: boolean, graph: SpaceGraph): SemanticJudgeInput['node'] {
   return {
-    label: node.label,
+    id: node.id,
     title: node.title,
     type: node.type,
     resolvedType: node.resolvedType,
     schemaData: dataWithBody(node, withBody),
-    resolvedParents: node.resolvedParents,
+    parentTitles: node.resolvedParents.map((p) => graph.nodes.get(p.id)?.title ?? p.id),
   };
 }
 
@@ -66,25 +66,25 @@ export function relatedNodes(graph: SpaceGraph, node: SpaceNode, context: RuleCo
       ? []
       : n.resolvedParents
           .filter((p) => p.source === 'hierarchy' && p.hierarchy === hierarchyName)
-          .map((p) => graph.nodes.get(p.title))
+          .map((p) => graph.nodes.get(p.id))
           .filter((p): p is SpaceNode => p !== undefined);
-  const childrenOf = (n: SpaceNode) => graph.hierarchyChildren.get(n.title) ?? [];
+  const childrenOf = (n: SpaceNode) => graph.hierarchyChildren.get(n.id) ?? [];
 
-  const found = new Map<string, RelatedNode>();
+  const found = new Map<NodeId, RelatedNode>();
   const add = (other: SpaceNode, relation: Relation) => {
-    if (other.title === node.title) return;
-    const existing = found.get(other.title);
-    if (!existing) found.set(other.title, relatedView(other, relation, withBody));
+    if (other.id === node.id) return;
+    const existing = found.get(other.id);
+    if (!existing) found.set(other.id, relatedView(other, relation, withBody));
     else if (!existing.relations.includes(relation)) existing.relations.push(relation);
   };
   const reach = (next: (n: SpaceNode) => readonly SpaceNode[], relation: Relation) => {
-    const seen = new Set<string>([node.title]);
+    const seen = new Set<NodeId>([node.id]);
     let level = next(node);
     while (level.length > 0) {
       const following: SpaceNode[] = [];
       for (const n of level) {
-        if (seen.has(n.title)) continue;
-        seen.add(n.title);
+        if (seen.has(n.id)) continue;
+        seen.add(n.id);
         add(n, relation);
         following.push(...next(n));
       }
@@ -109,7 +109,7 @@ export function judgeContext(
 ): Pick<SemanticJudgeInput, 'node' | 'related'> {
   const related = relatedNodes(graph, node, context);
   return {
-    node: judgeNodeView(node, context.content !== 'none'),
+    node: judgeNodeView(node, context.content !== 'none', graph),
     ...(related.length > 0 && { related }),
   };
 }

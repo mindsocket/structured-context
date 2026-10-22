@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { resolveNodeType } from '../../src/schema/schema';
 import { validateGraph, validateHierarchyStructure } from '../../src/schema/validate-graph';
-import type { BaseNode, SchemaMetadata, SpaceNode } from '../../src/types';
+import type { BaseNode, NodeId, SchemaMetadata, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeNode, makeParentRef, withHierarchy } from '../test-helpers';
 
 describe('validateGraph - selfRef field reference validation', () => {
@@ -80,7 +80,7 @@ describe('validate-graph', () => {
   const typeAliases = { outcome: 'goal' };
 
   const buildNode = (title: string, type: string, parentTitle?: string): SpaceNode => ({
-    label: `${title}.md`,
+    id: title as NodeId,
     title,
     type,
     schemaData: { title, type, status: 'active' },
@@ -246,7 +246,7 @@ describe('validate-graph', () => {
       expect(violations).toHaveLength(1);
 
       const v = violations[0]!;
-      expect(v.file).toBe('My Goal.md');
+      expect(v.file).toBe('My Goal');
       expect(v.nodeType).toBe('goal');
       expect(v.nodeTitle).toBe('My Goal');
       expect(v.parentType).toBe('vision');

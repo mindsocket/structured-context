@@ -21,6 +21,7 @@ export const MARKDOWN_CONFIG_SCHEMA = {
     templateDir: { type: 'string', format: 'path' }, // format is hint to config loader to resolve relative directories
     fieldMap: { type: 'object', additionalProperties: { type: 'string' } },
     templatePrefix: { type: 'string' },
+    folderIndex: { type: 'array', items: { type: 'string' } },
     typeInference: TYPE_INFERENCE_CONFIG_SCHEMA,
   },
   additionalProperties: false,

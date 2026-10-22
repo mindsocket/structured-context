@@ -29,7 +29,10 @@ export interface RelatedNode {
  */
 export interface SemanticJudgeInput {
   /** The evaluated node. Its body is in `schemaData.content` only when the rules' `includeContent` asks for it. */
-  node: Pick<SpaceNode, 'label' | 'title' | 'type' | 'resolvedType' | 'schemaData' | 'resolvedParents'>;
+  node: Pick<SpaceNode, 'id' | 'title' | 'type' | 'resolvedType' | 'schemaData'> & {
+    /** Display titles of the node's parents. */
+    parentTitles: string[];
+  };
   /** Nodes the rules' `scope` adds, as a flat list. Absent when the scope is empty. */
   related?: RelatedNode[];
   rules: SemanticRuleSpec[];

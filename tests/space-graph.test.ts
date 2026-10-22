@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'bun:test';
 import { buildSpaceGraph } from '../src/space-graph';
-import type { SpaceNode } from '../src/types';
+import type { NodeId, SpaceNode } from '../src/types';
 import { makeHierarchy, makeLevel, makeParentRef } from './test-helpers';
 
 const levels = [makeLevel('goal'), makeLevel('opportunity'), makeLevel('solution')];
 
 function makeNode(title: string, type: string): SpaceNode {
   return {
-    label: `${title}.md`,
+    id: title as NodeId,
     title,
     type,
     schemaData: { title, type },
@@ -23,7 +23,7 @@ describe('buildSpaceGraph', () => {
     it('builds a map of all nodes keyed by title', () => {
       const goal = makeNode('My Goal', 'goal');
       const graph = buildSpaceGraph([goal], makeHierarchy(levels));
-      expect(graph.nodes.get('My Goal')).toBe(goal);
+      expect(graph.nodes.get('My Goal' as NodeId)).toBe(goal);
       expect(graph.nodes.size).toBe(1);
     });
 
@@ -31,7 +31,7 @@ describe('buildSpaceGraph', () => {
       const goal = makeNode('My Goal', 'goal');
       const opp = makeNode('An Opportunity', 'opportunity');
       const graph = buildSpaceGraph([goal, opp], makeHierarchy(levels));
-      expect([...graph.nodes.keys()]).toEqual(['My Goal', 'An Opportunity']);
+      expect([...graph.nodes.keys()] as string[]).toEqual(['My Goal', 'An Opportunity']);
     });
   });
 
@@ -53,7 +53,7 @@ describe('buildSpaceGraph', () => {
       const opp = makeNode('An Opportunity', 'opportunity');
       opp.resolvedParents = [makeParentRef('My Goal')];
       const graph = buildSpaceGraph([goal, opp], makeHierarchy(levels));
-      expect(graph.hierarchyChildren.get('My Goal')).toContain(opp);
+      expect(graph.hierarchyChildren.get('My Goal' as NodeId)).toContain(opp);
     });
 
     it('classifies nodes with dangling hierarchy parents as orphan', () => {
@@ -84,7 +84,7 @@ describe('buildSpaceGraph', () => {
       const opp = makeNode('An Opportunity', 'opportunity');
       opp.resolvedParents = [makeParentRef('My Goal', { source: 'hierarchy' })];
       const graph = buildSpaceGraph([goal, opp], makeHierarchy(levels));
-      expect(graph.hierarchyChildren.get('My Goal')).toContain(opp);
+      expect(graph.hierarchyChildren.get('My Goal' as NodeId)).toContain(opp);
     });
 
     it('excludes relationship edges from hierarchyChildren', () => {
@@ -92,13 +92,13 @@ describe('buildSpaceGraph', () => {
       const opp = makeNode('An Opportunity', 'opportunity');
       opp.resolvedParents = [makeParentRef('My Goal', { source: 'relationship' })];
       const graph = buildSpaceGraph([goal, opp], makeHierarchy(levels));
-      expect(graph.hierarchyChildren.get('My Goal')).toHaveLength(0);
+      expect(graph.hierarchyChildren.get('My Goal' as NodeId)).toHaveLength(0);
     });
 
     it('initialises empty array for leaf nodes', () => {
       const leaf = makeNode('Leaf', 'solution');
       const graph = buildSpaceGraph([leaf], makeHierarchy(levels));
-      expect(graph.hierarchyChildren.get('Leaf')).toEqual([]);
+      expect(graph.hierarchyChildren.get('Leaf' as NodeId)).toEqual([]);
     });
   });
 
@@ -110,7 +110,7 @@ describe('buildSpaceGraph', () => {
       opp.resolvedParents = [makeParentRef('My Goal', { source: 'hierarchy' })];
       assumption.resolvedParents = [makeParentRef('My Goal', { source: 'relationship', field: 'assumptions' })];
       const graph = buildSpaceGraph([goal, opp, assumption], makeHierarchy(levels));
-      const children = graph.children.get('My Goal') ?? [];
+      const children = graph.children.get('My Goal' as NodeId) ?? [];
       expect(children).toContain(opp);
       expect(children).toContain(assumption);
     });
@@ -119,30 +119,30 @@ describe('buildSpaceGraph', () => {
       const opp = makeNode('An Opportunity', 'opportunity');
       opp.resolvedParents = [makeParentRef('Missing Goal')];
       const graph = buildSpaceGraph([opp], makeHierarchy(levels));
-      expect(graph.children.get('Missing Goal')).toContain(opp);
+      expect(graph.children.get('Missing Goal' as NodeId)).toContain(opp);
     });
   });
 
-  describe('hierarchyTitles', () => {
+  describe('hierarchyIds', () => {
     it('includes hierarchy roots and their descendants', () => {
       const goal = makeNode('My Goal', 'goal');
       const opp = makeNode('An Opportunity', 'opportunity');
       opp.resolvedParents = [makeParentRef('My Goal')];
       const graph = buildSpaceGraph([goal, opp], makeHierarchy(levels));
-      expect(graph.hierarchyTitles.has('My Goal')).toBe(true);
-      expect(graph.hierarchyTitles.has('An Opportunity')).toBe(true);
+      expect(graph.hierarchyIds.has('My Goal' as NodeId)).toBe(true);
+      expect(graph.hierarchyIds.has('An Opportunity' as NodeId)).toBe(true);
     });
 
     it('includes orphans', () => {
       const opp = makeNode('Orphaned Opp', 'opportunity');
       const graph = buildSpaceGraph([opp], makeHierarchy(levels));
-      expect(graph.hierarchyTitles.has('Orphaned Opp')).toBe(true);
+      expect(graph.hierarchyIds.has('Orphaned Opp' as NodeId)).toBe(true);
     });
 
     it('excludes non-hierarchy nodes', () => {
       const dashboard = makeNode('My Dashboard', 'dashboard');
       const graph = buildSpaceGraph([dashboard], makeHierarchy(levels));
-      expect(graph.hierarchyTitles.has('My Dashboard')).toBe(false);
+      expect(graph.hierarchyIds.has('My Dashboard' as NodeId)).toBe(false);
     });
   });
 

@@ -30,7 +30,7 @@ export async function miroSync(context: PluginContext, graph: SpaceGraph, option
 
   // 3. Filter to hierarchy nodes only (graph already built by caller)
   const levels = graph.hierarchy?.levels ?? [];
-  const nodes = [...graph.nodes.values()].filter((n) => graph.hierarchyTitles.has(n.title));
+  const nodes = [...graph.nodes.values()].filter((n) => graph.hierarchyIds.has(n.id));
 
   if (nodes.length === 0) {
     return 'No space nodes found.';
@@ -291,8 +291,9 @@ export async function miroSync(context: PluginContext, graph: SpaceGraph, option
   const desiredEdges = new Map<string, { parentTitle: string; childTitle: string }>();
   for (const node of nodes) {
     const childTitle = node.title;
-    for (const { title: parentTitle, source, hierarchy } of node.resolvedParents) {
+    for (const { id: parentId, source, hierarchy } of node.resolvedParents) {
       if (source !== 'hierarchy' || hierarchy !== graph.hierarchy?.name) continue;
+      const parentTitle = graph.nodes.get(parentId)?.title ?? parentId;
       // Both endpoints must have verified cards on the board
       if (verifiedCardIds.has(parentTitle) && verifiedCardIds.has(childTitle)) {
         const key = `${parentTitle}\u2192${childTitle}`;

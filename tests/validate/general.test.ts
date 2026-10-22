@@ -4,7 +4,7 @@ import { readSpaceDirectory, readSpaceOnAPage } from '../../src/plugins/markdown
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { bundledSchemasDir, createValidator, loadMetadata } from '../../src/schema/schema';
 import { validateGraph } from '../../src/schema/validate-graph';
-import type { BaseNode, SpaceNode, UnresolvedRef } from '../../src/types';
+import type { BaseNode, NodeId, SpaceNode, UnresolvedRef } from '../../src/types';
 import { makePluginContext } from '../helpers/context';
 import { makeLevel, withHierarchy } from '../test-helpers';
 
@@ -64,19 +64,19 @@ describe('Schema validation', () => {
     });
 
     it('missing-status.md fails schema validation (no status field)', () => {
-      const node = nodes.find((n) => n.label === 'missing-status.md');
+      const node = nodes.find((n) => n.id === 'missing-status.md');
       expect(node).toBeDefined();
       expect(validateNode(node?.schemaData)).toBe(false);
     });
 
     it('vision-with-parent.md fails schema validation (vision forbids parent)', () => {
-      const node = nodes.find((n) => n.label === 'vision-with-parent.md');
+      const node = nodes.find((n) => n.id === 'vision-with-parent.md');
       expect(node).toBeDefined();
       expect(validateNode(node?.schemaData)).toBe(false);
     });
 
     it('dangling-parent.md passes schema validation (ref is a separate check)', () => {
-      const node = nodes.find((n) => n.label === 'dangling-parent.md');
+      const node = nodes.find((n) => n.id === 'dangling-parent.md');
       expect(node).toBeDefined();
       expect(validateNode(node?.schemaData)).toBe(true);
     });
@@ -91,14 +91,14 @@ describe('Schema validation', () => {
     it('resolves anchor/section wikilinks to canonical parent titles', () => {
       const baseNodes: BaseNode[] = [
         {
-          label: 'anchor_vision.md',
+          id: 'anchor_vision.md' as NodeId,
           title: 'anchor_vision',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
           type: 'vision',
         },
         {
-          label: 'Our Mission',
+          id: 'Our Mission' as NodeId,
           title: 'Our Mission',
           schemaData: {
             title: 'Our Mission',
@@ -110,7 +110,7 @@ describe('Schema validation', () => {
           type: 'mission',
         },
         {
-          label: 'Another Goal',
+          id: 'Another Goal' as NodeId,
           title: 'Another Goal',
           schemaData: {
             title: 'Another Goal',
@@ -122,7 +122,7 @@ describe('Schema validation', () => {
           type: 'goal',
         },
         {
-          label: 'solution_page.md',
+          id: 'solution_page.md' as NodeId,
           title: 'solution_page',
           schemaData: {
             title: 'solution_page',
@@ -139,10 +139,10 @@ describe('Schema validation', () => {
         ...withHierarchy([makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]),
       });
 
-      expect(nodes1.find((n) => n.label === 'Another Goal')?.schemaData.parent).toBe('[[anchor_vision#^mission]]');
-      expect(nodes1.find((n) => n.label === 'Another Goal')?.resolvedParents[0]?.title).toBe('Our Mission');
-      expect(nodes1.find((n) => n.label === 'solution_page.md')?.schemaData.parent).toBe('[[anchor_vision#^goal1]]');
-      expect(nodes1.find((n) => n.label === 'solution_page.md')?.resolvedParents[0]?.title).toBe('Another Goal');
+      expect(nodes1.find((n) => n.id === 'Another Goal')?.schemaData.parent).toBe('[[anchor_vision#^mission]]');
+      expect(nodes1.find((n) => n.id === 'Another Goal')?.resolvedParents[0]?.id as string).toBe('Our Mission');
+      expect(nodes1.find((n) => n.id === 'solution_page.md')?.schemaData.parent).toBe('[[anchor_vision#^goal1]]');
+      expect(nodes1.find((n) => n.id === 'solution_page.md')?.resolvedParents[0]?.id as string).toBe('Another Goal');
 
       const { refErrors } = validateGraph(nodes1, metadata, refs1);
       expect(refErrors).toHaveLength(0);
@@ -151,14 +151,14 @@ describe('Schema validation', () => {
     it('keeps unresolved parent links untouched when no link target matches', () => {
       const baseNodes: BaseNode[] = [
         {
-          label: 'anchor_vision.md',
+          id: 'anchor_vision.md' as NodeId,
           title: 'anchor_vision',
           schemaData: { title: 'anchor_vision', type: 'vision', status: 'active' },
           linkTargets: ['anchor_vision'],
           type: 'vision',
         },
         {
-          label: 'some-solution.md',
+          id: 'some-solution.md' as NodeId,
           title: 'some-solution',
           schemaData: {
             title: 'some-solution',
@@ -183,14 +183,14 @@ describe('Schema validation', () => {
     it('does not resolve bare embedded-node title links when no page exists', () => {
       const baseNodes: BaseNode[] = [
         {
-          label: 'vision_page.md',
+          id: 'vision_page.md' as NodeId,
           title: 'vision_page',
           schemaData: { title: 'vision_page', type: 'vision', status: 'active' },
           linkTargets: ['vision_page'],
           type: 'vision',
         },
         {
-          label: 'Embedded Goal',
+          id: 'Embedded Goal' as NodeId,
           title: 'Embedded Goal',
           schemaData: {
             title: 'Embedded Goal',
@@ -202,7 +202,7 @@ describe('Schema validation', () => {
           type: 'goal',
         },
         {
-          label: 'solution_page.md',
+          id: 'solution_page.md' as NodeId,
           title: 'solution_page',
           schemaData: {
             title: 'solution_page',
@@ -219,7 +219,7 @@ describe('Schema validation', () => {
         ...withHierarchy([makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]),
       });
 
-      expect(nodes3.find((n) => n.label === 'solution_page.md')?.resolvedParents).toHaveLength(0);
+      expect(nodes3.find((n) => n.id === 'solution_page.md')?.resolvedParents).toHaveLength(0);
       const { refErrors } = validateGraph(nodes3, metadata, refs3);
       expect(refErrors).toHaveLength(1);
       expect(refErrors[0]?.parent).toBe('[[Embedded Goal]]');
@@ -302,44 +302,26 @@ describe('Schema validation', () => {
     });
   });
 
-  describe('duplicate title detection', () => {
-    it('detects duplicate titles from same filename in different directories', async () => {
+  describe('duplicate id detection', () => {
+    it('gives same-named files in different directories distinct ids, so they are not duplicates', async () => {
       const { nodes } = resolveGraphEdges(
         (await readSpaceDirectory(makePluginContext(join(import.meta.dir, '../fixtures/general/duplicate-titles'))))
           .nodes,
         metadata,
       );
-      const titleCounts = new Map<string, SpaceNode[]>();
-      for (const node of nodes) {
-        const title = node.title;
-        if (!titleCounts.has(title)) {
-          titleCounts.set(title, []);
-        }
-        titleCounts.get(title)!.push(node);
-      }
-
-      const duplicates = Array.from(titleCounts.entries()).filter(([_, nodes]) => nodes.length > 1);
-      expect(duplicates.length).toBeGreaterThan(0);
-      expect(duplicates.some(([title]) => title === 'Same Title')).toBe(true);
+      const solutions = nodes.filter((n) => n.title === 'Same Title');
+      expect(solutions).toHaveLength(2);
+      expect(new Set(solutions.map((n) => n.id)).size).toBe(2);
     });
 
-    it('detects duplicate titles from embedded nodes', () => {
+    it('gives duplicate headings on one page the same id', () => {
       const { nodes } = resolveGraphEdges(
         readSpaceOnAPage(makePluginContext(join(import.meta.dir, '../fixtures/general/duplicate-embedded.md'))).nodes,
         metadata,
       );
-      const titleCounts = new Map<string, SpaceNode[]>();
-      for (const node of nodes) {
-        const title = node.title;
-        if (!titleCounts.has(title)) {
-          titleCounts.set(title, []);
-        }
-        titleCounts.get(title)!.push(node);
-      }
-
-      const duplicates = Array.from(titleCounts.entries()).filter(([_, nodes]) => nodes.length > 1);
-      expect(duplicates.length).toBeGreaterThan(0);
-      expect(duplicates.some(([title, nodes]) => title === 'Duplicate Heading' && nodes.length === 2)).toBe(true);
+      const headings = nodes.filter((n) => n.title === 'Duplicate Heading');
+      expect(headings).toHaveLength(2);
+      expect(new Set(headings.map((n) => n.id)).size).toBe(1);
     });
   });
 });

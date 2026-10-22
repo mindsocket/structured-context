@@ -2,7 +2,7 @@ import { judgeNodes } from '../judge/judge-node';
 import type { TrimReport } from '../judge/trim';
 import type { SemanticJudgeProvider } from '../judge/types';
 import { buildSpaceGraph } from '../space-graph';
-import type { Rule, RuleViolation, SpaceNode } from '../types';
+import type { NodeId, Rule, RuleViolation, SpaceNode } from '../types';
 import {
   buildEvalContext,
   evaluateRuleExpression,
@@ -17,10 +17,10 @@ export { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity } from './rule-severity';
 export interface ValidateRulesOptions {
   /** Evaluates semantic rules. Without one, a rule runs only its `expression`, and a semantic-only rule is skipped. */
   judge?: SemanticJudgeProvider;
-  /** Label of the only node to judge (`validate-file`); other nodes' semantic rules are skipped. */
+  /** Id of the only node to judge (`validate-file`); other nodes' semantic rules are skipped. */
   judgeTarget?: string;
-  /** Set of node labels that have already failed upstream structural checks. */
-  gatedNodeLabels?: Set<string>;
+  /** Set of node ids that have already failed upstream structural checks. */
+  gatedNodeIds?: Set<NodeId>;
   trimReport?: TrimReport;
 }
 
@@ -43,12 +43,9 @@ export async function validateRules(
   const judge = options.judge;
 
   // Build node index for efficient lookups
-  const nodeIndex = new Map<string, SpaceNode>();
+  const nodeIndex = new Map<NodeId, SpaceNode>();
   for (const node of nodes) {
-    const title = node.title;
-    if (title) {
-      nodeIndex.set(title, node);
-    }
+    nodeIndex.set(node.id, node);
   }
 
   const sentinel = nodes[0];
@@ -64,7 +61,7 @@ export async function validateRules(
       if (rule.when) {
         const when = await tryEvaluateExpression(rule.when, buildEvalContext(node, nodes, nodeIndex));
         if ('error' in when) {
-          violations.push(expressionErrorViolation(rule, node.label, when.error));
+          violations.push(expressionErrorViolation(rule, node.id, when.error));
           continue;
         }
         if (when.value !== true) continue;
@@ -76,8 +73,8 @@ export async function validateRules(
 
   // 1. Expressions, in rule order. A global rule is evaluated once against the full node set; a sentinel node
   // provides the evaluation context (the nodes array is what matters).
-  const gatedNodeLabels = new Set<string>(options.gatedNodeLabels); // nodes with a gating violation (or gated upstream)
-  const notEvaluable = new Set<string>(); // `${rule.id}\0${label}` whose own expression failed or errored
+  const gatedNodeIds = new Set<NodeId>(options.gatedNodeIds); // nodes with a gating violation (or gated upstream)
+  const notEvaluable = new Set<string>(); // `${rule.id}\0${id}` whose own expression failed or errored
   for (const rule of runnable) {
     if (rule.expression === undefined) continue;
     if (rule.global) {
@@ -90,8 +87,8 @@ export async function validateRules(
       const result = await evaluateRuleExpression(rule, node, nodes, nodeIndex);
       if (result.passed) continue;
       violations.push(result.violation);
-      notEvaluable.add(`${rule.id}\0${node.label}`);
-      if (result.failed && ruleGatesDescendants(rule, result.violation.severity)) gatedNodeLabels.add(node.label);
+      notEvaluable.add(`${rule.id}\0${node.id}`);
+      if (result.failed && ruleGatesDescendants(rule, result.violation.severity)) gatedNodeIds.add(node.id);
     }
   }
 
@@ -101,13 +98,13 @@ export async function validateRules(
     const perNode: RuleViolation[][] = []; // kept in node order
     const pending: Array<{ node: SpaceNode; rules: Rule[]; found: RuleViolation[] }> = [];
     for (const node of nodes) {
-      if (options.judgeTarget !== undefined && node.label !== options.judgeTarget) continue;
+      if (options.judgeTarget !== undefined && node.id !== options.judgeTarget) continue;
       const found: RuleViolation[] = [];
       perNode.push(found);
-      if (gatedNodeLabels.has(node.label)) continue;
+      if (gatedNodeIds.has(node.id)) continue;
       const semantic = runnable.filter(
         (r) =>
-          r.semantic !== undefined && applicable.get(r)?.includes(node) && !notEvaluable.has(`${r.id}\0${node.label}`),
+          r.semantic !== undefined && applicable.get(r)?.includes(node) && !notEvaluable.has(`${r.id}\0${node.id}`),
       );
       if (semantic.length > 0) pending.push({ node, rules: semantic, found });
     }
@@ -118,7 +115,7 @@ export async function validateRules(
       for (const j of judged[i] ?? []) {
         if (!j.violated) continue;
         found.push({
-          file: node.label,
+          file: node.id,
           ruleId: j.rule.id,
           category: j.rule.category,
           severity: j.severity ?? ruleSeverities(j.rule)[0] ?? ruleSeverity(j.rule),

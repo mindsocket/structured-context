@@ -1,4 +1,4 @@
-import type { ResolvedParentRef, SpaceNode } from '../types';
+import type { NodeId, ResolvedParentRef, SpaceNode } from '../types';
 
 /** Edge metadata merged into each ancestor/descendant entry. */
 export type EdgeMetadata = {
@@ -13,6 +13,7 @@ export type EdgeMetadata = {
 export type AugmentedFlatNode = Record<string, unknown> & {
   resolvedType: string;
   resolvedParentTitles: string[];
+  resolvedParentIds: NodeId[];
   ancestors: Array<Record<string, unknown> & EdgeMetadata>;
   descendants: Array<Record<string, unknown> & EdgeMetadata>;
 };
@@ -31,7 +32,7 @@ function edgeMetadata(ref: ResolvedParentRef): EdgeMetadata {
 function flattenData(node: SpaceNode): Record<string, unknown> {
   return {
     ...node.schemaData,
-    label: node.label,
+    id: node.id,
     title: node.title,
     resolvedType: node.resolvedType,
   };
@@ -41,14 +42,14 @@ function flattenData(node: SpaceNode): Record<string, unknown> {
  * Build the augmented flat representation of a node, including pre-computed
  * ancestors[] and descendants[] arrays with edge metadata.
  *
- * - ancestors: BFS from node via resolvedParents, nearest first, deduplicated by title.
- * - descendants: BFS via childrenIndex, nearest first, deduplicated by title.
+ * - ancestors: BFS from node via resolvedParents, nearest first, deduplicated by id.
+ * - descendants: BFS via childrenIndex, nearest first, deduplicated by id.
  * - Each entry merges the parent/child node's fields with edge metadata (_field, _source, _hierarchy, _selfRef).
  */
 export function augmentNode(
   node: SpaceNode,
-  nodeIndex: ReadonlyMap<string, SpaceNode>,
-  childrenIndex: ReadonlyMap<string, readonly SpaceNode[]>,
+  nodeIndex: ReadonlyMap<NodeId, SpaceNode>,
+  childrenIndex: ReadonlyMap<NodeId, readonly SpaceNode[]>,
 ): AugmentedFlatNode {
   const ancestors = buildAncestors(node, nodeIndex);
   const descendants = buildDescendants(node, childrenIndex);
@@ -56,7 +57,8 @@ export function augmentNode(
   return {
     ...flattenData(node),
     resolvedType: node.resolvedType,
-    resolvedParentTitles: node.resolvedParents.map((r) => r.title),
+    resolvedParentTitles: node.resolvedParents.map((r) => nodeIndex.get(r.id)?.title ?? r.id),
+    resolvedParentIds: node.resolvedParents.map((r) => r.id),
     ancestors,
     descendants,
   };
@@ -64,24 +66,24 @@ export function augmentNode(
 
 function buildAncestors(
   node: SpaceNode,
-  nodeIndex: ReadonlyMap<string, SpaceNode>,
+  nodeIndex: ReadonlyMap<NodeId, SpaceNode>,
 ): Array<Record<string, unknown> & EdgeMetadata> {
-  const visited = new Set<string>();
+  const visited = new Set<NodeId>();
   const result: Array<Record<string, unknown> & EdgeMetadata> = [];
 
   // BFS queue holds: { parentRef that led to this node, the node itself }
   const queue: Array<{ ref: ResolvedParentRef; node: SpaceNode }> = [];
 
   for (const ref of node.resolvedParents) {
-    const parentNode = nodeIndex.get(ref.title);
+    const parentNode = nodeIndex.get(ref.id);
     if (parentNode) queue.push({ ref, node: parentNode });
   }
 
   while (queue.length > 0) {
     const item = queue.shift()!;
-    const title = item.node.title;
-    if (visited.has(title)) continue;
-    visited.add(title);
+    const id = item.node.id;
+    if (visited.has(id)) continue;
+    visited.add(id);
 
     result.push({
       ...flattenData(item.node),
@@ -90,8 +92,8 @@ function buildAncestors(
 
     // Continue BFS upward
     for (const ref of item.node.resolvedParents) {
-      const parentNode = nodeIndex.get(ref.title);
-      if (parentNode && !visited.has(ref.title)) {
+      const parentNode = nodeIndex.get(ref.id);
+      if (parentNode && !visited.has(ref.id)) {
         queue.push({ ref, node: parentNode });
       }
     }
@@ -102,36 +104,36 @@ function buildAncestors(
 
 function buildDescendants(
   node: SpaceNode,
-  childrenIndex: ReadonlyMap<string, readonly SpaceNode[]>,
+  childrenIndex: ReadonlyMap<NodeId, readonly SpaceNode[]>,
 ): Array<Record<string, unknown> & EdgeMetadata> {
-  const nodeTitle = node.title;
-  const visited = new Set<string>();
+  const nodeId = node.id;
+  const visited = new Set<NodeId>();
   const result: Array<Record<string, unknown> & EdgeMetadata> = [];
 
   // BFS queue holds: child node + the resolvedParents entry on that child that points to its parent
   const queue: Array<{ childNode: SpaceNode; ref: ResolvedParentRef }> = [];
 
-  const directChildren = childrenIndex.get(nodeTitle) ?? [];
+  const directChildren = childrenIndex.get(nodeId) ?? [];
   for (const child of directChildren) {
-    const ref = child.resolvedParents.find((r) => r.title === nodeTitle);
+    const ref = child.resolvedParents.find((r) => r.id === nodeId);
     if (ref) queue.push({ childNode: child, ref });
   }
 
   while (queue.length > 0) {
     const item = queue.shift()!;
-    const title = item.childNode.title;
-    if (visited.has(title)) continue;
-    visited.add(title);
+    const id = item.childNode.id;
+    if (visited.has(id)) continue;
+    visited.add(id);
 
     result.push({
       ...flattenData(item.childNode),
       ...edgeMetadata(item.ref),
     });
 
-    const grandchildren = childrenIndex.get(title) ?? [];
+    const grandchildren = childrenIndex.get(id) ?? [];
     for (const grandchild of grandchildren) {
-      if (!visited.has(grandchild.title)) {
-        const ref = grandchild.resolvedParents.find((r) => r.title === title);
+      if (!visited.has(grandchild.id)) {
+        const ref = grandchild.resolvedParents.find((r) => r.id === id);
         if (ref) queue.push({ childNode: grandchild, ref });
       }
     }

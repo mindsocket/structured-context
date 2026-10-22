@@ -72,12 +72,12 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
     const minor = new FakeJudgeProvider({ 'task-fit': { verdict: 'minor' } });
     const ungated = await validateSpace(context(), { judge: minor });
     expect(ungated.coverageGates).toEqual([]);
-    expect(minor.callHistory.some((c) => c.node.label === 'S.md')).toBe(true);
+    expect(minor.callHistory.some((c) => c.node.id === 'S.md')).toBe(true);
 
     const major = new FakeJudgeProvider({ 'task-fit': { verdict: 'major' } });
     const gated = await validateSpace(context(), { judge: major });
     expect(gated.coverageGates[0]).toMatchObject({ reason: 'rule', ruleId: 'task-fit' });
-    expect(major.callHistory.some((c) => c.node.label === 'S.md')).toBe(false);
+    expect(major.callHistory.some((c) => c.node.id === 'S.md')).toBe(false);
   });
 
   it('shows guidance in validate-file output', async () => {
@@ -121,7 +121,7 @@ describe('rule `when` precondition', () => {
     const { context } = setup([rule], { frontmatter: { T: 'status: ready' } });
     const judge = new FakeJudgeProvider();
     await validateSpace(context(), { judge: judge });
-    expect(judge.callHistory.map((c) => c.node.label)).toEqual(['T.md']);
+    expect(judge.callHistory.map((c) => c.node.id as string)).toEqual(['T.md']);
 
     const none = setup([rule]);
     const idle = new FakeJudgeProvider();
@@ -179,7 +179,7 @@ describe('semantic rule check precondition', () => {
     expression: '$exists(current.owner)',
     gatesDescendants: true,
   };
-  const judgedLabels = (judge: FakeJudgeProvider) => judge.callHistory.map((c) => c.node.label);
+  const judgedLabels = (judge: FakeJudgeProvider) => judge.callHistory.map((c) => c.node.id as string);
 
   it('judges when the check passes', async () => {
     const { context } = setup([gated], { frontmatter: { S: 'owner: sam' } });

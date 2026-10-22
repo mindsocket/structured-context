@@ -1,4 +1,4 @@
-import type { SpaceNode } from '../types';
+import type { NodeId, SpaceNode } from '../types';
 import type { AugmentedFlatNode, EdgeMetadata } from './augment-nodes';
 
 // ---------------------------------------------------------------------------
@@ -126,31 +126,30 @@ function parseDirective(item: string): IncludeDirective {
 export function expandInclude(
   matchedNodes: SpaceNode[],
   directives: IncludeDirective[],
-  nodeIndex: ReadonlyMap<string, SpaceNode>,
-  childrenIndex: ReadonlyMap<string, readonly SpaceNode[]>,
-  augmented: Map<string, AugmentedFlatNode>,
+  nodeIndex: ReadonlyMap<NodeId, SpaceNode>,
+  childrenIndex: ReadonlyMap<NodeId, readonly SpaceNode[]>,
+  augmented: Map<NodeId, AugmentedFlatNode>,
 ): SpaceNode[] {
   if (directives.length === 0) return matchedNodes;
 
-  const seen = new Set<string>(matchedNodes.map((n) => n.title));
+  const seen = new Set<NodeId>(matchedNodes.map((n) => n.id));
   const result: SpaceNode[] = [...matchedNodes];
 
-  function addByTitle(title: string) {
-    if (seen.has(title)) return;
-    const node = nodeIndex.get(title);
+  function addById(id: NodeId) {
+    if (seen.has(id)) return;
+    const node = nodeIndex.get(id);
     if (node) {
-      seen.add(title);
+      seen.add(id);
       result.push(node);
     }
   }
 
   for (const node of matchedNodes) {
-    const title = node.title;
-    const aug = augmented.get(title);
+    const aug = augmented.get(node.id);
     if (!aug) continue;
 
     for (const directive of directives) {
-      applyDirective(node, aug, directive, childrenIndex, addByTitle);
+      applyDirective(node, aug, directive, childrenIndex, addById);
     }
   }
 
@@ -161,14 +160,14 @@ function applyDirective(
   node: SpaceNode,
   aug: AugmentedFlatNode,
   directive: IncludeDirective,
-  childrenIndex: ReadonlyMap<string, readonly SpaceNode[]>,
-  addByTitle: (title: string) => void,
+  childrenIndex: ReadonlyMap<NodeId, readonly SpaceNode[]>,
+  addById: (id: NodeId) => void,
 ): void {
   switch (directive.kind) {
     case 'ancestors': {
       for (const a of aug.ancestors) {
         if (!directive.typeFilter || a.resolvedType === directive.typeFilter) {
-          addByTitle(a.title as string);
+          addById(a.id as NodeId);
         }
       }
       break;
@@ -176,7 +175,7 @@ function applyDirective(
     case 'descendants': {
       for (const d of aug.descendants) {
         if (!directive.typeFilter || d.resolvedType === directive.typeFilter) {
-          addByTitle(d.title as string);
+          addById(d.id as NodeId);
         }
       }
       break;
@@ -184,11 +183,10 @@ function applyDirective(
     case 'siblings': {
       // Nodes that share at least one parent with the matched node (any edge type)
       for (const parentRef of node.resolvedParents) {
-        const siblings = childrenIndex.get(parentRef.title) ?? [];
+        const siblings = childrenIndex.get(parentRef.id) ?? [];
         for (const sibling of siblings) {
-          const siblingTitle = sibling.title;
-          if (siblingTitle !== node.title) {
-            addByTitle(siblingTitle);
+          if (sibling.id !== node.id) {
+            addById(sibling.id);
           }
         }
       }
@@ -198,13 +196,13 @@ function applyDirective(
       // Relationship-sourced ancestors (matched node is the child side)
       for (const a of aug.ancestors) {
         if (a._source === 'relationship' && matchesRelSpec(node, a, directive, true)) {
-          addByTitle(a.title as string);
+          addById(a.id as NodeId);
         }
       }
       // Relationship-sourced descendants (matched node is the parent side)
       for (const d of aug.descendants) {
         if (d._source === 'relationship' && matchesRelSpec(node, d, directive, false)) {
-          addByTitle(d.title as string);
+          addById(d.id as NodeId);
         }
       }
       break;

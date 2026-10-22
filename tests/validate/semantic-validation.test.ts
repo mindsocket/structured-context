@@ -93,7 +93,7 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
         true,
       );
       // Judge was never called for opportunity-no-source.md
-      expect(fakeProvider.callHistory.some((c) => c.node.label === 'opportunity-no-source.md')).toBe(false);
+      expect(fakeProvider.callHistory.some((c) => c.node.id === 'opportunity-no-source.md')).toBe(false);
     });
   });
 
@@ -160,7 +160,7 @@ describe('validateFile judges only the target and its gate-capable ancestor rule
   it('judges the target plus only the gate-capable rules of its ancestors', async () => {
     const judge = new FakeJudgeProvider({ pass: true });
     await run(judge, 'S.md');
-    const judged = judge.callHistory.map((c) => `${c.node.label}:${c.rules.map((r) => r.id).join(',')}`).sort();
+    const judged = judge.callHistory.map((c) => `${c.node.id}:${c.rules.map((r) => r.id).join(',')}`).sort();
     // G's rule can gate; T's cannot and Other is unrelated.
     expect(judged).toEqual(['G.md:goal-sound', 'S.md:step-sound']);
   });
@@ -170,7 +170,7 @@ describe('validateFile judges only the target and its gate-capable ancestor rule
     const result = await run(judge, 'S.md');
     expect(result.warnings['rule:step-sound']).toBeUndefined();
     expect(Object.keys(result.warnings).some((k) => k.startsWith('gated:'))).toBe(true);
-    expect(judge.callHistory.some((c) => c.node.label === 'S.md')).toBe(false);
+    expect(judge.callHistory.some((c) => c.node.id === 'S.md')).toBe(false);
   });
 
   it('with includeGated judges the target even when an ancestor fails', async () => {
@@ -195,7 +195,7 @@ describe('Semantic rules: verdicts, batching and rule filter', () => {
   it('judges each node once with all of its semantic rules', async () => {
     const fake = new FakeJudgeProvider();
     await validateSpace(context, { judge: fake });
-    const labels = fake.callHistory.map((c) => c.node.label);
+    const labels = fake.callHistory.map((c) => c.node.id);
     expect(new Set(labels).size).toBe(labels.length);
     expect(fake.callHistory.every((c) => c.rules.length >= 1)).toBe(true);
   });

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'bun:test';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { validateRules } from '../../src/schema/validate-rules';
-import type { Rule, SpaceNode } from '../../src/types';
+import type { NodeId, Rule, SpaceNode } from '../../src/types';
 import { makeParentRef } from '../test-helpers';
 
 describe('validateRules - semantic evaluation', () => {
   const sampleNodes: SpaceNode[] = [
     {
-      label: 'outcome.md',
+      id: 'outcome.md' as NodeId,
       title: 'Outcome Metric',
       type: 'outcome',
       resolvedType: 'outcome',
@@ -17,7 +17,7 @@ describe('validateRules - semantic evaluation', () => {
       resolvedLinks: [],
     },
     {
-      label: 'valid-opp.md',
+      id: 'valid-opp.md' as NodeId,
       title: 'I struggle to finish signup on mobile',
       type: 'opportunity',
       resolvedType: 'opportunity',
@@ -33,7 +33,7 @@ describe('validateRules - semantic evaluation', () => {
       resolvedLinks: [],
     },
     {
-      label: 'bad-opp.md',
+      id: 'bad-opp.md' as NodeId,
       title: 'Build social login integration',
       type: 'opportunity',
       resolvedType: 'opportunity',
@@ -99,23 +99,23 @@ describe('validateRules - semantic evaluation', () => {
     expect(violations[0]?.evidence).toBe(
       'Stated as a solution feature ("Build social login") rather than a customer need',
     );
-    expect(fake.callHistory.map((c) => c.node.label).sort()).toEqual(['bad-opp.md', 'valid-opp.md']);
+    expect(fake.callHistory.map((c) => c.node.id as string).sort()).toEqual(['bad-opp.md', 'valid-opp.md']);
   });
 
   it('gates semantic rules when node has upstream structural error (cascading)', async () => {
     const fake = new FakeJudgeProvider();
 
-    // Mark bad-opp.md as having an upstream structural error via gatedNodeLabels
-    const gatedNodeLabels = new Set(['bad-opp.md']);
+    // Mark bad-opp.md as having an upstream structural error via gatedNodeIds
+    const gatedNodeIds = new Set(['bad-opp.md' as NodeId]);
 
     const violations = await validateRules(sampleNodes, rules, {
       judge: fake,
-      gatedNodeLabels,
+      gatedNodeIds,
     });
 
     // bad-opp.md was gated; only valid-opp.md was sent to the judge
     expect(fake.callHistory).toHaveLength(1);
-    expect(fake.callHistory[0]?.node.label).toBe('valid-opp.md');
+    expect(fake.callHistory[0]?.node.id as string).toBe('valid-opp.md');
     expect(violations).toHaveLength(0);
   });
 
@@ -151,7 +151,7 @@ describe('validateRules - semantic evaluation', () => {
 
     // Only valid-opp.md was evaluated by the semantic judge
     expect(fake.callHistory).toHaveLength(1);
-    expect(fake.callHistory[0]?.node.label).toBe('valid-opp.md');
+    expect(fake.callHistory[0]?.node.id as string).toBe('valid-opp.md');
   });
 
   it('applies a semantic rule check before the judge', async () => {
@@ -170,7 +170,7 @@ describe('validateRules - semantic evaluation', () => {
     const violations = await validateRules(sampleNodes, checked, { judge: fake });
 
     // bad-opp.md fails the expression: reported at the rule severity, never sent to the judge.
-    expect(fake.callHistory.map((c) => c.node.label)).toEqual(['valid-opp.md']);
+    expect(fake.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
     expect(violations).toEqual([
       {
         file: 'bad-opp.md',
@@ -223,7 +223,7 @@ describe('validateRules - semantic evaluation', () => {
       expect(fake.callHistory).toHaveLength(0);
 
       await validateRules(sampleNodes, [checked], { judge: fake });
-      expect(fake.callHistory.map((c) => c.node.label)).toEqual(['valid-opp.md']);
+      expect(fake.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
     });
   });
 });

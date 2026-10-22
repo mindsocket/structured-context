@@ -46,15 +46,10 @@ export async function validate(
     for (const { file, parent, error } of result.refErrors) {
       addError(file, `broken-link:${parent}`, 'broken-link', `${parent} → ${error}`);
     }
-    for (const { title, files } of result.duplicateErrors) {
+    for (const { id, files } of result.duplicateErrors) {
       for (const file of files) {
         const others = files.filter((f) => f !== file);
-        addError(
-          file,
-          `duplicate:${title}`,
-          'duplicate',
-          `Duplicate title "${title}" also exists in: ${others.join(', ')}`,
-        );
+        addError(file, `duplicate:${id}`, 'duplicate', `Duplicate id "${id}" also exists in: ${others.join(', ')}`);
       }
     }
     for (const v of result.ruleViolations) {
@@ -124,7 +119,7 @@ export async function validate(
   console.log(fmt('  Valid', result.validCount));
   console.log(fmt('  Schema validation errors', result.nodeErrorCount, true));
   console.log(fmt('  Broken links', result.refErrors.length, true));
-  console.log(fmt('  Duplicate keys', result.duplicateErrors.length, true));
+  console.log(fmt('  Duplicate ids', result.duplicateErrors.length, true));
   console.log(fmt('  Rule violations (error)', ruleCounts.error, true));
   console.log(fmt('  Rule violations (warning)', ruleCounts.warning, true, true));
   console.log(fmt('  Rule violations (info)', ruleCounts.info, true, true));
@@ -141,7 +136,7 @@ export async function validate(
 
   if (result.orphans.length > 0) {
     console.log(`\nOrphans (hierarchy nodes - no parent):`);
-    for (const node of result.orphans) console.log(`   ${node.label}`);
+    for (const node of result.orphans) console.log(`   ${node.id}`);
   }
 
   if (result.unresolvedContentLinks.length > 0) {
@@ -188,9 +183,9 @@ export async function validate(
   }
 
   if (result.duplicateErrors.length > 0) {
-    console.log(`\nDuplicate keys (same title in multiple files):`);
-    result.duplicateErrors.forEach(({ title, files }) => {
-      console.log(`   "${title}":`);
+    console.log(`\nDuplicate ids (same id on multiple nodes):`);
+    result.duplicateErrors.forEach(({ id, files }) => {
+      console.log(`   "${id}":`);
       for (const f of files) {
         console.log(`      ${f}`);
       }
@@ -228,7 +223,7 @@ export async function validate(
     console.log(`\nCoverage — rule checks gated by cascade (use --include-gated to evaluate anyway):`);
     for (const gate of result.coverageGates) {
       const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
-      console.log(`   ${gate.file} (${gate.nodeTitle}) — ${cause} gated ${gate.gatedFiles.length} node(s):`);
+      console.log(`   ${gate.file} (${gate.nodeId}) — ${cause} gated ${gate.gatedFiles.length} node(s):`);
       for (const file of gate.gatedFiles) console.log(`      ${file}`);
     }
   }

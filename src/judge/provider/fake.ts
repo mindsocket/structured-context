@@ -27,7 +27,7 @@ function normalise(answer: FakeAnswer): SemanticJudgeResult {
 
 /**
  * In-memory fake judge for offline, deterministic tests. Configure with a single answer, a handler,
- * or answers keyed by `ruleId:title`, `ruleId:label` or `ruleId` (most specific wins). Unmatched calls get `pass`,
+ * or answers keyed by `ruleId:title`, `ruleId:id` or `ruleId` (most specific wins). Unmatched calls get `pass`,
  * or the rule's first declared verdict.
  */
 export class FakeJudgeProvider implements SemanticJudgeProvider {
@@ -54,15 +54,12 @@ export class FakeJudgeProvider implements SemanticJudgeProvider {
     if (isHandler(config)) return await config({ node, rule });
     if (config instanceof Map) {
       return (
-        config.get(`${rule.id}:${node.title}`) ??
-        config.get(`${rule.id}:${node.label}`) ??
-        config.get(rule.id) ??
-        fallback
+        config.get(`${rule.id}:${node.title}`) ?? config.get(`${rule.id}:${node.id}`) ?? config.get(rule.id) ?? fallback
       );
     }
     if (isAnswer(config)) return config;
     const rec = config as Record<string, FakeAnswer>;
-    return rec[`${rule.id}:${node.title}`] ?? rec[`${rule.id}:${node.label}`] ?? rec[rule.id] ?? fallback;
+    return rec[`${rule.id}:${node.title}`] ?? rec[`${rule.id}:${node.id}`] ?? rec[rule.id] ?? fallback;
   }
 
   clearHistory(): void {

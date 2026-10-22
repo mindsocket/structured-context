@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
-import type { Relationship } from '../../src/types';
+import type { NodeId, Relationship } from '../../src/types';
 import { makeLevel, makeNode, withHierarchy } from '../test-helpers';
 
 describe('resolveGraphEdges', () => {
@@ -13,9 +13,9 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([phase, activity], { ...withHierarchy(levels) });
 
-      const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
-      const resolvedPhase = nodes.find((n) => n.label === 'Phase 1.md')!;
-      expect(resolvedActivity.resolvedParents.map((r) => r.title)).toEqual(['Phase 1']);
+      const resolvedActivity = nodes.find((n) => n.id === 'Activity 1')!;
+      const resolvedPhase = nodes.find((n) => n.id === 'Phase 1')!;
+      expect(resolvedActivity.resolvedParents.map((r) => r.id as string)).toEqual(['Phase 1']);
       expect(resolvedPhase.resolvedParents).toEqual([]);
     });
 
@@ -26,11 +26,11 @@ describe('resolveGraphEdges', () => {
 
       const { nodes, unresolvedRefs } = resolveGraphEdges([activity], { ...withHierarchy(levels) });
 
-      const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
+      const resolvedActivity = nodes.find((n) => n.id === 'Activity 1')!;
       expect(resolvedActivity.resolvedParents).toEqual([]);
       expect(unresolvedRefs).toHaveLength(1);
       expect(unresolvedRefs[0]).toMatchObject({
-        label: 'Activity 1.md',
+        id: 'Activity 1' as NodeId,
         ref: '[[Nonexistent Phase]]',
         field: 'parent',
         reason: 'not_found',
@@ -52,9 +52,9 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([reqA, reqB, tool], { ...withHierarchy(levels) });
 
-      const resolvedTool = nodes.find((n) => n.label === 'Tool X.md')!;
-      expect(resolvedTool.resolvedParents.map((r) => r.title)).toContain('Req A');
-      expect(resolvedTool.resolvedParents.map((r) => r.title)).toContain('Req B');
+      const resolvedTool = nodes.find((n) => n.id === 'Tool X')!;
+      expect(resolvedTool.resolvedParents.map((r) => r.id as string)).toContain('Req A');
+      expect(resolvedTool.resolvedParents.map((r) => r.id as string)).toContain('Req B');
       expect(resolvedTool.resolvedParents).toHaveLength(2);
     });
 
@@ -66,8 +66,8 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([req, tool], { ...withHierarchy(levels) });
 
-      const resolvedTool = nodes.find((n) => n.label === 'Tool X.md')!;
-      expect(resolvedTool.resolvedParents.map((r) => r.title)).toEqual(['Req A']);
+      const resolvedTool = nodes.find((n) => n.id === 'Tool X')!;
+      expect(resolvedTool.resolvedParents.map((r) => r.id as string)).toEqual(['Req A']);
     });
 
     it('returns invalid_shape unresolved ref when array field gets a string', () => {
@@ -77,11 +77,11 @@ describe('resolveGraphEdges', () => {
 
       const { nodes, unresolvedRefs } = resolveGraphEdges([tool], { ...withHierarchy(levels) });
 
-      const resolvedTool = nodes.find((n) => n.label === 'Tool X.md')!;
+      const resolvedTool = nodes.find((n) => n.id === 'Tool X')!;
       expect(resolvedTool.resolvedParents).toEqual([]);
       expect(unresolvedRefs).toHaveLength(1);
       expect(unresolvedRefs[0]).toMatchObject({
-        label: 'Tool X.md',
+        id: 'Tool X' as NodeId,
         ref: '[[Req A]]',
         field: 'fulfills',
         reason: 'invalid_shape',
@@ -104,11 +104,11 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([activity, reqA, reqB], { ...withHierarchy(levels) });
 
-      const resolvedReqA = nodes.find((n) => n.label === 'Req A.md')!;
-      const resolvedReqB = nodes.find((n) => n.label === 'Req B.md')!;
-      const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
-      expect(resolvedReqA.resolvedParents.map((r) => r.title)).toEqual(['Activity 1']);
-      expect(resolvedReqB.resolvedParents.map((r) => r.title)).toEqual(['Activity 1']);
+      const resolvedReqA = nodes.find((n) => n.id === 'Req A')!;
+      const resolvedReqB = nodes.find((n) => n.id === 'Req B')!;
+      const resolvedActivity = nodes.find((n) => n.id === 'Activity 1')!;
+      expect(resolvedReqA.resolvedParents.map((r) => r.id as string)).toEqual(['Activity 1']);
+      expect(resolvedReqB.resolvedParents.map((r) => r.id as string)).toEqual(['Activity 1']);
       expect(resolvedActivity.resolvedParents).toEqual([]);
     });
 
@@ -128,9 +128,9 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([activity1, activity2, sharedReq], { ...withHierarchy(levels) });
 
-      const resolvedSharedReq = nodes.find((n) => n.label === 'Shared Req.md')!;
-      expect(resolvedSharedReq.resolvedParents.map((r) => r.title)).toContain('Activity 1');
-      expect(resolvedSharedReq.resolvedParents.map((r) => r.title)).toContain('Activity 2');
+      const resolvedSharedReq = nodes.find((n) => n.id === 'Shared Req')!;
+      expect(resolvedSharedReq.resolvedParents.map((r) => r.id as string)).toContain('Activity 1');
+      expect(resolvedSharedReq.resolvedParents.map((r) => r.id as string)).toContain('Activity 2');
       expect(resolvedSharedReq.resolvedParents).toHaveLength(2);
     });
   });
@@ -155,12 +155,12 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([phase, activity, reqA, reqB, tool], { ...withHierarchy(levels) });
 
-      const r = (label: string) => nodes.find((n) => n.label === label)!;
-      expect(r('Activity 1.md').resolvedParents.map((p) => p.title)).toEqual(['Phase 1']);
-      expect(r('Req A.md').resolvedParents.map((p) => p.title)).toEqual(['Activity 1']);
-      expect(r('Req B.md').resolvedParents.map((p) => p.title)).toEqual(['Activity 1']);
-      expect(r('Tool X.md').resolvedParents.map((p) => p.title)).toEqual(['Req A']);
-      expect(r('Phase 1.md').resolvedParents).toEqual([]);
+      const r = (label: string) => nodes.find((n) => n.id === label)!;
+      expect(r('Activity 1').resolvedParents.map((p) => p.id as string)).toEqual(['Phase 1']);
+      expect(r('Req A').resolvedParents.map((p) => p.id as string)).toEqual(['Activity 1']);
+      expect(r('Req B').resolvedParents.map((p) => p.id as string)).toEqual(['Activity 1']);
+      expect(r('Tool X').resolvedParents.map((p) => p.id as string)).toEqual(['Req A']);
+      expect(r('Phase 1').resolvedParents).toEqual([]);
     });
   });
 
@@ -173,11 +173,11 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([phase, activity], { ...withHierarchy(levels) });
 
-      const resolvedPhase = nodes.find((n) => n.label === 'Phase 1.md')!;
-      const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
+      const resolvedPhase = nodes.find((n) => n.id === 'Phase 1')!;
+      const resolvedActivity = nodes.find((n) => n.id === 'Activity 1')!;
       // Phase is level 0 (root) — its parent field is not processed
       expect(resolvedPhase.resolvedParents).toEqual([]);
-      expect(resolvedActivity.resolvedParents.map((r) => r.title)).toEqual(['Phase 1']);
+      expect(resolvedActivity.resolvedParents.map((r) => r.id as string)).toEqual(['Phase 1']);
     });
   });
 
@@ -189,11 +189,11 @@ describe('resolveGraphEdges', () => {
 
       const { nodes, unresolvedRefs } = resolveGraphEdges([activity], { ...withHierarchy(levels) });
 
-      const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
+      const resolvedActivity = nodes.find((n) => n.id === 'Activity 1')!;
       expect(resolvedActivity.resolvedParents).toEqual([]);
       expect(unresolvedRefs).toHaveLength(1);
       expect(unresolvedRefs[0]).toMatchObject({
-        label: 'Activity 1.md',
+        id: 'Activity 1' as NodeId,
         ref: '[[Ghost Phase]]',
         field: 'parent',
         reason: 'not_found',
@@ -220,8 +220,8 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([project, task], { ...withHierarchy(levels), relationships });
 
-      const resolvedTask = nodes.find((n) => n.label === 'Task 1.md')!;
-      const ref = resolvedTask.resolvedParents.find((r) => r.title === 'Project A');
+      const resolvedTask = nodes.find((n) => n.id === 'Task 1')!;
+      const ref = resolvedTask.resolvedParents.find((r) => r.id === 'Project A');
       expect(ref).toBeDefined();
       expect(ref?.source).toBe('hierarchy');
     });
@@ -244,8 +244,8 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([project, resource], { ...withHierarchy(levels), relationships });
 
-      const resolvedResource = nodes.find((n) => n.label === 'Resource 1.md')!;
-      const ref = resolvedResource.resolvedParents.find((r) => r.title === 'Project A');
+      const resolvedResource = nodes.find((n) => n.id === 'Resource 1')!;
+      const ref = resolvedResource.resolvedParents.find((r) => r.id === 'Project A');
       expect(ref).toBeDefined();
       expect(ref?.source).toBe('relationship');
     });
@@ -266,16 +266,16 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([activity, coreCapability, subCapability], { ...withHierarchy(levels) });
 
-      const resolvedCore = nodes.find((n) => n.label === 'Core Capability.md')!;
-      const resolvedSub = nodes.find((n) => n.label === 'Sub Capability.md')!;
-      const resolvedActivity = nodes.find((n) => n.label === 'Activity 1.md')!;
+      const resolvedCore = nodes.find((n) => n.id === 'Core Capability')!;
+      const resolvedSub = nodes.find((n) => n.id === 'Sub Capability')!;
+      const resolvedActivity = nodes.find((n) => n.id === 'Activity 1')!;
 
       // Regular relationship: Activity → Capabilities via capabilities field on parent
-      expect(resolvedCore.resolvedParents.map((r) => r.title)).toContain('Activity 1');
-      expect(resolvedSub.resolvedParents.map((r) => r.title)).toContain('Activity 1');
+      expect(resolvedCore.resolvedParents.map((r) => r.id as string)).toContain('Activity 1');
+      expect(resolvedSub.resolvedParents.map((r) => r.id as string)).toContain('Activity 1');
 
       // Same-type relationship: Capability → Capability via parent field on child
-      expect(resolvedSub.resolvedParents.map((r) => r.title)).toContain('Core Capability');
+      expect(resolvedSub.resolvedParents.map((r) => r.id as string)).toContain('Core Capability');
 
       expect(resolvedActivity.resolvedParents).toEqual([]);
       expect(resolvedCore.resolvedParents).toHaveLength(1);
@@ -297,16 +297,16 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([activity, toolA, toolB, toolC], { ...withHierarchy(levels) });
 
-      const rTool = (name: string) => nodes.find((n) => n.label === `${name}.md`)!;
+      const rTool = (name: string) => nodes.find((n) => n.id === name)!;
 
       // Regular relationships: Activity → Tools
-      expect(rTool('Tool A').resolvedParents.map((r) => r.title)).toContain('Activity 1');
-      expect(rTool('Tool B').resolvedParents.map((r) => r.title)).toContain('Activity 1');
-      expect(rTool('Tool C').resolvedParents.map((r) => r.title)).toContain('Activity 1');
+      expect(rTool('Tool A').resolvedParents.map((r) => r.id as string)).toContain('Activity 1');
+      expect(rTool('Tool B').resolvedParents.map((r) => r.id as string)).toContain('Activity 1');
+      expect(rTool('Tool C').resolvedParents.map((r) => r.id as string)).toContain('Activity 1');
 
       // Same-type relationships: Tools → Tools via partOf field (multiple: false)
-      expect(rTool('Tool B').resolvedParents.map((r) => r.title)).toContain('Tool A');
-      expect(rTool('Tool C').resolvedParents.map((r) => r.title)).toContain('Tool B');
+      expect(rTool('Tool B').resolvedParents.map((r) => r.id as string)).toContain('Tool A');
+      expect(rTool('Tool C').resolvedParents.map((r) => r.id as string)).toContain('Tool B');
 
       expect(rTool('Tool A').resolvedParents).toHaveLength(1);
       expect(rTool('Tool B').resolvedParents).toHaveLength(2);
@@ -322,13 +322,13 @@ describe('resolveGraphEdges', () => {
 
       const { nodes } = resolveGraphEdges([goal, objective1, objective2], { ...withHierarchy(levels) });
 
-      const rObj = (name: string) => nodes.find((n) => n.label === `${name}.md`)!;
+      const rObj = (name: string) => nodes.find((n) => n.id === name)!;
 
       // Regular: Goal → Objective
-      expect(rObj('Objective 1').resolvedParents.map((r) => r.title)).toContain('Goal 1');
+      expect(rObj('Objective 1').resolvedParents.map((r) => r.id as string)).toContain('Goal 1');
 
       // Same-type: Objective → Objective (uses same field 'parent')
-      expect(rObj('Objective 2').resolvedParents.map((r) => r.title)).toContain('Objective 1');
+      expect(rObj('Objective 2').resolvedParents.map((r) => r.id as string)).toContain('Objective 1');
 
       expect(rObj('Goal 1').resolvedParents).toEqual([]);
       expect(rObj('Objective 1').resolvedParents).toHaveLength(1);
@@ -350,16 +350,16 @@ describe('resolveGraphEdges', () => {
 
       const { nodes, unresolvedRefs } = resolveGraphEdges([activity, capabilityA], { ...withHierarchy(levels) });
 
-      const resolvedCapA = nodes.find((n) => n.label === 'Capability A.md')!;
+      const resolvedCapA = nodes.find((n) => n.id === 'Capability A')!;
 
       // Regular relationship resolves
-      expect(resolvedCapA.resolvedParents.map((r) => r.title)).toContain('Activity 1');
+      expect(resolvedCapA.resolvedParents.map((r) => r.id as string)).toContain('Activity 1');
       expect(resolvedCapA.resolvedParents).toHaveLength(1);
 
       // Missing selfRefField target returns an unresolved ref
       expect(unresolvedRefs).toHaveLength(1);
       expect(unresolvedRefs[0]).toMatchObject({
-        label: 'Capability A.md',
+        id: 'Capability A' as NodeId,
         ref: '[[Nonexistent Parent]]',
         field: 'parent',
         reason: 'not_found',

@@ -34,7 +34,7 @@
         "category": "best-practice",
         "description": "Explore multiple candidate solutions (aim for at least three) for the target opportunity",
         "type": "opportunity",
-        "expression": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentTitle=$$.current.title and resolvedType='solution']) >= 3"
+        "expression": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentId=$$.current.id and resolvedType='solution']) >= 3"
       },
       {
         "id": "opportunity-customer-voice",

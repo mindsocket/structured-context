@@ -11,6 +11,7 @@ import type {
   SchemaMetadata,
   SharedEmbeddingFields,
 } from '../../api';
+import type { NodeId } from '../../types';
 import { extractLinksFromAstNode } from './extract-content-links';
 import { applyFieldMap, parseYaml } from './util';
 
@@ -81,7 +82,7 @@ function appendParentField(parentNode: BaseNode, field: string, linkRef: string)
     fieldValue.push(linkRef);
   } else {
     throw new Error(
-      `Cannot append child link to field '${field}' on node '${parentNode.label}': ` +
+      `Cannot append child link to field '${field}' on node '${parentNode.id}': ` +
         `field exists but is not an array (found ${typeof fieldValue}). ` +
         `Child link: ${linkRef}`,
     );
@@ -306,7 +307,7 @@ function processListItem(
   parentRef: string | undefined,
   contentTarget: BaseNode,
   nodes: BaseNode[],
-  makeLabel: (title: string) => string,
+  makeId: (title: string) => NodeId,
   buildLinkTargets: (title: string) => string[],
   typeAliases: Record<string, string>,
   fieldMap: Record<string, string> | undefined,
@@ -374,7 +375,7 @@ function processListItem(
 
     const linkTargets = buildLinkTargets(title);
     const newNode: BaseNode = {
-      label: makeLabel(title),
+      id: makeId(title),
       title,
       schemaData,
       linkTargets,
@@ -403,7 +404,7 @@ function processListItem(
             nestedParentRef,
             newNode,
             nodes,
-            makeLabel,
+            makeId,
             buildLinkTargets,
             typeAliases,
             fieldMap,
@@ -429,10 +430,12 @@ function processListItem(
 
 export interface ExtractEmbeddedOptions {
   /**
-   * Title of the containing page. If provided (and pageType is not a space_on_a_page type),
+   * The containing page. If provided (and pageType is not a space_on_a_page type),
    * the page acts as a virtual depth-0 parent for first-level embedded headings.
+   * `id` is the page's node id (embedded node ids are `<id>#<title>`); `targets` are its
+   * link targets, most specific first (the first is used in generated parent links).
    */
-  pageTitle?: string;
+  page?: { id: string; targets: string[] };
   /**
    * Node type of the containing page.
    * - If set to a real node type: only headings with an explicit `[type:: x]` field or a
@@ -469,7 +472,7 @@ export interface ExtractEmbeddedResult {
  * (directory) to find embedded sub-nodes within a page's content.
  */
 export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptions): ExtractEmbeddedResult {
-  const { pageTitle, pageType, metadata, fieldMap } = options;
+  const { page, pageType, metadata, fieldMap } = options;
   const levels = metadata.hierarchy?.levels ?? [];
   const hierarchy = levels.map((l) => l.type);
   const relationships = metadata.relationships ?? [];
@@ -479,7 +482,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   const nodes: BaseNode[] = [];
   // Preamble/root content sink - never added to nodes
   const rootNode: BaseNode = {
-    label: '_root_',
+    id: '_root_' as NodeId,
     title: '_root_',
     schemaData: { type: 'space_on_a_page' },
     linkTargets: [],
@@ -492,8 +495,8 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   // In typed-page mode: stack starts with the page's own virtual entry (depth 0).
   // In space_on_a_page mode: stack starts empty (first heading has no parent).
   const stack: StackEntry[] =
-    !isOnAPageMode && pageTitle !== undefined
-      ? [{ depth: 0, title: pageTitle, nodeType: pageType, refTarget: pageTitle }]
+    !isOnAPageMode && page !== undefined
+      ? [{ depth: 0, title: page.targets[0] ?? page.id, nodeType: pageType, refTarget: page.targets[0] ?? page.id }]
       : [];
 
   type ParseState = 'preamble' | 'active' | 'done';
@@ -609,8 +612,8 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     return undefined;
   }
 
-  function makeLabel(title: string): string {
-    return title;
+  function makeId(title: string): NodeId {
+    return (page ? `${page.id}#${title}` : title) as NodeId;
   }
 
   /**
@@ -656,7 +659,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   }
 
   function buildHeadingLinkTargets(rawHeadingText: string, title: string, anchor?: string): string[] {
-    if (!pageTitle) {
+    if (!page) {
       return [title];
     }
 
@@ -664,20 +667,20 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
     const sectionTarget = normalizeHeadingSectionTarget(rawHeadingText);
     if (sectionTarget) {
-      targets.push(`${pageTitle}#${sectionTarget}`);
+      for (const pageTarget of page.targets) targets.push(`${pageTarget}#${sectionTarget}`);
     }
 
     if (anchor) {
-      targets.push(`${pageTitle}#^${anchor}`);
+      for (const pageTarget of page.targets) targets.push(`${pageTarget}#^${anchor}`);
     }
 
     return targets.length > 0 ? targets : [title];
   }
 
   function buildListItemLinkTargets(title: string): string[] {
-    if (!pageTitle) return [title];
+    if (!page) return [title];
     const normalized = normalizeHeadingSectionTarget(title);
-    return normalized ? [`${pageTitle}#${normalized}`] : [title];
+    return normalized ? page.targets.map((pageTarget) => `${pageTarget}#${normalized}`) : [title];
   }
 
   let grouping: GroupingState | null = null;
@@ -787,7 +790,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
       const linkTargets = buildHeadingLinkTargets(rawText, title, anchor);
       const headingNode: BaseNode = {
-        label: makeLabel(title),
+        id: makeId(title),
         title,
         schemaData,
         linkTargets,
@@ -850,7 +853,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             isParentSide ? undefined : semanticParent.ref,
             grouping.headingNode,
             nodes,
-            makeLabel,
+            makeId,
             buildListItemLinkTargets,
             typeAliases,
             fieldMap,
@@ -871,7 +874,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
             parentRef,
             activeNode,
             nodes,
-            makeLabel,
+            makeId,
             buildListItemLinkTargets,
             typeAliases,
             fieldMap,
@@ -981,7 +984,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
             const linkTargets = buildListItemLinkTargets(title);
             const rowNode: BaseNode = {
-              label: makeLabel(title),
+              id: makeId(title),
               title,
               schemaData,
               linkTargets,
@@ -1020,7 +1023,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
 
         if ('type' in allFields) {
           throw new Error(
-            `Type override via paragraph field is not supported at "${activeNode.schemaData.title ?? activeNode.label}". ` +
+            `Type override via paragraph field is not supported at "${activeNode.schemaData.title ?? activeNode.id}". ` +
               `Put [type:: ${(allFields as Record<string, string>).type}] directly in the heading text.`,
           );
         }
@@ -1050,7 +1053,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
           Object.assign(activeNode.schemaData, applyFieldMap(parsed as Record<string, unknown>, fieldMap));
           consumeBlock(activeNode);
         } else if (Array.isArray(parsed)) {
-          throw new Error(`YAML block must be an object at "${activeNode.label}".`);
+          throw new Error(`YAML block must be an object at "${activeNode.id}".`);
         } else {
           claimBlock(activeNode);
         }

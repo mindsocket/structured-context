@@ -1,24 +1,24 @@
 import type { SpaceGraph } from '../../space-graph';
-import type { SpaceNode } from '../../types';
+import type { NodeId, SpaceNode } from '../../types';
 
 export function renderBullets(graph: SpaceGraph): string {
   const { hierarchyRoots, orphans, nonHierarchy, hierarchyChildren: children } = graph;
   const lines: string[] = [];
-  const seen = new Set<string>();
+  const seen = new Set<NodeId>();
 
   function renderNode(node: SpaceNode, depth: number) {
     const indent = '  '.repeat(depth);
     const type = node.resolvedType;
     const title = node.title;
-    const nodeChildren = children.get(title) ?? [];
+    const nodeChildren = children.get(node.id) ?? [];
 
-    if (seen.has(title)) {
+    if (seen.has(node.id)) {
       if (nodeChildren.length > 0) {
         lines.push(`${indent}- ${type}: ${title} (*)`);
       }
       return;
     }
-    seen.add(title);
+    seen.add(node.id);
     lines.push(`${indent}- ${type}: ${title}`);
     for (const child of nodeChildren) {
       renderNode(child, depth + 1);

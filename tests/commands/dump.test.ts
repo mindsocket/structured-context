@@ -38,7 +38,7 @@ describe('dump', () => {
     const parsed = JSON.parse(lines.join('\n'));
     expect(parsed.nodes.length).toBeGreaterThan(0);
     for (const node of parsed.nodes) {
-      expect(typeof node.label).toBe('string');
+      expect(typeof node.id).toBe('string');
       expect(typeof node.title).toBe('string');
       expect(typeof node.resolvedType).toBe('string');
     }

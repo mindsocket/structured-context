@@ -104,7 +104,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { mode: 'folder-name' },
       });
       const result = await readSpaceDirectory(ctx);
-      const node = result.nodes.find((n) => n.label === 'concept/concept-page.md');
+      const node = result.nodes.find((n) => n.id === 'concept/concept-page.md');
       expect(node).toBeDefined();
       expect(node?.type).toBe('concept');
     });
@@ -114,7 +114,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { mode: 'folder-name' },
       });
       const result = await readSpaceDirectory(ctx);
-      const node = result.nodes.find((n) => n.label === 'study/study-page.md');
+      const node = result.nodes.find((n) => n.id === 'study/study-page.md');
       expect(node).toBeDefined();
       expect(node?.type).toBe('source');
     });
@@ -124,7 +124,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { mode: 'folder-name' },
       });
       const result = await readSpaceDirectory(ctx);
-      const node = result.nodes.find((n) => n.label.toLowerCase() === 'study/case-insensitive.md');
+      const node = result.nodes.find((n) => n.id.toLowerCase() === 'study/case-insensitive.md');
       expect(node).toBeDefined();
       expect(node?.type).toBe('source');
     });
@@ -142,7 +142,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { mode: 'folder-name' },
       });
       const result = await readSpaceDirectory(ctx);
-      const node = result.nodes.find((n) => n.label === 'note/explicit-type.md');
+      const node = result.nodes.find((n) => n.id === 'note/explicit-type.md');
       expect(node).toBeDefined();
       expect(node?.type).toBe('synthesis');
     });
@@ -162,7 +162,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { mode: 'off' },
       });
       const result = await readSpaceDirectory(ctx);
-      expect(result.nodes.find((n) => n.label === 'concept/concept-page.md')).toBeUndefined();
+      expect(result.nodes.find((n) => n.id === 'concept/concept-page.md')).toBeUndefined();
       expect(result.parseIssues.map((i) => i.file)).toContain('concept/concept-page.md');
     });
   });
@@ -171,7 +171,7 @@ describe('readSpaceDirectory with type inference', () => {
     it('does not infer type when typeInference is not configured', async () => {
       const ctx = makePluginContext(FIXTURE_DIR, KNOWLEDGE_WIKI_SCHEMA);
       const result = await readSpaceDirectory(ctx);
-      expect(result.nodes.find((n) => n.label === 'concept/concept-page.md')).toBeUndefined();
+      expect(result.nodes.find((n) => n.id === 'concept/concept-page.md')).toBeUndefined();
       expect(result.parseIssues.map((i) => i.file)).toContain('concept/concept-page.md');
     });
   });
@@ -182,8 +182,8 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { folderMap: { Research: 'source', Personal: 'note' } },
       });
       const result = await readSpaceDirectory(ctx);
-      expect(result.nodes.find((n) => n.label === 'Research/research-page.md')?.type).toBe('source');
-      expect(result.nodes.find((n) => n.label === 'Personal/personal-page.md')?.type).toBe('note');
+      expect(result.nodes.find((n) => n.id === 'Research/research-page.md')?.type).toBe('source');
+      expect(result.nodes.find((n) => n.id === 'Personal/personal-page.md')?.type).toBe('note');
     });
 
     it('does not infer for unmapped folder', async () => {
@@ -199,7 +199,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { folderMap: { 'topics/concepts': 'concept' } },
       });
       const result = await readSpaceDirectory(ctx);
-      expect(result.nodes.find((n) => n.label === 'topics/concepts/nested-concept.md')?.type).toBe('concept');
+      expect(result.nodes.find((n) => n.id === 'topics/concepts/nested-concept.md')?.type).toBe('concept');
     });
 
     it('longest-prefix wins', async () => {
@@ -207,8 +207,8 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { folderMap: { 'a/b': 'note', 'a/b/c': 'concept' } },
       });
       const result = await readSpaceDirectory(ctx);
-      expect(result.nodes.find((n) => n.label === 'a/b/shallow.md')?.type).toBe('note');
-      expect(result.nodes.find((n) => n.label === 'a/b/c/deep.md')?.type).toBe('concept');
+      expect(result.nodes.find((n) => n.id === 'a/b/shallow.md')?.type).toBe('note');
+      expect(result.nodes.find((n) => n.id === 'a/b/c/deep.md')?.type).toBe('concept');
     });
 
     it('folderMap value can be an alias', async () => {
@@ -216,7 +216,7 @@ describe('readSpaceDirectory with type inference', () => {
         typeInference: { folderMap: { Research: 'study' } },
       });
       const result = await readSpaceDirectory(ctx);
-      expect(result.nodes.find((n) => n.label === 'Research/research-page.md')?.type).toBe('source');
+      expect(result.nodes.find((n) => n.id === 'Research/research-page.md')?.type).toBe('source');
     });
 
     it('throws for unresolvable folderMap value', async () => {

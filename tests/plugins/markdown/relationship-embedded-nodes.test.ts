@@ -12,7 +12,7 @@ describe('Embedded nodes with parent-side relationships', () => {
 `;
 
     const result = extractEmbeddedNodes(markdown, {
-      pageTitle: 'Test Solution',
+      page: { id: 'Test Solution.md', targets: ['Test Solution'] },
       pageType: 'Solutions',
       metadata: {
         ...withHierarchy(['Phases', 'Activities', 'Capabilities', 'Tools'].map((t) => makeLevel(t))),
