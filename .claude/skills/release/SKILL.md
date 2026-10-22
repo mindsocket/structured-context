@@ -30,7 +30,7 @@ Cut a **$ARGUMENTS** release (major, minor, or patch).
 
 5. Update the global install and smoke test it:
    ```
-   bun update -g structured-context
+   bun add -g structured-context@latest
    sctx --version
    sctx plugins >/dev/null && sctx docs concepts >/dev/null && echo ok
    ```
