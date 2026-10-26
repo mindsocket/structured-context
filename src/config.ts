@@ -1,9 +1,10 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020';
 import JSON5 from 'json5';
-import { ENV_CONFIG_VAR, XDG_CONFIG_DIR } from './constants';
+import { ENV_CONFIG_VAR, LOCAL_CONFIG_FILE, XDG_CONFIG_DIR } from './constants';
+import { SctxError } from './errors';
 import { type JudgeConfig, MODEL_PROVIDER_APIS, type ModelProviderConfig } from './judge/types';
 import {
   normalizePluginName,
@@ -115,23 +116,43 @@ export function getConfigSourceFiles(): Set<string> {
   return new Set(_spaceSourceFiles.values());
 }
 
-export function configPath(): string {
-  if (_configPathOverride) {
-    return _configPathOverride;
-  }
-  if (process.env[ENV_CONFIG_VAR]) {
-    return process.env[ENV_CONFIG_VAR]!;
-  }
+/** How the config file was found. `none` means nothing exists and `path` is where the global file would go. */
+export type ConfigSource = 'override' | 'env' | 'local' | 'global' | 'none';
+
+export type ResolvedConfigPath = { path: string; source: ConfigSource };
+
+/** Path of the global config file, whether or not it exists. */
+export function globalConfigPath(): string {
   const xdgBase = process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config');
-  const xdgPath = join(xdgBase, XDG_CONFIG_DIR, 'config.json');
-  if (existsSync(xdgPath)) {
-    return xdgPath;
+  return join(xdgBase, XDG_CONFIG_DIR, 'config.json');
+}
+
+function findLocalConfig(startDir: string): string | undefined {
+  let dir = resolve(startDir);
+  for (;;) {
+    const candidate = join(dir, LOCAL_CONFIG_FILE);
+    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
   }
-  const cwdPath = join(process.cwd(), 'config.json');
-  if (existsSync(cwdPath)) {
-    return cwdPath;
-  }
-  return xdgPath;
+}
+
+/**
+ * Find the config file. Precedence: explicit override (`--config`), `$SCTX_CONFIG`, the nearest
+ * `.sctx.json` walking up from `startDir` (default: the working directory), then the global file.
+ */
+export function resolveConfigPath(startDir: string = process.cwd()): ResolvedConfigPath {
+  if (_configPathOverride) return { path: _configPathOverride, source: 'override' };
+  if (process.env[ENV_CONFIG_VAR]) return { path: process.env[ENV_CONFIG_VAR]!, source: 'env' };
+  const local = findLocalConfig(startDir);
+  if (local) return { path: local, source: 'local' };
+  const global = globalConfigPath();
+  return { path: global, source: existsSync(global) ? 'global' : 'none' };
+}
+
+export function configPath(startDir?: string): string {
+  return resolveConfigPath(startDir).path;
 }
 
 function normalizePlugins(
@@ -171,50 +192,72 @@ function resolveRelativePaths(config: Config, configDir: string): Config {
 
 function _loadConfig(path: string): Config {
   if (!existsSync(path)) {
-    throw new Error(`Config file not found: ${path}`);
+    throw new SctxError('E_CONFIG_NOT_FOUND', `Config file not found: ${path}`);
   }
 
-  const config = JSON5.parse(readFileSync(path, 'utf-8'));
+  let config: unknown;
+  try {
+    config = JSON5.parse(readFileSync(path, 'utf-8'));
+  } catch (err) {
+    throw new SctxError('E_CONFIG_INVALID', `Invalid config in ${path}: ${(err as Error).message}`);
+  }
   const ajv = new Ajv2020();
   const validate = ajv.compile(CONFIG_SCHEMA);
 
   if (!validate(config)) {
-    throw new Error(`Invalid config in ${path}: ${JSON.stringify(validate.errors)}`);
+    throw new SctxError('E_CONFIG_INVALID', `Invalid config in ${path}: ${JSON.stringify(validate.errors)}`);
   }
-  if (!config.spaces) config.spaces = [];
-  return config as unknown as Config;
+  const parsed = config as unknown as Config;
+  if (!parsed.spaces) parsed.spaces = [];
+  return parsed;
 }
 
-export function loadConfig(): Config {
-  const path = configPath();
+function expandHome(p: string): string {
+  return p === '~' || p.startsWith('~/') ? join(process.env.HOME ?? homedir(), p.slice(1)) : p;
+}
+
+export function loadConfig(options: { startDir?: string } = {}): Config {
+  const { path, source } = resolveConfigPath(options.startDir);
   if (!existsSync(path)) {
-    console.warn(`Config file not found: ${path}`);
+    const where =
+      source === 'none'
+        ? `no ${LOCAL_CONFIG_FILE} found from ${resolve(options.startDir ?? process.cwd())} upward, and none at ${path}`
+        : path;
+    console.warn(`E_CONFIG_NOT_FOUND: Config file not found (${where})`);
     return { spaces: [] };
   }
   const config = _loadConfig(path);
   _spaceSourceFiles.clear();
   // Track which spaces come from the main config file
   const mainSourceDir = dirname(resolve(path));
+  const ownNames = new Set(config.spaces.map((s) => s.name));
   for (const space of config.spaces) {
     _spaceSourceFiles.set(space.name, path);
     space.sourceDir = mainSourceDir;
   }
-  // Load includeSpacesFrom configs and merge their spaces in, with later entries taking precedence over earlier ones
+  // Merge includeSpacesFrom configs. A space defined in the including file wins over an included one
+  // of the same name; between includes, later entries win over earlier ones.
   if (config.includeSpacesFrom) {
     for (const includePath of config.includeSpacesFrom) {
       // Resolve relative to the main config file
-      const resolvedIncludePath = isAbsolute(includePath) ? includePath : resolve(dirname(path), includePath);
-      const includedConfig = resolveRelativePaths(_loadConfig(resolvedIncludePath), dirname(resolvedIncludePath));
-      if (includedConfig.spaces.some((s) => config.spaces.some((existing) => existing.name === s.name))) {
-        throw new Error(`Included config contains spaces with duplicate names: ${resolvedIncludePath}`);
+      const expanded = expandHome(includePath);
+      const resolvedIncludePath = isAbsolute(expanded) ? expanded : resolve(dirname(path), expanded);
+      if (!existsSync(resolvedIncludePath)) {
+        throw new SctxError(
+          'E_INCLUDE_NOT_FOUND',
+          `Config ${path} includes ${resolvedIncludePath}, which does not exist`,
+        );
       }
-      // Track which spaces come from this included config file
+      const includedConfig = resolveRelativePaths(_loadConfig(resolvedIncludePath), dirname(resolvedIncludePath));
       const includeSourceDir = dirname(resolvedIncludePath);
       for (const space of includedConfig.spaces) {
-        _spaceSourceFiles.set(space.name, resolvedIncludePath);
+        if (ownNames.has(space.name)) continue;
         space.sourceDir = includeSourceDir;
+        _spaceSourceFiles.set(space.name, resolvedIncludePath);
+        const existing = config.spaces.findIndex((s) => s.name === space.name);
+        if (existing >= 0) config.spaces[existing] = space;
+        else config.spaces.push(space);
       }
-      config.spaces.push(...includedConfig.spaces);
     }
   }
   return resolveRelativePaths(config, dirname(resolve(path)));

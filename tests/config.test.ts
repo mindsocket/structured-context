@@ -208,33 +208,41 @@ describe('loadConfig with includeSpacesFrom', () => {
     expect(() => loadConfig()).toThrow('Invalid config');
   });
 
-  it('throws error when included config has duplicate name', () => {
-    writeFileSync(
-      includedConfigPath,
-      JSON.stringify(
-        {
-          spaces: [{ name: 'duplicate-space', path: '/included' }],
-        },
-        null,
-        2,
-      ),
-    );
-
+  it('lets a space in the including file override an included space of the same name', () => {
+    writeFileSync(includedConfigPath, JSON.stringify({ spaces: [{ name: 'duplicate-space', path: '/included' }] }));
     writeFileSync(
       mainConfigPath,
-      JSON.stringify(
-        {
-          includeSpacesFrom: ['included-config.json'],
-          spaces: [{ name: 'duplicate-space', path: '/main' }],
-        },
-        null,
-        2,
-      ),
+      JSON.stringify({
+        includeSpacesFrom: ['included-config.json'],
+        spaces: [{ name: 'duplicate-space', path: '/main' }],
+      }),
     );
 
     setConfigPath(mainConfigPath);
+    const config = loadConfig();
 
-    expect(() => loadConfig()).toThrow('Included config contains spaces with duplicate names');
+    expect(config.spaces).toHaveLength(1);
+    expect(config.spaces[0]?.path).toBe('/main');
+  });
+
+  it('lets a later include override an earlier include of the same name', () => {
+    writeFileSync(join(testDir, 'first.json'), JSON.stringify({ spaces: [{ name: 'shared', path: '/first' }] }));
+    writeFileSync(join(testDir, 'second.json'), JSON.stringify({ spaces: [{ name: 'shared', path: '/second' }] }));
+    writeFileSync(mainConfigPath, JSON.stringify({ includeSpacesFrom: ['first.json', 'second.json'] }));
+
+    setConfigPath(mainConfigPath);
+    const config = loadConfig();
+
+    expect(config.spaces).toHaveLength(1);
+    expect(config.spaces[0]?.path).toBe('/second');
+  });
+
+  it('reports a missing include with a stable code', () => {
+    writeFileSync(mainConfigPath, JSON.stringify({ includeSpacesFrom: ['nope.json'] }));
+
+    setConfigPath(mainConfigPath);
+
+    expect(() => loadConfig()).toThrow('does not exist');
   });
 
   it('handles included configs with their own relative paths correctly', () => {
