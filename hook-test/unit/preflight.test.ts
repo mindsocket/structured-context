@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { runOnPrompt } from '../../plugin/scripts/on-prompt';
 import { runPreflight } from '../../plugin/scripts/preflight';
 import { runSafely } from '../../plugin/scripts/safe';
-import { loadState, stateFilePath } from '../../plugin/scripts/state';
+import { loadState, sctxCommand, stateFilePath } from '../../plugin/scripts/state';
 import { type IsolatedFixtures, isolateFixtures } from '../fixture-utils';
 
 const SCTX_BIN = join(import.meta.dir, '../../src/index.ts');
@@ -148,5 +148,15 @@ describe('runSafely', () => {
     expect(lines).toHaveLength(1);
     expect(JSON.parse(lines[0]!).systemMessage).toContain('E_HOOK_FAILED');
     expect(lines[0]).not.toContain('stack line');
+  });
+});
+
+describe('sctxCommand', () => {
+  const none = () => null;
+
+  it('prefers an explicit entry point, then an installed sctx, then bunx pinned to the release line', () => {
+    expect(sctxCommand({ sctxBin: '/x/index.ts' }, () => '/usr/bin/sctx')).toEqual(['bun', 'run', '/x/index.ts']);
+    expect(sctxCommand({}, () => '/usr/bin/sctx')).toEqual(['/usr/bin/sctx']);
+    expect(sctxCommand({}, none)).toEqual(['bunx', expect.stringMatching(/^structured-context@\d+\.\d+$/)]);
   });
 });
