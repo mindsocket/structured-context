@@ -10,7 +10,7 @@ import { listPlugins } from './commands/plugins';
 import { render, renderList } from './commands/render';
 import { listSchemas, showSchema } from './commands/schemas';
 import { show } from './commands/show';
-import { listSpaces } from './commands/spaces';
+import { addSpaceCommand, listSpaces } from './commands/spaces';
 import { templateSync } from './commands/template-sync';
 import { validate, watchValidate } from './commands/validate';
 import { validateFileCommand } from './commands/validate-file';
@@ -58,7 +58,7 @@ program
   .name(CLI_NAME)
   .description('Structured context validation and diagram generation tool')
   .version(packageJson.version)
-  .option('--config <path>', 'Path to config file (overrides default config.json locations)');
+  .option('--config <path>', 'Path to config file (overrides discovery of .sctx.json and the global config)');
 
 program.hook('preAction', () => {
   setConfigPath(program.opts().config);
@@ -185,6 +185,20 @@ spacesCmd
   .description('List all configured spaces and their paths')
   .option('--json', 'Output as JSON: config files, and each space with its path and schema')
   .action((options) => listSpaces(options));
+spacesCmd
+  .command('add')
+  .description('Add a space to a config file, creating the file if needed')
+  .argument('<name>', 'Space name (lowercase letters, digits, - and _)')
+  .argument('<path>', 'Path to the space (a folder or a file); must exist')
+  .option('--schema <schema>', 'Schema name or path (required unless the config names a top-level schema)')
+  .option('--global', 'Write to the global config file')
+  .option('--json', 'Output as JSON')
+  .addHelpText(
+    'after',
+    '\nWrites to the config found by walking up from the working directory, or the one named with --config.\n' +
+      'If only the global config (or none) exists, name the target: --config <folder>/.sctx.json or --global.',
+  )
+  .action((name, path, options) => addSpaceCommand(name, path, options));
 program.addCommand(spacesCmd);
 
 const providersCmd = new Command('providers').description(

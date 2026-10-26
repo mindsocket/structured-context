@@ -19,9 +19,22 @@
  */
 
 export type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
-export type { Config, SpaceConfig } from './config';
-export { loadConfig, resolveSchema, resolveSchemaPath, setConfigPath } from './config';
-export { PLUGIN_PREFIX } from './constants';
+export type { Config, ConfigSource, ResolvedConfigPath, SpaceConfig } from './config';
+export {
+  globalConfigPath,
+  loadConfig,
+  resolveConfigPath,
+  resolveSchema,
+  resolveSchemaPath,
+  setConfigPath,
+} from './config';
+export type { ConfigHealth, ConfigProblem } from './config-health';
+export { checkConfig, hasBlockingProblem } from './config-health';
+export type { AddSpaceOptions, AddSpaceResult } from './config-write';
+export { addSpace, chooseWriteTarget } from './config-write';
+export { LOCAL_CONFIG_FILE, PLUGIN_PREFIX } from './constants';
+export type { SctxErrorCode } from './errors';
+export { SctxError } from './errors';
 export { assembleSpaceGraph, loadSpaceGraph } from './load-space-graph';
 export type {
   ParseHook,

@@ -1,5 +1,8 @@
 import { basename, resolve } from 'node:path';
-import { configPath, getConfigSourceFiles, loadConfig } from '../config';
+import { loadConfig } from '../config';
+import { checkConfig, hasBlockingProblem } from '../config-health';
+import { addSpace } from '../config-write';
+import { SctxError } from '../errors';
 
 function renderConfigValue(v: unknown): string {
   if (typeof v === 'object' && v !== null) return JSON.stringify(v);
@@ -7,18 +10,25 @@ function renderConfigValue(v: unknown): string {
 }
 
 export function listSpaces(options: { json?: boolean } = {}): void {
-  const path = resolve(configPath());
-  const config = loadConfig();
+  const health = checkConfig();
   if (options.json) {
-    const spaces = config.spaces.map((space) => ({
-      name: space.name,
-      path: space.path,
-      schema: space.schema ?? config.schema,
-    }));
-    console.log(JSON.stringify({ configFiles: [...getConfigSourceFiles()], spaces }));
+    console.log(JSON.stringify(health));
+    if (hasBlockingProblem(health)) process.exitCode = 1;
     return;
   }
-  console.log(`Config: ${path}\n`);
+  const path = resolve(health.config.path);
+  if (health.problems.length > 0) {
+    console.log(`Config: ${path} (${health.config.source}${health.config.exists ? '' : ', not found'})\n`);
+    for (const p of health.problems) {
+      console.log(`${p.severity.toUpperCase()} ${p.code}: ${p.message}`);
+      if (p.fix) console.log(`  fix: ${p.fix}`);
+    }
+    console.log('');
+    if (hasBlockingProblem(health)) process.exitCode = 1;
+    if (!health.config.exists) return;
+  }
+  const config = loadConfig();
+  if (health.problems.length === 0) console.log(`Config: ${path} (${health.config.source})\n`);
   for (const space of config.spaces) {
     console.log(`${space.name}`);
     console.log(`  path:    ${space.path}`);
@@ -40,5 +50,26 @@ export function listSpaces(options: { json?: boolean } = {}): void {
       }
     }
     console.log('');
+  }
+}
+
+export function addSpaceCommand(
+  name: string,
+  path: string,
+  options: { schema?: string; global?: boolean; json?: boolean },
+): void {
+  try {
+    const result = addSpace({ name, path, schema: options.schema, global: options.global });
+    if (options.json) {
+      console.log(JSON.stringify(result));
+      return;
+    }
+    console.log(`${result.created ? 'Created' : 'Updated'} ${result.configPath}`);
+    console.log(`Added space "${result.space.name}" (path: ${result.space.path})`);
+  } catch (err) {
+    if (!(err instanceof SctxError)) throw err;
+    if (options.json) console.log(JSON.stringify({ error: { code: err.code, message: err.message } }));
+    else console.error(`${err.code}: ${err.message}`);
+    process.exitCode = 1;
   }
 }
