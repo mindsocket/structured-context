@@ -3,9 +3,8 @@ name: setup-space
 description: >
   Set up a structured space: find the notes the user wants checked, choose a schema, write the config, and
   get to a first validated edit. Use when the user asks to set up, start with, or configure structured-context
-  for a folder or an Obsidian vault, or asks to add another space. Also use when session context says
-  structured-context has no config for this folder and the user wants schema-checked notes, a wiki or a
-  strategy tree. The /setup-space command starts it.
+  for a folder or an Obsidian vault, or asks to add another space, or wants schema-checked notes, a wiki or a
+  strategy tree and there is no config yet. The /setup-space command starts it.
 ---
 
 # setup-space

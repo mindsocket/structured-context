@@ -77,6 +77,8 @@ claude plugin marketplace add mindsocket/structured-context
 claude plugin install structured-context
 ```
 
+Ask Claude to set up a space (or run `/setup-space`) in the folder that holds your notes: it looks at the content, proposes a schema, writes a `.sctx.json` and makes a first validated edit. The plugin's hooks need Bun. At the start of a session a check reports a broken setup once, with a code that the structured-context skill can troubleshoot.
+
 Skills can also be installed standalone without the plugin:
 
 ```

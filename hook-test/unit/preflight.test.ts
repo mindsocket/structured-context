@@ -49,7 +49,7 @@ describe('runPreflight', () => {
     expect(result).toEqual({});
   });
 
-  it('nudges toward setup-space, without a user-visible message, when there is no config', async () => {
+  it('says nothing when there is no config', async () => {
     const dir = join(fixtures.fixtureDir, 'empty');
     mkdirSync(dir, { recursive: true });
     const noConfig = { stateDir, sctxBin: SCTX_BIN, configPath: undefined };
@@ -59,8 +59,7 @@ describe('runPreflight', () => {
     try {
       const result = await runPreflight({ session_id: sessionId, cwd: dir }, noConfig);
 
-      expect(result.systemMessage).toBeUndefined();
-      expect(result.additionalContext).toContain('setup-space');
+      expect(result).toEqual({});
     } finally {
       if (saved.SCTX_CONFIG !== undefined) process.env.SCTX_CONFIG = saved.SCTX_CONFIG;
       if (saved.XDG !== undefined) process.env.XDG_CONFIG_HOME = saved.XDG;
