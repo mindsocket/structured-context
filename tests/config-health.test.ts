@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { setConfigPath } from '../src/config';
 import { checkConfig, hasBlockingProblem } from '../src/config-health';
@@ -115,6 +115,17 @@ describe('addSpace', () => {
     } finally {
       process.chdir(cwd);
     }
+  });
+
+  it('stores "." for the config folder even when it is reached through a symlink', () => {
+    const link = join(env.root, 'link');
+    symlinkSync(env.vault, link);
+    const target = join(link, LOCAL_CONFIG_FILE);
+    setConfigPath(target);
+
+    const result = inVault(() => addSpace({ name: 'wiki', path: '.', schema: 'knowledge_wiki.json' }));
+
+    expect(result.space.path).toBe('.');
   });
 
   it('writes the global file only with --global', () => {
