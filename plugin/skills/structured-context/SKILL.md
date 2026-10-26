@@ -4,7 +4,7 @@ description: >
   Use this skill when editing structured markdown content in Obsidian to ensure it conforms to a
   schema, or when authoring or debugging schemas. Trigger when: (1) content needs validating after
   edits, (2) schema files or rules need creating or updating, (3) configuring or designing a schema
-  for a space, (4) troubleshooting unexpected validation errors, (5) running structured-context CLI commands.
+  for a space, (4) troubleshooting unexpected validation errors or a structured-context error code, (5) running structured-context CLI commands.
 ---
 
 # structured-context
@@ -25,17 +25,21 @@ If not installed, run `bun install -g structured-context`
 
 ## Finding the config
 
-structured-context looks in `$XDG_CONFIG_HOME/structured-context/config.json`, unless given an explicit config, e.g.:
+structured-context uses the first of: `--config <path>`, `$SCTX_CONFIG`, the nearest `.sctx.json` walking up from the
+working directory, then `$XDG_CONFIG_HOME/structured-context/config.json`. Keep a `.sctx.json` at the base of the
+notes it describes (for an Obsidian vault, the vault root). Configs are not merged by location: the nearest wins, and
+`includeSpacesFrom` is how to pull in spaces from another file.
 
 ```bash
-sctx validate <space> --config path/to/config.json
-# or
-SCTX_CONFIG=path/to/config.json sctx validate <space>
+sctx spaces                  # which config was used, how it was found, and any problems with a code
+sctx spaces add <name> <path> --schema <schema>   # add a space (see the setup-space skill for a first-time setup)
+sctx validate <space> --config path/to/.sctx.json
 ```
 
 **Always read the config first** to understand available spaces and their schema locations before running other commands.
 
-Tip: To reduce the need for `--config` flags consider, with user permission, using `includeSpacesFrom` in a central config file that's loaded by default (eg `~/.config/structured-context/config.json`).
+Problems are reported with a code such as `E_SPACE_PATH_MISSING`. `references/troubleshooting.md` lists each code with
+the diagnosis and fix. If there is no config yet, use the setup-space skill.
 
 ## Orientation
 
@@ -141,5 +145,6 @@ sctx docs config
 
 - **`references/schema-authoring.md`** — schema file structure, `$metadata`, rules (expression and semantic) (run `sctx docs schema` for schema dialect reference)
 - **`references/schema-design.md`** — process for designing a schema from existing content
+- **`references/troubleshooting.md`** — error codes from `sctx spaces` and the hooks, with the fix for each
 
 For CLI and config reference, use `sctx docs <topic>` (topics: `concepts`, `config`, `schema`, `rules`, `semantic-rules`).
