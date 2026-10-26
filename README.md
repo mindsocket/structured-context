@@ -89,7 +89,7 @@ See [docs/concepts.md](docs/concepts.md) (`sctx docs concepts`) for terminology:
 
 ## Configuration
 
-The config file maps space names to paths and schemas, with optional plugin settings. It is found from `--config`, then `$SCTX_CONFIG`, then `$XDG_CONFIG_HOME/structured-context/config.json` (default `~/.config/...`), then `./config.json`. Paths resolve relative to the config file, and `includeSpacesFrom` pulls in spaces from other config files.
+The config file maps space names to paths and schemas, with optional plugin settings. It is found from `--config`, then `$SCTX_CONFIG`, then the nearest `.sctx.json` walking up from the working directory, then `$XDG_CONFIG_HOME/structured-context/config.json` (default `~/.config/...`). Keep a `.sctx.json` at the base of your notes or vault. Paths resolve relative to the config file, and `includeSpacesFrom` pulls in spaces from other config files. `sctx spaces add` creates or updates a config.
 
 See `config.example.json` and [docs/config.md](docs/config.md) (`sctx docs config`) for the full reference, including `fieldMap`, `typeInference`, templates, filter views and plugin loading.
 
