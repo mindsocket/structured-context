@@ -9,5 +9,9 @@ export function runOnSessionEnd(input: { session_id?: string }, options?: HookOp
 }
 
 if (import.meta.main) {
-  runOnSessionEnd(JSON.parse(await Bun.stdin.text()));
+  try {
+    runOnSessionEnd(JSON.parse(await Bun.stdin.text()));
+  } catch {
+    // Nothing to clean up that matters; never fail the session end
+  }
 }

@@ -5,6 +5,7 @@
  * (e.g. the turn was interrupted), so its changes are still compared at the next Stop.
  */
 
+import { runSafely } from './safe';
 import { contains, type HookOptions, listSpaces, loadState, recordBaselines, saveState, stateFilePath } from './state';
 
 export interface OnPromptInput {
@@ -16,6 +17,7 @@ export async function runOnPrompt(input: OnPromptInput, options?: HookOptions): 
   if (!input.cwd) return;
 
   const CWD = input.cwd;
+  options = { ...options, cwd: CWD };
   const { configFiles, spaces } = await listSpaces(options);
   const related = spaces.filter((space) => contains(CWD, space.path) || contains(space.path, CWD));
   if (related.length === 0) return;
@@ -28,13 +30,17 @@ export async function runOnPrompt(input: OnPromptInput, options?: HookOptions): 
 }
 
 async function main() {
-  const INPUT = JSON.parse(await Bun.stdin.text()) as OnPromptInput;
-  await runOnPrompt(INPUT);
+  let input: OnPromptInput = {};
+  await runSafely(
+    'on-prompt',
+    () => input.session_id,
+    async () => {
+      input = JSON.parse(await Bun.stdin.text()) as OnPromptInput;
+      await runOnPrompt(input);
+    },
+  );
 }
 
 if (import.meta.main) {
-  main().catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  await main();
 }

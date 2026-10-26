@@ -1,11 +1,22 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 || { echo '{\"systemMessage\":\"structured-context: validation hooks are inactive (E_NO_BUN). Bun is not installed or not on the PATH. Install it from https://bun.sh, then start a new session.\",\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"structured-context hooks are inactive because Bun is not installed (E_NO_BUN). Fix: install Bun from https://bun.sh and start a new session. Help the user with this when they ask or when it blocks their work.\"}}'; exit 0; }; exec bun run \"${CLAUDE_PLUGIN_ROOT}/scripts/preflight.ts\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/on-prompt.ts",
+            "command": "command -v bun >/dev/null 2>&1 || exit 0; exec bun run \"${CLAUDE_PLUGIN_ROOT}/scripts/on-prompt.ts\"",
             "timeout": 60
           }
         ]
@@ -18,13 +29,13 @@
           {
             "if": "Write(*.md)",
             "type": "command",
-            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/pre-edit.ts",
+            "command": "command -v bun >/dev/null 2>&1 || exit 0; exec bun run \"${CLAUDE_PLUGIN_ROOT}/scripts/pre-edit.ts\"",
             "timeout": 60
           },
           {
             "if": "Edit(*.md)",
             "type": "command",
-            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/pre-edit.ts",
+            "command": "command -v bun >/dev/null 2>&1 || exit 0; exec bun run \"${CLAUDE_PLUGIN_ROOT}/scripts/pre-edit.ts\"",
             "timeout": 60
           }
         ]
@@ -35,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/on-stop.ts",
+            "command": "command -v bun >/dev/null 2>&1 || exit 0; exec bun run \"${CLAUDE_PLUGIN_ROOT}/scripts/on-stop.ts\"",
             "timeout": 60
           }
         ]
@@ -46,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun run ${CLAUDE_PLUGIN_ROOT}/scripts/on-session-end.ts"
+            "command": "command -v bun >/dev/null 2>&1 || exit 0; exec bun run \"${CLAUDE_PLUGIN_ROOT}/scripts/on-session-end.ts\""
           }
         ]
       }
