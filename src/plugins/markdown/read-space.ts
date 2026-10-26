@@ -141,7 +141,8 @@ export async function readSpaceDirectory(
     }
 
     const pageType = data.type as string;
-    const explicitTitle = data.title as string | undefined;
+    // A non-string title (e.g. `title: 42`) isn't a usable name or link target; schema validation reports it.
+    const explicitTitle = typeof data.title === 'string' ? data.title : undefined;
     const title = explicitTitle ?? defaultPageTitle(file, mdCfg.folderIndex);
     const pathTargets = pathLinkTargets(file);
     const fmMatch = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);

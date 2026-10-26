@@ -162,3 +162,20 @@ describe('validation', () => {
     expect(result.duplicateErrors.map((d) => d.id as string)).toEqual(['alpha/Overview.md']);
   });
 });
+
+describe('non-string title', () => {
+  it('is reported by validation instead of breaking link resolution', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sctx-bad-title-'));
+    try {
+      writeFileSync(join(dir, 'Numeric.md'), '---\ntype: goal\ntitle: 42\n---\n');
+      writeFileSync(join(dir, 'Empty.md'), '---\ntype: goal\ntitle:\n---\n');
+      const result = await validateSpace(makeSpaceContext(dir));
+      expect(result.nodeErrors.map((e) => e.file).sort()).toEqual(['Empty.md', 'Numeric.md']);
+      for (const { errors } of result.nodeErrors) {
+        expect(errors.some((e) => e.instancePath === '/title' && e.keyword === 'type')).toBe(true);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
