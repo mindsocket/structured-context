@@ -162,6 +162,11 @@ describe('addSpace', () => {
     write(join(env.vault, LOCAL_CONFIG_FILE), { spaces: [] });
     expect(code(() => addSpace({ name: 'x', path: '.' }))).toBe('E_SCHEMA_MISSING');
     expect(code(() => addSpace({ name: 'x', path: '.', schema: 'nope.json' }))).toBe('E_SCHEMA_NOT_FOUND');
+    expect(code(() => addSpace({ name: 'x', path: '.', schema: 'knowledge_wiki' }))).toBe('E_SCHEMA_NOT_FOUND');
+    expect(code(() => addSpace({ name: 'x', path: '.', schema: 'sctx://core/knowledge_wiki' }))).toBe(
+      'E_SCHEMA_NOT_FOUND',
+    );
+    expect(code(() => addSpace({ name: 'x', path: '.', schema: './missing/schema.json' }))).toBe('E_SCHEMA_NOT_FOUND');
   });
 
   it('will not rewrite a file that uses JSON5 features, and says what to add', () => {
