@@ -10,7 +10,7 @@ This document is the canonical reference for concepts and terminology used in th
 
 ## Space
 
-A **space** is a named collection of nodes organised according to a schema. Spaces are the primary unit of organisation — a space has a backing format (a `space directory` or a `space on a page` file) and may be registered in `config.json` with a name for convenient access.
+A **space** is a named collection of nodes organised according to a schema. Spaces are the primary unit of organisation — a space has a backing format (a `space directory` or a `space on a page` file) and may be registered in a config file (`.sctx.json` or the global `config.json`) with a name for convenient access.
 
 ```mermaid
 flowchart TD

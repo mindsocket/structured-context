@@ -64,6 +64,7 @@ A catalog of use cases for structured-context, covering both direct CLI usage an
 
 | Use case | Description | Status | Coverage |
 |---|---|---|---|
+| **Set up a space** | Find structured content in a folder, choose a schema, write the config and make a first validated edit | agent | `/setup-space` skill · `sctx spaces add` · `sctx spaces` reports config problems with codes |
 | **Author new content compliantly** | Create or edit nodes in Obsidian while staying schema-conformant | partial | Plugin hooks report issues introduced during a Claude turn; schema-driven templates; structured-context skill for inline guidance |
 | **Discover and curate inputs** | Identify new information (research, signals, events) to add to a space and integrate it | none | — |
 

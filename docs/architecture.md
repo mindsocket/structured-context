@@ -14,7 +14,7 @@ The following diagram shows the high-level flow from configuration and source fi
 
 ```mermaid
 flowchart LR
-    config([config.json<br>space definition])
+    config([.sctx.json or config.json<br>space definition])
     schema[(Schema<br>json-schema/JSON5)]
     space[(Space<br>directory or file)]
 

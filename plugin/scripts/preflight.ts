@@ -3,8 +3,8 @@
 /**
  * SessionStart hook: check once, for the session's directory, that structured-context can run and
  * that its config is usable. Reports a failure to the user and the agent here, so the other hooks
- * can stay silent on the same failures. It also tells the agent which spaces apply, or points it
- * at the setup-space skill when nothing is configured.
+ * can stay silent on the same failures. It also tells the agent which spaces apply. With no config it
+ * says nothing: setting up is something the user asks for.
  *
  * Content problems (validation errors in notes) are not checked here; the other hooks report those.
  */
@@ -67,20 +67,12 @@ export async function runPreflight(input: PreflightInput, options?: HookOptions)
     };
   }
 
-  if (!output.config.exists) {
-    return {
-      additionalContext:
-        'structured-context has no config for this folder. If the user wants to set up structured content (a schema-validated wiki, notes or strategy), offer the setup-space skill. Otherwise ignore this.',
-    };
-  }
+  // Not set up yet is not a failure and not worth interrupting the session for
+  if (!output.config.exists) return {};
 
   const cwd = input.cwd ?? process.cwd();
   const related = output.spaces.filter((space) => contains(cwd, space.path) || contains(space.path, cwd));
-  if (output.spaces.length === 0) {
-    return {
-      additionalContext: `structured-context is configured (${output.config.path}) but defines no spaces. If the user wants to set one up, offer the setup-space skill.`,
-    };
-  }
+  if (output.spaces.length === 0) return {};
   if (related.length === 0) return {};
 
   const list = related.map((s) => `${s.name} (${s.path}${s.schema ? `, schema ${s.schema}` : ''})`).join('; ');
