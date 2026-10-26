@@ -128,6 +128,16 @@ describe('addSpace', () => {
     expect(result.space.path).toBe('.');
   });
 
+  it('writes to an explicit configFile without consulting discovery', () => {
+    const target = join(env.vault, 'notes', LOCAL_CONFIG_FILE);
+
+    const result = inVault(() =>
+      addSpace({ name: 'wiki', path: 'notes', schema: 'knowledge_wiki.json', configFile: target }),
+    );
+
+    expect(result).toMatchObject({ configPath: target, created: true, space: { path: '.' } });
+  });
+
   it('writes the global file only with --global', () => {
     const result = inVault(() => addSpace({ name: 'wiki', path: '.', schema: 'knowledge_wiki.json', global: true }));
 
