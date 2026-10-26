@@ -107,11 +107,15 @@ export interface SctxRun {
   command: string;
 }
 
-/** Version of this plugin, which matches the structured-context release it was built with. */
-function pluginVersion(): string | undefined {
+/**
+ * The structured-context release line this plugin was built with (`major.minor`). The plugin's patch
+ * number is its own, so only major.minor identifies the matching CLI.
+ */
+function pluginReleaseLine(): string | undefined {
   try {
     const manifest = JSON.parse(readFileSync(join(import.meta.dir, '..', '.claude-plugin', 'plugin.json'), 'utf-8'));
-    return typeof manifest.version === 'string' ? manifest.version : undefined;
+    const [major, minor] = String(manifest.version).split('.');
+    return major && minor ? `${major}.${minor}` : undefined;
   } catch {
     return undefined;
   }
@@ -119,15 +123,15 @@ function pluginVersion(): string | undefined {
 
 /**
  * How to run sctx: an explicit entry point (`sctxBin` or SCTX_BIN), else an installed `sctx` on the
- * path, else `bunx` pinned to this plugin's version so the CLI matches the hooks.
+ * path, else `bunx` pinned to this plugin's release line so the CLI matches the hooks.
  */
-export function sctxCommand(options?: HookOptions): string[] {
+export function sctxCommand(options?: HookOptions, which: (cmd: string) => string | null = Bun.which): string[] {
   const bin = options?.sctxBin ?? process.env.SCTX_BIN;
   if (bin) return ['bun', 'run', bin];
-  const installed = Bun.which('sctx');
+  const installed = which('sctx');
   if (installed) return [installed];
-  const version = pluginVersion();
-  return ['bunx', version ? `structured-context@${version}` : 'structured-context'];
+  const line = pluginReleaseLine();
+  return ['bunx', line ? `structured-context@${line}` : 'structured-context'];
 }
 
 /** Run an sctx command from `cwd`. Never throws: a failure to start comes back as `exitCode: null`. */
