@@ -5,6 +5,7 @@
  * edit to such a space this turn baselines the whole space before the change.
  */
 
+import { runSafely } from './safe';
 import { contains, type HookOptions, listSpaces, loadState, recordBaselines, saveState, stateFilePath } from './state';
 
 export interface PreEditInput {
@@ -13,6 +14,7 @@ export interface PreEditInput {
     file_path?: string;
   };
   session_id?: string;
+  cwd?: string;
 }
 
 export async function runPreEdit(input: PreEditInput, options?: HookOptions): Promise<void> {
@@ -23,21 +25,25 @@ export async function runPreEdit(input: PreEditInput, options?: HookOptions): Pr
   const state = loadState(STATE_FILE);
   if (Object.values(state.baseline).some((snap) => contains(snap.path, FILE_PATH))) return;
 
-  const { configFiles, spaces } = await listSpaces(options);
+  const { configFiles, spaces } = await listSpaces({ ...options, cwd: input.cwd ?? options?.cwd });
   const containing = spaces.filter((space) => contains(space.path, FILE_PATH));
-  if (await recordBaselines(state, containing, configFiles, options)) {
+  if (await recordBaselines(state, containing, configFiles, { ...options, cwd: input.cwd ?? options?.cwd })) {
     saveState(STATE_FILE, state);
   }
 }
 
 async function main() {
-  const INPUT = JSON.parse(await Bun.stdin.text()) as PreEditInput;
-  await runPreEdit(INPUT);
+  let input: PreEditInput = {};
+  await runSafely(
+    'pre-edit',
+    () => input.session_id,
+    async () => {
+      input = JSON.parse(await Bun.stdin.text()) as PreEditInput;
+      await runPreEdit(input);
+    },
+  );
 }
 
 if (import.meta.main) {
-  main().catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  await main();
 }

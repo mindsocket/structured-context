@@ -5,6 +5,7 @@
  */
 
 import { join } from 'node:path';
+import { warnOnce } from './safe';
 import {
   type HookOptions,
   hashSpace,
@@ -20,6 +21,7 @@ import {
 export interface OnStopInput {
   session_id?: string;
   stop_hook_active?: boolean;
+  cwd?: string;
 }
 
 export interface OnStopResult {
@@ -47,6 +49,7 @@ export async function runOnStop(input: OnStopInput, options?: HookOptions): Prom
     return { hasNewErrors: false };
   }
 
+  options = { ...options, cwd: input.cwd ?? options?.cwd };
   const { configFiles, spaces } = await listSpaces(options);
 
   const newErrors: string[] = [];
@@ -113,9 +116,22 @@ export async function runOnStop(input: OnStopInput, options?: HookOptions): Prom
 }
 
 async function main() {
-  const INPUT_TEXT = await Bun.stdin.text();
-  const INPUT = JSON.parse(INPUT_TEXT) as OnStopInput;
-  const result = await runOnStop(INPUT);
+  let input: OnStopInput = {};
+  let result: OnStopResult;
+  try {
+    input = JSON.parse(await Bun.stdin.text()) as OnStopInput;
+    result = await runOnStop(input);
+  } catch (err) {
+    // An infrastructure failure never blocks the stop
+    const detail = (err as Error).message?.split('\n')[0] ?? String(err);
+    warnOnce(
+      input.session_id,
+      'E_HOOK_FAILED:on-stop',
+      `structured-context: the on-stop hook failed (E_HOOK_FAILED): ${detail}. Validation for this turn was skipped. The structured-context skill has troubleshooting steps; set SCTX_DEBUG=1 for details.`,
+    );
+    if (process.env.SCTX_DEBUG) console.error(err);
+    return;
+  }
 
   if (result.hasNewErrors) {
     // Exit 2 blocks the stop; stderr is fed back to Claude as the reason
@@ -132,8 +148,5 @@ async function main() {
 }
 
 if (import.meta.main) {
-  main().catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  await main();
 }

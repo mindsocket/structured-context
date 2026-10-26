@@ -17,6 +17,8 @@ export interface HookOptions {
   sctxBin?: string;
   /** Path to config file. When set, passed as SCTX_CONFIG to the CLI subprocess. */
   configPath?: string;
+  /** Directory the CLI runs in, which is where config discovery starts. Defaults to the hook's own. */
+  cwd?: string;
 }
 
 export interface ValidationIssue {
@@ -39,6 +41,8 @@ export interface SpaceIssueKeys {
 }
 
 export interface SessionState {
+  /** Hook failure codes already shown to the user this session, so each is reported once. */
+  reported?: string[];
   /** Per space: issue keys before this turn's changes. Cleared by the Stop hook. */
   baseline: Record<string, SpaceIssueKeys>;
   /** Per space: the most recent issue keys, reused while the hash still matches */
@@ -51,9 +55,20 @@ export interface SpaceInfo {
   schema?: string;
 }
 
-interface SpacesOutput {
+export interface ConfigProblem {
+  code: string;
+  severity: 'error' | 'warning' | 'info';
+  message: string;
+  fix: string;
+  space?: string;
+}
+
+export interface SpacesOutput {
   configFiles: string[];
   spaces: SpaceInfo[];
+  /** Absent from an sctx that predates config health reporting */
+  config?: { path: string; source: string; exists: boolean };
+  problems?: ConfigProblem[];
 }
 
 interface ValidateOutput {
@@ -71,7 +86,7 @@ export function stateFilePath(sessionId: string | undefined, options?: HookOptio
 export function loadState(file: string): SessionState {
   if (!existsSync(file)) return { baseline: {}, latest: {} };
   const state = JSON.parse(readFileSync(file, 'utf-8')) as Partial<SessionState>;
-  return { baseline: state.baseline ?? {}, latest: state.latest ?? {} };
+  return { baseline: state.baseline ?? {}, latest: state.latest ?? {}, reported: state.reported };
 }
 
 export function saveState(file: string, state: SessionState): void {
@@ -83,23 +98,81 @@ export function contains(dir: string, path: string): boolean {
   return path === dir || path.startsWith(dir.endsWith('/') ? dir : `${dir}/`);
 }
 
-async function sctx(args: string[], options?: HookOptions): Promise<string> {
-  const BIN = options?.sctxBin ?? process.env.SCTX_BIN;
+export interface SctxRun {
+  stdout: string;
+  stderr: string;
+  /** Null when the process could not be started */
+  exitCode: number | null;
+  /** What was run, for messages */
+  command: string;
+}
+
+/** Version of this plugin, which matches the structured-context release it was built with. */
+function pluginVersion(): string | undefined {
+  try {
+    const manifest = JSON.parse(readFileSync(join(import.meta.dir, '..', '.claude-plugin', 'plugin.json'), 'utf-8'));
+    return typeof manifest.version === 'string' ? manifest.version : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * How to run sctx: an explicit entry point (`sctxBin` or SCTX_BIN), else an installed `sctx` on the
+ * path, else `bunx` pinned to this plugin's version so the CLI matches the hooks.
+ */
+export function sctxCommand(options?: HookOptions): string[] {
+  const bin = options?.sctxBin ?? process.env.SCTX_BIN;
+  if (bin) return ['bun', 'run', bin];
+  const installed = Bun.which('sctx');
+  if (installed) return [installed];
+  const version = pluginVersion();
+  return ['bunx', version ? `structured-context@${version}` : 'structured-context'];
+}
+
+/** Run an sctx command from `cwd`. Never throws: a failure to start comes back as `exitCode: null`. */
+export async function runSctx(args: string[], options?: HookOptions): Promise<SctxRun> {
+  const argv = [...sctxCommand(options), ...args];
   const env: Record<string, string | undefined> = { ...process.env };
   if (options?.configPath) {
     env.SCTX_CONFIG = options.configPath;
   }
-  const proc = BIN
-    ? Bun.$`bun run ${[BIN]} ${args}`.env(env).quiet().nothrow()
-    : Bun.$`bunx structured-context ${args}`.env(env).quiet().nothrow();
-  return proc.text();
+  // A missing directory would make the spawn fail with a misleading error about the executable
+  const cwd = options?.cwd && existsSync(options.cwd) ? options.cwd : undefined;
+  try {
+    const proc = Bun.spawn(argv, { env, cwd, stdout: 'pipe', stderr: 'pipe', stdin: 'ignore' });
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    return { stdout, stderr, exitCode, command: argv.join(' ') };
+  } catch (err) {
+    return { stdout: '', stderr: (err as Error).message, exitCode: null, command: argv.join(' ') };
+  }
 }
 
-/** Configured spaces whose path exists, and the config files they came from */
+async function sctx(args: string[], options?: HookOptions): Promise<string> {
+  return (await runSctx(args, options)).stdout;
+}
+
+/** Parse `sctx spaces --json` output, or undefined when it isn't usable. */
+export function parseSpacesOutput(text: string): SpacesOutput | undefined {
+  try {
+    const output = JSON.parse(text) as SpacesOutput;
+    return Array.isArray(output.spaces) && Array.isArray(output.configFiles) ? output : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Configured spaces whose path exists, and the config files they came from. Any failure to get a
+ * usable answer returns no spaces: the SessionStart hook is what tells the user about those.
+ */
 export async function listSpaces(options?: HookOptions): Promise<SpacesOutput> {
-  const text = await sctx(['spaces', '--json'], options);
-  if (!text) return { configFiles: [], spaces: [] };
-  const output = JSON.parse(text) as SpacesOutput;
+  const output = parseSpacesOutput((await runSctx(['spaces', '--json'], options)).stdout);
+  if (!output) return { configFiles: [], spaces: [] };
   return { ...output, spaces: output.spaces.filter((space) => existsSync(space.path)) };
 }
 
