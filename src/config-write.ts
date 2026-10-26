@@ -105,12 +105,11 @@ export function addSpace(options: AddSpaceOptions): AddSpaceResult {
     );
   }
   if (options.schema && !/^https?:\/\//i.test(options.schema)) {
-    const schemaPath = resolveSchemaPath(options.schema, dirname(target));
-    if (!existsSync(schemaPath) && !options.schema.includes('/')) {
-      throw new SctxError(
-        'E_SCHEMA_NOT_FOUND',
-        `Schema not found: ${options.schema}. \`sctx schemas list\` shows the bundled schemas.`,
-      );
+    if (!existsSync(resolveSchemaPath(options.schema, dirname(target)))) {
+      const hint = options.schema.startsWith('sctx://')
+        ? 'Name the schema by file, such as strategy_general.json, not by sctx:// URI.'
+        : '`sctx schemas list` shows the bundled schemas; a file name needs its extension.';
+      throw new SctxError('E_SCHEMA_NOT_FOUND', `Schema not found: ${options.schema}. ${hint}`);
     }
   }
   config.spaces = config.spaces ?? [];
