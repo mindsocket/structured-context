@@ -12,6 +12,8 @@ export type AddSpaceOptions = {
   schema?: string;
   /** Write to the global config file. */
   global?: boolean;
+  /** Write to this config file (created if missing), bypassing discovery. For library callers that know the target. */
+  configFile?: string;
   /** Where discovery starts when no explicit target is given. Defaults to the working directory. */
   startDir?: string;
 };
@@ -27,7 +29,8 @@ export type AddSpaceResult = {
  * from the working directory is used as is. If discovery would land on the global file or on nothing, the
  * caller must say where to write, so a vault's space never ends up in the global file by accident.
  */
-export function chooseWriteTarget(options: { global?: boolean; startDir?: string }): string {
+export function chooseWriteTarget(options: { global?: boolean; configFile?: string; startDir?: string }): string {
+  if (options.configFile) return options.configFile;
   const resolved = resolveConfigPath(options.startDir);
   if (options.global) {
     if (resolved.source === 'override' || resolved.source === 'env') {
