@@ -53,7 +53,8 @@ Do not read everything; sample.
 Then compare with the bundled schemas: `sctx schemas list`, and `sctx schemas show <name>` for the likely ones.
 Read the descriptions and entity types, not just the names. If nothing fits well, say so and offer the schema
 design process in `../structured-context/references/schema-design.md`. Do not force a poor fit or edit content
-to match a schema.
+to match a schema. Unless the user has asked you to carry on regardless, stop here after explaining what you found
+and the options, rather than writing a schema as part of setup.
 
 ## 3. Propose one space
 
@@ -64,13 +65,15 @@ or a field remap, check `sctx docs config` for the markdown plugin settings and 
 ## 4. Write the config
 
 ```bash
-sctx spaces add <name> <path> --schema <schema>
+sctx spaces add <name> <path> --schema <schema>.json
 ```
 
+- The schema is a file name with its extension, as in `sctx schemas list`, or a relative path to a local schema.
 - It adds to the config found by walking up from the current folder.
-- `E_TARGET_REQUIRED` means there is no local config yet, or only the global one. Ask where it should live. The usual
-  answer is the folder that holds the notes, for an Obsidian vault the vault root:
-  `sctx --config <folder>/.sctx.json spaces add <name> <path> --schema <schema>`. Use `--global` only if the user asks.
+- With no config yet (the first run), say where it goes. The usual place is the folder that holds the notes, for an
+  Obsidian vault the vault root: `sctx --config <folder>/.sctx.json spaces add <name> <path> --schema <schema>.json`.
+  Without it you get `E_TARGET_REQUIRED`, which also appears when only the global config exists. Use `--global` only
+  if the user asks.
 - Never write the JSON by hand to create a config, and never put a vault's space in the global file unprompted.
 - `E_CONFIG_NEEDS_MANUAL_EDIT` means the file has comments; show the entry the command printed and offer to add it.
 - Extra space settings (type inference, field remaps) go in the file afterwards; keep the file valid JSON.
