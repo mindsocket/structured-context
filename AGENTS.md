@@ -14,7 +14,7 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 - see `package.json` 
 - Releases go through the `/release` skill.
 
-Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or `./config.json`
+Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or the nearest `.sctx.json` walking up from the working directory
 
 The lefthook pre-commit hook syncs the plugin version (below), then runs biome (`--write`, re-staged) and the typecheck.
 
