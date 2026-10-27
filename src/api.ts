@@ -52,6 +52,7 @@ export {
   parseWikilink,
   wikilinkToTarget,
 } from './read/wikilink-utils';
+export { type ListSchemasOptions, listSchemas, type SchemaListing } from './schema/list-schemas';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
 export { bundledSchemasDir, loadSchema, type PluginSchemaSource, setBundledSchemasDir } from './schema/schema';
 export { createSpaceContext, SpaceNotFoundError } from './space-context';
