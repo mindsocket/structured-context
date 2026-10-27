@@ -1,3 +1,4 @@
+// Public entry point: do not add exports without the maintainer's agreement (AGENTS.md, "Public API surface").
 /**
  * Public API for structured-context.
  *
@@ -52,7 +53,7 @@ export {
   parseWikilink,
   wikilinkToTarget,
 } from './read/wikilink-utils';
-export { type ListSchemasOptions, listSchemas, type SchemaListing } from './schema/list-schemas';
+export { listSchemas } from './schema/list-schemas';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
 export { bundledSchemasDir, loadSchema, type PluginSchemaSource, setBundledSchemasDir } from './schema/schema';
 export { createSpaceContext, SpaceNotFoundError } from './space-context';

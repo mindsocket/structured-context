@@ -14,8 +14,8 @@ describe('listSchemas', () => {
     vaultConfig([]);
 
     const listings = await listSchemas({ startDir: env.vault });
-    const strategy = listings.find((l) => l.file === 'strategy_general.json');
-    const partial = listings.find((l) => l.file === '_sctx_base.json');
+    const strategy = listings.find((l) => l.schema === 'strategy_general.json');
+    const partial = listings.find((l) => l.schema === '_sctx_base.json');
 
     expect(strategy).toMatchObject({ source: 'core', partial: false, usedBy: [], id: 'sctx://core/strategy_general' });
     expect(strategy?.title).toBeString();
@@ -34,8 +34,8 @@ describe('listSchemas', () => {
 
     const listings = await listSchemas({ startDir: env.vault });
 
-    expect(listings.filter((l) => l.file === 'strategy_general.json')).toHaveLength(1);
-    expect(listings.find((l) => l.file === 'strategy_general.json')?.usedBy).toEqual(['global', 'a', 'b']);
+    expect(listings.filter((l) => l.schema === 'strategy_general.json')).toHaveLength(1);
+    expect(listings.find((l) => l.schema === 'strategy_general.json')?.usedBy).toEqual(['global', 'a', 'b']);
     expect(listings.some((l) => l.source === 'configured')).toBe(false);
   });
 
@@ -48,7 +48,7 @@ describe('listSchemas', () => {
     expect(configured).toEqual([
       {
         // loadConfig has already resolved a relative path against the config file
-        file: join(env.vault, 'schemas', 'mine.json'),
+        schema: join(env.vault, 'schemas', 'mine.json'),
         path: join(env.vault, 'schemas', 'mine.json'),
         source: 'configured',
         usedBy: ['notes'],
@@ -93,7 +93,7 @@ describe('listSchemas', () => {
     const configured = (await listSchemas({ startDir: env.vault })).filter((l) => l.source === 'configured');
 
     expect(configured).toMatchObject([
-      { file: 'https://example.com/schema.json', path: 'https://example.com/schema.json', usedBy: ['a'] },
+      { schema: 'https://example.com/schema.json', path: 'https://example.com/schema.json', usedBy: ['a'] },
     ]);
     expect(configured[0]?.error).toBeString();
   });
@@ -110,7 +110,7 @@ describe('listSchemas', () => {
 
     const plugin = (await listSchemas({ startDir: env.vault })).filter((l) => l.source === 'demo');
 
-    expect(plugin.map((l) => [l.file, l.partial, l.usedBy])).toEqual([
+    expect(plugin.map((l) => [l.schema, l.partial, l.usedBy])).toEqual([
       ['demo/_part.json', true, []],
       ['demo/demo.json', false, ['a']],
     ]);
