@@ -55,7 +55,7 @@ sctx spaces add <name> <path> --schema <schema>.json
 The first space needs a place to write. Use `--config <folder holding the notes>/.sctx.json` (for an Obsidian
 vault, the vault root). Use `--global` only if the user asks. If the command reports that something else needs
 specifying, fix it and re-run. Settings such as type inference and field remaps go in the file afterwards (see
-`sctx docs config`); edit the JSON directly. Run `sctx spaces` to confirm.
+`sctx docs config`); edit the JSON directly, then run `sctx spaces` to confirm.
 
 ## 5. First validation
 
@@ -64,10 +64,10 @@ sctx validate <name>
 ```
 
 Summarise how many notes are valid and the most common problems. Existing problems do not block anything: the
-plugin's hooks only report problems introduced by edits. Most notes failing for one reason usually means a
-mapping question rather than many mistakes. The most common is a missing `type` field, so adding `type` is
-usually the first thing to do. Offer choices rather than fixing in bulk: leave it, fix a few to see how it
-works, or adjust the setup.
+plugin's hooks only report problems introduced by edits. Notes without a `type` field are noted as ignored, not
+failed; adding `type` is usually the first change, before other fields and relationships. If many notes fail for
+one reason, it is likely a mapping question (a field with another name) rather than many mistakes. Offer choices
+rather than fixing in bulk: leave it, fix a few to see how it works, or adjust the setup.
 
 ## 6. First edit
 
