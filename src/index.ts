@@ -16,6 +16,7 @@ import { validate, watchValidate } from './commands/validate';
 import { validateFileCommand } from './commands/validate-file';
 import { loadConfig, setConfigPath } from './config';
 import { CLI_NAME } from './constants';
+import { SctxError } from './errors';
 import { JudgeConfigError } from './judge/factory';
 import { createSpaceContext, SpaceNotFoundError } from './space-context';
 import type { SpaceContext } from './types';
@@ -275,4 +276,9 @@ renderCmd
   });
 program.addCommand(renderCmd);
 
-program.parse();
+// Expected errors print as one line; anything else keeps its stack trace
+program.parseAsync().catch((err: unknown) => {
+  if (!(err instanceof SctxError)) throw err;
+  console.error(`${err.code}: ${err.message}`);
+  process.exitCode = 1;
+});

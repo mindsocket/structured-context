@@ -27,7 +27,8 @@ const FIXES: Partial<Record<SctxErrorCode, string>> = {
   E_SPACE_PATH_MISSING: 'The folder or file was moved or deleted. Correct `path` in the config, or remove the space.',
   E_SCHEMA_MISSING: 'Set `schema` on the space or at the top level of the config file.',
   E_SCHEMA_NOT_FOUND: 'Check the schema name or path. `sctx schemas list` shows the bundled schemas.',
-  E_SCHEMA_INVALID: 'The schema file is not valid JSON5. Open it and fix the syntax.',
+  E_SCHEMA_INVALID:
+    'The schema could not be loaded. The message says what to fix; `sctx docs schema` describes the format.',
 };
 
 export function fixFor(code: SctxErrorCode): string {
