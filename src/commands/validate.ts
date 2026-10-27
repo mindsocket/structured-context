@@ -113,26 +113,7 @@ export async function validate(
     return `${label.padEnd(40)} ${color}${countStr}${reset}`;
   };
 
-  console.log(`\nSpace Validation Results`);
-  console.log(`━`.repeat(45));
-  console.log('Content and structure');
-  console.log(fmt('  Valid', result.validCount));
-  console.log(fmt('  Schema validation errors', result.nodeErrorCount, true));
-  console.log(fmt('  Broken links', result.refErrors.length, true));
-  console.log(fmt('  Duplicate ids', result.duplicateErrors.length, true));
-  console.log(fmt('  Rule violations (error)', ruleCounts.error, true));
-  console.log(fmt('  Rule violations (warning)', ruleCounts.warning, true, true));
-  console.log(fmt('  Rule violations (info)', ruleCounts.info, true, true));
-  console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
-  console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphans.length, true, true));
-  console.log(fmt('  Unresolved content links', result.unresolvedContentLinks.length, true, true));
   const parseIssueErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
-  console.log(fmt('  Excluded during parsing', result.parseIssues.length, true, parseIssueErrorCount === 0));
-  if (result.depthLimit !== undefined) {
-    console.log(fmt('  Skipped by depth limit', result.skippedByDepth.length, true, true));
-  }
-  const gatedFileCount = result.coverageGates.reduce((sum, g) => sum + g.gatedFiles.length, 0);
-  console.log(fmt('  Rule checks gated (cascade)', gatedFileCount, true, true));
 
   if (result.orphans.length > 0) {
     console.log(`\nOrphans (hierarchy nodes - no parent):`);
@@ -238,6 +219,27 @@ export async function validate(
       `\nContext trimmed for ${result.contextTrimmed.nodeCount} node(s) across rules ${result.contextTrimmed.ruleIds.join(', ')}.`,
     );
   }
+
+  // Last, so a truncated tail (`| tail`) still shows the counts.
+  console.log(`\nSpace Validation Results`);
+  console.log(`━`.repeat(45));
+  console.log('Content and structure');
+  console.log(fmt('  Valid', result.validCount));
+  console.log(fmt('  Schema validation errors', result.nodeErrorCount, true));
+  console.log(fmt('  Broken links', result.refErrors.length, true));
+  console.log(fmt('  Duplicate ids', result.duplicateErrors.length, true));
+  console.log(fmt('  Rule violations (error)', ruleCounts.error, true));
+  console.log(fmt('  Rule violations (warning)', ruleCounts.warning, true, true));
+  console.log(fmt('  Rule violations (info)', ruleCounts.info, true, true));
+  console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
+  console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphans.length, true, true));
+  console.log(fmt('  Unresolved content links', result.unresolvedContentLinks.length, true, true));
+  console.log(fmt('  Excluded during parsing', result.parseIssues.length, true, parseIssueErrorCount === 0));
+  if (result.depthLimit !== undefined) {
+    console.log(fmt('  Skipped by depth limit', result.skippedByDepth.length, true, true));
+  }
+  const gatedFileCount = result.coverageGates.reduce((sum, g) => sum + g.gatedFiles.length, 0);
+  console.log(fmt('  Rule checks gated (cascade)', gatedFileCount, true, true));
 
   console.log(`\n`);
 

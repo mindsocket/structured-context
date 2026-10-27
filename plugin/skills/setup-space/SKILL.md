@@ -1,8 +1,8 @@
 ---
 name: setup-space
 description: >
-  Set up structured-context (sctx) for a folder of markdown notes, such as an Obsidian vault: find what the
-  notes are, choose a schema, add a space to the config and make a first validated edit. Use when the user
+  Set up structured-context (sctx) for a folder of markdown files, such as an Obsidian vault: find what the
+  files are, choose a schema, add a space to the config and make a first validated edit. Use when the user
   wants schema validation or structure for a set of documents, wants to start with structured-context, or
   wants to add another space. An argument names the folder or goal to start from.
 ---
@@ -27,12 +27,12 @@ Work from the folder the session opened in; config discovery only looks in paren
 
 ## 2. Get familiar with the content
 
-Sample rather than read everything. Skip folders that are not notes (attachments, `.obsidian`, archives).
+Sample rather than read everything. Skip folders that are not content (attachments, `.obsidian`, archives).
 
-- Count markdown files per top-level folder, then read the first ~40 lines of about five notes from the one or
+- Count markdown files per top-level folder, then read the first ~40 lines of about five files from the one or
   two most likely folders, spread across oldest, newest, smallest and largest.
 - Look for clues to what kind of documents these are: repeated frontmatter keys (especially a type-like key),
-  folder and file naming, links between notes, status or provenance fields, templates, and what is in the
+  folder and file naming, links between files, status or provenance fields, templates, and what is in the
   headings and body.
 - If many folders qualify or nothing stands out, ask what the user wants to do with the content and which
   folder to start with. Say what you saw.
@@ -50,8 +50,8 @@ proposal, continue from step 4.
 ## 3. Propose one space
 
 In one message give the space name (lowercase letters, digits, `-`, `_`), the folder, the schema and why, and
-what you noticed. Include what configuring involves, including any edits to existing notes to add or change
-frontmatter; take the notes to change from `sctx validate` output, not from your sample. Ask for a yes or corrections.
+what you noticed. Include what configuring involves, including any edits to existing files to add or change
+frontmatter; take the files to change from `sctx validate` output, not from your sample. Ask for a yes or corrections.
 
 ## 4. Add the space
 
@@ -59,7 +59,7 @@ frontmatter; take the notes to change from `sctx validate` output, not from your
 sctx spaces add <name> <path> --schema <schema>.json
 ```
 
-The first space needs a place to write. Use `--config <folder holding the notes>/.sctx.json` (for an Obsidian
+The first space needs a place to write. Use `--config <folder holding the files>/.sctx.json` (for an Obsidian
 vault, the vault root). Use `--global` only if the user asks. If the command reports that something else needs
 specifying, fix it and re-run. Settings such as type inference and field remaps go in the file afterwards (see
 `sctx docs config`); edit the JSON directly, then run `sctx spaces` to confirm.
@@ -70,15 +70,15 @@ specifying, fix it and re-run. Settings such as type inference and field remaps 
 sctx validate <name>
 ```
 
-Summarise how many notes are valid and the most common problems. Existing problems do not block anything: the
-plugin's hooks only report problems introduced by edits. Notes without a `type` field are noted as ignored, not
-failed; adding `type` is usually the first change, before other fields and relationships. If many notes fail for
+Summarise how many files are valid and the most common problems. Existing problems do not block anything: the
+plugin's hooks only report problems introduced by edits. Files without a `type` field are listed as excluded, not
+failed; adding `type` is usually the first change, before other fields and relationships. If many files fail for
 one reason, it is likely a mapping question (a field with another name) rather than many mistakes. Offer choices
 rather than fixing in bulk: leave it, fix a few to see how it works, or adjust the setup.
 
 ## 6. First edit
 
-Pick something small that fits the user's goal: a new note, or one change to an existing note. Check
+Pick something small that fits the user's goal: a new file, or one change to an existing file. Check
 `sctx schemas show --space <name>` for entity types and required fields, make the change, then
 `sctx validate-file <path>`.
 
