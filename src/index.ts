@@ -218,7 +218,7 @@ const schemasCmd = new Command('schemas').alias('schema').description('List and 
 schemasCmd
   .command('list', { isDefault: true })
   .description('List available schemas')
-  .option('--json', 'Output as JSON: file, path, source, usedBy and metadata for each schema')
+  .option('--json', 'Output as JSON')
   .action(async (options) => await printSchemas({ json: options.json ?? false }));
 schemasCmd
   .command('show')

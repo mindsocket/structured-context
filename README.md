@@ -194,7 +194,7 @@ Generates a Mermaid `graph TD` diagram from validated space nodes:
 sctx schemas list [--json]
 ```
 
-Lists the bundled schemas, schemas contributed by plugins, and any other schema file your config uses, with the spaces that use each. `--json` gives each schema's `file` (what to write in a config's `schema` field), `path`, `source`, `usedBy`, `partial` and metadata. Programs can call `listSchemas` from `structured-context/api`.
+Lists the bundled schemas, schemas contributed by plugins, and any other schema file your config uses, with the spaces that use each. `--json` gives the data that `listSchemas` returns; see [docs/api.md](docs/api.md).
 
 ### Show schema ERD
 
