@@ -5,9 +5,11 @@ description: Review written content in this repo (README, docs/, AGENTS.md, plug
 
 ## Task
 
-Review the prose changed on this branch (`git diff main...HEAD` for `*.md`, `plugin/**`, and user-facing strings
-in `src/`), or the files named in `$ARGUMENTS`. Apply the **Documentation Principles** in `AGENTS.md`, then fix the
-findings. Re-read each finding in context: a flagged phrase is sometimes the right wording.
+Review the prose in the target named by `$ARGUMENTS`: a PR number, branch, commit, or list of files. With no
+argument, use uncommitted changes, or if there are none, the branch against `main` (`git diff main...HEAD`).
+Look at `*.md`, `plugin/**`, and user-facing strings in `src/` and tests. Apply the **Documentation Principles** in
+`AGENTS.md`, then fix the findings. Re-read each finding in context: a flagged phrase is sometimes the right
+wording.
 
 ## Checks
 

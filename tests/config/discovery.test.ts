@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
-import { loadConfig, resolveConfigPath, setConfigPath } from '../src/config';
-import { LOCAL_CONFIG_FILE } from '../src/constants';
-import { useConfigEnv, writeJson as write } from './helpers/config-env';
+import { loadConfig, resolveConfigPath, setConfigPath } from '../../src/config';
+import { LOCAL_CONFIG_FILE } from '../../src/constants';
+import { useConfigEnv, writeJson as write } from '../helpers/config-env';
 
 const env = useConfigEnv();
 
