@@ -96,6 +96,7 @@ program
   .argument('<space-name>', 'Space name')
   .option('-w, --watch', 'Watch for changes and re-run validation')
   .option('--json', 'Output results as JSON')
+  .option('--verbose', 'List every note excluded during parsing, not just the first few of each kind')
   .option(
     '--depth <n>',
     'Evaluate only hierarchy nodes within N breadth-first levels from the top (e.g. 1 = root level only)',
@@ -124,6 +125,7 @@ program
           includeGated: options.includeGated,
           semantic: options.semantic,
           ruleFilter: options.ruleFilter,
+          verbose: options.verbose,
         }),
       );
     }

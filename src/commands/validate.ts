@@ -5,8 +5,39 @@ import { judgeForRun } from '../judge/factory';
 import { resolveSpacePluginSchemas } from '../plugins/util';
 import { parseRuleFilter } from '../schema/rule-filter';
 import { bundledSchemasDir } from '../schema/schema';
-import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
+import type { FileValidationIssue, ParseIssue, RuleSeverity, SpaceContext } from '../types';
 import { formatErrors, ruleViolationMessage, validateSpace } from '../validate';
+
+const PARSE_ISSUES_SHOWN_PER_KIND = 5;
+
+/**
+ * Lines for the "Excluded during parsing" list. Errors are always listed. A warning kind with more than
+ * `PARSE_ISSUES_SHOWN_PER_KIND` notes shows the first few and a count of the rest, unless `all` is set.
+ */
+export function parseIssueLines(issues: ParseIssue[], all: boolean): string[] {
+  const kinds = new Map<string, ParseIssue[]>();
+  for (const issue of issues) {
+    const key = `${issue.severity}\0${issue.type}`;
+    kinds.set(key, [...(kinds.get(key) ?? []), issue]);
+  }
+  const lines: string[] = [];
+  for (const group of kinds.values()) {
+    const first = group[0] as ParseIssue;
+    const shown = all || first.severity === 'error' ? group : group.slice(0, PARSE_ISSUES_SHOWN_PER_KIND);
+    for (const issue of shown) {
+      const loc =
+        issue.line !== undefined ? `:${issue.line}${issue.column !== undefined ? `:${issue.column}` : ''}` : '';
+      const detail = issue.message ? ` - ${issue.message}` : '';
+      lines.push(`   ${issue.file}${loc}: ${issue.severity} - ${issue.type}${detail}`);
+    }
+    if (shown.length < group.length) {
+      lines.push(
+        `   ... and ${group.length - shown.length} more ${first.severity} - ${first.type} (--verbose lists all)`,
+      );
+    }
+  }
+  return lines;
+}
 
 export async function validate(
   context: SpaceContext,
@@ -16,6 +47,7 @@ export async function validate(
     includeGated?: boolean;
     semantic?: boolean | string;
     ruleFilter?: string[];
+    verbose?: boolean;
   } = {},
 ): Promise<number> {
   const { schema, schemaRefRegistry } = context;
@@ -154,12 +186,7 @@ export async function validate(
 
   if (result.parseIssues.length > 0) {
     console.log(`\nExcluded during parsing:`);
-    for (const issue of result.parseIssues) {
-      const loc =
-        issue.line !== undefined ? `:${issue.line}${issue.column !== undefined ? `:${issue.column}` : ''}` : '';
-      const detail = issue.message ? ` - ${issue.message}` : '';
-      console.log(`   ${issue.file}${loc}: ${issue.severity} - ${issue.type}${detail}`);
-    }
+    for (const line of parseIssueLines(result.parseIssues, options.verbose ?? false)) console.log(line);
   }
 
   if (result.nodeErrors.length > 0) {

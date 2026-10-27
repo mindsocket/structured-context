@@ -133,7 +133,7 @@ See [docs/schemas.md](docs/schemas.md) (`sctx docs schema`) for the dialect, com
 ### Validate nodes
 
 ```bash
-sctx validate <space> [--watch] [--depth <n>] [--include-gated] [--semantic [provider]] [--rule-filter <dim=values>]
+sctx validate <space> [--watch] [--verbose] [--depth <n>] [--include-gated] [--semantic [provider]] [--rule-filter <dim=values>]
 ```
 
 Validates markdown files against the JSON schema:
@@ -141,6 +141,7 @@ Validates markdown files against the JSON schema:
 - Skips files without frontmatter or without a `type` field
 - Reports validation results with counts and per-file errors
 - Runs executable rules (`$metadata.rules`) with **cascade gating**: a schema, hierarchy or gating rule violation on a node suppresses rule evaluation for that node's hierarchy subtree. Gated rules are reported in a Coverage section so you know what wasn't evaluated and why. See [docs/rules.md](docs/rules.md#cascade-gating) for details.
+- `--verbose` lists every note excluded during parsing; by default only the first few of each kind are shown, with a count of the rest.
 - `--depth <n>` limits evaluation to hierarchy nodes within `n` breadth-first levels from the top — useful for staged agentic fix loops (fix the top level, then request the next).
 - `--include-gated` evaluates rules even on gated nodes (still reported as gated) — for surfacing cheap bottom-up checks on request.
 - `--semantic` also evaluates the `semantic` part of rules with the configured model provider (Jev, Anthropic or OpenAI-compatible); `--semantic <provider>` uses that configured model provider instead; `--rule-filter` narrows which rules run. See [docs/semantic-rules.md](docs/semantic-rules.md) (`sctx docs semantic-rules`).

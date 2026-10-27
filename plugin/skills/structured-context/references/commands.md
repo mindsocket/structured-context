@@ -11,7 +11,7 @@ Then use the `sctx` command for all operations. Always pass `--config <path>` wh
 ## validate
 
 ```bash
-sctx validate <space> [--watch] [--config <path>] [--depth <n>] [--include-gated] [--semantic [provider]] [--rule-filter <dim=values>]
+sctx validate <space> [--watch] [--verbose] [--config <path>] [--depth <n>] [--include-gated] [--semantic [provider]] [--rule-filter <dim=values>]
 ```
 
 Validates all `.md` files in the space against the JSON schema. For each file:
