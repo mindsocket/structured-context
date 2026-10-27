@@ -1,8 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
-import JSON5 from 'json5';
+import { existsSync } from 'node:fs';
 import { LOCAL_CONFIG_FILE } from '../constants';
 import { SctxError, type SctxErrorCode } from '../errors';
-import { getConfigSourceFiles, loadConfig, type ResolvedConfigPath, resolveConfigPath, resolveSchema } from '.';
+import { type Config, getConfigSourceFiles, loadConfig, type ResolvedConfigPath, resolveConfigPath } from '.';
 
 export type ConfigProblem = {
   code: SctxErrorCode;
@@ -45,10 +44,11 @@ function problem(
 }
 
 /**
- * Check that the config for the working directory can be found and loaded, and that each space's
- * path and schema exist. Never throws: every failure becomes a problem with a stable code.
+ * Find and load the config for the working directory, reporting failures as problems with stable
+ * codes instead of throwing. It reports on the config only: what a space's `path` means belongs to
+ * the plugin that reads it, and a schema is checked when it is loaded.
  */
-export function checkConfig(options: { startDir?: string } = {}): ConfigHealth {
+export function inspectConfig(options: { startDir?: string } = {}): { health: ConfigHealth; config?: Config } {
   const resolved = resolveConfigPath(options.startDir);
   const exists = existsSync(resolved.path);
   const health: ConfigHealth = { config: { ...resolved, exists }, configFiles: [], spaces: [], problems: [] };
@@ -59,71 +59,23 @@ export function checkConfig(options: { startDir?: string } = {}): ConfigHealth {
         ? `No ${LOCAL_CONFIG_FILE} found from the working directory upward, and no global config at ${resolved.path}`
         : `Config file not found: ${resolved.path}`;
     health.problems.push(problem('E_CONFIG_NOT_FOUND', resolved.source === 'none' ? 'info' : 'error', detail));
-    return health;
+    return { health };
   }
 
-  let config: ReturnType<typeof loadConfig>;
+  let config: Config;
   try {
     config = loadConfig({ startDir: options.startDir });
   } catch (err) {
     const code = err instanceof SctxError ? err.code : 'E_CONFIG_INVALID';
     health.problems.push(problem(code, 'error', (err as Error).message));
-    return health;
+    return { health };
   }
   health.configFiles = [...getConfigSourceFiles()];
   health.spaces = config.spaces.map((s) => ({ name: s.name, path: s.path, schema: s.schema ?? config.schema }));
-
-  if (config.spaces.length === 0) {
-    health.problems.push(problem('E_NO_SPACES', 'warning', `Config ${resolved.path} defines no spaces`));
-  }
-
-  for (const space of config.spaces) {
-    if (!existsSync(space.path)) {
-      health.problems.push(
-        problem(
-          'E_SPACE_PATH_MISSING',
-          'error',
-          `Space "${space.name}" path does not exist: ${space.path}`,
-          space.name,
-        ),
-      );
-    }
-    const schemaRef = space.schema ?? config.schema;
-    if (!schemaRef) {
-      health.problems.push(problem('E_SCHEMA_MISSING', 'error', `Space "${space.name}" has no schema`, space.name));
-      continue;
-    }
-    let schemaPath: string;
-    try {
-      schemaPath = resolveSchema(config, space);
-    } catch (err) {
-      health.problems.push(problem('E_SCHEMA_NOT_FOUND', 'error', (err as Error).message, space.name));
-      continue;
-    }
-    if (/^https?:\/\//i.test(schemaPath)) continue;
-    if (!existsSync(schemaPath)) {
-      health.problems.push(
-        problem('E_SCHEMA_NOT_FOUND', 'error', `Space "${space.name}" schema not found: ${schemaPath}`, space.name),
-      );
-      continue;
-    }
-    try {
-      JSON5.parse(readFileSync(schemaPath, 'utf-8'));
-    } catch (err) {
-      health.problems.push(
-        problem(
-          'E_SCHEMA_INVALID',
-          'error',
-          `Space "${space.name}" schema ${schemaPath} is not valid: ${(err as Error).message}`,
-          space.name,
-        ),
-      );
-    }
-  }
-  return health;
+  return { health, config };
 }
 
-/** True when the health check found something that stops validation from running. */
+/** True when the config problems stop validation from running. */
 export function hasBlockingProblem(health: ConfigHealth): boolean {
   return health.problems.some((p) => p.severity === 'error');
 }

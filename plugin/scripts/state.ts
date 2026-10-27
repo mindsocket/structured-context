@@ -156,10 +156,6 @@ export async function runSctx(args: string[], options?: HookOptions): Promise<Sc
   }
 }
 
-async function sctx(args: string[], options?: HookOptions): Promise<string> {
-  return (await runSctx(args, options)).stdout;
-}
-
 /** Parse `sctx spaces --json` output, or undefined when it isn't usable. */
 export function parseSpacesOutput(text: string): SpacesOutput | undefined {
   try {
@@ -207,11 +203,16 @@ export function hashSpace(space: SpaceInfo, configFiles: string[]): string {
 /**
  * Validate a whole space and group its errors and warnings by file label.
  * Info-level rule violations are left out: they are not worth another turn from Claude.
+ * Throws when validation could not run (for example a schema that fails to load), so the hook reports
+ * that once instead of treating the space as clean.
  */
 export async function validateSpace(name: string, options?: HookOptions): Promise<Record<string, FileIssues>> {
-  const text = await sctx(['validate', name, '--json'], options);
-  if (!text) return {};
-  const output = JSON.parse(text) as ValidateOutput;
+  const run = await runSctx(['validate', name, '--json'], options);
+  if (!run.stdout.trim()) {
+    const detail = run.stderr.trim().split('\n')[0] || `exit code ${run.exitCode}`;
+    throw new Error(`validating space "${name}" produced no result: ${detail}`);
+  }
+  const output = JSON.parse(run.stdout) as ValidateOutput;
 
   const byFile: Record<string, FileIssues> = {};
   const issuesFor = (label: string): FileIssues => {

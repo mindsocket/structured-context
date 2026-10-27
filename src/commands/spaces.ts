@@ -1,6 +1,5 @@
 import { basename, resolve } from 'node:path';
-import { loadConfig } from '../config';
-import { checkConfig, hasBlockingProblem } from '../config/health';
+import { hasBlockingProblem, inspectConfig } from '../config/health';
 import { addSpace } from '../config/write';
 import { SctxError } from '../errors';
 
@@ -10,7 +9,7 @@ function renderConfigValue(v: unknown): string {
 }
 
 export function listSpaces(options: { json?: boolean } = {}): void {
-  const health = checkConfig();
+  const { health, config } = inspectConfig();
   if (options.json) {
     console.log(JSON.stringify(health));
     if (hasBlockingProblem(health)) process.exitCode = 1;
@@ -25,9 +24,8 @@ export function listSpaces(options: { json?: boolean } = {}): void {
     }
     console.log('');
     if (hasBlockingProblem(health)) process.exitCode = 1;
-    if (!health.config.exists) return;
   }
-  const config = loadConfig();
+  if (!config) return;
   if (health.problems.length === 0) console.log(`Config: ${path} (${health.config.source})\n`);
   for (const space of config.spaces) {
     console.log(`${space.name}`);

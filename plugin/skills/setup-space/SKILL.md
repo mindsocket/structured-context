@@ -15,7 +15,7 @@ at the content, not from asking.
 ## 1. Check the setup
 
 ```bash
-sctx spaces --json    # config found, spaces valid, problems with codes
+sctx spaces --json    # config found and loads, spaces listed, problems with codes
 ```
 
 If `sctx` is not installed: `bun install -g structured-context` (needs Bun). For any error in `problems`, use

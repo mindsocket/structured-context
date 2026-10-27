@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { setConfigPath } from '../../src/config';
-import { checkConfig, hasBlockingProblem } from '../../src/config/health';
+import { hasBlockingProblem, inspectConfig } from '../../src/config/health';
 import { addSpace, resolveWriteTarget } from '../../src/config/write';
 import { LOCAL_CONFIG_FILE } from '../../src/constants';
 import { SctxError } from '../../src/errors';
@@ -10,9 +10,9 @@ import { useConfigEnv, writeJson as write } from '../helpers/config-env';
 
 const env = useConfigEnv();
 
-describe('checkConfig', () => {
+describe('inspectConfig', () => {
   it('reports "not set up" as info, not as a failure', () => {
-    const health = checkConfig({ startDir: env.vault });
+    const { health } = inspectConfig({ startDir: env.vault });
 
     expect(health.config.source).toBe('none');
     expect(health.problems.map((p) => [p.code, p.severity])).toEqual([['E_CONFIG_NOT_FOUND', 'info']]);
@@ -22,7 +22,7 @@ describe('checkConfig', () => {
   it('reports a missing explicit config as an error', () => {
     setConfigPath(join(env.root, 'missing.json'));
 
-    const health = checkConfig();
+    const { health } = inspectConfig();
 
     expect(health.problems[0]).toMatchObject({ code: 'E_CONFIG_NOT_FOUND', severity: 'error' });
     expect(hasBlockingProblem(health)).toBe(true);
@@ -31,30 +31,46 @@ describe('checkConfig', () => {
   it('reports invalid JSON with a code and a fix', () => {
     write(join(env.vault, LOCAL_CONFIG_FILE), '{ not json');
 
-    const health = checkConfig({ startDir: env.vault });
+    const { health, config } = inspectConfig({ startDir: env.vault });
 
     expect(health.problems[0]).toMatchObject({ code: 'E_CONFIG_INVALID', severity: 'error' });
     expect(health.problems[0]?.fix).not.toBe('');
+    expect(config).toBeUndefined();
   });
 
-  it('reports a moved space path and a missing schema per space', () => {
+  it('reports a missing include', () => {
+    write(join(env.vault, LOCAL_CONFIG_FILE), { includeSpacesFrom: ['./nope.json'], spaces: [] });
+
+    const { health } = inspectConfig({ startDir: env.vault });
+
+    expect(health.problems[0]).toMatchObject({ code: 'E_INCLUDE_NOT_FOUND', severity: 'error' });
+  });
+
+  it('leaves what a space is to the plugin and the schema loader: path and schema are not checked', () => {
     write(join(env.vault, LOCAL_CONFIG_FILE), {
       spaces: [
+        {
+          name: 'remote',
+          path: 'https://example.atlassian.net/wiki/spaces/X/pages/1/Page',
+          schema: 'knowledge_wiki.json',
+        },
         { name: 'gone', path: 'nope', schema: 'knowledge_wiki.json' },
         { name: 'noschema', path: '.' },
         { name: 'badschema', path: '.', schema: 'does_not_exist.json' },
       ],
     });
 
-    const codes = checkConfig({ startDir: env.vault }).problems.map((p) => `${p.space}:${p.code}`);
+    const { health, config } = inspectConfig({ startDir: env.vault });
 
-    expect(codes).toEqual(['gone:E_SPACE_PATH_MISSING', 'noschema:E_SCHEMA_MISSING', 'badschema:E_SCHEMA_NOT_FOUND']);
+    expect(health.problems).toEqual([]);
+    expect(health.spaces.map((s) => s.name)).toEqual(['remote', 'gone', 'noschema', 'badschema']);
+    expect(config?.spaces).toHaveLength(4);
   });
 
   it('is clean for a healthy space', () => {
     write(join(env.vault, LOCAL_CONFIG_FILE), { spaces: [{ name: 'wiki', path: '.', schema: 'knowledge_wiki.json' }] });
 
-    const health = checkConfig({ startDir: env.vault });
+    const { health } = inspectConfig({ startDir: env.vault });
 
     expect(health.problems).toEqual([]);
     expect(health.spaces[0]?.name).toBe('wiki');

@@ -67,14 +67,22 @@ describe('runPreflight', () => {
     }
   });
 
-  it('reports a moved space path with its code and a fix', async () => {
-    rmSync(fixtures.vaultDir, { recursive: true, force: true });
+  it('does not switch hooks off for a space whose path is not a local file', async () => {
+    const remote = 'https://example.atlassian.net/wiki/spaces/X/pages/1/Page';
+    writeFileSync(
+      fixtures.configPath,
+      JSON.stringify({
+        spaces: [
+          { name: 'remote', path: remote, schema: 'strategy_general.json' },
+          { name: 'test-space', path: fixtures.vaultDir, schema: 'strategy_general.json' },
+        ],
+      }),
+    );
 
     const result = await runPreflight({ session_id: sessionId, cwd: fixtures.fixtureDir }, opts());
 
-    expect(result.systemMessage).toContain('E_SPACE_PATH_MISSING');
-    expect(result.additionalContext).toContain('Fix:');
-    expect(result.additionalContext).toContain('Troubleshooting');
+    expect(result.systemMessage).toBeUndefined();
+    expect(result.additionalContext).toContain('test-space');
   });
 
   it('reports an unreadable config', async () => {
@@ -122,6 +130,22 @@ describe('other hooks stay quiet when setup is broken', () => {
     await runOnPrompt({ session_id: sessionId, cwd: fixtures.fixtureDir }, opts());
 
     expect(Object.keys(loadState(stateFilePath(sessionId, opts())).baseline)).toEqual(['test-space']);
+  });
+});
+
+describe('a space that cannot be validated is not reported as clean', () => {
+  it('on-prompt fails with the reason when the schema does not load', async () => {
+    const schema = join(fixtures.fixtureDir, 'bad.json');
+    writeFileSync(schema, '{ not json');
+    writeFileSync(
+      fixtures.configPath,
+      JSON.stringify({ spaces: [{ name: 'test-space', path: fixtures.vaultDir, schema }] }),
+    );
+
+    await expect(runOnPrompt({ session_id: sessionId, cwd: fixtures.fixtureDir }, opts())).rejects.toThrow(
+      'E_SCHEMA_INVALID',
+    );
+    expect(loadState(stateFilePath(sessionId, opts())).baseline).toEqual({});
   });
 });
 
