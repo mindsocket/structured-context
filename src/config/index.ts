@@ -111,7 +111,7 @@ export function setConfigPath(path: string | undefined): void {
 /** Get all config file paths that were loaded (main config + included configs). */
 export function getConfigSourceFiles(): Set<string> {
   if (_spaceSourceFiles.size === 0) {
-    loadConfig();
+    loadConfigOrEmpty();
   }
   return new Set(_spaceSourceFiles.values());
 }
@@ -217,13 +217,24 @@ function expandHome(p: string): string {
 }
 
 export function loadConfig(options: { startDir?: string } = {}): Config {
-  const { path, source } = resolveConfigPath(options.startDir);
+  return loadConfigFile(options.startDir, true);
+}
+
+/** Like `loadConfig`, for commands that work without a config: a missing config is empty, with no warning. */
+export function loadConfigOrEmpty(options: { startDir?: string } = {}): Config {
+  return loadConfigFile(options.startDir, false);
+}
+
+function loadConfigFile(startDir: string | undefined, warnIfMissing: boolean): Config {
+  const { path, source } = resolveConfigPath(startDir);
   if (!existsSync(path)) {
-    const where =
-      source === 'none'
-        ? `no ${LOCAL_CONFIG_FILE} found from ${resolve(options.startDir ?? process.cwd())} upward, and none at ${path}`
-        : path;
-    console.warn(`E_CONFIG_NOT_FOUND: Config file not found (${where})`);
+    if (warnIfMissing) {
+      const where =
+        source === 'none'
+          ? `no ${LOCAL_CONFIG_FILE} found from ${resolve(startDir ?? process.cwd())} upward, and none at ${path}`
+          : path;
+      console.warn(`E_CONFIG_NOT_FOUND: Config file not found (${where})`);
+    }
     return { spaces: [] };
   }
   const config = _loadConfig(path);

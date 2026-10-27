@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import { type Config, loadConfig, resolveConfigPath, resolveSchemaPath } from '../config';
+import { type Config, loadConfigOrEmpty, resolveConfigPath, resolveSchemaPath } from '../config';
 import { PLUGIN_PREFIX } from '../constants';
 import {
   CONFIG_PLUGINS_DIR,
@@ -62,7 +62,7 @@ export async function listSchemas(
     startDir?: string;
   } = {},
 ): Promise<SchemaListing[]> {
-  const config = options.config ?? loadConfig({ startDir: options.startDir });
+  const config = options.config ?? loadConfigOrEmpty({ startDir: options.startDir });
   const listings: SchemaListing[] = [];
   const byPath = new Map<string, SchemaListing>();
 
