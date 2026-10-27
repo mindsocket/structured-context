@@ -19,7 +19,8 @@ sctx spaces --json    # config found, spaces valid, problems with codes
 ```
 
 If `sctx` is not installed: `bun install -g structured-context` (needs Bun). For any error in `problems`, use
-`../structured-context/references/troubleshooting.md` before going on. Note the existing space names so you do
+`../structured-context/references/troubleshooting.md` before going on. An `info` `E_CONFIG_NOT_FOUND` only means
+nothing is set up yet. Note the existing space names so you do
 not reuse one.
 
 Work from the folder the session opened in; config discovery only looks in parent folders.
@@ -40,11 +41,17 @@ Compare with `sctx schemas list` and `sctx schemas show <name>` for the likely c
 types as well as names. If none fits, say so and offer the schema design process in
 `../structured-context/references/schema-design.md`.
 
+Build a new schema on the closest bundled one: import it in `$metadata.imports` and `$ref` its entity `$defs` (for
+example `sctx://core/_strategy_general#/$defs/opportunity`), adding only what is missing. An import already brings
+its aliases, relationships and rules, and redefining one is an error. Read `schema-authoring.md` in
+`../structured-context/references/` to the end before writing. When the user asks for the schema after your
+proposal, continue from step 4.
+
 ## 3. Propose one space
 
 In one message give the space name (lowercase letters, digits, `-`, `_`), the folder, the schema and why, and
 what you noticed. Include what configuring involves, including any edits to existing notes to add or change
-frontmatter. Ask for a yes or corrections.
+frontmatter; take the notes to change from `sctx validate` output, not from your sample. Ask for a yes or corrections.
 
 ## 4. Add the space
 
