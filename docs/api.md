@@ -44,9 +44,9 @@ directions.
 Edges are each node's `resolvedParents`. An exported subset keeps its edges to nodes outside the subset. The
 receiver picks the hierarchy when it builds the graph.
 
-`structured-context/browser` exports `spaceGraphFrom` with the `SpaceGraph` and `SpaceNode` types, and imports no
-Node built-ins. Everything in it is also exported from `structured-context/api`. Derive other types from these,
-such as `Parameters<typeof spaceGraphFrom>[0]` for the data.
+`structured-context/browser` holds what a browser needs to load the data, and imports no Node built-ins.
+Everything in it is also exported from `structured-context/api`. Derive other types from its exports, such as
+`Parameters<typeof spaceGraphFrom>[0]` for the data.
 
 ```ts
 // Server
@@ -58,8 +58,8 @@ import { spaceGraphFrom } from 'structured-context/browser';
 const graph = spaceGraphFrom(data, { hierarchy: 'work' });
 ```
 
-`sctx dump <space> --graph` prints the same data. A JSON Schema for the format ships at
-`schemas/generated/space-graph/latest.json`, with a frozen copy per released `formatVersion`.
+`sctx dump <space> --graph` prints the same data. The JSON Schema for each released
+`formatVersion` ships in `schemas/generated/space-graph/`, named by version, and `latest.json` is the newest.
 
 ## Testing utilities
 

@@ -2,7 +2,7 @@
 /**
  * Browser-safe API for structured-context: nothing here imports Node built-ins.
  *
- * Rebuild a graph that a server exported with exportSpaceGraph (or `sctx dump --graph`):
+ * Rebuild a graph that a server exported with exportSpaceGraph:
  *
  *   import { spaceGraphFrom } from 'structured-context/browser';
  *   const graph = spaceGraphFrom(await (await fetch('/graph.json')).json());
