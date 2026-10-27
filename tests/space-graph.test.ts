@@ -123,6 +123,50 @@ describe('buildSpaceGraph', () => {
     });
   });
 
+  describe('parentEdges and childEdges', () => {
+    it('indexes each resolvedParents entry as a typed edge in both directions', () => {
+      const goal = makeNode('My Goal', 'goal');
+      const opp = makeNode('An Opportunity', 'opportunity');
+      opp.resolvedParents = [
+        makeParentRef('My Goal'),
+        makeParentRef('My Goal', { kind: 'relationship', field: 'related' }),
+      ];
+      const graph = buildSpaceGraph([goal, opp], makeHierarchy(levels));
+
+      const edges = graph.parentEdges.get('An Opportunity' as NodeId);
+      expect(edges as unknown).toEqual([
+        {
+          parent: 'My Goal',
+          child: 'An Opportunity',
+          field: 'parent',
+          kind: 'hierarchy',
+          hierarchy: 'main',
+          selfRef: false,
+          fieldOn: 'child',
+        },
+        {
+          parent: 'My Goal',
+          child: 'An Opportunity',
+          field: 'related',
+          kind: 'relationship',
+          selfRef: false,
+          fieldOn: 'child',
+        },
+      ]);
+      expect(graph.childEdges.get('My Goal' as NodeId)).toEqual(edges!);
+      expect(graph.parentEdges.get('My Goal' as NodeId)).toEqual([]);
+      expect(graph.childEdges.get('An Opportunity' as NodeId)).toEqual([]);
+    });
+
+    it('keeps edges to parents not in the node set', () => {
+      const opp = makeNode('An Opportunity', 'opportunity');
+      opp.resolvedParents = [makeParentRef('Missing Goal')];
+      const graph = buildSpaceGraph([opp], makeHierarchy(levels));
+      expect(graph.parentEdges.get('An Opportunity' as NodeId)?.[0]?.parent).toBe('Missing Goal' as NodeId);
+      expect(graph.childEdges.get('Missing Goal' as NodeId)?.[0]?.child).toBe('An Opportunity' as NodeId);
+    });
+  });
+
   describe('hierarchyIds', () => {
     it('includes hierarchy roots and their descendants', () => {
       const goal = makeNode('My Goal', 'goal');

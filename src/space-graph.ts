@@ -1,5 +1,11 @@
 import type { Hierarchy, NodeId, ResolvedParentRef, SpaceNode } from './types';
 
+/** A typed edge between two nodes: a node's resolvedParents entry, with both ends named. */
+export type SpaceEdge = Omit<ResolvedParentRef, 'id'> & {
+  parent: NodeId;
+  child: NodeId;
+};
+
 /**
  * A navigable graph over a set of SpaceNodes.
  *
@@ -28,6 +34,12 @@ export type SpaceGraph = {
   /** All-edges children map: parent id → direct children connected via any edge (hierarchy + relationship). */
   readonly children: ReadonlyMap<NodeId, readonly SpaceNode[]>;
 
+  /** Parent edges: child id → edges to its parents (hierarchy + relationship), in resolvedParents order. */
+  readonly parentEdges: ReadonlyMap<NodeId, readonly SpaceEdge[]>;
+
+  /** Child edges: parent id → edges to its children (hierarchy + relationship). */
+  readonly childEdges: ReadonlyMap<NodeId, readonly SpaceEdge[]>;
+
   /** Set of all node ids that are part of the hierarchy (roots + their descendants + orphans). */
   readonly hierarchyIds: ReadonlySet<NodeId>;
 
@@ -45,6 +57,8 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
   const nodesMap = new Map<NodeId, SpaceNode>();
   const hierarchyChildrenMap = new Map<NodeId, SpaceNode[]>();
   const childrenMap = new Map<NodeId, SpaceNode[]>();
+  const parentEdgesMap = new Map<NodeId, SpaceEdge[]>();
+  const childEdgesMap = new Map<NodeId, SpaceEdge[]>();
 
   const hierarchyRoots: SpaceNode[] = [];
   const orphans: SpaceNode[] = [];
@@ -55,11 +69,19 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
     nodesMap.set(node.id, node);
     hierarchyChildrenMap.set(node.id, []);
     childrenMap.set(node.id, []);
+    parentEdgesMap.set(node.id, []);
+    childEdgesMap.set(node.id, []);
   }
 
   // Second pass: build children maps (inverted from resolvedParents)
   for (const node of nodes) {
     for (const parentRef of node.resolvedParents) {
+      const { id: parentId, ...edgeFields } = parentRef;
+      const edge: SpaceEdge = { parent: parentId, child: node.id, ...edgeFields };
+      parentEdgesMap.get(node.id)!.push(edge);
+      if (!childEdgesMap.has(parentId)) childEdgesMap.set(parentId, []);
+      childEdgesMap.get(parentId)!.push(edge);
+
       // All-edges map
       if (!childrenMap.has(parentRef.id)) childrenMap.set(parentRef.id, []);
       childrenMap.get(parentRef.id)!.push(node);
@@ -121,6 +143,8 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
     nonHierarchy,
     hierarchyChildren: hierarchyChildrenMap,
     children: childrenMap,
+    parentEdges: parentEdgesMap,
+    childEdges: childEdgesMap,
     hierarchyIds,
     hierarchy,
   };
