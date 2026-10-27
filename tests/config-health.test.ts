@@ -2,8 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { setConfigPath } from '../src/config';
-import { checkConfig, hasBlockingProblem } from '../src/config-health';
-import { addSpace, chooseWriteTarget } from '../src/config-write';
+import { checkConfig, hasBlockingProblem } from '../src/config/health';
+import { addSpace, resolveWriteTarget } from '../src/config/write';
 import { LOCAL_CONFIG_FILE } from '../src/constants';
 import { SctxError } from '../src/errors';
 import { useConfigEnv, writeJson as write } from './helpers/config-env';
@@ -88,7 +88,7 @@ describe('addSpace', () => {
   it('requires an explicit target when only the global config exists', () => {
     write(env.globalFile, { spaces: [] });
 
-    expect(() => inVault(() => chooseWriteTarget({}))).toThrow('only the global config');
+    expect(() => inVault(() => resolveWriteTarget({}))).toThrow('only the global config');
   });
 
   it('creates the named config with a path relative to the config folder', () => {
