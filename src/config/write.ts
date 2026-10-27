@@ -4,7 +4,7 @@ import { LOCAL_CONFIG_FILE } from '../constants';
 import { SctxError } from '../errors';
 import { globalConfigPath, resolveConfigPath, resolveSchemaPath, type SpaceConfig } from '.';
 
-export type AddSpaceOptions = Pick<SpaceConfig, 'name' | 'path' | 'schema'> & {
+type AddSpaceOptions = Pick<SpaceConfig, 'name' | 'path' | 'schema'> & {
   /** Write to the global config file. */
   global?: boolean;
   /** Write to this config file (created if missing) instead of the discovered one. */
@@ -13,7 +13,7 @@ export type AddSpaceOptions = Pick<SpaceConfig, 'name' | 'path' | 'schema'> & {
   startDir?: string;
 };
 
-export type AddSpaceResult = {
+type AddSpaceResult = {
   configPath: string;
   created: boolean;
   space: Pick<SpaceConfig, 'name' | 'path' | 'schema'>;
@@ -40,7 +40,7 @@ export function resolveWriteTarget(options: { global?: boolean; configFile?: str
   throw new SctxError(
     'E_TARGET_REQUIRED',
     `No ${LOCAL_CONFIG_FILE} found from ${resolve(options.startDir ?? process.cwd())} upward; ${found}. ` +
-      `Name the config file to write, or choose the global config.`,
+      `Specify the config file location or global option.`,
   );
 }
 

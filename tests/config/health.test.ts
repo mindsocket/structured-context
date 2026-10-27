@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { readFileSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { setConfigPath } from '../src/config';
-import { checkConfig, hasBlockingProblem } from '../src/config/health';
-import { addSpace, resolveWriteTarget } from '../src/config/write';
-import { LOCAL_CONFIG_FILE } from '../src/constants';
-import { SctxError } from '../src/errors';
-import { useConfigEnv, writeJson as write } from './helpers/config-env';
+import { setConfigPath } from '../../src/config';
+import { checkConfig, hasBlockingProblem } from '../../src/config/health';
+import { addSpace, resolveWriteTarget } from '../../src/config/write';
+import { LOCAL_CONFIG_FILE } from '../../src/constants';
+import { SctxError } from '../../src/errors';
+import { useConfigEnv, writeJson as write } from '../helpers/config-env';
 
 const env = useConfigEnv();
 
