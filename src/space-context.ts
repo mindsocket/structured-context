@@ -1,4 +1,5 @@
 import { type Config, resolveSchema } from './config';
+import { SctxError } from './errors';
 import { resolveSpacePluginSchemas } from './plugins/util';
 import { loadSchema } from './schema/schema';
 import type { SpaceContext } from './types';
@@ -51,7 +52,17 @@ export function createSpaceContext(
 
   const resolvedSchemaPath = resolveSchema(config, space, { configDir });
   const pluginSchemas = resolveSpacePluginSchemas(space, config, configDir);
-  const { schema, schemaRefRegistry, schemaValidator } = loadSchema(resolvedSchemaPath, pluginSchemas);
+  let loaded: ReturnType<typeof loadSchema>;
+  try {
+    loaded = loadSchema(resolvedSchemaPath, pluginSchemas);
+  } catch (err) {
+    if (err instanceof SctxError) throw err;
+    throw new SctxError(
+      'E_SCHEMA_INVALID',
+      `Space "${spaceName}": ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  const { schema, schemaRefRegistry, schemaValidator } = loaded;
 
   return {
     space,
