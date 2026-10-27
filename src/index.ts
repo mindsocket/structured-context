@@ -153,6 +153,7 @@ program
   .argument('<space-name>', 'Space name')
   .option('--filter <filter>', 'Filter view name (from config) or inline filter expression')
   .option('--hierarchy <name>', 'Hierarchy used to evaluate --filter (default: the main hierarchy)')
+  .option('--graph', 'Output the space graph format: nodes plus every hierarchy')
   .action(async (spaceName, options) => dump(buildSpaceContext(spaceName), options));
 
 program

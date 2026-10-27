@@ -1,4 +1,4 @@
-import type { Hierarchy, NodeId, ResolvedParentRef, SpaceNode } from './types';
+import type { Hierarchy, NodeId, ResolvedParentRef, SchemaMetadata, SpaceNode } from './types';
 
 /** A typed edge between two nodes: a node's resolvedParents entry, with both ends named. */
 export type SpaceEdge = Omit<ResolvedParentRef, 'id'> & {
@@ -148,4 +148,21 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
     hierarchyIds,
     hierarchy,
   };
+}
+
+/** Resolve a hierarchy by name, or the main hierarchy when no name is given. */
+export function selectHierarchy(
+  metadata: Pick<SchemaMetadata, 'hierarchy' | 'hierarchies'>,
+  name: string | undefined,
+): Hierarchy | undefined {
+  if (name === undefined) return metadata.hierarchy;
+  const hierarchies = metadata.hierarchies ?? [];
+  const hierarchy = hierarchies.find((h) => h.name === name);
+  if (!hierarchy) {
+    const available = hierarchies.map((h) => h.name).join(', ');
+    throw new Error(
+      `Unknown hierarchy: "${name}".${available ? ` Available: ${available}` : ' The schema defines no hierarchies.'}`,
+    );
+  }
+  return hierarchy;
 }

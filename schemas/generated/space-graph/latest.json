@@ -1,0 +1,216 @@
+{
+  "$id": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/space-graph/1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "structured-context space graph",
+  "type": "object",
+  "properties": {
+    "formatVersion": {
+      "const": 1
+    },
+    "hierarchies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "fieldOn": {
+                  "enum": ["child", "parent"]
+                },
+                "multiple": {
+                  "type": "boolean"
+                },
+                "templateFormat": {
+                  "enum": ["heading", "list", "table", "page"]
+                },
+                "matchers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1
+                },
+                "embeddedTemplateFields": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "selfRef": {
+                  "type": "boolean"
+                },
+                "selfRefField": {
+                  "type": "string"
+                }
+              },
+              "required": ["type", "field", "fieldOn", "multiple", "selfRef"],
+              "additionalProperties": false
+            }
+          },
+          "allowSkipLevels": {
+            "type": "boolean"
+          }
+        },
+        "required": ["name", "levels"],
+        "additionalProperties": false
+      }
+    },
+    "mainHierarchy": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "schemaData": {
+            "type": "object"
+          },
+          "linkTargets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "contentLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "action": {
+                  "enum": ["link", "embed"]
+                },
+                "anchor": {
+                  "type": "string"
+                },
+                "linkSyntax": {
+                  "enum": ["wikilink", "markdown"]
+                }
+              },
+              "required": ["text", "target", "action", "linkSyntax"],
+              "additionalProperties": false
+            }
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "column": {
+                "type": "integer"
+              }
+            },
+            "required": ["file"],
+            "additionalProperties": false
+          },
+          "resolvedType": {
+            "type": "string"
+          },
+          "resolvedParents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": ["hierarchy", "relationship"]
+                },
+                "hierarchy": {
+                  "type": "string"
+                },
+                "selfRef": {
+                  "type": "boolean"
+                },
+                "fieldOn": {
+                  "enum": ["child", "parent"]
+                }
+              },
+              "required": ["id", "field", "kind", "selfRef", "fieldOn"],
+              "additionalProperties": false
+            }
+          },
+          "resolvedLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "action": {
+                  "enum": ["link", "embed"]
+                },
+                "anchor": {
+                  "type": "string"
+                },
+                "location": {
+                  "enum": ["node", "internal", "external", "system", "protocol"]
+                }
+              },
+              "required": ["text", "target", "action", "location"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "schemaData",
+          "linkTargets",
+          "type",
+          "resolvedType",
+          "resolvedParents",
+          "resolvedLinks"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["formatVersion", "hierarchies", "nodes"],
+  "additionalProperties": false
+}

@@ -111,16 +111,19 @@ The SELECT spec is a comma-separated list of directives that expand the result s
 ## dump
 
 ```bash
-sctx dump <space> [--filter <view-or-expression>] [--hierarchy <name>]
+sctx dump <space> [--filter <view-or-expression>] [--hierarchy <name>] [--graph]
 ```
 
 Outputs `{ nodes, source, diagnostics }` as strict JSON. Each node includes resolved fields:
 - `id` — unique node key; for a page it is the path `validate --json` uses for its `errors` map
 - `title`, `resolvedType` — display title and type after alias resolution
-- `resolvedParents` — parent refs after link resolution, with the edge field and source
+- `resolvedParents` — parent refs after link resolution, with the edge field and kind
 
 Unfiltered output includes schema-invalid nodes. `--filter` works the same as in `show`/`render`
 (named view or inline expression, evaluated over the schema-valid graph).
+
+`--graph` outputs the space graph format instead: the nodes plus every hierarchy, for a program to load
+(see "Space graph format" in `sctx docs concepts`).
 
 Use this to debug rule violations ("why is this rule firing?"), verify `fieldMap` remapping
 is working, or inspect what JSONata expressions see at evaluation time.

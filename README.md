@@ -237,7 +237,7 @@ Keeps Obsidian template files in sync with schema examples:
 ## Programmatic API
 
 The package exposes a library entry point at `structured-context/api` for embedding the tooling
-in other applications. See
+in other applications, and `structured-context/browser` for loading an exported space graph in a browser. See
 [docs/api.md](docs/api.md) for the full reference and usage examples.
 
 ## Development
