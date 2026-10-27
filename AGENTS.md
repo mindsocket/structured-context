@@ -71,7 +71,7 @@ There are several places that need reviewing and updating with any new feature o
 ## Key Files
 
 - `src/api.ts` — Public library entry point (`structured-context/api`). Re-exports the supported programmatic surface. Keep CLI-only concerns out of it. Do not extend it without agreement (see **Public API surface** above).
-- `src/browser.ts` — Browser-safe entry point (`structured-context/browser`): graph building and the space graph format. Nothing it imports may use Node built-ins; `/api` re-exports all of it.
+- `src/browser.ts` — Browser-safe entry point (`structured-context/browser`): rebuilding a graph from the space graph format. Nothing it imports may use Node built-ins; `/api` re-exports all of it.
 - `src/space-graph-data.ts` — The space graph format: `SPACE_GRAPH_DATA_SCHEMA`, `SpaceGraphData` (a typecheck fails if the two drift), `exportSpaceGraph`, `spaceGraphFrom`. Bump `SPACE_GRAPH_FORMAT_VERSION` when the shape changes. It is generated to `schemas/generated/space-graph/` (`latest.json`, plus a frozen `<formatVersion>.json` per release); generation fails if a released version's schema no longer matches.
 - `schemas/` — Bundled default schema files (JSON5) using the structured-context schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`).
 - `src/schema/metadata-contract.ts` — Single source of truth for the `$metadata` contract

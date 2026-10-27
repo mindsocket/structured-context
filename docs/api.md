@@ -18,8 +18,8 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `loadSpaceGraph(spaceName, config, options?)` | Read, assemble, and optionally filter a space into a navigable `SpaceGraph`. `options.hierarchy` names the hierarchy that structures the graph (default: the main hierarchy). |
 | `assembleSpaceGraph(context, options?)` | Assemble (and optionally filter) a graph from a context you already hold — reuses the context instead of rebuilding it. |
 | `buildSpaceGraph(nodes, hierarchy?)` | Build a navigable `SpaceGraph` directly from an array of `SpaceNode`s and a `Hierarchy` definition. |
-| `exportSpaceGraph(nodes, metadata)` | Turn nodes and the schema's hierarchies into `SpaceGraphData`, plain JSON for another process. See [Space graph format](#space-graph-format). |
-| `spaceGraphFrom(data, options?)` | Build a `SpaceGraph` from `SpaceGraphData`. `options.hierarchy` names the hierarchy that structures it (default: the main hierarchy). |
+| `exportSpaceGraph(nodes, metadata)` | Turn nodes and the schema's hierarchies into plain JSON for another process. See [Space graph format](#space-graph-format). |
+| `spaceGraphFrom(data, options?)` | Build a `SpaceGraph` from that JSON. `options.hierarchy` names the hierarchy that structures it (default: the main hierarchy). |
 | `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. |
 | `validateFile(filePath, config)` | Validate a single file within its space. |
 | `listSchemas(options?)` | List the schemas available to a config: bundled, plugin-contributed and configured. |
@@ -30,12 +30,12 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 
 `ValidationResult.ruleViolations` carries each violation's effective `severity` (`error`, `warning` or `info`). Only `error` severity violations should be treated as failures; `validateFile` reports `warning` and `info` rule violations under `warnings` rather than `errors`.
 
-A `SpaceGraph` classifies nodes against one hierarchy, and indexes child nodes and typed edges (`SpaceEdge`) in
-both directions.
+A `SpaceGraph` classifies nodes against one hierarchy, and indexes child nodes and typed edges in both
+directions.
 
 ## Space graph format
 
-`SpaceGraphData` is the [space graph format](concepts.md#space-graph-format):
+`exportSpaceGraph` returns the [space graph format](concepts.md#space-graph-format):
 
 ```jsonc
 { "formatVersion": 1, "hierarchies": [/* Hierarchy */], "mainHierarchy": "…", "nodes": [/* SpaceNode */] }
@@ -44,8 +44,9 @@ both directions.
 Edges are each node's `resolvedParents`. An exported subset keeps its edges to nodes outside the subset. The
 receiver picks the hierarchy when it builds the graph.
 
-`structured-context/browser` exports the graph functions and node types, and imports no Node built-ins.
-Everything in it is also exported from `structured-context/api`.
+`structured-context/browser` exports `spaceGraphFrom` with the `SpaceGraph` and `SpaceNode` types, and imports no
+Node built-ins. Everything in it is also exported from `structured-context/api`. Derive other types from these,
+such as `Parameters<typeof spaceGraphFrom>[0]` for the data.
 
 ```ts
 // Server

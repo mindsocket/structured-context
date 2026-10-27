@@ -327,7 +327,7 @@ The `kind` and `hierarchy` labels let downstream consumers distinguish edge type
 
 ### Space graph format
 
-The **space graph format** (`SpaceGraphData`) is a space's nodes and hierarchies as plain JSON. A program exports it on one side of a process or network boundary and builds a `SpaceGraph` from it on the other. See [api.md](api.md#space-graph-format).
+The **space graph format** is a space's nodes and hierarchies as plain JSON. A program exports it on one side of a process or network boundary and builds a `SpaceGraph` from it on the other. See [api.md](api.md#space-graph-format).
 
 ### Content links
 
