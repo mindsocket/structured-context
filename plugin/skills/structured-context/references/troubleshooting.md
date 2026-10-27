@@ -13,9 +13,11 @@ empty or `info` only. Hooks pick up a fixed config on the next prompt. A missing
 | `E_TARGET_REQUIRED` | Ask where the config belongs. Usually `--config <folder holding the files>/.sctx.json`; `--global` only if the user asks |
 | `E_HOOK_FAILED` | A hook crashed and was skipped. Set `SCTX_DEBUG=1` for the session, or run the same `sctx` command by hand. Usually a problem with its own code above |
 
-Other codes (`E_CONFIG_INVALID`, `E_INCLUDE_NOT_FOUND`, `E_NO_SPACES`, `E_SPACE_PATH_MISSING`, `E_SCHEMA_*`,
+Other codes (`E_CONFIG_INVALID`, `E_INCLUDE_NOT_FOUND`, `E_SPACE_PATH_MISSING`, `E_SCHEMA_*`,
 `E_SPACE_EXISTS`, `E_CONFIG_NEEDS_MANUAL_EDIT`) carry their fix in the message. Do not edit the user's files to
-get around a setup problem.
+get around a setup problem. `sctx spaces` and the session start check cover the config only. A space's schema
+is checked when it is loaded, so a broken schema first shows as `E_SCHEMA_*` from `sctx validate`, or as an
+`E_HOOK_FAILED` message from a hook.
 
 If edits are not being checked and nothing says why, run `sctx spaces --json` from the session's folder. A config
 that is only in a folder below it will not be found.
