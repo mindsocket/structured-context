@@ -58,7 +58,7 @@ program
   .name(CLI_NAME)
   .description('Structured context validation and diagram generation tool')
   .version(packageJson.version)
-  .option('--config <path>', 'Path to config file (overrides discovery of .sctx.json and the global config)');
+  .option('--config <path>', 'Path to config file (overrides config discovery)');
 
 program.hook('preAction', () => {
   setConfigPath(program.opts().config);

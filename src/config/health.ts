@@ -1,12 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import JSON5 from 'json5';
-import { getConfigSourceFiles, loadConfig, type ResolvedConfigPath, resolveConfigPath, resolveSchema } from './config';
-import { LOCAL_CONFIG_FILE } from './constants';
-import { SctxError, type SctxErrorCode } from './errors';
+import { LOCAL_CONFIG_FILE } from '../constants';
+import { SctxError, type SctxErrorCode } from '../errors';
+import { getConfigSourceFiles, loadConfig, type ResolvedConfigPath, resolveConfigPath, resolveSchema } from '.';
 
 export type ConfigProblem = {
   code: SctxErrorCode;
-  /** `info` is not a failure: a hook treats `E_CONFIG_NOT_FOUND` at `info` as "not set up yet". */
   severity: 'error' | 'warning' | 'info';
   message: string;
   fix: string;
@@ -20,7 +19,6 @@ export type ConfigHealth = {
   problems: ConfigProblem[];
 };
 
-/** Hint shown with each code; the agent skill carries the longer troubleshooting guidance. */
 const FIXES: Partial<Record<SctxErrorCode, string>> = {
   E_CONFIG_NOT_FOUND: `Create a config with \`sctx spaces add <name> <path> --schema <schema> --config <folder>/${LOCAL_CONFIG_FILE}\`, or use the setup-space skill.`,
   E_CONFIG_INVALID: 'Fix the JSON in the config file named in the message; `sctx docs config` describes the shape.',

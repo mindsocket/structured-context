@@ -1,10 +1,8 @@
 ---
 name: structured-context
 description: >
-  Use this skill when editing structured markdown content in Obsidian to ensure it conforms to a
-  schema, or when authoring or debugging schemas. Trigger when: (1) content needs validating after
-  edits, (2) schema files or rules need creating or updating, (3) configuring or designing a schema
-  for a space, (4) troubleshooting unexpected validation errors or a structured-context error code, (5) running structured-context CLI commands.
+  Use when working with structured-context (sctx): validating markdown content after edits, authoring or
+  debugging schemas and rules, running sctx commands, or troubleshooting validation and setup errors.
 ---
 
 # structured-context
@@ -23,23 +21,11 @@ The plugin version is listed in `plugin/.claude-plugin/plugin.json`. A match on 
 
 If not installed, run `bun install -g structured-context`
 
-## Finding the config
+## Config
 
-structured-context uses the first of: `--config <path>`, `$SCTX_CONFIG`, the nearest `.sctx.json` walking up from the
-working directory, then `$XDG_CONFIG_HOME/structured-context/config.json`. Keep a `.sctx.json` at the base of the
-notes it describes (for an Obsidian vault, the vault root). Configs are not merged by location: the nearest wins, and
-`includeSpacesFrom` is how to pull in spaces from another file.
-
-```bash
-sctx spaces                  # which config was used, how it was found, and any problems with a code
-sctx spaces add <name> <path> --schema <schema>   # add a space (see the setup-space skill for a first-time setup)
-sctx validate <space> --config path/to/.sctx.json
-```
-
-**Always read the config first** to understand available spaces and their schema locations before running other commands.
-
-Problems are reported with a code such as `E_SPACE_PATH_MISSING`. `references/troubleshooting.md` lists each code with
-the diagnosis and fix. If there is no config yet, use the setup-space skill.
+**Always read the config first** with `sctx spaces`: it shows the config in use, its spaces and any problems, each with a
+code (see `references/troubleshooting.md`). `sctx docs config` covers config discovery and `sctx spaces add`. If
+there is no config yet, use the setup-space skill.
 
 ## Orientation
 

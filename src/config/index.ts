@@ -3,16 +3,16 @@ import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020';
 import JSON5 from 'json5';
-import { ENV_CONFIG_VAR, LOCAL_CONFIG_FILE, XDG_CONFIG_DIR } from './constants';
-import { SctxError } from './errors';
-import { type JudgeConfig, MODEL_PROVIDER_APIS, type ModelProviderConfig } from './judge/types';
+import { ENV_CONFIG_VAR, LOCAL_CONFIG_FILE, XDG_CONFIG_DIR } from '../constants';
+import { SctxError } from '../errors';
+import { type JudgeConfig, MODEL_PROVIDER_APIS, type ModelProviderConfig } from '../judge/types';
 import {
   normalizePluginName,
   resolvePluginSchemasDir,
   resolveSpacePluginSchemas,
   shortenPluginName,
-} from './plugins/util';
-import { bundledSchemasDir } from './schema/schema';
+} from '../plugins/util';
+import { bundledSchemasDir } from '../schema/schema';
 
 const MODEL_PROVIDER_SCHEMA = {
   type: 'object',

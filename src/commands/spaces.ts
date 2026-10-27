@@ -1,7 +1,7 @@
 import { basename, resolve } from 'node:path';
 import { loadConfig } from '../config';
-import { checkConfig, hasBlockingProblem } from '../config-health';
-import { addSpace } from '../config-write';
+import { checkConfig, hasBlockingProblem } from '../config/health';
+import { addSpace } from '../config/write';
 import { SctxError } from '../errors';
 
 function renderConfigValue(v: unknown): string {
@@ -68,8 +68,9 @@ export function addSpaceCommand(
     console.log(`Added space "${result.space.name}" (path: ${result.space.path})`);
   } catch (err) {
     if (!(err instanceof SctxError)) throw err;
-    if (options.json) console.log(JSON.stringify({ error: { code: err.code, message: err.message } }));
-    else console.error(`${err.code}: ${err.message}`);
+    const hint = err.code === 'E_TARGET_REQUIRED' ? ' Use --config <folder>/.sctx.json or --global.' : '';
+    if (options.json) console.log(JSON.stringify({ error: { code: err.code, message: err.message + hint } }));
+    else console.error(`${err.code}: ${err.message}${hint}`);
     process.exitCode = 1;
   }
 }

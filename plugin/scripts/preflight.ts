@@ -32,7 +32,7 @@ function firstLine(text: string): string {
 
 function unavailable(code: string, message: string, fix: string): PreflightResult {
   return {
-    systemMessage: `structured-context: validation hooks are inactive (${code}). ${message} ${fix}`,
+    systemMessage: `structured-context (enabled plugin): validation hooks are inactive (${code}). ${message} ${fix} Disable the plugin to stop this check.`,
     additionalContext: `structured-context hooks are inactive for this session. ${code}: ${message} Fix: ${fix} Help the user resolve this when they ask or when it blocks their work. ${TROUBLESHOOTING}`,
   };
 }
@@ -62,7 +62,7 @@ export async function runPreflight(input: PreflightInput, options?: HookOptions)
   if (errors.length > 0) {
     const lines = errors.map((p) => `- ${p.code}: ${p.message}${p.fix ? ` Fix: ${p.fix}` : ''}`).join('\n');
     return {
-      systemMessage: `structured-context: validation hooks are inactive (${errors[0]!.code}). ${errors[0]!.message}`,
+      systemMessage: `structured-context (enabled plugin): validation hooks are inactive (${errors[0]!.code}). ${errors[0]!.message} Disable the plugin to stop this check.`,
       additionalContext: `structured-context hooks are inactive for this session because of its configuration (${output.config.path}):\n${lines}\nHelp the user resolve this when they ask or when it blocks their work. ${TROUBLESHOOTING}`,
     };
   }

@@ -6,20 +6,18 @@ title: "Configuration Reference"
 
 ## Config file location
 
-structured-context looks for its config file in this order, and uses the first it finds:
+structured-context uses the first config file it finds, in this order:
 
-1. `--config <path>` — explicit path for one command
-2. `$SCTX_CONFIG` — explicit path override
-3. The nearest `.sctx.json`, walking up from the working directory
+1. `--config <path>`
+2. `$SCTX_CONFIG`
+3. The nearest `.sctx.json`, looking in the working directory and then each parent folder
 4. `~/.config/structured-context/config.json` (or `$XDG_CONFIG_HOME/structured-context/config.json`)
 
-Configs are never merged by location. The nearest file wins, so a `.sctx.json` in a project is used even when a global config exists. To use spaces from another config as well, list it in `includeSpacesFrom`.
+It is recommended to keep a `.sctx.json` at the base of the notes it describes (for example the root of an Obsidian vault), or to use the global config. The CLI and agent sessions look in parent folders only, so run commands from inside the folder that holds the config. To use the spaces from another config file too, list it in `includeSpacesFrom`.
 
-Keep a config at the base of the collection of notes it describes (for example the root of an Obsidian vault), or in the global location. Discovery only walks up, never down, so start a session or command inside the folder that holds the config.
+Paths in a config file are relative to the folder that holds that file. In a `.sctx.json` at a vault root, `"path": "."` is the whole vault and `"path": "notes"` is one folder.
 
-Paths in a config file are resolved relative to the folder that holds that file. In `.sctx.json` at a vault root, `"path": "."` is the whole vault and `"path": "notes"` is one folder.
-
-`sctx spaces` shows which file was used and how it was found, and reports problems with a stable code (such as `E_CONFIG_NOT_FOUND` or `E_SPACE_PATH_MISSING`). `sctx spaces --json` returns the same information for tools and hooks.
+`sctx spaces` shows which config file is used and reports problems with it. `sctx spaces --json` returns the same information for tools and hooks.
 
 ### Adding a space
 
@@ -27,7 +25,7 @@ Paths in a config file are resolved relative to the folder that holds that file.
 sctx spaces add wiki notes --schema knowledge_wiki.json
 ```
 
-This adds the space to the config found by walking up from the working directory, or to the one named with `--config`. If discovery would land on the global config or find nothing, the command stops and asks you to say where to write: `--config <folder>/.sctx.json` (creates the file) or `--global`. It will not rewrite a config that uses comments or trailing commas, and prints the entry to add by hand instead.
+This adds the space to the config file found from the working directory, or to the one named with `--config`. When no `.sctx.json` is found, or only the global config exists, pass `--config <folder>/.sctx.json` (creates the file) or `--global`. If the config file has comments or trailing commas, the command prints the entry to add by hand.
 
 Custom schemas can sit anywhere. Reference them by relative path, for example `./.sctx/schemas/my_wiki.json`; `.sctx/schemas/` is the suggested folder.
 

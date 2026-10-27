@@ -1,18 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import JSON5 from 'json5';
-import { globalConfigPath, resolveConfigPath, resolveSchemaPath } from './config';
-import { LOCAL_CONFIG_FILE } from './constants';
-import { SctxError } from './errors';
+import { LOCAL_CONFIG_FILE } from '../constants';
+import { SctxError } from '../errors';
+import { globalConfigPath, resolveConfigPath, resolveSchemaPath, type SpaceConfig } from '.';
 
-export type AddSpaceOptions = {
-  name: string;
-  /** Path to the space, relative to the working directory or absolute. Must exist. */
-  path: string;
-  schema?: string;
+export type AddSpaceOptions = Pick<SpaceConfig, 'name' | 'path' | 'schema'> & {
   /** Write to the global config file. */
   global?: boolean;
-  /** Write to this config file (created if missing), bypassing discovery. For library callers that know the target. */
+  /** Write to this config file (created if missing) instead of the discovered one. */
   configFile?: string;
   /** Where discovery starts when no explicit target is given. Defaults to the working directory. */
   startDir?: string;
@@ -21,20 +16,20 @@ export type AddSpaceOptions = {
 export type AddSpaceResult = {
   configPath: string;
   created: boolean;
-  space: { name: string; path: string; schema?: string };
+  space: Pick<SpaceConfig, 'name' | 'path' | 'schema'>;
 };
 
 /**
- * Decide which file to write. A config named explicitly (`--config`, `$SCTX_CONFIG`) or found by walking up
- * from the working directory is used as is. If discovery would land on the global file or on nothing, the
- * caller must say where to write, so a vault's space never ends up in the global file by accident.
+ * Decide which file to write. A config named explicitly or found by walking up from the working directory
+ * is used as is. If discovery would land on the global file or on nothing, the caller must say where to
+ * write, so a vault's space never ends up in the global file by accident.
  */
-export function chooseWriteTarget(options: { global?: boolean; configFile?: string; startDir?: string }): string {
+export function resolveWriteTarget(options: { global?: boolean; configFile?: string; startDir?: string }): string {
   if (options.configFile) return options.configFile;
   const resolved = resolveConfigPath(options.startDir);
   if (options.global) {
     if (resolved.source === 'override' || resolved.source === 'env') {
-      throw new SctxError('E_TARGET_REQUIRED', '--global cannot be combined with --config or $SCTX_CONFIG');
+      throw new SctxError('E_TARGET_REQUIRED', 'The global config cannot be combined with an explicitly named config');
     }
     return globalConfigPath();
   }
@@ -45,7 +40,7 @@ export function chooseWriteTarget(options: { global?: boolean; configFile?: stri
   throw new SctxError(
     'E_TARGET_REQUIRED',
     `No ${LOCAL_CONFIG_FILE} found from ${resolve(options.startDir ?? process.cwd())} upward; ${found}. ` +
-      `Say where to write: --config <folder>/${LOCAL_CONFIG_FILE} (the usual choice: the folder that holds your notes), or --global.`,
+      `Name the config file to write, or choose the global config.`,
   );
 }
 
@@ -73,28 +68,24 @@ export function addSpace(options: AddSpaceOptions): AddSpaceResult {
       `Space name "${options.name}" must use lowercase letters, digits, "-" and "_"`,
     );
   }
-  const target = resolve(chooseWriteTarget(options));
+  const target = resolve(resolveWriteTarget(options));
   const spacePath = resolve(options.startDir ?? process.cwd(), options.path);
   if (!existsSync(spacePath)) {
     throw new SctxError('E_SPACE_PATH_MISSING', `Space path does not exist: ${spacePath}`);
   }
 
   const created = !existsSync(target);
-  let config: { spaces?: Array<Record<string, unknown>>; schema?: string; [key: string]: unknown } = { spaces: [] };
+  let config: { spaces?: SpaceConfig[]; schema?: string; [key: string]: unknown } = { spaces: [] };
   if (!created) {
     const raw = readFileSync(target, 'utf-8');
     try {
       config = JSON.parse(raw);
     } catch {
-      try {
-        JSON5.parse(raw);
-      } catch (err) {
-        throw new SctxError('E_CONFIG_INVALID', `Invalid config in ${target}: ${(err as Error).message}`);
-      }
+      const entry = { name: options.name, path: storedPath(target, spacePath), schema: options.schema };
       throw new SctxError(
         'E_CONFIG_NEEDS_MANUAL_EDIT',
-        `${target} uses JSON5 features (comments or trailing commas) that rewriting would remove. ` +
-          `Add this entry to "spaces" by hand: ${JSON.stringify({ name: options.name, path: storedPath(target, spacePath), ...(options.schema ? { schema: options.schema } : {}) })}`,
+        `${target} is not strict JSON (comments, trailing commas or a syntax error), so it was not rewritten. ` +
+          `Add this entry to "spaces" by hand: ${JSON.stringify(entry)}`,
       );
     }
   }
