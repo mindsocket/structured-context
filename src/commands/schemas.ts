@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
-import { loadConfig } from '../config';
+import { loadConfig, loadConfigOrEmpty } from '../config';
 import { discoverPlugins } from '../plugins/loader';
 import {
   normalizePluginName,
@@ -272,7 +272,8 @@ export async function showSchema(
   file: string | undefined,
   options: { space?: string; raw: boolean; mermaidErd?: boolean },
 ): Promise<void> {
-  const config = loadConfig();
+  // A schema named by file needs no config; a space does, so a missing one is worth a warning.
+  const config = options.space ? loadConfig() : loadConfigOrEmpty();
 
   let schemaPath: string;
   let schema: SchemaWithMetadata | undefined;
