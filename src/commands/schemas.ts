@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
 import { loadConfig } from '../config';
 import { discoverPlugins } from '../plugins/loader';
@@ -9,6 +9,7 @@ import {
   resolveSpacePluginSchemas,
   shortenPluginName,
 } from '../plugins/util';
+import { listSchemas, type SchemaListing } from '../schema/list-schemas';
 import { ruleSemantic } from '../schema/rule-severity';
 import {
   bundledSchemasDir,
@@ -22,10 +23,6 @@ import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
 import { DEFAULT_SEVERITY_BY_CATEGORY } from '../schema/validate-rules';
 import { createSpaceContext } from '../space-context';
 import type { Rule, RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
-
-function isBundledPath(schemaPath: string): boolean {
-  return dirname(schemaPath) === bundledSchemasDir;
-}
 
 function extractRefs(obj: unknown, refs: Set<string>): void {
   if (typeof obj !== 'object' || obj === null) return;
@@ -245,61 +242,32 @@ function ruleAnnotations(rule: Rule): string {
   return notes.length > 0 ? ` [${notes.join('] [')}]` : '';
 }
 
-export async function listSchemas(): Promise<void> {
-  const config = loadConfig();
+function printListing(l: SchemaListing, indent: string): void {
+  const notes = [l.partial ? '[partial]' : '', l.id ? `(${l.id})` : '', l.error ? `[${l.error}]` : '']
+    .filter(Boolean)
+    .join('  ');
+  console.log(`${indent}${l.file}${notes ? `  ${notes}` : ''}`);
+}
 
-  // List all schemas known to config
-  if (existsSync(bundledSchemasDir)) {
-    const files = readdirSync(bundledSchemasDir)
-      .filter((f) => f.endsWith('.json'))
-      .sort();
-    if (files.length > 0) {
-      console.log('Bundled schemas:');
-      for (const file of files) {
-        const schema = readRawSchema(join(bundledSchemasDir, file));
-        const id = typeof schema.$id === 'string' ? schema.$id : '(no $id)';
-        console.log(`  ${file}${file.startsWith('_') ? '  [partial]' : ''}  (${id})`);
-      }
-    }
+export async function printSchemas(options: { json?: boolean } = {}): Promise<void> {
+  const listings = await listSchemas();
+  if (options.json) {
+    console.log(JSON.stringify(listings, null, 2));
+    return;
   }
 
-  // List schemas provided by discovered plugins
-  const plugins = await discoverPlugins();
-  for (const p of plugins) {
-    if (p.schemasDir && existsSync(p.schemasDir)) {
-      const files = readdirSync(p.schemasDir)
-        .filter((f) => f.endsWith('.json'))
-        .sort();
-      if (files.length > 0) {
-        console.log(`\nPlugin schemas (${p.name}):`);
-        for (const file of files) {
-          const schema = readRawSchema(join(p.schemasDir, file));
-          const id = typeof schema.$id === 'string' ? schema.$id : '(no $id)';
-          console.log(`  ${file}${file.startsWith('_') ? '  [partial]' : ''}  (${id})`);
-        }
-      }
-    }
-  }
-
-  const configured: Array<{ source: string; path: string }> = [];
-  const seen = new Set<string>();
-
-  if (config.schema && !isBundledPath(config.schema)) {
-    configured.push({ source: 'global', path: config.schema });
-    seen.add(config.schema);
-  }
-
-  for (const space of config.spaces) {
-    if (space.schema && !seen.has(space.schema) && !isBundledPath(space.schema)) {
-      configured.push({ source: space.name, path: space.schema });
-      seen.add(space.schema);
-    }
-  }
-
-  if (configured.length > 0) {
-    console.log('\nConfigured schemas:');
-    for (const { source, path } of configured) {
-      console.log(`  ${source}: ${path}`);
+  const sources = [...new Set(listings.map((l) => l.source))].sort(
+    (a, b) => Number(b === 'core') - Number(a === 'core') || Number(a === 'configured') - Number(b === 'configured'),
+  );
+  for (const source of sources) {
+    const group = listings.filter((l) => l.source === source);
+    if (source === 'core') console.log('Bundled schemas:');
+    else if (source === 'configured') console.log('\nConfigured schemas:');
+    else console.log(`\nPlugin schemas (${source}):`);
+    for (const l of group) {
+      if (source === 'configured')
+        console.log(`  ${l.usedBy.join(', ')}: ${l.path ?? l.file}${l.error ? `  [${l.error}]` : ''}`);
+      else printListing(l, '  ');
     }
   }
 }

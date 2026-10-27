@@ -8,7 +8,7 @@ import { dump } from './commands/dump';
 import { miroSyncCommand } from './commands/miro-sync';
 import { listPlugins } from './commands/plugins';
 import { render, renderList } from './commands/render';
-import { listSchemas, showSchema } from './commands/schemas';
+import { printSchemas, showSchema } from './commands/schemas';
 import { show } from './commands/show';
 import { addSpaceCommand, listSpaces } from './commands/spaces';
 import { templateSync } from './commands/template-sync';
@@ -218,7 +218,8 @@ const schemasCmd = new Command('schemas').alias('schema').description('List and 
 schemasCmd
   .command('list', { isDefault: true })
   .description('List available schemas')
-  .action(async () => await listSchemas());
+  .option('--json', 'Output as JSON: file, path, source, usedBy and metadata for each schema')
+  .action(async (options) => await printSchemas({ json: options.json ?? false }));
 schemasCmd
   .command('show')
   .description('Show schema structure (or raw JSON with --raw, or Mermaid ERD with --mermaid-erd)')

@@ -20,6 +20,7 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `buildSpaceGraph(nodes, hierarchy?)` | Build a navigable `SpaceGraph` directly from an array of `SpaceNode`s and a `Hierarchy` definition. |
 | `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. |
 | `validateFile(filePath, config)` | Validate a single file within its space. |
+| `listSchemas(options?)` | List the schemas available to a config: bundled, plugin-contributed and configured. Returns one `SchemaListing` per schema: `file` (what to write in a config's `schema` field), `path`, `source` (`core`, a plugin's short name, or `configured`), `usedBy` (space names, or `global`), `partial`, and `id`, `title`, `description` or `error` from reading the file. Uses `options.config`, or loads the discovered config from `options.startDir`. |
 | `formatWikilink(target, alias?)` | Format a target into an Obsidian wikilink (`[[target]]` or `[[target|alias]]`). |
 | `parseWikilink(link)` | Parse a wikilink or target string into `{ target, anchor?, displayText? }`. |
 | `wikilinkToTarget(link)` | Extract the plain target lookup key from a wikilink string. |

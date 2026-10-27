@@ -33,7 +33,7 @@ Before working with a space, use these to understand what's configured:
 
 ```bash
 sctx spaces --config <cfg>                        # per-space: path, schema, fieldMap, templates, miro
-sctx schemas list --config <cfg>                  # list available schemas by name
+sctx schemas list --config <cfg> [--json]         # list available schemas: bundled, plugin and configured
 sctx schemas show --space <name> --config <cfg>  # entity types, properties, rules, enums + registry
 sctx schemas show <filename>                      # inspect a bundled partial (e.g. _sctx_base.json)
 sctx docs                                         # full README
