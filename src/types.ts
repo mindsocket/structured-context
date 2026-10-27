@@ -51,8 +51,8 @@ export type ResolvedParentRef = {
   /** The field name that contained the wikilink (e.g. 'parent', 'key_activities', 'produces_data'). */
   field: string;
   /** Whether this edge originates from a hierarchy level or a relationship definition. */
-  source: 'hierarchy' | 'relationship';
-  /** Name of the hierarchy the edge belongs to. Set only when source is 'hierarchy'. */
+  kind: 'hierarchy' | 'relationship';
+  /** Name of the hierarchy the edge belongs to. Set only when kind is 'hierarchy'. */
   hierarchy?: string;
   /** Whether the parent and child are the same node type (self-referential edge). */
   selfRef: boolean;

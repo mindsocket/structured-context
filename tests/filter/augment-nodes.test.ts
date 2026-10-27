@@ -44,7 +44,7 @@ describe('augmentNode', () => {
         title: 'Root',
         resolvedType: 'goal',
         _field: 'parent',
-        _source: 'hierarchy',
+        _kind: 'hierarchy',
         _selfRef: false,
       });
     });
@@ -99,7 +99,7 @@ describe('augmentNode', () => {
     it('preserves edge metadata from relationship edges', () => {
       const parent = makeNode('Opportunity', 'opportunity');
       const child = makeNode('Assumption', 'assumption', [
-        makeParentRef('Opportunity', { source: 'relationship', field: 'assumptions', selfRef: false }),
+        makeParentRef('Opportunity', { kind: 'relationship', field: 'assumptions', selfRef: false }),
       ]);
       const nodes = [parent, child];
       const nodeIndex = new Map(nodes.map((n) => [n.id, n]));
@@ -108,7 +108,7 @@ describe('augmentNode', () => {
 
       expect(result.ancestors[0]).toMatchObject({
         _field: 'assumptions',
-        _source: 'relationship',
+        _kind: 'relationship',
         _selfRef: false,
       });
     });
@@ -135,7 +135,7 @@ describe('augmentNode', () => {
         title: 'Child',
         resolvedType: 'opportunity',
         _field: 'parent',
-        _source: 'hierarchy',
+        _kind: 'hierarchy',
       });
     });
 

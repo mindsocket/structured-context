@@ -291,8 +291,8 @@ export async function miroSync(context: PluginContext, graph: SpaceGraph, option
   const desiredEdges = new Map<string, { parentTitle: string; childTitle: string }>();
   for (const node of nodes) {
     const childTitle = node.title;
-    for (const { id: parentId, source, hierarchy } of node.resolvedParents) {
-      if (source !== 'hierarchy' || hierarchy !== graph.hierarchy?.name) continue;
+    for (const { id: parentId, kind, hierarchy } of node.resolvedParents) {
+      if (kind !== 'hierarchy' || hierarchy !== graph.hierarchy?.name) continue;
       const parentTitle = graph.nodes.get(parentId)?.title ?? parentId;
       // Both endpoints must have verified cards on the board
       if (verifiedCardIds.has(parentTitle) && verifiedCardIds.has(childTitle)) {

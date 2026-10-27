@@ -135,7 +135,7 @@ sol1.resolvedParents = [makeParentRef('Opportunity A')];
 sol2.resolvedParents = [makeParentRef('Opportunity A')];
 sol3.resolvedParents = [makeParentRef('Opportunity B')];
 // assumption linked to opportunity A via relationship
-assumption.resolvedParents = [makeParentRef('Opportunity A', { source: 'relationship', field: 'assumptions' })];
+assumption.resolvedParents = [makeParentRef('Opportunity A', { kind: 'relationship', field: 'assumptions' })];
 
 const allNodes = [goal, oppA, oppB, sol1, sol2, sol3, assumption];
 const ctx = buildContext(allNodes);

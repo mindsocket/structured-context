@@ -12,7 +12,7 @@ export const node: SemanticJudgeInput['node'] & Pick<SpaceNode, 'resolvedParents
     {
       id: 'Faster Tax Filing' as NodeId,
       field: 'parent',
-      source: 'hierarchy',
+      kind: 'hierarchy',
       selfRef: false,
       fieldOn: 'child',
     },

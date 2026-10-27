@@ -20,7 +20,7 @@ const sol2 = child('Sol2', 'solution', 'Opp');
 const subSol = child('SubSol', 'solution', 'Sol');
 // Related to Opp by a non-hierarchy relationship: never in scope.
 const assumption = makeSpaceNode('Assume', 'assumption', {}, undefined, [
-  makeParentRef('Opp', { source: 'relationship', hierarchy: undefined }),
+  makeParentRef('Opp', { kind: 'relationship', hierarchy: undefined }),
 ]);
 const nodes: SpaceNode[] = [goal, opp, sibling, sol, sol2, subSol, assumption];
 const graph = buildSpaceGraph(nodes, hierarchy);
