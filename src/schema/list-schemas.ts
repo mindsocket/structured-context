@@ -13,8 +13,8 @@ import { bundledSchemasDir, readRawSchema } from './schema';
 /** A schema available to a space: bundled, contributed by a plugin, or referenced by a config. */
 export type SchemaListing = {
   /**
-   * The string to write in a config's `schema` field. For a configured schema, the string the loaded config holds:
-   * a bare name or `<plugin>/<name>` as written, a relative path already resolved to an absolute one.
+   * The value for a config's `schema` field: the file name for a bundled schema, `<plugin>/<file>` for a plugin
+   * schema, otherwise what the config gives (a relative path is already absolute once the config is loaded).
    */
   file: string;
   /** Absolute location, or the URL of a remote schema. Omitted for bundled schemas. */
