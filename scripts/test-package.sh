@@ -25,4 +25,12 @@ sctx=node_modules/.bin/sctx
 "$sctx" plugins >/dev/null
 "$sctx" docs concepts >/dev/null
 "$sctx" validate smoke >/dev/null
+"$sctx" dump smoke --graph >graph.json
+cat >browser.mjs <<'EOF2'
+import { readFileSync } from 'node:fs';
+import { spaceGraphFrom } from 'structured-context/browser';
+const graph = spaceGraphFrom(JSON.parse(readFileSync('graph.json', 'utf-8')));
+if (graph.nodes.size === 0) throw new Error('empty graph from structured-context/browser');
+EOF2
+bun browser.mjs
 echo "package ok"

@@ -16,14 +16,14 @@ export function schemaMetaId(folder: string): string {
 export const SCHEMA_META_ID = schemaMetaId('latest');
 
 /** Graph edge routing fields shared by hierarchy levels and relationships. */
-const EDGE_PROPS = {
+export const EDGE_PROPS = {
   field: { type: 'string', minLength: 1 },
   fieldOn: { enum: ['child', 'parent'] },
   multiple: { type: 'boolean' },
 } as const;
 
 /** Embedding/template hint fields shared by hierarchy levels and relationships. */
-const EMBEDDING_PROPS = {
+export const EMBEDDING_PROPS = {
   templateFormat: { enum: ['heading', 'list', 'table', 'page'] },
   matchers: { type: 'array', items: { type: 'string', minLength: 1 }, minItems: 1 },
   embeddedTemplateFields: { type: 'array', items: { type: 'string', minLength: 1 } },

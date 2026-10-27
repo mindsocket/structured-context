@@ -1,5 +1,6 @@
 import { assembleSpaceGraph } from '../load-space-graph';
 import { readSpace } from '../read/read-space';
+import { exportSpaceGraph } from '../space-graph-data';
 import type { ReadSpaceResult, SpaceContext } from '../types';
 
 export interface DumpOptions {
@@ -7,6 +8,8 @@ export interface DumpOptions {
   filter?: string;
   /** Hierarchy used when evaluating the filter (default: the main hierarchy). */
   hierarchy?: string;
+  /** Emit SpaceGraphData (nodes plus every hierarchy) instead of nodes, source and diagnostics. */
+  graph?: boolean;
 }
 
 /**
@@ -26,5 +29,6 @@ export async function buildDump(context: SpaceContext, options: DumpOptions = {}
 
 export async function dump(context: SpaceContext, options: DumpOptions = {}) {
   const { nodes, source, diagnostics } = await buildDump(context, options);
-  console.log(JSON.stringify({ nodes, source, diagnostics }, null, 2));
+  const output = options.graph ? exportSpaceGraph(nodes, context.schema.metadata) : { nodes, source, diagnostics };
+  console.log(JSON.stringify(output, null, 2));
 }

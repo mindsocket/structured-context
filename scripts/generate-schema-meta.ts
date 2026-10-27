@@ -1,9 +1,15 @@
 import { execSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import pkg from '../package.json';
 import { readNewestMetaSchema } from '../src/schema/meta-schemas';
 import { buildDialectMetaSchema, SCHEMA_META_FILE, schemaMetaId } from '../src/schema/metadata-contract';
+import {
+  SPACE_GRAPH_DATA_SCHEMA,
+  SPACE_GRAPH_FORMAT_VERSION,
+  SPACE_GRAPH_SCHEMA_DIR,
+  spaceGraphSchemaId,
+} from '../src/space-graph-data';
 
 const GENERATED_DIR = new URL('../schemas/generated/', import.meta.url);
 
@@ -32,12 +38,37 @@ export async function writeMetaSchemas(generatedDir: URL, version: string, relea
   return folders;
 }
 
+/**
+ * Write the space graph format schema to `space-graph/latest.json`. With `release`, also freeze it as
+ * `space-graph/<formatVersion>.json`. Throws when the schema differs from an already frozen file for the same version.
+ */
+export async function writeSpaceGraphSchema(generatedDir: URL, release: boolean): Promise<string[]> {
+  const dir = new URL(`${SPACE_GRAPH_SCHEMA_DIR}/`, generatedDir);
+  const version = String(SPACE_GRAPH_FORMAT_VERSION);
+  const schema = { $id: spaceGraphSchemaId(version), ...SPACE_GRAPH_DATA_SCHEMA };
+  const frozen = new URL(`${version}.json`, dir);
+  if (existsSync(frozen) && JSON.stringify(JSON.parse(readFileSync(frozen, 'utf-8'))) !== JSON.stringify(schema)) {
+    throw new Error(
+      `The space graph format changed after version ${version} was released. Bump SPACE_GRAPH_FORMAT_VERSION.`,
+    );
+  }
+
+  const files = ['latest', ...(release && !existsSync(frozen) ? [version] : [])];
+  await mkdir(dir, { recursive: true });
+  for (const file of files) {
+    await writeFile(new URL(`${file}.json`, dir), `${JSON.stringify(schema, null, 2)}\n`);
+  }
+  return files;
+}
+
 if (import.meta.main) {
   const release = process.argv.includes('--release');
   const folders = await writeMetaSchemas(GENERATED_DIR, pkg.version, release);
+  const graphFiles = await writeSpaceGraphSchema(GENERATED_DIR, release);
   execSync(`bunx biome check --config-path=. --write ${GENERATED_DIR.pathname}`, {
     cwd: new URL('..', import.meta.url).pathname,
     stdio: 'inherit',
   });
   console.log(`Generated schema metadata: ${folders.join(', ')}`);
+  console.log(`Generated space graph schema: ${graphFiles.join(', ')}`);
 }

@@ -57,7 +57,8 @@ export { listSchemas } from './schema/list-schemas';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
 export { bundledSchemasDir, loadSchema, type PluginSchemaSource, setBundledSchemasDir } from './schema/schema';
 export { createSpaceContext, SpaceNotFoundError } from './space-context';
-export { buildSpaceGraph, type SpaceGraph } from './space-graph';
+export { buildSpaceGraph, type SpaceEdge, type SpaceGraph } from './space-graph';
+export { exportSpaceGraph, type SpaceGraphData, spaceGraphFrom } from './space-graph-data';
 export type {
   BaseNode,
   ContentLink,
@@ -67,10 +68,12 @@ export type {
   FileValidationResult,
   Hierarchy,
   HierarchyLevel,
+  NodeId,
   ParseIssue,
   ReadSpaceResult,
   Relationship,
   ResolvedContentLink,
+  ResolvedParentRef,
   RuleCategory,
   RuleSeverity,
   RuleViolation,
