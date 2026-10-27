@@ -20,6 +20,7 @@
  */
 
 export type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
+export { type SpaceGraph, type SpaceNode, spaceGraphFrom } from './browser';
 export type { Config, SpaceConfig } from './config';
 export { loadConfig, resolveConfigPath, resolveSchema, resolveSchemaPath, setConfigPath } from './config';
 export { addSpace } from './config/write';
@@ -57,8 +58,8 @@ export { listSchemas } from './schema/list-schemas';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
 export { bundledSchemasDir, loadSchema, type PluginSchemaSource, setBundledSchemasDir } from './schema/schema';
 export { createSpaceContext, SpaceNotFoundError } from './space-context';
-export { buildSpaceGraph, type SpaceEdge, type SpaceGraph } from './space-graph';
-export { exportSpaceGraph, type SpaceGraphData, spaceGraphFrom } from './space-graph-data';
+export { buildSpaceGraph } from './space-graph';
+export { exportSpaceGraph } from './space-graph-data';
 export type {
   BaseNode,
   ContentLink,
@@ -68,12 +69,10 @@ export type {
   FileValidationResult,
   Hierarchy,
   HierarchyLevel,
-  NodeId,
   ParseIssue,
   ReadSpaceResult,
   Relationship,
   ResolvedContentLink,
-  ResolvedParentRef,
   RuleCategory,
   RuleSeverity,
   RuleViolation,
@@ -81,7 +80,6 @@ export type {
   SchemaWithMetadata,
   SourceLocation,
   SpaceContext,
-  SpaceNode,
   UnresolvedRef,
   ValidateFileOutput,
 } from './types';

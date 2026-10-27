@@ -7,19 +7,10 @@
  *   import { spaceGraphFrom } from 'structured-context/browser';
  *   const graph = spaceGraphFrom(await (await fetch('/graph.json')).json());
  *
- * Everything here is also exported from `structured-context/api`.
+ * Everything here is also exported from `structured-context/api`. Derive other types from these, e.g.
+ * `Parameters<typeof spaceGraphFrom>[0]` for the exported data or `SpaceNode['id']` for a node id.
  */
 
-export { buildSpaceGraph, type SpaceEdge, type SpaceGraph } from './space-graph';
-export { exportSpaceGraph, type SpaceGraphData, spaceGraphFrom } from './space-graph-data';
-export type {
-  BaseNode,
-  ContentLink,
-  Hierarchy,
-  HierarchyLevel,
-  NodeId,
-  ResolvedContentLink,
-  ResolvedParentRef,
-  SourceLocation,
-  SpaceNode,
-} from './types';
+export type { SpaceGraph } from './space-graph';
+export { spaceGraphFrom } from './space-graph-data';
+export type { SpaceNode } from './types';
