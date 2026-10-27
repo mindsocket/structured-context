@@ -10,33 +10,21 @@ import {
 } from '../plugins/util';
 import { bundledSchemasDir, readRawSchema } from './schema';
 
-/** A schema available to a space: bundled, contributed by a plugin, or referenced by a config. */
-export type SchemaListing = {
-  /**
-   * The value for a config's `schema` field: the file name for a bundled schema, `<plugin>/<file>` for a plugin
-   * schema, otherwise what the config gives (a relative path is already absolute once the config is loaded).
-   */
-  file: string;
-  /** Absolute location, or the URL of a remote schema. Omitted for bundled schemas. */
+type SchemaListing = {
+  /** The value for a config's `schema` field. */
+  schema: string;
+  /** Absolute location or URL. Omitted for bundled schemas. */
   path?: string;
-  /** Where the file lives: `core`, a plugin's short name, or `configured` for any other file. */
+  /** `core`, a plugin's short name, or `configured`. */
   source: string;
-  /** Spaces that use this schema, with `global` for the top-level `schema`. */
+  /** Names of the spaces that use it, and `global` when the top-level `schema` does. */
   usedBy: string[];
-  /** A fragment for `$ref` (file name starts with `_`), not a schema for a space to use directly. */
   partial: boolean;
   id?: string;
   title?: string;
   description?: string;
-  /** Why the schema could not be read. The listing carries on without it. */
+  /** Why the schema could not be read. */
   error?: string;
-};
-
-export type ListSchemasOptions = {
-  /** The config to list schemas for. Loaded by discovery when omitted. */
-  config?: Config;
-  /** Where config discovery starts when `config` is omitted. */
-  startDir?: string;
 };
 
 function isRemote(ref: string): boolean {
@@ -67,7 +55,13 @@ function jsonFiles(dir: string): string[] {
  * List the schemas available to the config: bundled schemas, schemas contributed by plugins, and any other
  * schema file the config points at. Each schema appears once, under the place its file lives.
  */
-export async function listSchemas(options: ListSchemasOptions = {}): Promise<SchemaListing[]> {
+export async function listSchemas(
+  options: {
+    /** Loaded by discovery from `startDir` when omitted. */
+    config?: Config;
+    startDir?: string;
+  } = {},
+): Promise<SchemaListing[]> {
   const config = options.config ?? loadConfig({ startDir: options.startDir });
   const listings: SchemaListing[] = [];
   const byPath = new Map<string, SchemaListing>();
@@ -79,7 +73,10 @@ export async function listSchemas(options: ListSchemasOptions = {}): Promise<Sch
 
   for (const file of jsonFiles(bundledSchemasDir)) {
     const location = join(bundledSchemasDir, file);
-    add({ file, source: 'core', usedBy: [], partial: file.startsWith('_'), ...describeSchema(location) }, location);
+    add(
+      { schema: file, source: 'core', usedBy: [], partial: file.startsWith('_'), ...describeSchema(location) },
+      location,
+    );
   }
 
   // Relative schema references are anchored at the folder of the config that holds them
@@ -113,7 +110,7 @@ export async function listSchemas(options: ListSchemasOptions = {}): Promise<Sch
       const location = join(schemasDir, file);
       add(
         {
-          file: `${source}/${file}`,
+          schema: `${source}/${file}`,
           path: location,
           source,
           usedBy: [],
@@ -138,7 +135,7 @@ export async function listSchemas(options: ListSchemasOptions = {}): Promise<Sch
     let listing = byPath.get(key);
     if (!listing) {
       listing = {
-        file: raw,
+        schema: raw,
         path: isRemote(raw) || isAbsolute(location) ? location : resolve(location),
         source: 'configured',
         usedBy: [],

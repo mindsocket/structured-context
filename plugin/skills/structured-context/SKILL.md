@@ -33,7 +33,7 @@ Before working with a space, use these to understand what's configured:
 
 ```bash
 sctx spaces --config <cfg>                        # per-space: path, schema, fieldMap, templates, miro
-sctx schemas list --config <cfg> [--json]         # list available schemas: bundled, plugin and configured
+sctx schemas list --config <cfg>                  # list available schemas by name
 sctx schemas show --space <name> --config <cfg>  # entity types, properties, rules, enums + registry
 sctx schemas show <filename>                      # inspect a bundled partial (e.g. _sctx_base.json)
 sctx docs                                         # full README
@@ -46,7 +46,7 @@ sctx providers --config <cfg>                     # model providers for --semant
 `spaces` is the starting point — it shows each space as a block with its schema name, `fieldMap`
 mappings (if any), template config, and whether Miro is configured.
 
-`schemas list` shows the bundled, plugin and configured schemas, and `--json` adds which spaces use each — use this first to discover what schemas exist before inspecting one.
+`schemas list` shows all available schema names — use this first to discover what schemas exist before inspecting one.
 
 `schemas show --space` is the primary schema tool — it lists entity types and their properties (required marked with `*`), the hierarchy, **adjacent relationships**, all rules with descriptions, definitions with enum values, and the loaded schema registry. **Run this before authoring content or writing rules** to ensure you use the correct field names and types. The registry section
 at the bottom shows which bundled and local partials are in scope for `$ref` targets.

@@ -9,7 +9,7 @@ import {
   resolveSpacePluginSchemas,
   shortenPluginName,
 } from '../plugins/util';
-import { listSchemas, type SchemaListing } from '../schema/list-schemas';
+import { listSchemas } from '../schema/list-schemas';
 import { ruleSemantic } from '../schema/rule-severity';
 import {
   bundledSchemasDir,
@@ -242,13 +242,6 @@ function ruleAnnotations(rule: Rule): string {
   return notes.length > 0 ? ` [${notes.join('] [')}]` : '';
 }
 
-function printListing(l: SchemaListing, indent: string): void {
-  const notes = [l.partial ? '[partial]' : '', l.id ? `(${l.id})` : '', l.error ? `[${l.error}]` : '']
-    .filter(Boolean)
-    .join('  ');
-  console.log(`${indent}${l.file}${notes ? `  ${notes}` : ''}`);
-}
-
 export async function printSchemas(options: { json?: boolean } = {}): Promise<void> {
   const listings = await listSchemas();
   if (options.json) {
@@ -266,8 +259,11 @@ export async function printSchemas(options: { json?: boolean } = {}): Promise<vo
     else console.log(`\nPlugin schemas (${source}):`);
     for (const l of group) {
       if (source === 'configured')
-        console.log(`  ${l.usedBy.join(', ')}: ${l.path ?? l.file}${l.error ? `  [${l.error}]` : ''}`);
-      else printListing(l, '  ');
+        console.log(`  ${l.usedBy.join(', ')}: ${l.path ?? l.schema}${l.error ? `  [${l.error}]` : ''}`);
+      else {
+        const notes = [l.partial && '[partial]', l.id && `(${l.id})`, l.error && `[${l.error}]`].filter(Boolean);
+        console.log(`  ${l.schema}${notes.length > 0 ? `  ${notes.join('  ')}` : ''}`);
+      }
     }
   }
 }
