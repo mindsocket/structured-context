@@ -21,6 +21,18 @@ Command line tools:
 ```
 > sctx validate strategy
 
+Orphans (hierarchy nodes - no parent):
+   Solution looking for a problem.md
+
+Broken links:
+   Steal underpants.md: [[Gnome goals]] → Link target "Gnome goals" in field "related" not found
+
+Rule violations:
+  WARNING (1):
+    Build Death Star.md: Opportunities should contribute to at least one Outcome [workflow: opportunity-has-outcome]
+  INFO (1):
+    High tech juice press.md: Explore multiple candidate solutions (aim for at least three) for the target opportunity [best-practice: solution-quantity]
+
 Space Validation Results
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Content and structure
@@ -35,18 +47,6 @@ Content and structure
   Orphans (hierarchy nodes - no parent)    1
   Unresolved content links                 0
   Excluded during parsing                  0
-
-Orphans (hierarchy nodes - no parent):
-   Solution looking for a problem.md
-
-Broken links:
-   Steal underpants.md: [[Gnome goals]] → Link target "Gnome goals" in field "related" not found
-
-Rule violations:
-  WARNING (1):
-    Build Death Star.md: Opportunities should contribute to at least one Outcome [workflow: opportunity-has-outcome]
-  INFO (1):
-    High tech juice press.md: Explore multiple candidate solutions (aim for at least three) for the target opportunity [best-practice: solution-quantity]
 ```
 
 Rule violations carry a severity (`error`, `warning` or `info`) that defaults from the rule's category. Only errors fail validation — see [docs/rules.md](docs/rules.md#rule-shape).
