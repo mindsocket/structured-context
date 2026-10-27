@@ -34,7 +34,7 @@ function getRefs(rawField: unknown, multiple: boolean): string[] {
  * @param nodesByType Map of node type to nodes
  * @param targetIndex Map of link targets to nodes
  * @param edge The edge definition (child type, parent type, field, fieldOn, multiple)
- * @param source Whether this edge comes from hierarchy levels or relationships
+ * @param kind Whether this edge comes from hierarchy levels or relationships
  * @param hierarchy Name of the hierarchy the edge belongs to (hierarchy edges only)
  * @param selfRef Whether child and parent are the same node type
  * @param unresolvedRefs Array to push broken/invalid link entries into
@@ -44,7 +44,7 @@ function resolveEdge(
   nodesByType: Map<string, SpaceNode[]>,
   targetIndex: Map<string, SpaceNode | null>,
   edge: EdgeDefinition,
-  source: ResolvedParentRef['source'],
+  kind: ResolvedParentRef['kind'],
   hierarchy: string | undefined,
   selfRef: boolean,
   unresolvedRefs: UnresolvedRef[],
@@ -62,7 +62,7 @@ function resolveEdge(
         id: parentId,
         field,
         fieldOn,
-        source,
+        kind,
         ...(hierarchy !== undefined ? { hierarchy } : {}),
         selfRef,
       });

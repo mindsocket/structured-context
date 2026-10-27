@@ -92,7 +92,7 @@ sctx show <space> --filter my-view-name
 **Filter expression syntax:** `WHERE {jsonata}` | `SELECT {spec} WHERE {jsonata}` | `SELECT {spec}` | bare JSONata.
 Within the WHERE predicate, node fields (e.g. `resolvedType`, `status`) are directly accessible. Two
 traversal arrays are also available per node:
-- `ancestors[]` — ancestor nodes nearest-first, each with `_field`, `_source`, `_hierarchy` (hierarchy edges only), `_selfRef` edge metadata
+- `ancestors[]` — ancestor nodes nearest-first, each with `_field`, `_kind`, `_hierarchy` (hierarchy edges only), `_selfRef` edge metadata
 - `descendants[]` — descendant nodes, same structure
 
 The SELECT spec is a comma-separated list of directives that expand the result set:

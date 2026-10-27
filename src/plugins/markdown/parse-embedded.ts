@@ -39,7 +39,7 @@ type StackEntry = {
  */
 interface EmbeddingDefinition extends EdgeDefinition, SharedEmbeddingFields {
   templateFormat: NonNullable<SharedEmbeddingFields['templateFormat']>;
-  source: 'hierarchy' | 'relationship';
+  kind: 'hierarchy' | 'relationship';
 }
 
 /** Active grouping context — replaces ad-hoc pendingMatch. */
@@ -527,7 +527,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       fieldOn: rel.fieldOn,
       multiple: rel.multiple,
       templateFormat: (rel.templateFormat as EmbeddingDefinition['templateFormat']) ?? 'heading',
-      source: 'relationship',
+      kind: 'relationship',
       matchers: rel.matchers,
       embeddedTemplateFields: rel.embeddedTemplateFields,
     };
@@ -542,7 +542,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
       fieldOn: level.fieldOn,
       multiple: level.multiple,
       templateFormat: level.templateFormat ?? 'heading',
-      source: 'hierarchy',
+      kind: 'hierarchy',
       matchers: level.matchers,
       embeddedTemplateFields: level.embeddedTemplateFields,
     };
@@ -603,7 +603,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
           fieldOn: currentLevel.fieldOn,
           multiple: currentLevel.multiple,
           templateFormat: currentLevel.templateFormat ?? 'list',
-          source: 'hierarchy',
+          kind: 'hierarchy',
           matchers: immediateParentLevel.matchers,
         };
       }
@@ -839,7 +839,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
         const typeIdx = hierarchy.indexOf(definition.type);
         const parentIdx = hierarchy.indexOf(definition.parent);
         const isParentLevelMatch =
-          definition.source === 'hierarchy' && typeIdx !== -1 && parentIdx !== -1 && typeIdx < parentIdx;
+          definition.kind === 'hierarchy' && typeIdx !== -1 && parentIdx !== -1 && typeIdx < parentIdx;
 
         const activeNodeFieldAppendArg =
           isParentLevelMatch && semanticParent.node

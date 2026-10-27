@@ -40,7 +40,7 @@ export function buildSpaceGraph(nodes: SpaceNode[], hierarchy: Hierarchy | undef
   const levels = hierarchy?.levels ?? [];
   const hierarchyTypes = new Set(levels.map((l) => l.type));
   const rootType = levels[0]?.type;
-  const isHierarchyEdge = (r: ResolvedParentRef) => r.source === 'hierarchy' && r.hierarchy === hierarchy?.name;
+  const isHierarchyEdge = (r: ResolvedParentRef) => r.kind === 'hierarchy' && r.hierarchy === hierarchy?.name;
 
   const nodesMap = new Map<NodeId, SpaceNode>();
   const hierarchyChildrenMap = new Map<NodeId, SpaceNode[]>();

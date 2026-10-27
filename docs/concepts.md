@@ -319,11 +319,11 @@ Each entry is a `ResolvedParentRef` object:
 |---|---|---|
 | `id` | `NodeId` | The parent node's `id` |
 | `field` | `string` | The frontmatter field that held the wikilink |
-| `source` | `'hierarchy' \| 'relationship'` | Whether the edge came from a hierarchy level or a relationship |
-| `hierarchy` | `string` | Name of the hierarchy the edge belongs to; present only when `source` is `'hierarchy'` |
+| `kind` | `'hierarchy' \| 'relationship'` | Whether the edge came from a hierarchy level or a relationship |
+| `hierarchy` | `string` | Name of the hierarchy the edge belongs to; present only when `kind` is `'hierarchy'` |
 | `selfRef` | `boolean` | Whether the edge is a same-type (self-referential) parent link |
 
-The `source` and `hierarchy` labels let downstream consumers distinguish edge types and hierarchies without re-inspecting the schema. Validation routes `hierarchy` edges to structural checks within their own hierarchy (parent-type rules, skip-level detection) and `relationship` edges to field reference checks (type-match, missing-target). Tree rendering and rule evaluation use the full set.
+The `kind` and `hierarchy` labels let downstream consumers distinguish edge types and hierarchies without re-inspecting the schema. Validation routes `hierarchy` edges to structural checks within their own hierarchy (parent-type rules, skip-level detection) and `relationship` edges to field reference checks (type-match, missing-target). Tree rendering and rule evaluation use the full set.
 
 ### Content links
 
@@ -386,7 +386,7 @@ Each entry in `ancestors[]` or `descendants[]` includes all schema fields of the
 | Metadata field | Type | Description |
 |----------------|------|-------------|
 | `_field` | `string` | The edge field name that connects to this ancestor/descendant |
-| `_source` | `'hierarchy' \| 'relationship'` | Whether the edge came from a hierarchy or a relationship |
+| `_kind` | `'hierarchy' \| 'relationship'` | Whether the edge came from a hierarchy or a relationship |
 | `_hierarchy` | `string` | Hierarchy name; present only for hierarchy edges |
 | `_selfRef` | `boolean` | Whether the edge is a same-type (self-referential) link |
 

@@ -195,13 +195,13 @@ function applyDirective(
     case 'relationships': {
       // Relationship-sourced ancestors (matched node is the child side)
       for (const a of aug.ancestors) {
-        if (a._source === 'relationship' && matchesRelSpec(node, a, directive, true)) {
+        if (a._kind === 'relationship' && matchesRelSpec(node, a, directive, true)) {
           addById(a.id as NodeId);
         }
       }
       // Relationship-sourced descendants (matched node is the parent side)
       for (const d of aug.descendants) {
-        if (d._source === 'relationship' && matchesRelSpec(node, d, directive, false)) {
+        if (d._kind === 'relationship' && matchesRelSpec(node, d, directive, false)) {
           addById(d.id as NodeId);
         }
       }

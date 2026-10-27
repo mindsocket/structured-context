@@ -3,7 +3,7 @@ import type { NodeId, ResolvedParentRef, SpaceNode } from '../types';
 /** Edge metadata merged into each ancestor/descendant entry. */
 export type EdgeMetadata = {
   _field: string;
-  _source: 'hierarchy' | 'relationship';
+  _kind: 'hierarchy' | 'relationship';
   /** Hierarchy name, present only for hierarchy edges. */
   _hierarchy?: string;
   _selfRef: boolean;
@@ -22,7 +22,7 @@ export type AugmentedFlatNode = Record<string, unknown> & {
 function edgeMetadata(ref: ResolvedParentRef): EdgeMetadata {
   return {
     _field: ref.field,
-    _source: ref.source,
+    _kind: ref.kind,
     ...(ref.hierarchy !== undefined ? { _hierarchy: ref.hierarchy } : {}),
     _selfRef: ref.selfRef,
   };
@@ -44,7 +44,7 @@ function flattenData(node: SpaceNode): Record<string, unknown> {
  *
  * - ancestors: BFS from node via resolvedParents, nearest first, deduplicated by id.
  * - descendants: BFS via childrenIndex, nearest first, deduplicated by id.
- * - Each entry merges the parent/child node's fields with edge metadata (_field, _source, _hierarchy, _selfRef).
+ * - Each entry merges the parent/child node's fields with edge metadata (_field, _kind, _hierarchy, _selfRef).
  */
 export function augmentNode(
   node: SpaceNode,

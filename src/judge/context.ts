@@ -65,7 +65,7 @@ export function relatedNodes(graph: SpaceGraph, node: SpaceNode, context: RuleCo
     graph.hierarchy === undefined
       ? []
       : n.resolvedParents
-          .filter((p) => p.source === 'hierarchy' && p.hierarchy === hierarchyName)
+          .filter((p) => p.kind === 'hierarchy' && p.hierarchy === hierarchyName)
           .map((p) => graph.nodes.get(p.id))
           .filter((p): p is SpaceNode => p !== undefined);
   const childrenOf = (n: SpaceNode) => graph.hierarchyChildren.get(n.id) ?? [];

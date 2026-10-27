@@ -202,7 +202,7 @@ describe('resolveGraphEdges', () => {
   });
 
   describe('relationship edges', () => {
-    it('assigns source: hierarchy when type appears in both hierarchy and a relationship', () => {
+    it('assigns kind: hierarchy when type appears in both hierarchy and a relationship', () => {
       const levels = [makeLevel('project'), makeLevel('task')];
       const relationships: Relationship[] = [
         {
@@ -223,10 +223,10 @@ describe('resolveGraphEdges', () => {
       const resolvedTask = nodes.find((n) => n.id === 'Task 1')!;
       const ref = resolvedTask.resolvedParents.find((r) => r.id === 'Project A');
       expect(ref).toBeDefined();
-      expect(ref?.source).toBe('hierarchy');
+      expect(ref?.kind).toBe('hierarchy');
     });
 
-    it('assigns source: relationship when type appears only in relationships', () => {
+    it('assigns kind: relationship when type appears only in relationships', () => {
       const levels = [makeLevel('project')];
       const relationships: Relationship[] = [
         {
@@ -247,7 +247,7 @@ describe('resolveGraphEdges', () => {
       const resolvedResource = nodes.find((n) => n.id === 'Resource 1')!;
       const ref = resolvedResource.resolvedParents.find((r) => r.id === 'Project A');
       expect(ref).toBeDefined();
-      expect(ref?.source).toBe('relationship');
+      expect(ref?.kind).toBe('relationship');
     });
   });
 

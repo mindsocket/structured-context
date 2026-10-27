@@ -5,12 +5,12 @@ import type { BaseNode, Hierarchy, HierarchyLevel, NodeId, Relationship, Resolve
  * Override any field to represent specific edge contexts.
  */
 export const makeParentRef = (id: string, overrides: Partial<ResolvedParentRef> = {}): ResolvedParentRef => {
-  const source = overrides.source ?? 'hierarchy';
+  const kind = overrides.kind ?? 'hierarchy';
   return {
     id: id as NodeId,
     field: 'parent',
-    source,
-    ...(source === 'hierarchy' ? { hierarchy: 'main' } : {}),
+    kind,
+    ...(kind === 'hierarchy' ? { hierarchy: 'main' } : {}),
     selfRef: false,
     fieldOn: 'child',
     ...overrides,

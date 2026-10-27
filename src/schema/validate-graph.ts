@@ -28,8 +28,8 @@ export function validateGraph(
 /**
  * Validate that resolved parents follow hierarchy level rules and relationship type constraints.
  *
- * For hierarchy edges (fieldOn:'child', source:'hierarchy'): validates level ordering within the edge's hierarchy.
- * For relationship edges (fieldOn:'child', source:'relationship'): validates parent type.
+ * For hierarchy edges (fieldOn:'child', kind:'hierarchy'): validates level ordering within the edge's hierarchy.
+ * For relationship edges (fieldOn:'child', kind:'relationship'): validates parent type.
  * For fieldOn:'parent' edges: validates child type, violation attributed to the field-owner node.
  *
  * Assumes resolveGraphEdges has already been called to populate node.resolvedParents.
@@ -111,7 +111,7 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
             description: `Invalid relationship: ${parentType} "${parentTitle}" has "${nodeTitle}" in field "${parentRef.field}" which is of type ${nodeType}, expected ${expected}`,
           });
         }
-      } else if (parentRef.source === 'relationship') {
+      } else if (parentRef.kind === 'relationship') {
         // Relationship edge (fieldOn:'child'): validate parent type matches relationship definition.
         const allowedTypes = typeRules.get(nodeType)?.get(parentRef.field);
         if (allowedTypes && !allowedTypes.has(parentType)) {
@@ -126,7 +126,7 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
           });
         }
       } else {
-        // Hierarchy edge (fieldOn:'child', source:'hierarchy'): validate level ordering within its hierarchy.
+        // Hierarchy edge (fieldOn:'child', kind:'hierarchy'): validate level ordering within its hierarchy.
         const edgeHierarchy =
           parentRef.hierarchy !== undefined ? hierarchiesByName.get(parentRef.hierarchy) : undefined;
         if (!edgeHierarchy) continue;

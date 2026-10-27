@@ -82,7 +82,7 @@ describe('buildSpaceGraph', () => {
     it('maps parent to hierarchy children only', () => {
       const goal = makeNode('My Goal', 'goal');
       const opp = makeNode('An Opportunity', 'opportunity');
-      opp.resolvedParents = [makeParentRef('My Goal', { source: 'hierarchy' })];
+      opp.resolvedParents = [makeParentRef('My Goal', { kind: 'hierarchy' })];
       const graph = buildSpaceGraph([goal, opp], makeHierarchy(levels));
       expect(graph.hierarchyChildren.get('My Goal' as NodeId)).toContain(opp);
     });
@@ -90,7 +90,7 @@ describe('buildSpaceGraph', () => {
     it('excludes relationship edges from hierarchyChildren', () => {
       const goal = makeNode('My Goal', 'goal');
       const opp = makeNode('An Opportunity', 'opportunity');
-      opp.resolvedParents = [makeParentRef('My Goal', { source: 'relationship' })];
+      opp.resolvedParents = [makeParentRef('My Goal', { kind: 'relationship' })];
       const graph = buildSpaceGraph([goal, opp], makeHierarchy(levels));
       expect(graph.hierarchyChildren.get('My Goal' as NodeId)).toHaveLength(0);
     });
@@ -107,8 +107,8 @@ describe('buildSpaceGraph', () => {
       const goal = makeNode('My Goal', 'goal');
       const opp = makeNode('An Opportunity', 'opportunity');
       const assumption = makeNode('An Assumption', 'assumption');
-      opp.resolvedParents = [makeParentRef('My Goal', { source: 'hierarchy' })];
-      assumption.resolvedParents = [makeParentRef('My Goal', { source: 'relationship', field: 'assumptions' })];
+      opp.resolvedParents = [makeParentRef('My Goal', { kind: 'hierarchy' })];
+      assumption.resolvedParents = [makeParentRef('My Goal', { kind: 'relationship', field: 'assumptions' })];
       const graph = buildSpaceGraph([goal, opp, assumption], makeHierarchy(levels));
       const children = graph.children.get('My Goal' as NodeId) ?? [];
       expect(children).toContain(opp);
