@@ -79,10 +79,10 @@ claude plugin install structured-context
 
 Ask Claude to set up a space (or run `/setup-space`) in the folder that holds your notes. The plugin's hooks need Bun.
 
-Skills can also be installed standalone without the plugin:
+Skills can also be installed standalone without the plugin, and kept current with `npx skills update`:
 
 ```
-npx skills add https://github.com/mindsocket/structured-context/tree/main/plugin/skills/structured-context
+npx skills add https://github.com/mindsocket/structured-context/tree/main/plugin/skills
 ```
 
 ## Concepts
