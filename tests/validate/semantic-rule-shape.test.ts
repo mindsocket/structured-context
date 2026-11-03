@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'bun:test';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { createSpaceContext } from '../../src/space-context';
-import type { FileValidationResult } from '../../src/types';
+import type { FileValidationResult, NodeId } from '../../src/types';
 import { validateFile, validateSpace } from '../../src/validate';
 import { makeTempSpace } from '../helpers/temp-space';
 
@@ -113,7 +113,7 @@ describe('rule `when` precondition', () => {
     };
     const { context } = setup([rule], { frontmatter: { T: 'status: ready', S: 'status: draft' } });
     const result = await validateSpace(context());
-    expect(result.ruleViolations.map((v) => v.file).sort()).toEqual(['T.md']);
+    expect(result.ruleViolations.map((v) => v.nodeId as string).sort()).toEqual(['T.md']);
   });
 
   it('does not call the judge for nodes where `when` is not true', async () => {
@@ -165,7 +165,7 @@ describe('rule expression errors', () => {
     expect(byId('broken').length).toBeGreaterThan(0);
     expect(byId('broken')[0]).toMatchObject({ severity: 'error' });
     expect(byId('broken')[0]?.description).toContain('Rule error');
-    expect(byId('bad-when')).toEqual([expect.objectContaining({ file: 'T.md', severity: 'error' })]);
+    expect(byId('bad-when')).toEqual([expect.objectContaining({ nodeId: 'T.md', severity: 'error' })]);
   });
 });
 
@@ -196,7 +196,7 @@ describe('semantic rule check precondition', () => {
     expect(judge.callHistory).toHaveLength(0);
     expect(result.ruleViolations).toEqual([
       {
-        file: 'S.md',
+        nodeId: 'S.md' as NodeId,
         ruleId: 'step-fit',
         category: 'coherence',
         severity: 'warning',
@@ -272,7 +272,7 @@ describe('semantic rule check precondition', () => {
       expect(result.ruleViolations).toEqual([
         expect.objectContaining({
           ruleId: 'step-fit',
-          file: 'S.md',
+          nodeId: 'S.md' as NodeId,
           evidence: 'expression failed: $exists(current.owner)',
         }),
       ]);
@@ -322,7 +322,7 @@ describe('semantic rule check precondition', () => {
     const judge = new FakeJudgeProvider();
     const result = await validateSpace(context(), { judge });
     expect(judge.callHistory).toHaveLength(0);
-    expect(result.ruleViolations[0]).toMatchObject({ file: 'S.md', severity: 'error' });
+    expect(result.ruleViolations[0]).toMatchObject({ nodeId: 'S.md', severity: 'error' });
     expect(result.ruleViolations[0]?.description).toContain('Rule error');
   });
 });

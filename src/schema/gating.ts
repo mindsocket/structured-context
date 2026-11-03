@@ -30,8 +30,6 @@ function ruleCanGate(rule: Rule): boolean {
  * (schema validation or hierarchy structure) that failed on a specific node.
  */
 export type GatingSeed = {
-  /** Id (file) of the failing node. */
-  file: string;
   /** Id of the failing node. */
   id: NodeId;
   /** Which always-run layer produced the failure. */
@@ -43,16 +41,14 @@ export type GatingSeed = {
  * rule evaluation for itself (if schema/hierarchy caused it) and/or its hierarchy subtree.
  */
 export type CoverageGate = {
-  /** Id (file) of the node whose failure triggered this gate. */
-  file: string;
   /** Id of the blocking node. */
   nodeId: NodeId;
   /** What kind of check triggered the gate. */
   reason: 'schema' | 'hierarchy' | 'rule';
   /** Rule id responsible, when `reason` is `'rule'`. */
   ruleId?: string;
-  /** Labels of nodes whose rule evaluation was suppressed as a result of this gate. */
-  gatedFiles: string[];
+  /** Ids of nodes whose rule evaluation was suppressed as a result of this gate. */
+  gatedNodeIds: NodeId[];
 };
 
 export type GatedRuleEvaluation = {
@@ -133,13 +129,10 @@ export async function evaluateRulesWithGating(
   const violations: RuleViolation[] = [];
   const gateOrigins = new Map<NodeId, CoverageGate>();
 
-  function originFor(
-    id: NodeId,
-    seed: { file: string; reason: CoverageGate['reason']; ruleId?: string },
-  ): CoverageGate {
+  function originFor(id: NodeId, seed: { reason: CoverageGate['reason']; ruleId?: string }): CoverageGate {
     let origin = gateOrigins.get(id);
     if (!origin) {
-      origin = { file: seed.file, nodeId: id, reason: seed.reason, ruleId: seed.ruleId, gatedFiles: [] };
+      origin = { nodeId: id, reason: seed.reason, ruleId: seed.ruleId, gatedNodeIds: [] };
       gateOrigins.set(id, origin);
     }
     return origin;
@@ -149,7 +142,7 @@ export async function evaluateRulesWithGating(
   const sentinel = nodes[0];
   if (sentinel) {
     for (const rule of globalRules) {
-      const result = await evaluateRuleExpression(rule, sentinel, nodes, nodeIndex, '');
+      const result = await evaluateRuleExpression(rule, sentinel, nodes, nodeIndex, null);
       if (!result.passed) violations.push(result.violation);
     }
   }
@@ -220,7 +213,7 @@ export async function evaluateRulesWithGating(
     ): void {
       const severity = detail.severity ?? ruleSeverities(rule)[0] ?? ruleSeverity(rule);
       local.push({
-        file: node.id,
+        nodeId: node.id,
         ruleId: rule.id,
         category: rule.category,
         severity,
@@ -320,13 +313,13 @@ export async function evaluateRulesWithGating(
 
       let childOrigin: NodeId | undefined = ancestorOrigin;
       if (isGatedByAncestor) {
-        gateOrigins.get(ancestorOrigin!)!.gatedFiles.push(node.id);
+        gateOrigins.get(ancestorOrigin!)!.gatedNodeIds.push(node.id);
       } else if (isSelfBlocked) {
-        const origin = originFor(node.id, { file: selfSeed!.file, reason: selfSeed!.reason });
-        origin.gatedFiles.push(node.id);
+        const origin = originFor(node.id, { reason: selfSeed!.reason });
+        origin.gatedNodeIds.push(node.id);
         childOrigin = node.id;
       } else if (blockingRuleId) {
-        originFor(node.id, { file: node.id, reason: 'rule', ruleId: blockingRuleId });
+        originFor(node.id, { reason: 'rule', ruleId: blockingRuleId });
         childOrigin = node.id;
       } else {
         childOrigin = undefined;
@@ -341,6 +334,6 @@ export async function evaluateRulesWithGating(
 
   return {
     violations,
-    gates: [...gateOrigins.values()].filter((g) => g.gatedFiles.length > 0),
+    gates: [...gateOrigins.values()].filter((g) => g.gatedNodeIds.length > 0),
   };
 }

@@ -60,7 +60,7 @@ describe('rule severity', () => {
       expect(failing.errors['Blocked goal.md']['rule:not-blocked'].severity).toBe('error');
       expect(failing.errors['Blocked goal.md']['rule:always-warning']).toBeUndefined();
       expect(failing.ruleViolations).toContainEqual({
-        file: 'Blocked goal.md',
+        nodeId: 'Blocked goal.md',
         ruleId: 'not-blocked',
         category: 'workflow',
         severity: 'error',

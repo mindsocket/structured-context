@@ -198,8 +198,8 @@ export type { CoverageGate, GatingSeed } from './schema/gating';
 export type { Rule } from './schema/metadata-contract';
 
 export type RuleViolation = {
-  /** Node id, or empty string for global-scope rules. */
-  file: string;
+  /** Id of the violating node. Absent for global-scope rules. */
+  nodeId?: NodeId;
   ruleId: string;
   category: RuleCategory;
   severity: RuleSeverity;
@@ -213,7 +213,8 @@ export type RuleViolation = {
 };
 
 export type GraphViolation = {
-  file: string;
+  /** Id of the node whose parent link breaks the hierarchy. */
+  nodeId: NodeId;
   nodeType: string;
   nodeTitle: string;
   parentType: string;

@@ -126,7 +126,7 @@ describe('validate-rules', () => {
         expect(violations).toHaveLength(1);
         expect(violations[0]?.ruleId).toBe('solution-parent-type');
         expect(violations[0]?.category).toBe('validation');
-        expect(violations[0]?.file).toBe('Bad Solution');
+        expect(violations[0]?.nodeId as string | undefined).toBe('Bad Solution');
       });
 
       it('detects experiment with non-solution parent', async () => {
@@ -314,7 +314,7 @@ describe('validate-rules', () => {
         expect(activeCountViolations).toHaveLength(1); // global rule produces one violation regardless of node count
         expect(activeCountViolations[0]?.ruleId).toBe('active-outcome-count');
         expect(activeCountViolations[0]?.category).toBe('workflow');
-        expect(activeCountViolations[0]?.file).toBe('');
+        expect(activeCountViolations[0]?.nodeId).toBeUndefined();
       });
 
       it('detects active node with non-active parent', async () => {
@@ -348,7 +348,7 @@ describe('validate-rules', () => {
         expect(violations).toHaveLength(1);
         expect(violations[0]?.ruleId).toBe('active-node-parent-active');
         expect(violations[0]?.category).toBe('workflow');
-        expect(violations[0]?.file).toBe('Opportunity');
+        expect(violations[0]?.nodeId as string | undefined).toBe('Opportunity');
       });
 
       it('passes active node when parent is also active', async () => {

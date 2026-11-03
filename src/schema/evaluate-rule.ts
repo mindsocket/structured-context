@@ -135,9 +135,9 @@ export function buildEvalContext(
 }
 
 /** The violation reported when a rule's `expression` or `when` cannot be evaluated: an authoring error, so always `error`. */
-export function expressionErrorViolation(rule: Rule, file: string, error: string): RuleViolation {
+export function expressionErrorViolation(rule: Rule, nodeId: NodeId | null, error: string): RuleViolation {
   return {
-    file,
+    ...(nodeId !== null && { nodeId }),
     ruleId: rule.id,
     category: rule.category,
     severity: 'error',
@@ -152,7 +152,7 @@ export type ExpressionRuleResult =
   | { passed: false; violation: RuleViolation; failed: boolean };
 
 /**
- * Evaluate a rule's `expression` against a node (`file` empty and `node` a sentinel for a global rule). A failure
+ * Evaluate a rule's `expression` against a node (`nodeId` null and `node` a sentinel for a global rule). A failure
  * reports the rule's severity; a rule with a semantic part names the expression in the evidence, so the
  * violation is not mistaken for a verdict. An evaluation error reports `error` and is not a `failed` result.
  */
@@ -161,19 +161,19 @@ export async function evaluateRuleExpression(
   node: SpaceNode,
   allNodes: SpaceNode[],
   nodeIndex: Map<NodeId, SpaceNode>,
-  file: string = node.id,
+  nodeId: NodeId | null = node.id,
 ): Promise<ExpressionRuleResult> {
   const expression = rule.expression as string;
   const outcome = await tryEvaluateExpression(expression, buildEvalContext(node, allNodes, nodeIndex));
   if ('error' in outcome) {
-    return { passed: false, failed: false, violation: expressionErrorViolation(rule, file, outcome.error) };
+    return { passed: false, failed: false, violation: expressionErrorViolation(rule, nodeId, outcome.error) };
   }
   if (outcome.value === true) return { passed: true };
   return {
     passed: false,
     failed: true,
     violation: {
-      file,
+      ...(nodeId !== null && { nodeId }),
       ruleId: rule.id,
       category: rule.category,
       severity: ruleSeverity(rule),

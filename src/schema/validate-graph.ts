@@ -1,9 +1,17 @@
 import { resolveNodeType } from '../schema/schema';
-import type { GraphViolation, Hierarchy, NodeId, SchemaMetadata, SpaceNode, UnresolvedRef } from '../types';
+import type {
+  GraphViolation,
+  Hierarchy,
+  NodeId,
+  SchemaMetadata,
+  SourceLocation,
+  SpaceNode,
+  UnresolvedRef,
+} from '../types';
 
 export interface GraphValidationResult {
   violations: GraphViolation[];
-  refErrors: Array<{ file: string; line?: number; parent: string; error: string }>;
+  refErrors: Array<{ nodeId: NodeId; source?: SourceLocation; parent: string; error: string }>;
 }
 
 /**
@@ -16,8 +24,8 @@ export function validateGraph(
   unresolvedRefs: UnresolvedRef[] = [],
 ): GraphValidationResult {
   const refErrors = unresolvedRefs.map((u) => ({
-    file: u.source?.file ?? u.id,
-    ...(u.source?.line !== undefined ? { line: u.source.line } : {}),
+    nodeId: u.id,
+    ...(u.source !== undefined && { source: u.source }),
     parent: u.ref,
     error: u.message,
   }));
@@ -103,7 +111,7 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
         if (allowedChildTypes && !allowedChildTypes.has(nodeType)) {
           const expected = [...allowedChildTypes].join(' or ');
           violations.push({
-            file: parentNode.id,
+            nodeId: parentNode.id,
             nodeType: parentType,
             nodeTitle: parentTitle,
             parentType: nodeType,
@@ -117,7 +125,7 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
         if (allowedTypes && !allowedTypes.has(parentType)) {
           const expected = [...allowedTypes].join(' or ');
           violations.push({
-            file: node.id,
+            nodeId: node.id,
             nodeType,
             nodeTitle,
             parentType,
@@ -154,7 +162,7 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
 
         if (!isValidHierarchy) {
           violations.push({
-            file: node.id,
+            nodeId: node.id,
             nodeType,
             nodeTitle,
             parentType,

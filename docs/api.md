@@ -30,6 +30,8 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 
 `ValidationResult.ruleViolations` carries each violation's effective `severity` (`error`, `warning` or `info`). Only `error` severity violations should be treated as failures; `validateFile` reports `warning` and `info` rule violations under `warnings` rather than `errors`.
 
+Each `ValidationResult` entry about a node carries its `nodeId`, and, where the entry is tied to a location, an optional `source` (`{ file, line?, column? }`). `duplicateErrors` lists a `sources` location for each node that shares the `id`. See [Validation results and nodes](concepts.md#validation-results-and-nodes).
+
 A `SpaceGraph` classifies nodes against one hierarchy, and indexes child nodes and typed edges in both
 directions.
 

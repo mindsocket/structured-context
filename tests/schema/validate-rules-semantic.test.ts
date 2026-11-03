@@ -94,7 +94,7 @@ describe('validateRules - semantic evaluation', () => {
 
     expect(violations).toHaveLength(1);
     expect(violations[0]?.ruleId).toBe('opportunity-customer-voice');
-    expect(violations[0]?.file).toBe('bad-opp.md');
+    expect(violations[0]?.nodeId as string | undefined).toBe('bad-opp.md');
     expect(violations[0]?.category).toBe('best-practice');
     expect(violations[0]?.evidence).toBe(
       'Stated as a solution feature ("Build social login") rather than a customer need',
@@ -145,7 +145,7 @@ describe('validateRules - semantic evaluation', () => {
 
     // bad-opp.md source is "Engineering suggestion", so it failed require-interviews-source
     // Therefore it should be gated from opportunity-customer-voice
-    const badOppViolations = violations.filter((v) => v.file === 'bad-opp.md');
+    const badOppViolations = violations.filter((v) => v.nodeId === 'bad-opp.md');
     expect(badOppViolations).toHaveLength(1);
     expect(badOppViolations[0]?.ruleId).toBe('require-interviews-source');
 
@@ -173,14 +173,14 @@ describe('validateRules - semantic evaluation', () => {
     expect(fake.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
     expect(violations).toEqual([
       {
-        file: 'bad-opp.md',
+        nodeId: 'bad-opp.md',
         ruleId: 'opportunity-customer-voice',
         category: 'best-practice',
         severity: 'info',
         description: 'Must be in customer voice',
         evidence: 'expression failed: current.source = "User interview with Jane"',
       },
-      expect.objectContaining({ file: 'valid-opp.md', evidence: 'Not customer voice' }),
+      expect.objectContaining({ nodeId: 'valid-opp.md', evidence: 'Not customer voice' }),
     ]);
   });
 
@@ -198,7 +198,7 @@ describe('validateRules - semantic evaluation', () => {
       const violations = await validateRules(sampleNodes, [checked]);
       expect(violations).toEqual([
         expect.objectContaining({
-          file: 'bad-opp.md',
+          nodeId: 'bad-opp.md',
           ruleId: checked.id,
           severity: 'warning',
           evidence: 'expression failed: $contains(current.source, "interview")',

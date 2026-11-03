@@ -73,9 +73,9 @@ export interface SpacesOutput {
 
 interface ValidateOutput {
   errors?: Record<string, Record<string, ValidationIssue>>;
-  ruleViolations?: { file?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
+  ruleViolations?: { nodeId?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
   parseIssues?: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
-  unresolvedContentLinks?: { file: string; target: string }[];
+  unresolvedContentLinks?: { nodeId: string; target: string }[];
 }
 
 export function stateFilePath(sessionId: string | undefined, options?: HookOptions): string {
@@ -234,11 +234,11 @@ export async function validateSpace(name: string, options?: HookOptions): Promis
   for (const v of output.ruleViolations ?? []) {
     const issue = { kind: 'rule', message: `[${v.ruleId}] ${v.description}`, severity: v.severity };
     // File-level rule errors are already in `errors`
-    if (v.severity === 'error' && !v.file) issuesFor('').errors[`rule:${v.ruleId}`] = issue;
-    if (v.severity === 'warning') issuesFor(v.file ?? '').warnings[`rule:${v.ruleId}`] = issue;
+    if (v.severity === 'error' && !v.nodeId) issuesFor('').errors[`rule:${v.ruleId}`] = issue;
+    if (v.severity === 'warning') issuesFor(v.nodeId ?? '').warnings[`rule:${v.ruleId}`] = issue;
   }
-  for (const { file, target } of output.unresolvedContentLinks ?? []) {
-    issuesFor(file).warnings[`content-link:${target}`] = {
+  for (const { nodeId, target } of output.unresolvedContentLinks ?? []) {
+    issuesFor(nodeId).warnings[`content-link:${target}`] = {
       kind: 'content-link',
       message: `Unresolved content link: ${target}`,
     };

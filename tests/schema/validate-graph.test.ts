@@ -246,7 +246,7 @@ describe('validate-graph', () => {
       expect(violations).toHaveLength(1);
 
       const v = violations[0]!;
-      expect(v.file).toBe('My Goal');
+      expect(v.nodeId as string).toBe('My Goal');
       expect(v.nodeType).toBe('goal');
       expect(v.nodeTitle).toBe('My Goal');
       expect(v.parentType).toBe('vision');

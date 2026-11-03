@@ -612,8 +612,14 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     return undefined;
   }
 
+  // Ids must be unique, but headings on one page may repeat: the second and later get a ` (2)`, ` (3)` suffix.
+  const usedIds = new Set<string>();
   function makeId(title: string): NodeId {
-    return (page ? `${page.id}#${title}` : title) as NodeId;
+    const base = page ? `${page.id}#${title}` : title;
+    let id = base;
+    for (let n = 2; usedIds.has(id); n++) id = `${base} (${n})`;
+    usedIds.add(id);
+    return id as NodeId;
   }
 
   /**

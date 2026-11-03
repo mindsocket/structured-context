@@ -23,6 +23,7 @@ import type {
   RuleViolation,
   SchemaMetadata,
   SchemaWithMetadata,
+  SourceLocation,
   SpaceContext,
   SpaceNode,
   ValidateFileOutput,
@@ -36,16 +37,22 @@ export interface FormattedError {
 export interface ValidationResult {
   validCount: number;
   nodeErrorCount: number;
-  nodeErrors: Array<{ file: string; line?: number; errors: ErrorObject[]; nodeData: Record<string, unknown> }>;
-  refErrors: Array<{ file: string; line?: number; parent: string; error: string }>;
-  duplicateErrors: Array<{ id: NodeId; files: string[] }>;
+  nodeErrors: Array<{
+    nodeId: NodeId;
+    source?: SourceLocation;
+    errors: ErrorObject[];
+    nodeData: Record<string, unknown>;
+  }>;
+  refErrors: Array<{ nodeId: NodeId; source?: SourceLocation; parent: string; error: string }>;
+  /** Nodes that share an id; `sources` lists where each is defined (a node without a source adds no entry). */
+  duplicateErrors: Array<{ id: NodeId; sources: SourceLocation[] }>;
   /** All rule violations with their effective severity. Only `error` severity fails validation. */
   ruleViolations: RuleViolation[];
   hierarchyViolations: GraphViolation[];
   orphans: SpaceNode[];
   parseIssues: ParseIssue[];
   /** Content links that could not be resolved to a space node. Warning only — not counted in errors. */
-  unresolvedContentLinks: Array<{ file: string; target: string }>;
+  unresolvedContentLinks: Array<{ nodeId: NodeId; target: string }>;
   /**
    * Cascade gates: nodes whose schema/hierarchy failure or blocking rule violation
    * suppressed rule evaluation for themselves and/or their hierarchy subtree.
@@ -55,7 +62,7 @@ export interface ValidationResult {
   /** Semantic rule input that had content trimmed to fit the per-node input cap: the node count and the rule ids. */
   contextTrimmed: { nodeCount: number; ruleIds: string[] };
   /** Nodes excluded from validation entirely by a `depth` limit (breadth-first from hierarchy roots). */
-  skippedByDepth: Array<{ file: string; title: string }>;
+  skippedByDepth: Array<{ nodeId: NodeId; title: string }>;
   /** The depth limit applied, if any (undefined means the full space was validated). */
   depthLimit?: number;
 }
@@ -177,6 +184,11 @@ export interface ValidateSpaceOptions {
   judge?: SemanticJudgeProvider;
 }
 
+/** `file`, `file:line` or `file:line:column`, for messages. */
+export function formatSource({ file, line, column }: SourceLocation): string {
+  return line === undefined ? file : `${file}:${line}${column === undefined ? '' : `:${column}`}`;
+}
+
 /** One-line text for a rule violation: rule, description, and any evidence and verdict guidance. */
 export function ruleViolationMessage(v: RuleViolation): string {
   const evidence = v.evidence ? ` (Evidence: ${v.evidence})` : '';
@@ -255,6 +267,23 @@ interface SpaceValidationResult {
 }
 
 /**
+ * Nodes that share an id, with where each is defined. A plugin should keep ids unique, so this guards that contract.
+ * Display titles may repeat.
+ */
+export function findDuplicateIds(nodes: SpaceNode[]): ValidationResult['duplicateErrors'] {
+  const idToNodes = new Map<NodeId, SpaceNode[]>();
+  for (const node of nodes) {
+    if (!idToNodes.has(node.id)) idToNodes.set(node.id, []);
+    idToNodes.get(node.id)!.push(node);
+  }
+  const duplicates: ValidationResult['duplicateErrors'] = [];
+  for (const [id, sameId] of idToNodes) {
+    if (sameId.length > 1) duplicates.push({ id, sources: sameId.flatMap((n) => (n.source ? [n.source] : [])) });
+  }
+  return duplicates;
+}
+
+/**
  * The one validation pipeline: type and schema checks, duplicate titles, reference and hierarchy
  * checks, cascade-gated rules, and unresolved content links. Returns every entry; `validateSpace`
  * and `validateFile` are views over it, so a file's results match its entry in a full run.
@@ -319,19 +348,7 @@ async function validateNodes(
     }
   }
 
-  // Detect duplicate node ids. Display titles may repeat.
-  const idToFiles = new Map<NodeId, string[]>();
-  for (const node of nodes) {
-    if (!idToFiles.has(node.id)) {
-      idToFiles.set(node.id, []);
-    }
-    idToFiles.get(node.id)!.push(node.id);
-  }
-  for (const [id, files] of idToFiles) {
-    if (files.length > 1) {
-      result.duplicateErrors.push({ id, files });
-    }
-  }
+  result.duplicateErrors.push(...findDuplicateIds(nodes));
 
   // Validate all hierarchy constraints (field references and structure)
   const hierarchyValidation = validateGraph(nodes, metadata, unresolvedRefs);
@@ -347,11 +364,9 @@ async function validateNodes(
   if (metadata.rules) {
     const seeds: GatingSeed[] = [
       ...result.nodeFailures.map(({ node }): GatingSeed => {
-        return { file: node.source?.file ?? node.id, id: node.id, reason: 'schema' };
+        return { id: node.id, reason: 'schema' };
       }),
-      ...result.hierarchyViolations.map(
-        (v): GatingSeed => ({ file: v.file, id: v.file as NodeId, reason: 'hierarchy' }),
-      ),
+      ...result.hierarchyViolations.map((v): GatingSeed => ({ id: v.nodeId, reason: 'hierarchy' })),
     ];
     const trimReport: TrimReport = { nodes: new Set(), ruleIds: new Set() };
     const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, { ...options, trimReport });
@@ -368,7 +383,7 @@ async function validateNodes(
         const key = `${node.id}::${link.target}`;
         if (!seen.has(key)) {
           seen.add(key);
-          result.unresolvedContentLinks.push({ file: node.id, target: link.target });
+          result.unresolvedContentLinks.push({ nodeId: node.id, target: link.target });
         }
       }
     }
@@ -392,7 +407,7 @@ export async function validateSpace(
 
   // Depth limiting: evaluate only hierarchy nodes within N breadth-first levels from the
   // top. Non-hierarchy nodes are unaffected — depth scoping only applies to the hierarchy DAG.
-  const skippedByDepth: Array<{ file: string; title: string }> = [];
+  const skippedByDepth: ValidationResult['skippedByDepth'] = [];
   if (options.depth !== undefined && metadata.hierarchy) {
     const fullGraph = buildSpaceGraph(nodes, metadata.hierarchy);
     const depths = computeHierarchyDepths(fullGraph);
@@ -400,7 +415,7 @@ export async function validateSpace(
     for (const node of nodes) {
       const nodeDepth = depths.get(node.id);
       if (nodeDepth !== undefined && nodeDepth > options.depth) {
-        skippedByDepth.push({ file: node.id, title: node.title });
+        skippedByDepth.push({ nodeId: node.id, title: node.title });
       } else {
         included.push(node);
       }
@@ -418,8 +433,8 @@ export async function validateSpace(
     validCount: result.validCount,
     nodeErrorCount: result.nodeFailures.length,
     nodeErrors: result.nodeFailures.map(({ node, errors }) => ({
-      file: node.source?.file ?? node.id,
-      ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
+      nodeId: node.id,
+      ...(node.source !== undefined && { source: node.source }),
       errors,
       nodeData: node.schemaData as Record<string, unknown>,
     })),
@@ -496,31 +511,30 @@ function issuesForFile(
     }
   }
 
-  // Duplicate key errors — include if this file is one of the duplicates
-  for (const { id, files } of result.duplicateErrors) {
-    if (!files.includes(label)) continue;
-    const others = files.filter((f) => f !== label);
+  // Duplicate id errors — include if this node's id is duplicated
+  for (const { id, sources } of result.duplicateErrors) {
+    if (id !== label) continue;
     errors[`duplicate:${id}`] = {
       kind: 'duplicate',
-      message: `Duplicate id "${id}" also exists in: ${others.join(', ')}`,
+      message: `Duplicate id "${id}" is used by ${sources.length} nodes${sources.length > 0 ? `: ${sources.map(formatSource).join(', ')}` : ''}`,
     };
   }
 
   // Broken links and hierarchy violations from this file
-  for (const { file, parent, error } of result.refErrors) {
-    if (file === label) {
+  for (const { nodeId, parent, error } of result.refErrors) {
+    if (nodeId === label) {
       errors[`broken-link:${parent}`] = { kind: 'broken-link', message: `${parent} → ${error}` };
     }
   }
   for (const v of result.hierarchyViolations) {
-    if (v.file === label) {
+    if (v.nodeId === label) {
       errors[`hierarchy:${v.description}`] = { kind: 'hierarchy', message: v.description };
     }
   }
 
   // Rule violations — only error severity counts as an error.
   for (const v of result.ruleViolations) {
-    if (v.file === label) {
+    if (v.nodeId === label) {
       const target = v.severity === 'error' ? errors : warnings;
       target[`rule:${v.ruleId}`] = {
         kind: 'rule',
@@ -531,18 +545,18 @@ function issuesForFile(
   }
   // A gated file with no violations would otherwise look clean — say that its rules were not checked.
   for (const gate of result.coverageGates) {
-    if (!gate.gatedFiles.includes(label)) continue;
+    if (!gate.gatedNodeIds.some((id) => id === label)) continue;
     const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
-    warnings[`gated:${gate.file}`] = {
+    warnings[`gated:${gate.nodeId}`] = {
       kind: 'gated',
-      message: `Rule checks ${includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.file}`,
+      message: `Rule checks ${includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.nodeId}`,
       severity: 'info',
     };
   }
 
   // Unresolved content links (warnings — do not affect errorCount)
   for (const link of result.unresolvedContentLinks) {
-    if (link.file === label) {
+    if (link.nodeId === label) {
       warnings[`content-link:${link.target}`] = {
         kind: 'content-link',
         message: `Unresolved content link: ${link.target}`,

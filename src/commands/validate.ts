@@ -6,7 +6,7 @@ import { resolveSpacePluginSchemas } from '../plugins/util';
 import { parseRuleFilter } from '../schema/rule-filter';
 import { bundledSchemasDir } from '../schema/schema';
 import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
-import { formatErrors, ruleViolationMessage, validateSpace } from '../validate';
+import { formatErrors, formatSource, ruleViolationMessage, validateSpace } from '../validate';
 
 export async function validate(
   context: SpaceContext,
@@ -37,29 +37,27 @@ export async function validate(
       errorsByFile[file]![key] = severity ? { kind, message, severity } : { kind, message };
     };
 
-    for (const { file, errors: ajvErrors, nodeData } of result.nodeErrors) {
+    for (const { nodeId, errors: ajvErrors, nodeData } of result.nodeErrors) {
       const formatted = formatErrors(ajvErrors, schema, schemaRefRegistry, nodeData);
       for (const { message, dedupeKey } of formatted) {
-        addError(file, `schema:${dedupeKey}`, 'schema', message);
+        addError(nodeId, `schema:${dedupeKey}`, 'schema', message);
       }
     }
-    for (const { file, parent, error } of result.refErrors) {
-      addError(file, `broken-link:${parent}`, 'broken-link', `${parent} → ${error}`);
+    for (const { nodeId, parent, error } of result.refErrors) {
+      addError(nodeId, `broken-link:${parent}`, 'broken-link', `${parent} → ${error}`);
     }
-    for (const { id, files } of result.duplicateErrors) {
-      for (const file of files) {
-        const others = files.filter((f) => f !== file);
-        addError(file, `duplicate:${id}`, 'duplicate', `Duplicate id "${id}" also exists in: ${others.join(', ')}`);
-      }
+    for (const { id, sources } of result.duplicateErrors) {
+      const where = sources.length > 0 ? `: ${sources.map(formatSource).join(', ')}` : '';
+      addError(id, `duplicate:${id}`, 'duplicate', `Duplicate id "${id}" is used by ${sources.length} nodes${where}`);
     }
     for (const v of result.ruleViolations) {
-      if (v.file && v.severity === 'error') {
-        addError(v.file, `rule:${v.ruleId}`, 'rule', ruleViolationMessage(v), v.severity);
+      if (v.nodeId && v.severity === 'error') {
+        addError(v.nodeId, `rule:${v.ruleId}`, 'rule', ruleViolationMessage(v), v.severity);
       }
     }
-    const globalRuleErrorCount = result.ruleViolations.filter((v) => !v.file && v.severity === 'error').length;
+    const globalRuleErrorCount = result.ruleViolations.filter((v) => !v.nodeId && v.severity === 'error').length;
     for (const v of result.hierarchyViolations) {
-      addError(v.file, `hierarchy:${v.description}`, 'hierarchy', v.description);
+      addError(v.nodeId, `hierarchy:${v.description}`, 'hierarchy', v.description);
     }
 
     const parseErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
@@ -123,12 +121,12 @@ export async function validate(
   if (result.unresolvedContentLinks.length > 0) {
     console.log(`\nUnresolved content links (may be outside-space or broken):`);
     const byFile = new Map<string, string[]>();
-    for (const { file, target } of result.unresolvedContentLinks) {
-      if (!byFile.has(file)) byFile.set(file, []);
-      byFile.get(file)!.push(target);
+    for (const { nodeId, target } of result.unresolvedContentLinks) {
+      if (!byFile.has(nodeId)) byFile.set(nodeId, []);
+      byFile.get(nodeId)!.push(target);
     }
-    for (const [file, targets] of byFile) {
-      console.log(`   ${file}:`);
+    for (const [nodeId, targets] of byFile) {
+      console.log(`   ${nodeId}:`);
       for (const target of targets) console.log(`      ${target}`);
     }
   }
@@ -145,9 +143,8 @@ export async function validate(
 
   if (result.nodeErrors.length > 0) {
     console.log(`\nSchema validation errors:`);
-    result.nodeErrors.forEach(({ file, line, errors, nodeData }) => {
-      const loc = line !== undefined ? `:${line}` : '';
-      console.log(`\n   ${file}${loc}:`);
+    result.nodeErrors.forEach(({ nodeId, source, errors, nodeData }) => {
+      console.log(`\n   ${source ? formatSource(source) : nodeId}:`);
       const formatted = formatErrors(errors, schema, schemaRefRegistry, nodeData);
       formatted.forEach(({ message }) => {
         console.log(`      ${message}`);
@@ -157,18 +154,17 @@ export async function validate(
 
   if (result.refErrors.length > 0) {
     console.log(`\nBroken links:`);
-    result.refErrors.forEach(({ file, line, parent, error }) => {
-      const loc = line !== undefined ? `:${line}` : '';
-      console.log(`   ${file}${loc}: ${parent} → ${error}`);
+    result.refErrors.forEach(({ nodeId, source, parent, error }) => {
+      console.log(`   ${source ? formatSource(source) : nodeId}: ${parent} → ${error}`);
     });
   }
 
   if (result.duplicateErrors.length > 0) {
     console.log(`\nDuplicate ids (same id on multiple nodes):`);
-    result.duplicateErrors.forEach(({ id, files }) => {
+    result.duplicateErrors.forEach(({ id, sources }) => {
       console.log(`   "${id}":`);
-      for (const f of files) {
-        console.log(`      ${f}`);
+      for (const source of sources) {
+        console.log(`      ${formatSource(source)}`);
       }
     });
   }
@@ -182,7 +178,7 @@ export async function validate(
       if (violations.length === 0) continue;
       console.log(`  ${severityColor[severity]}${severity.toUpperCase()}${reset} (${violations.length}):`);
       for (const v of violations) {
-        console.log(`    ${v.file ? `${v.file}: ` : ''}${v.description} [${v.category}: ${v.ruleId}]`);
+        console.log(`    ${v.nodeId ? `${v.nodeId}: ` : ''}${v.description} [${v.category}: ${v.ruleId}]`);
         if (v.evidence) {
           console.log(`      Evidence: ${v.evidence}`);
         }
@@ -196,7 +192,7 @@ export async function validate(
   if (result.hierarchyViolations.length > 0) {
     console.log(`\nHierarchy violations:`);
     for (const v of result.hierarchyViolations) {
-      console.log(`   ${v.file}: ${v.description}`);
+      console.log(`   ${v.nodeId}: ${v.description}`);
     }
   }
 
@@ -204,14 +200,14 @@ export async function validate(
     console.log(`\nCoverage — rule checks gated by cascade (use --include-gated to evaluate anyway):`);
     for (const gate of result.coverageGates) {
       const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
-      console.log(`   ${gate.file} (${gate.nodeId}) — ${cause} gated ${gate.gatedFiles.length} node(s):`);
-      for (const file of gate.gatedFiles) console.log(`      ${file}`);
+      console.log(`   ${gate.nodeId} — ${cause} gated ${gate.gatedNodeIds.length} node(s):`);
+      for (const nodeId of gate.gatedNodeIds) console.log(`      ${nodeId}`);
     }
   }
 
   if (result.skippedByDepth.length > 0) {
     console.log(`\nSkipped by depth limit (--depth ${result.depthLimit}):`);
-    for (const { file } of result.skippedByDepth) console.log(`   ${file}`);
+    for (const { nodeId } of result.skippedByDepth) console.log(`   ${nodeId}`);
   }
 
   if (result.contextTrimmed.nodeCount > 0) {
@@ -238,7 +234,7 @@ export async function validate(
   if (result.depthLimit !== undefined) {
     console.log(fmt('  Skipped by depth limit', result.skippedByDepth.length, true, true));
   }
-  const gatedFileCount = result.coverageGates.reduce((sum, g) => sum + g.gatedFiles.length, 0);
+  const gatedFileCount = result.coverageGates.reduce((sum, g) => sum + g.gatedNodeIds.length, 0);
   console.log(fmt('  Rule checks gated (cascade)', gatedFileCount, true, true));
 
   console.log(`\n`);
