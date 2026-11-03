@@ -65,7 +65,7 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       expect(violation).toBeDefined();
       expect(violation?.category).toBe('best-practice');
       expect(violation?.evidence).toBe('The opportunity reads like a feature request rather than a problem statement.');
-      expect(violation?.file).toBe('Sign-up is too complex.md');
+      expect(violation?.nodeId as string | undefined).toBe('Sign-up is too complex.md');
     });
 
     it('gates semantic rules when node has upstream structural errors (cascading)', async () => {
@@ -86,10 +86,10 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       });
 
       // opportunity-no-source.md fails schema validation (missing required 'source' field)
-      expect(result.nodeErrors.some((e) => e.file === 'opportunity-no-source.md')).toBe(true);
+      expect(result.nodeErrors.some((e) => e.nodeId === 'opportunity-no-source.md')).toBe(true);
 
       // Therefore it must be gated and never evaluated by the judge
-      expect(result.coverageGates.some((g) => g.file === 'opportunity-no-source.md' && g.reason === 'schema')).toBe(
+      expect(result.coverageGates.some((g) => g.nodeId === 'opportunity-no-source.md' && g.reason === 'schema')).toBe(
         true,
       );
       // Judge was never called for opportunity-no-source.md

@@ -84,13 +84,13 @@ describe('OKF bundle validation', () => {
     expect(result.validCount).toBe(4);
     expect(result.parseIssues.map((i) => i.file).sort()).toEqual(['index.md', 'log.md']);
     // playbooks/bare.md has only `type`: the description best-practice rule is the sole finding
-    expect(result.ruleViolations.map((v) => [v.file, v.ruleId])).toEqual([['playbooks/bare.md', 'okf-description']]);
+    expect(result.ruleViolations.map((v) => [v.nodeId, v.ruleId])).toEqual([['playbooks/bare.md', 'okf-description']]);
   });
 
   it('flags coherence and contract rule violations', async () => {
     const result = await validateSpace(makeSpaceContext(RULE_VIOLATIONS_DIR, OKF_SCHEMA_PATH));
     expect(result.nodeErrors).toEqual([]);
-    expect(result.ruleViolations.map((v) => `${v.file}:${v.ruleId}`).sort()).toEqual([
+    expect(result.ruleViolations.map((v) => `${v.nodeId}:${v.ruleId}`).sort()).toEqual([
       'body-without-computation.md:okf-computation-present',
       'no-computation.md:okf-computation-present',
       'stale-before-generated.md:okf-stale-after-generated',

@@ -170,7 +170,7 @@ describe('non-string title', () => {
       writeFileSync(join(dir, 'Numeric.md'), '---\ntype: goal\ntitle: 42\n---\n');
       writeFileSync(join(dir, 'Empty.md'), '---\ntype: goal\ntitle:\n---\n');
       const result = await validateSpace(makeSpaceContext(dir));
-      expect(result.nodeErrors.map((e) => e.file).sort()).toEqual(['Empty.md', 'Numeric.md']);
+      expect(result.nodeErrors.map((e) => e.nodeId as string).sort()).toEqual(['Empty.md', 'Numeric.md']);
       for (const { errors } of result.nodeErrors) {
         expect(errors.some((e) => e.instancePath === '/title' && e.keyword === 'type')).toBe(true);
       }

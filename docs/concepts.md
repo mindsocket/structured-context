@@ -111,11 +111,17 @@ Three values on every node do separate jobs:
 
 | Value | Job | Unique? | Markdown source |
 |---|---|---|---|
-| `id` | Identifies the node: graph key, parent lookup, gating, duplicate detection, and the file shown in messages | Yes. Two nodes with the same `id` are a duplicate error | Path relative to the space root, with extension (`projects/alpha/Overview.md`). Embedded nodes use `<page id>#<heading>` |
+| `id` | Identifies the node: graph key, parent lookup, gating, duplicate detection, and the file shown in messages | Yes. Two nodes with the same `id` are a duplicate error | Path relative to the space root, with extension (`projects/alpha/Overview.md`). Embedded nodes use `<page id>#<heading>`, with ` (2)`, ` (3)` added to repeated headings on one page |
 | `title` | Display name in `show`, rendered output and judge prompts | No | `title:` frontmatter, else the containing folder's name for a [folder index](#folder-index), else the file's basename |
 | `linkTargets` | The names a wikilink may use to reach the node | Per name. A name shared by several nodes is reported as ambiguous where a link uses it | The explicit `title:`, the basename, and every path suffix without `.md` |
 
 A wikilink is looked up in `linkTargets`, and the result is stored as the target node's `id`. Other values hold the rest of the picture: `source` is where the node is defined, `resolvedParents` lists parents by `id`, and `resolvedLinks` classifies content links. A parent field resolves exactly as a link does.
+
+### Validation results and nodes
+
+A validation result refers to a node by its `id`, in a `nodeId` field. Where the node is defined is a separate `source` (`file`, and `line` / `column` where available). A result may copy a node's identity and location, but not its content. A node can lack a `source` (for example when a plugin reads from a service rather than files), so treat `source` as optional.
+
+Rule violations on a global rule have no `nodeId`.
 
 ### Folder index
 

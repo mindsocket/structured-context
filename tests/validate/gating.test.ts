@@ -16,16 +16,16 @@ describe('validateSpace cascade gating', () => {
     const result = await validateSpace(context);
 
     // Bad Outcome fails schema validation (missing required "metric").
-    expect(result.nodeErrors.some((e) => e.file === 'Bad Outcome.md')).toBe(true);
+    expect(result.nodeErrors.some((e) => e.nodeId === 'Bad Outcome.md')).toBe(true);
 
     // Child Opportunity would otherwise violate solution-quantity (only one solution below),
     // but its rule evaluation is gated by the ancestor's schema failure.
-    expect(result.ruleViolations.some((v) => v.file === 'Child Opportunity.md')).toBe(false);
+    expect(result.ruleViolations.some((v) => v.nodeId === 'Child Opportunity.md')).toBe(false);
 
-    const gate = result.coverageGates.find((g) => g.file === 'Bad Outcome.md');
+    const gate = result.coverageGates.find((g) => g.nodeId === 'Bad Outcome.md');
     expect(gate).toBeDefined();
     expect(gate!.reason).toBe('schema');
-    expect(gate!.gatedFiles).toEqual(
+    expect(gate!.gatedNodeIds as string[]).toEqual(
       expect.arrayContaining(['Bad Outcome.md', 'Child Opportunity.md', 'Only Solution.md']),
     );
   });
@@ -35,12 +35,12 @@ describe('validateSpace cascade gating', () => {
     const result = await validateSpace(context, { includeGated: true });
 
     expect(
-      result.ruleViolations.some((v) => v.file === 'Child Opportunity.md' && v.ruleId === 'solution-quantity'),
+      result.ruleViolations.some((v) => v.nodeId === 'Child Opportunity.md' && v.ruleId === 'solution-quantity'),
     ).toBe(true);
 
-    const gate = result.coverageGates.find((g) => g.file === 'Bad Outcome.md');
+    const gate = result.coverageGates.find((g) => g.nodeId === 'Bad Outcome.md');
     expect(gate).toBeDefined();
-    expect(gate!.gatedFiles).toContain('Child Opportunity.md');
+    expect(gate!.gatedNodeIds as string[]).toContain('Child Opportunity.md');
   });
 
   it('does not gate on a non-error rule violation by default (solution-quantity is best-practice)', async () => {
@@ -111,13 +111,13 @@ describe('validateFile matches validateSpace', () => {
             .map((k) => k.slice('rule:'.length))
             .sort();
           const spaceRules = space.ruleViolations
-            .filter((v) => v.file === file)
+            .filter((v) => v.nodeId === file)
             .map((v) => v.ruleId)
             .sort();
           expect(fileRules).toEqual(spaceRules);
 
           const fileGated = Object.keys(result.warnings).some((k) => k.startsWith('gated:'));
-          const spaceGated = space.coverageGates.some((g) => g.gatedFiles.includes(file));
+          const spaceGated = space.coverageGates.some((g) => g.gatedNodeIds.some((id) => id === file));
           expect(fileGated).toBe(spaceGated);
         }
       });

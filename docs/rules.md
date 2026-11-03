@@ -193,7 +193,7 @@ A rule has one `gatesDescendants` setting. It applies to whichever part reported
 ### Coverage output
 
 `sctx validate` reports gating as **coverage gates**: which node's violation (schema,
-hierarchy, or a specific `ruleId`) suppressed rule evaluation, and the list of files gated
+hierarchy, or a specific `ruleId`) suppressed rule evaluation, and the ids of the nodes gated
 as a result. This makes the validation "edge" visible — e.g. "this blocked goal means all
 opportunities beneath it were not evaluated" — for both human reading and agent consumption
 (JSON output via `--json`, under `coverageGates`).

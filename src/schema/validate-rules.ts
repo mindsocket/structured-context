@@ -79,7 +79,7 @@ export async function validateRules(
     if (rule.expression === undefined) continue;
     if (rule.global) {
       if (!sentinel) continue;
-      const result = await evaluateRuleExpression(rule, sentinel, nodes, nodeIndex, '');
+      const result = await evaluateRuleExpression(rule, sentinel, nodes, nodeIndex, null);
       if (!result.passed) violations.push(result.violation);
       continue;
     }
@@ -115,7 +115,7 @@ export async function validateRules(
       for (const j of judged[i] ?? []) {
         if (!j.violated) continue;
         found.push({
-          file: node.id,
+          nodeId: node.id,
           ruleId: j.rule.id,
           category: j.rule.category,
           severity: j.severity ?? ruleSeverities(j.rule)[0] ?? ruleSeverity(j.rule),

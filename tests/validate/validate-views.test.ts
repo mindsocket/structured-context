@@ -28,13 +28,13 @@ describe('validateFile is a view over the validateSpace core', () => {
   it('reports for each file exactly the issues validateSpace reports for it', async () => {
     const space = await validateSpace(context);
     const files = new Set<string>([
-      ...space.nodeErrors.map((e) => e.file),
-      ...space.refErrors.map((e) => e.file),
-      ...space.duplicateErrors.flatMap((e) => e.files),
-      ...space.ruleViolations.map((v) => v.file),
-      ...space.hierarchyViolations.map((v) => v.file),
-      ...space.unresolvedContentLinks.map((l) => l.file),
-      ...space.coverageGates.flatMap((g) => g.gatedFiles),
+      ...space.nodeErrors.map((e) => e.nodeId),
+      ...space.refErrors.map((e) => e.nodeId),
+      ...space.duplicateErrors.map((e) => e.id),
+      ...space.ruleViolations.map((v) => v.nodeId ?? ''),
+      ...space.hierarchyViolations.map((v) => v.nodeId ?? ''),
+      ...space.unresolvedContentLinks.map((l) => l.nodeId),
+      ...space.coverageGates.flatMap((g) => g.gatedNodeIds),
     ]);
     files.delete('');
     expect(files.size).toBeGreaterThan(1);
@@ -42,18 +42,18 @@ describe('validateFile is a view over the validateSpace core', () => {
     for (const file of files) {
       const expected = [
         ...space.nodeErrors
-          .filter((e) => e.file === file)
+          .filter((e) => e.nodeId === file)
           .flatMap((e) =>
             formatErrors(e.errors, context.schema, context.schemaRefRegistry, e.nodeData).map(
               (f) => `schema:${f.dedupeKey}`,
             ),
           ),
-        ...space.duplicateErrors.filter((d) => d.files.includes(file)).map((d) => `duplicate:${d.id}`),
-        ...space.refErrors.filter((r) => r.file === file).map((r) => `broken-link:${r.parent}`),
-        ...space.hierarchyViolations.filter((v) => v.file === file).map((v) => `hierarchy:${v.description}`),
-        ...space.ruleViolations.filter((v) => v.file === file).map((v) => `rule:${v.ruleId}`),
-        ...space.coverageGates.filter((g) => g.gatedFiles.includes(file)).map((g) => `gated:${g.file}`),
-        ...space.unresolvedContentLinks.filter((l) => l.file === file).map((l) => `content-link:${l.target}`),
+        ...space.duplicateErrors.filter((d) => d.id === file).map((d) => `duplicate:${d.id}`),
+        ...space.refErrors.filter((r) => r.nodeId === file).map((r) => `broken-link:${r.parent}`),
+        ...space.hierarchyViolations.filter((v) => v.nodeId === file).map((v) => `hierarchy:${v.description}`),
+        ...space.ruleViolations.filter((v) => v.nodeId === file).map((v) => `rule:${v.ruleId}`),
+        ...space.coverageGates.filter((g) => g.gatedNodeIds.some((id) => id === file)).map((g) => `gated:${g.nodeId}`),
+        ...space.unresolvedContentLinks.filter((l) => l.nodeId === file).map((l) => `content-link:${l.target}`),
       ].map(normaliseKey);
 
       const result = (await validateFile(join(context.space.path, file), config, {

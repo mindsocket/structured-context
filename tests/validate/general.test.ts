@@ -314,14 +314,14 @@ describe('Schema validation', () => {
       expect(new Set(solutions.map((n) => n.id)).size).toBe(2);
     });
 
-    it('gives duplicate headings on one page the same id', () => {
+    it('gives duplicate headings on one page distinct ids', () => {
       const { nodes } = resolveGraphEdges(
         readSpaceOnAPage(makePluginContext(join(import.meta.dir, '../fixtures/general/duplicate-embedded.md'))).nodes,
         metadata,
       );
       const headings = nodes.filter((n) => n.title === 'Duplicate Heading');
       expect(headings).toHaveLength(2);
-      expect(new Set(headings.map((n) => n.id)).size).toBe(1);
+      expect(new Set(headings.map((n) => n.id)).size).toBe(2);
     });
   });
 });
