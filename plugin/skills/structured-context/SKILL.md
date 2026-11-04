@@ -73,6 +73,8 @@ All commands except `validate-file` require a registered space name. Run `sctx -
 **`dump` is the key debugging tool.** Use it to verify `fieldMap` remapping is working or to
 inspect exactly what JSONata rules see when a rule fires unexpectedly.
 
+To show a space's map views as a shareable Claude artifact, use the publish-map-view skill.
+
 ## Embedded nodes and Relationships
 
 Embedded nodes are nodes that live physically inside another node's file (via tables or lists) rather than as separate files.
