@@ -15,8 +15,8 @@ export interface DumpOptions {
 /**
  * Build the dump payload: every parsed node, or only nodes matched by a filter.
  *
- * Unfiltered dumps include schema-invalid nodes, since dump is a debugging aid.
- * Filtered dumps match show/render: the filter runs over the graph of schema-valid nodes.
+ * Unfiltered dumps include nodes of an unknown type, since dump is a debugging aid.
+ * Filtered dumps match show/render: the filter runs over the graph of nodes with a known type.
  */
 export async function buildDump(context: SpaceContext, options: DumpOptions = {}): Promise<ReadSpaceResult> {
   const readResult = await readSpace(context);

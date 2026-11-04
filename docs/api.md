@@ -106,10 +106,10 @@ const validation = await validateSpace(context, { readResult });
 
 ## Validation vs. graph assembly
 
-`loadSpaceGraph` silently drops nodes that fail schema validation so the returned graph is
-well-formed for traversal and rendering. This is *not* a validation pass — schema-valid nodes
-may still have broken references, rule violations, or duplicates. Use `validateSpace` (or
-`validateFile`) for a full validation report.
+`loadSpaceGraph` keeps every node whose type the schema defines, including nodes with field errors
+such as an invalid enum value. Nodes of an unknown type are left out. The graph is *not* a validation
+pass: use `validateSpace` (or `validateFile`) for field errors, broken references, rule violations and
+duplicates. Each entry in its `nodeErrors` lists the node's `issues`, one formatted message per problem.
 
 ## Hand-assembled config
 

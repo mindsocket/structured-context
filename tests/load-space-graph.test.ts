@@ -24,10 +24,42 @@ describe('assembleSpaceGraph', () => {
     const context = makeSpaceContext(VALID_DIR, SCHEMA_PATH);
     const graph = await assembleSpaceGraph(context);
     expect(graph.nodes.size).toBeGreaterThan(0);
-    // Every node placed in the graph passes schema validation.
     for (const node of graph.nodes.values()) {
       expect(context.schemaValidator(node.schemaData)).toBe(true);
     }
+  });
+
+  describe('node with a schema field error', () => {
+    const dir = join(import.meta.dir, 'tmp-field-error-space');
+    beforeEach(() => {
+      rmSync(dir, { recursive: true, force: true });
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'Vision.md'), '---\ntype: vision\n---\n');
+      writeFileSync(join(dir, 'Mission.md'), '---\ntype: mission\nparent: "[[Vision]]"\nstatus: exploding\n---\n');
+      writeFileSync(join(dir, 'Goal.md'), '---\ntype: goal\nparent: "[[Mission]]"\n---\n');
+      writeFileSync(join(dir, 'Odd.md'), '---\ntype: not_a_type\n---\n');
+    });
+    afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+    it('reports one issue for the node', async () => {
+      const result = await validateSpace(makeSpaceContext(dir, SCHEMA_PATH));
+      const mission = result.nodeErrors.find((e) => e.nodeId === 'Mission.md');
+      expect(mission?.issues).toHaveLength(1);
+      expect(mission?.issues[0]?.message).toStartWith('status: "exploding" is not valid');
+    });
+
+    it('keeps the node in the graph, with its children beneath it', async () => {
+      const graph = await assembleSpaceGraph(makeSpaceContext(dir, SCHEMA_PATH));
+      expect(graph.nodes.has('Mission.md' as never)).toBe(true);
+      expect(graph.hierarchyRoots.map((n) => n.id)).toEqual(['Vision.md' as never]);
+      expect(graph.orphans).toEqual([]);
+      expect(graph.hierarchyChildren.get('Mission.md' as never)?.map((n) => n.id)).toEqual(['Goal.md' as never]);
+    });
+
+    it('leaves out a node whose type the schema does not define', async () => {
+      const graph = await assembleSpaceGraph(makeSpaceContext(dir, SCHEMA_PATH));
+      expect(graph.nodes.has('Odd.md' as never)).toBe(false);
+    });
   });
 
   it('applies a raw filter expression', async () => {

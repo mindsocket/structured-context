@@ -291,7 +291,82 @@ function compileValidator(
     ajv.addSchema(schema);
   }
 
-  return ajv.compile(targetSchema);
+  const validator = ajv.compile(targetSchema);
+  typeValidators.set(validator, createTypeValidatorLookup(ajv, targetSchema, schemaRefRegistry));
+  return validator;
+}
+
+/** Root keywords that do not constrain a node: a root with any other keyword cannot be split into per-type checks. */
+const NON_CONSTRAINING_ROOT_KEYWORDS = new Set([
+  '$schema',
+  '$id',
+  '$metadata',
+  '$defs',
+  'title',
+  'description',
+  'allOf',
+  'oneOf',
+]);
+
+type TypeValidatorLookup = (type: string) => ValidateFunction | undefined;
+
+/** Per-type lookups, keyed by the full-schema validator they were compiled alongside. */
+const typeValidators = new WeakMap<ValidateFunction, TypeValidatorLookup>();
+
+/**
+ * Validator for one node type: the schema's shared `allOf` plus only that type's `oneOf` branch.
+ * Errors then come only from the node's own type, not from every branch that did not match.
+ * Returns undefined when the schema has no such branch, so callers fall back to the full validator.
+ */
+export function typeValidatorFor(fullValidator: ValidateFunction, type: string): ValidateFunction | undefined {
+  return typeValidators.get(fullValidator)?.(type);
+}
+
+/**
+ * Compiled on first use. The wrapper references the branches inside the already-compiled root,
+ * so a branch's relative `$ref`s still resolve against the root.
+ */
+function createTypeValidatorLookup(
+  ajv: Ajv2020,
+  rootSchema: AnySchemaObject,
+  schemaRefRegistry: Map<string, AnySchemaObject>,
+): TypeValidatorLookup {
+  const rootId = rootSchema.$id;
+  if (
+    typeof rootId !== 'string' ||
+    !Array.isArray(rootSchema.oneOf) ||
+    !Object.keys(rootSchema).every((k) => NON_CONSTRAINING_ROOT_KEYWORDS.has(k))
+  ) {
+    return () => undefined;
+  }
+
+  const branchByType = new Map<string, number>();
+  (rootSchema.oneOf as AnySchemaObject[]).forEach((branch, index) => {
+    const typeDef = mergeVariantProperties(branch, rootSchema, schemaRefRegistry).properties.type as
+      | AnySchemaObject
+      | undefined;
+    const types: unknown[] =
+      typeDef?.const !== undefined ? [typeDef.const] : Array.isArray(typeDef?.enum) ? typeDef.enum : [];
+    for (const t of types) if (!branchByType.has(String(t))) branchByType.set(String(t), index);
+  });
+
+  const shared: AnySchemaObject[] = Array.isArray(rootSchema.allOf)
+    ? rootSchema.allOf.map((_, i) => ({ $ref: `${rootId}#/allOf/${i}` }))
+    : [];
+  const compiled = new Map<number, ValidateFunction>();
+  return (type) => {
+    const index = branchByType.get(type);
+    if (index === undefined) return undefined;
+    let validator = compiled.get(index);
+    if (!validator) {
+      validator = ajv.compile({
+        $id: `${rootId}/__type/${index}`,
+        allOf: [...shared, { $ref: `${rootId}#/oneOf/${index}` }],
+      });
+      compiled.set(index, validator);
+    }
+    return validator;
+  };
 }
 
 export function createValidator(schemaPath: string, pluginSchemas?: PluginSchemaSource[]): ValidateFunction {

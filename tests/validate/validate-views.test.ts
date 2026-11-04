@@ -7,7 +7,7 @@ import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { bundledSchemasDir } from '../../src/schema/schema';
 import { createSpaceContext } from '../../src/space-context';
 import type { FileValidationResult } from '../../src/types';
-import { formatErrors, validateFile, validateSpace } from '../../src/validate';
+import { validateFile, validateSpace } from '../../src/validate';
 
 const META =
   'https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/latest/_structured_context_schema_meta.json';
@@ -43,11 +43,7 @@ describe('validateFile is a view over the validateSpace core', () => {
       const expected = [
         ...space.nodeErrors
           .filter((e) => e.nodeId === file)
-          .flatMap((e) =>
-            formatErrors(e.errors, context.schema, context.schemaRefRegistry, e.nodeData).map(
-              (f) => `schema:${f.dedupeKey}`,
-            ),
-          ),
+          .flatMap((e) => e.issues.map((f) => `schema:${f.dedupeKey}`)),
         ...space.duplicateErrors.filter((d) => d.id === file).map((d) => `duplicate:${d.id}`),
         ...space.refErrors.filter((r) => r.nodeId === file).map((r) => `broken-link:${r.parent}`),
         ...space.hierarchyViolations.filter((v) => v.nodeId === file).map((v) => `hierarchy:${v.description}`),
@@ -147,11 +143,12 @@ describe('invalid node type', () => {
   };
   const context = createSpaceContext('invalid', config, { configDir: import.meta.dir });
 
-  it('lists the allowed types alphabetically in the message and in allowedValues', async () => {
+  it('reports one issue that lists the allowed types alphabetically', async () => {
     const { nodeErrors } = await validateSpace(context);
-    const [error] = nodeErrors.find((e) => e.nodeData.type === 'vision')?.errors ?? [];
+    const invalid = nodeErrors.filter((e) => e.issues.some((i) => i.message.startsWith('Invalid type "vision"')));
     const sorted = ['assumption_test', 'opportunity', 'outcome', 'solution'];
-    expect(error?.params.allowedValues).toEqual(sorted);
-    expect(error?.message).toEndWith(`Valid types are: ${sorted.join(', ')}`);
+    expect(invalid).toHaveLength(1);
+    expect(invalid[0]?.issues).toHaveLength(1);
+    expect(invalid[0]?.issues[0]?.message).toEndWith(`Valid types are: ${sorted.join(', ')}`);
   });
 });
