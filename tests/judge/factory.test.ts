@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import {
-  createJudge,
-  createModelProvider,
-  hydrateProvider,
-  JudgeConfigError,
-  judgeForRun,
-} from '../../src/judge/factory';
+import { createJudge, createModelProvider, hydrateProvider, judgeForRun } from '../../src/judge/factory';
 import { AnthropicJudgeProvider } from '../../src/judge/provider/anthropic';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { JevJudgeProvider } from '../../src/judge/provider/jev';
@@ -148,7 +142,9 @@ describe('createJudge', () => {
 
   it('never infers a provider from API keys in the environment', () => {
     const keys = { ANTHROPIC_API_KEY: 'a', OPENAI_API_KEY: 'o', OPENROUTER_API_KEY: 'r' };
-    expect(() => createJudge({}, {}, undefined, keys)).toThrow(JudgeConfigError);
+    expect(() => createJudge({}, {}, undefined, keys)).toThrow(
+      expect.objectContaining({ code: 'E_MODEL_PROVIDER_INVALID' }),
+    );
     expect(() => createJudge({ modelProviders: config.modelProviders }, {}, undefined, keys)).toThrow(
       '--semantic needs a model provider',
     );

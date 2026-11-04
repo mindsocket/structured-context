@@ -25,6 +25,7 @@ export type { Config, SpaceConfig } from './config';
 export { loadConfig, resolveConfigPath, resolveSchema, resolveSchemaPath, setConfigPath } from './config';
 export { addSpace } from './config/write';
 export { LOCAL_CONFIG_FILE, PLUGIN_PREFIX } from './constants';
+export { SctxError, type SctxErrorCode } from './errors';
 export { assembleSpaceGraph, loadSpaceGraph } from './load-space-graph';
 export type {
   ParseHook,

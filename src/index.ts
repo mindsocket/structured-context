@@ -17,7 +17,6 @@ import { validateFileCommand } from './commands/validate-file';
 import { loadConfig, setConfigPath } from './config';
 import { CLI_NAME } from './constants';
 import { SctxError } from './errors';
-import { JudgeConfigError } from './judge/factory';
 import { createSpaceContext, SpaceNotFoundError } from './space-context';
 import type { SpaceContext } from './types';
 
@@ -36,17 +35,6 @@ export function buildSpaceContext(spaceName: string): SpaceContext {
       process.exit(1);
     }
     throw err;
-  }
-}
-
-/** Run a validate command, reporting a misconfigured model provider as a plain error rather than a stack trace. */
-async function reportJudgeConfigErrors(run: () => Promise<number>): Promise<number> {
-  try {
-    return await run();
-  } catch (err) {
-    if (!(err instanceof JudgeConfigError)) throw err;
-    console.error(`Error: ${err.message}`);
-    return 1;
   }
 }
 
@@ -81,14 +69,12 @@ program
   )
   .option('--semantic [provider]', 'Evaluate semantic rules, with the configured model provider or the one named')
   .action(async (filePath, options) => {
-    process.exitCode = await reportJudgeConfigErrors(() =>
-      validateFileCommand(filePath, {
-        json: options.json,
-        includeGated: options.includeGated,
-        semantic: options.semantic,
-        ruleFilter: options.ruleFilter,
-      }),
-    );
+    process.exitCode = await validateFileCommand(filePath, {
+      json: options.json,
+      includeGated: options.includeGated,
+      semantic: options.semantic,
+      ruleFilter: options.ruleFilter,
+    });
   });
 
 program
@@ -118,15 +104,13 @@ program
       await watchValidate(context);
     } else {
       // exitCode rather than process.exit(): exiting straight away can cut off large piped output
-      process.exitCode = await reportJudgeConfigErrors(() =>
-        validate(context, {
-          json: options.json,
-          depth: options.depth,
-          includeGated: options.includeGated,
-          semantic: options.semantic,
-          ruleFilter: options.ruleFilter,
-        }),
-      );
+      process.exitCode = await validate(context, {
+        json: options.json,
+        depth: options.depth,
+        includeGated: options.includeGated,
+        semantic: options.semantic,
+        ruleFilter: options.ruleFilter,
+      });
     }
   });
 

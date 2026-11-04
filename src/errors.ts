@@ -13,7 +13,8 @@ export type SctxErrorCode =
   | 'E_SCHEMA_INVALID'
   | 'E_SPACE_EXISTS'
   | 'E_TARGET_REQUIRED'
-  | 'E_CONFIG_NEEDS_MANUAL_EDIT';
+  | 'E_CONFIG_NEEDS_MANUAL_EDIT'
+  | 'E_MODEL_PROVIDER_INVALID';
 
 export class SctxError extends Error {
   constructor(

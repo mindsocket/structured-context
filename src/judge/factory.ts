@@ -1,3 +1,4 @@
+import { SctxError } from '../errors';
 import type { AnthropicJudgeProviderOptions } from './provider/anthropic';
 import { AnthropicJudgeProvider, RECOMMENDED_ANTHROPIC_MODEL } from './provider/anthropic';
 import { FakeJudgeProvider } from './provider/fake';
@@ -83,7 +84,6 @@ const DEFAULT_KEY_ENV: Record<string, string> = {
 } as const;
 
 /** Semantic evaluation is misconfigured (no provider, unknown provider, missing key). Reported as a plain CLI error. */
-export class JudgeConfigError extends Error {}
 
 /**
  * Hydrate a provider definition into concrete values, in one place. Per field: the explicit value
@@ -92,7 +92,8 @@ export class JudgeConfigError extends Error {}
  */
 export function hydrateProvider(name: string, def: ModelProviderConfig, env: Env = process.env): HydratedProvider {
   if (!(MODEL_PROVIDER_APIS as readonly string[]).includes(def.api)) {
-    throw new JudgeConfigError(
+    throw new SctxError(
+      'E_MODEL_PROVIDER_INVALID',
       `Model provider "${name}" has unknown api "${def.api}". Use one of: ${MODEL_PROVIDER_APIS.join(', ')}.`,
     );
   }
@@ -101,7 +102,8 @@ export function hydrateProvider(name: string, def: ModelProviderConfig, env: Env
     if (!envName) return undefined;
     const envValue = env[envName];
     if (envValue !== undefined && envValue.trim() === '') {
-      throw new JudgeConfigError(
+      throw new SctxError(
+        'E_MODEL_PROVIDER_INVALID',
         `Model provider "${name}" has ${envName} set but empty; set a value or unset the variable.`,
       );
     }
@@ -128,7 +130,8 @@ export function createModelProvider(
   // OpenAI-compatible endpoints (Ollama, vLLM, ...) may need no key; the others must resolve one.
   // A key never borrows another provider's variable: only the named apiKeyEnv (or literal apiKey) counts.
   if (!h.apiKey && h.api !== 'openai-completions' && h.api !== 'fake') {
-    throw new JudgeConfigError(
+    throw new SctxError(
+      'E_MODEL_PROVIDER_INVALID',
       `Model provider "${name}" (${h.api}) has no API key. Set ${h.keyEnv} in the environment, or "apiKey" / "apiKeyEnv" on the provider.`,
     );
   }
@@ -163,7 +166,7 @@ export function judgeForRun(
 /**
  * The provider for a run: the one named by `name` (the `--semantic <provider>` override), else the space's
  * `semantic.provider`, else the top-level one. The name resolves against `modelProviders` first, then
- * the bundled providers. Throws {@link JudgeConfigError} when it cannot be built.
+ * the bundled providers. Throws {@link SctxError} `E_MODEL_PROVIDER_INVALID` when it cannot be built.
  */
 export function createJudge(
   config: { modelProviders?: Record<string, ModelProviderConfig>; semantic?: { provider?: string } },
@@ -173,7 +176,8 @@ export function createJudge(
 ): SemanticJudgeProvider {
   const chosen = name ?? space.semantic?.provider ?? config.semantic?.provider;
   if (!chosen) {
-    throw new JudgeConfigError(
+    throw new SctxError(
+      'E_MODEL_PROVIDER_INVALID',
       '--semantic needs a model provider. Set "semantic.provider" in config.json, or pass --semantic <provider>.',
     );
   }
@@ -181,7 +185,8 @@ export function createJudge(
   if (!def) {
     const known = [...Object.keys(BUNDLED_PROVIDERS), ...Object.keys(config.modelProviders ?? {})];
 
-    throw new JudgeConfigError(
+    throw new SctxError(
+      'E_MODEL_PROVIDER_INVALID',
       `Model provider "${chosen}" is not configured.${known.length ? ` Known providers: ${known.join(', ')}.` : ''}`,
     );
   }

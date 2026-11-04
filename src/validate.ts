@@ -194,7 +194,7 @@ export interface RunOptions {
   judgeTarget?: string;
 }
 
-/** Throws `JudgeConfigError` when `semantic` names a provider that cannot be built. */
+/** Throws `SctxError` `E_MODEL_PROVIDER_INVALID` when `semantic` names a provider that cannot be built. */
 function runOptionsFrom(context: SpaceContext, options: CommonValidateOptions): RunOptions {
   return {
     includeGated: options.includeGated,
