@@ -20,7 +20,7 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `buildSpaceGraph(nodes, hierarchy?)` | Build a navigable `SpaceGraph` directly from an array of `SpaceNode`s and a `Hierarchy` definition. |
 | `exportSpaceGraph(nodes, metadata)` | Turn nodes and the schema's hierarchies into plain JSON for another process. See [Space graph format](#space-graph-format). |
 | `spaceGraphFrom(data, options?)` | Build a `SpaceGraph` from that JSON. `options.hierarchy` names the hierarchy that structures it (default: the main hierarchy). |
-| `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. |
+| `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. Semantic rules run only when `semantic` is passed; it takes the same values as `sctx validate --semantic`, with the provider coming from config and the environment. |
 | `validateFile(filePath, config)` | Validate a single file within its space. |
 | `listSchemas(options?)` | List the schemas available to a config: bundled, plugin-contributed and configured. |
 | `formatWikilink(target, alias?)` | Format a target into an Obsidian wikilink (`[[target]]` or `[[target|alias]]`). |
