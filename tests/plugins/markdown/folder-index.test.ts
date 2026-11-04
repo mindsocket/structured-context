@@ -171,8 +171,8 @@ describe('non-string title', () => {
       writeFileSync(join(dir, 'Empty.md'), '---\ntype: goal\ntitle:\n---\n');
       const result = await validateSpace(makeSpaceContext(dir));
       expect(result.nodeErrors.map((e) => e.nodeId as string).sort()).toEqual(['Empty.md', 'Numeric.md']);
-      for (const { errors } of result.nodeErrors) {
-        expect(errors.some((e) => e.instancePath === '/title' && e.keyword === 'type')).toBe(true);
+      for (const { issues } of result.nodeErrors) {
+        expect(issues.some((i) => i.message.startsWith('title:'))).toBe(true);
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });

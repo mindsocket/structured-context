@@ -6,7 +6,7 @@ import { resolveSpacePluginSchemas } from '../plugins/util';
 import { parseRuleFilter } from '../schema/rule-filter';
 import { bundledSchemasDir } from '../schema/schema';
 import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
-import { formatErrors, formatSource, ruleViolationMessage, validateSpace } from '../validate';
+import { formatSource, ruleViolationMessage, validateSpace } from '../validate';
 
 export async function validate(
   context: SpaceContext,
@@ -18,7 +18,6 @@ export async function validate(
     ruleFilter?: string[];
   } = {},
 ): Promise<number> {
-  const { schema, schemaRefRegistry } = context;
   const result = await validateSpace(context, {
     depth: options.depth,
     includeGated: options.includeGated,
@@ -37,9 +36,8 @@ export async function validate(
       errorsByFile[file]![key] = severity ? { kind, message, severity } : { kind, message };
     };
 
-    for (const { nodeId, errors: ajvErrors, nodeData } of result.nodeErrors) {
-      const formatted = formatErrors(ajvErrors, schema, schemaRefRegistry, nodeData);
-      for (const { message, dedupeKey } of formatted) {
+    for (const { nodeId, issues } of result.nodeErrors) {
+      for (const { message, dedupeKey } of issues) {
         addError(nodeId, `schema:${dedupeKey}`, 'schema', message);
       }
     }
@@ -143,10 +141,9 @@ export async function validate(
 
   if (result.nodeErrors.length > 0) {
     console.log(`\nSchema validation errors:`);
-    result.nodeErrors.forEach(({ nodeId, source, errors, nodeData }) => {
+    result.nodeErrors.forEach(({ nodeId, source, issues }) => {
       console.log(`\n   ${source ? formatSource(source) : nodeId}:`);
-      const formatted = formatErrors(errors, schema, schemaRefRegistry, nodeData);
-      formatted.forEach(({ message }) => {
+      issues.forEach(({ message }) => {
         console.log(`      ${message}`);
       });
     });

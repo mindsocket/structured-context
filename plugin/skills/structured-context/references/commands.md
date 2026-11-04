@@ -119,8 +119,8 @@ Outputs `{ nodes, source, diagnostics }` as strict JSON. Each node includes reso
 - `title`, `resolvedType` — display title and type after alias resolution
 - `resolvedParents` — parent refs after link resolution, with the edge field and kind
 
-Unfiltered output includes schema-invalid nodes. `--filter` works the same as in `show`/`render`
-(named view or inline expression, evaluated over the schema-valid graph).
+Unfiltered output includes nodes of an unknown type. `--filter` works the same as in `show`/`render`
+(named view or inline expression, evaluated over the graph of nodes with a known type).
 
 `--graph` outputs the space graph format instead: the nodes plus every hierarchy, for a program to load
 (see "Space graph format" in `sctx docs concepts`).

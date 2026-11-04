@@ -6,7 +6,7 @@ import type { SemanticJudgeProvider } from './judge/types';
 import { readSpace } from './read/read-space';
 import { computeHierarchyDepths, evaluateRulesWithGating, type GatingSeed } from './schema/gating';
 import { filterRules, type RuleFilter } from './schema/rule-filter';
-import { extractEntityInfo } from './schema/schema';
+import { extractEntityInfo, typeValidatorFor } from './schema/schema';
 import { validateGraph } from './schema/validate-graph';
 import { validateRules } from './schema/validate-rules';
 import { createSpaceContext } from './space-context';
@@ -40,8 +40,8 @@ export interface ValidationResult {
   nodeErrors: Array<{
     nodeId: NodeId;
     source?: SourceLocation;
-    errors: ErrorObject[];
-    nodeData: Record<string, unknown>;
+    /** Formatted, deduplicated schema problems for the node, one per field problem. */
+    issues: FormattedError[];
   }>;
   refErrors: Array<{ nodeId: NodeId; source?: SourceLocation; parent: string; error: string }>;
   /** Nodes that share an id; `sources` lists where each is defined (a node without a source adds no entry). */
@@ -247,9 +247,7 @@ async function evaluateSpaceRules(
 /** A node that failed type or schema validation. */
 interface NodeValidationFailure {
   node: SpaceNode;
-  errors: ErrorObject[];
-  /** Set when the node's `type` is not one the schema allows (checked before full schema validation). */
-  invalidType?: { validTypes: string[] };
+  issues: FormattedError[];
 }
 
 /** The outcome of validating a set of nodes, before either view shapes it. */
@@ -320,31 +318,36 @@ async function validateNodes(
   };
 
   for (const node of nodes) {
-    // Early type validation - check before full AJV validation to prevent cascading errors
+    // Check the type first: an unknown type reports one error instead of one per oneOf branch.
     const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
     if (nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType)) {
       const sortedTypes = [...validTypes].sort();
       result.nodeFailures.push({
         node,
-        invalidType: { validTypes },
-        errors: [
+        issues: [
           {
-            instancePath: '/type',
-            keyword: 'enum',
             message: `Invalid type "${nodeType}". Valid types are: ${sortedTypes.join(', ')}`,
-            params: { allowedValues: sortedTypes },
-            schemaPath: '#/oneOf',
-            data: nodeType,
-          } as ErrorObject,
+            dedupeKey: `type:${sortedTypes.join(',')}`,
+          },
         ],
       });
       continue;
     }
 
-    if (schemaValidator(node.schemaData)) {
+    // A valid type is checked against its own branch only, so errors come from that type alone.
+    const validate = (nodeType !== undefined && typeValidatorFor(schemaValidator, nodeType)) || schemaValidator;
+    if (validate(node.schemaData)) {
       result.validCount++;
     } else {
-      result.nodeFailures.push({ node, errors: schemaValidator.errors || [] });
+      result.nodeFailures.push({
+        node,
+        issues: formatErrors(
+          validate.errors || [],
+          schema,
+          schemaRefRegistry,
+          node.schemaData as Record<string, unknown>,
+        ),
+      });
     }
   }
 
@@ -432,11 +435,10 @@ export async function validateSpace(
   return {
     validCount: result.validCount,
     nodeErrorCount: result.nodeFailures.length,
-    nodeErrors: result.nodeFailures.map(({ node, errors }) => ({
+    nodeErrors: result.nodeFailures.map(({ node, issues }) => ({
       nodeId: node.id,
       ...(node.source !== undefined && { source: node.source }),
-      errors,
-      nodeData: node.schemaData as Record<string, unknown>,
+      issues,
     })),
     refErrors: result.refErrors,
     duplicateErrors: result.duplicateErrors,
@@ -484,29 +486,18 @@ export interface ValidateFileOptions {
 function issuesForFile(
   result: SpaceValidationResult,
   label: string,
-  context: SpaceContext,
   includeGated: boolean | undefined,
 ): { errors: Record<string, FileValidationIssue>; warnings: Record<string, FileValidationIssue> } {
-  const { schema, schemaRefRegistry } = context;
   const errors: Record<string, FileValidationIssue> = {};
   const warnings: Record<string, FileValidationIssue> = {};
 
-  for (const { node, errors: ajvErrors, invalidType } of result.nodeFailures) {
+  for (const { node, issues } of result.nodeFailures) {
     if (node.id !== label) continue;
     const position = {
       ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
       ...(node.source?.column !== undefined ? { column: node.source.column } : {}),
     };
-    if (invalidType) {
-      errors[`schema:type:${invalidType.validTypes.join(',')}`] = {
-        kind: 'schema',
-        message: ajvErrors[0]!.message!,
-        ...position,
-      };
-      continue;
-    }
-    const formatted = formatErrors(ajvErrors, schema, schemaRefRegistry, node.schemaData as Record<string, unknown>);
-    for (const { message, dedupeKey } of formatted) {
+    for (const { message, dedupeKey } of issues) {
       errors[`schema:${dedupeKey}`] = { kind: 'schema', message, ...position };
     }
   }
@@ -593,7 +584,7 @@ export async function validateResolvedFile(
     judge: options.judge,
     judgeTarget: label,
   });
-  const { errors, warnings } = issuesForFile(result, label, context, options.includeGated);
+  const { errors, warnings } = issuesForFile(result, label, options.includeGated);
 
   return {
     file: isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath),

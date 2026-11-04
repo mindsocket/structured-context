@@ -1,6 +1,7 @@
 import type { Config } from './config';
 import { filterNodes } from './filter/filter-nodes';
 import { readSpace } from './read/read-space';
+import { extractSchemaTypeNames } from './schema/schema';
 import { createSpaceContext } from './space-context';
 import { buildSpaceGraph, type SpaceGraph, selectHierarchy } from './space-graph';
 import type { ReadSpaceResult, SpaceContext, SpaceNode } from './types';
@@ -15,14 +16,14 @@ export interface AssembleSpaceGraphOptions {
 }
 
 /**
- * Assemble a SpaceGraph from a space context: read the space, drop nodes that
- * fail schema validation, build the graph for the selected hierarchy (the main
- * hierarchy by default), and apply an optional view/filter expression.
+ * Assemble a SpaceGraph from a space context: read the space, drop nodes whose type the schema
+ * does not define, build the graph for the selected hierarchy (the main hierarchy by default),
+ * and apply an optional view/filter expression.
  *
- * Nodes that fail schema validation are silently excluded so the graph is
- * well-formed enough to render and traverse. This is NOT a validation pass —
- * schema-valid nodes may still have broken references, rule violations, or
- * duplicates. Use validateSpace for a full validation report.
+ * A node with schema field errors (for example an invalid enum value) stays in the graph, since
+ * it still has a type and a place in the hierarchy. Only nodes that cannot be placed are left
+ * out. This is NOT a validation pass — nodes may have field errors, broken references, rule
+ * violations, or duplicates. Use validateSpace for a full validation report.
  *
  * Shared by the render pipeline and the public loadSpaceGraph API so their
  * graph-assembly behaviour cannot drift.
@@ -33,10 +34,13 @@ export async function assembleSpaceGraph(
 ): Promise<SpaceGraph> {
   const { nodes: allNodes } = options.readResult ?? (await readSpace(context));
 
-  const { schemaValidator } = context;
-  const validNodes: SpaceNode[] = allNodes.filter((node) => schemaValidator(node.schemaData));
+  const { schema, schemaRefRegistry } = context;
+  const schemaTypes = Array.isArray(schema.oneOf) ? extractSchemaTypeNames(schema, schemaRefRegistry) : undefined;
+  const placeableNodes: SpaceNode[] = schemaTypes
+    ? allNodes.filter((node) => schemaTypes.has(String((node.schemaData as Record<string, unknown>).type)))
+    : allNodes;
 
-  let graph = buildSpaceGraph(validNodes, selectHierarchy(context.schema.metadata, options.hierarchy));
+  let graph = buildSpaceGraph(placeableNodes, selectHierarchy(context.schema.metadata, options.hierarchy));
 
   if (options.filter) {
     const expression = context.space.views?.[options.filter]?.expression ?? options.filter;
