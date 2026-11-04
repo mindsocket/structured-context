@@ -1,11 +1,12 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
+import { judgeForRun } from './judge/factory';
 import type { TrimReport } from './judge/trim';
 import type { SemanticJudgeProvider } from './judge/types';
 import { readSpace } from './read/read-space';
 import { computeHierarchyDepths, evaluateRulesWithGating, type GatingSeed } from './schema/gating';
-import { filterRules, type RuleFilter } from './schema/rule-filter';
+import { filterRules, parseRuleFilter, type RuleFilter } from './schema/rule-filter';
 import { extractEntityInfo, typeValidatorFor } from './schema/schema';
 import { validateGraph } from './schema/validate-graph';
 import { validateRules } from './schema/validate-rules';
@@ -172,16 +173,40 @@ export function formatErrors(
   return formatted;
 }
 
-export interface ValidateSpaceOptions {
+interface CommonValidateOptions {
+  /** Evaluate rules on gated nodes anyway (gates are still reported). */
+  includeGated?: boolean;
+  /** Evaluate only rules matching these `dimension=values` filters (category, severity, type, id). */
+  ruleFilter?: string[];
+  /**
+   * Evaluate `semantic` rules with the model provider named here, or with the configured one for `true`.
+   * Without it, a rule runs only its `expression`, and a semantic-only rule is skipped.
+   */
+  semantic?: boolean | string;
+}
+
+/** What a run evaluates with: the public options after the filter is parsed and the judge is built. */
+export interface RunOptions {
+  includeGated?: boolean;
+  ruleFilter?: RuleFilter;
+  judge?: SemanticJudgeProvider;
+  /** Limit judging to one file (and the ancestors that can gate it). */
+  judgeTarget?: string;
+}
+
+/** Throws `JudgeConfigError` when `semantic` names a provider that cannot be built. */
+function runOptionsFrom(context: SpaceContext, options: CommonValidateOptions): RunOptions {
+  return {
+    includeGated: options.includeGated,
+    ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
+    judge: judgeForRun(context.config, context.space, options.semantic),
+  };
+}
+
+export interface ValidateSpaceOptions extends CommonValidateOptions {
   readResult?: ReadSpaceResult;
   /** Limit validation to hierarchy nodes within N breadth-first levels from the top. */
   depth?: number;
-  /** Evaluate rules on gated nodes anyway (gates are still reported). */
-  includeGated?: boolean;
-  /** Evaluate only rules matching this filter (see `parseRuleFilter`). */
-  ruleFilter?: RuleFilter;
-  /** Evaluates `semantic` rules. Without one, a rule runs only its `expression`, and a semantic-only rule is skipped. */
-  judge?: SemanticJudgeProvider;
 }
 
 /** `file`, `file:line` or `file:line:column`, for messages. */
@@ -251,7 +276,7 @@ interface NodeValidationFailure {
 }
 
 /** The outcome of validating a set of nodes, before either view shapes it. */
-interface SpaceValidationResult {
+export interface SpaceValidationResult {
   validCount: number;
   nodeFailures: NodeValidationFailure[];
   refErrors: ValidationResult['refErrors'];
@@ -287,16 +312,11 @@ export function findDuplicateIds(nodes: SpaceNode[]): ValidationResult['duplicat
  * and `validateFile` are views over it, so a file's results match its entry in a full run.
  * `judgeTarget` limits judging to one file (and the ancestors that can gate it).
  */
-async function validateNodes(
+export async function validateNodes(
   context: SpaceContext,
   nodes: SpaceNode[],
   unresolvedRefs: ReadSpaceResult['unresolvedRefs'],
-  options: {
-    includeGated?: boolean;
-    ruleFilter?: RuleFilter;
-    judge?: SemanticJudgeProvider;
-    judgeTarget?: string;
-  } = {},
+  options: RunOptions = {},
 ): Promise<SpaceValidationResult> {
   const { schema, schemaRefRegistry, schemaValidator } = context;
   const metadata = schema.metadata;
@@ -405,6 +425,7 @@ export async function validateSpace(
 ): Promise<ValidationResult> {
   const metadata = context.schema.metadata;
 
+  const runOptions = runOptionsFrom(context, options);
   const readResult = options.readResult ?? (await readSpace(context));
   let nodes = readResult.nodes;
 
@@ -426,11 +447,7 @@ export async function validateSpace(
     nodes = included;
   }
 
-  const result = await validateNodes(context, nodes, readResult.unresolvedRefs, {
-    includeGated: options.includeGated,
-    ruleFilter: options.ruleFilter,
-    judge: options.judge,
-  });
+  const result = await validateNodes(context, nodes, readResult.unresolvedRefs, runOptions);
 
   return {
     validCount: result.validCount,
@@ -469,14 +486,8 @@ export function resolveFileSpace(filePath: string, config: Config): { space: Spa
   return null;
 }
 
-export interface ValidateFileOptions {
+export interface ValidateFileOptions extends CommonValidateOptions {
   configDir?: string;
-  /** Evaluate rules on gated nodes anyway (gates are still reported). */
-  includeGated?: boolean;
-  /** Evaluate only rules matching this filter (see `parseRuleFilter`). */
-  ruleFilter?: RuleFilter;
-  /** Evaluates `semantic` rules. Without one, a rule runs only its `expression`, and a semantic-only rule is skipped. */
-  judge?: SemanticJudgeProvider;
 }
 
 /**
@@ -571,20 +582,28 @@ export function fileNotInSpace(filePath: string): FileNotInSpaceResult {
  * Validate a file in an already-resolved space. Checks the whole space (required for graph
  * correctness), judging only the file, then selects the file's issues from the result.
  */
-export async function validateResolvedFile(
+export function validateResolvedFile(
   filePath: string,
   label: string,
   context: SpaceContext,
   options: Omit<ValidateFileOptions, 'configDir'> = {},
 ): Promise<FileValidationResult> {
+  return validateResolvedFileWith(filePath, label, context, runOptionsFrom(context, options));
+}
+
+/** `validateResolvedFile` with the options already resolved, so a caller can supply its own judge. */
+export async function validateResolvedFileWith(
+  filePath: string,
+  label: string,
+  context: SpaceContext,
+  runOptions: RunOptions,
+): Promise<FileValidationResult> {
   const readResult = await readSpace(context);
   const result = await validateNodes(context, readResult.nodes, readResult.unresolvedRefs, {
-    includeGated: options.includeGated,
-    ruleFilter: options.ruleFilter,
-    judge: options.judge,
+    ...runOptions,
     judgeTarget: label,
   });
-  const { errors, warnings } = issuesForFile(result, label, options.includeGated);
+  const { errors, warnings } = issuesForFile(result, label, runOptions.includeGated);
 
   return {
     file: isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath),

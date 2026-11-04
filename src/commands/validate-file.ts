@@ -1,9 +1,7 @@
 import { loadConfig } from '../config';
-import { judgeForRun } from '../judge/factory';
-import { parseRuleFilter } from '../schema/rule-filter';
 import { createSpaceContext } from '../space-context';
 import type { FileValidationIssue, FileValidationResult, ValidateFileOutput } from '../types';
-import { fileNotInSpace, resolveFileSpace, validateResolvedFile } from '../validate';
+import { fileNotInSpace, resolveFileSpace, type ValidateFileOptions, validateResolvedFile } from '../validate';
 
 export { validateFile } from '../validate';
 
@@ -14,18 +12,18 @@ export { validateFile } from '../validate';
  */
 export async function validateFileCommand(
   filePath: string,
-  options: { json?: boolean; includeGated?: boolean; semantic?: boolean | string; ruleFilter?: string[] } = {},
+  options: { json?: boolean } & Omit<ValidateFileOptions, 'configDir'> = {},
 ): Promise<number> {
   const config = loadConfig();
   const resolved = resolveFileSpace(filePath, config);
   let result: ValidateFileOutput;
   if (resolved) {
-    const judge = judgeForRun(config, resolved.space, options.semantic);
-    result = await validateResolvedFile(filePath, resolved.label, createSpaceContext(resolved.space.name, config), {
-      includeGated: options.includeGated,
-      judge,
-      ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
-    });
+    result = await validateResolvedFile(
+      filePath,
+      resolved.label,
+      createSpaceContext(resolved.space.name, config),
+      options,
+    );
   } else {
     result = fileNotInSpace(filePath);
   }

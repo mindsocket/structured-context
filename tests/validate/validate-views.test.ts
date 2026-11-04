@@ -8,6 +8,7 @@ import { bundledSchemasDir } from '../../src/schema/schema';
 import { createSpaceContext } from '../../src/space-context';
 import type { FileValidationResult } from '../../src/types';
 import { validateFile, validateSpace } from '../../src/validate';
+import { validateFileWith } from '../helpers/validate-run';
 
 const META =
   'https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/latest/_structured_context_schema_meta.json';
@@ -120,7 +121,7 @@ describe('judging a node with an expression rule violation', () => {
     it(`skips the node's semantic rules after a gating violation, ${label} a hierarchy`, async () => {
       const { config, dir, file } = setup(hierarchy, 'error');
       const judge = new FakeJudgeProvider({ pass: true });
-      const result = (await validateFile(file, config, { judge, configDir: dir })) as FileValidationResult;
+      const result = (await validateFileWith(file, config, { judge, configDir: dir })) as FileValidationResult;
       expect(result.errors['rule:never-holds']).toBeDefined();
       expect(judgedRules(judge)).toEqual([]);
     });
@@ -128,7 +129,7 @@ describe('judging a node with an expression rule violation', () => {
     it(`still judges the node after a non-gating violation, ${label} a hierarchy`, async () => {
       const { config, dir, file } = setup(hierarchy, 'info');
       const judge = new FakeJudgeProvider({ pass: true });
-      const result = (await validateFile(file, config, { judge, configDir: dir })) as FileValidationResult;
+      const result = (await validateFileWith(file, config, { judge, configDir: dir })) as FileValidationResult;
       expect(result.warnings['rule:never-holds']).toBeDefined();
       expect(judgedRules(judge)).toEqual(['sound']);
     });

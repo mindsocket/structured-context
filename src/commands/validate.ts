@@ -1,29 +1,16 @@
 import { dirname } from 'node:path';
 import chokidar from 'chokidar';
 import { getConfigSourceFiles } from '../config';
-import { judgeForRun } from '../judge/factory';
 import { resolveSpacePluginSchemas } from '../plugins/util';
-import { parseRuleFilter } from '../schema/rule-filter';
 import { bundledSchemasDir } from '../schema/schema';
 import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
-import { formatSource, ruleViolationMessage, validateSpace } from '../validate';
+import { formatSource, ruleViolationMessage, type ValidateSpaceOptions, validateSpace } from '../validate';
 
 export async function validate(
   context: SpaceContext,
-  options: {
-    json?: boolean;
-    depth?: number;
-    includeGated?: boolean;
-    semantic?: boolean | string;
-    ruleFilter?: string[];
-  } = {},
+  options: { json?: boolean } & ValidateSpaceOptions = {},
 ): Promise<number> {
-  const result = await validateSpace(context, {
-    depth: options.depth,
-    includeGated: options.includeGated,
-    judge: judgeForRun(context.config, context.space, options.semantic),
-    ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
-  });
+  const result = await validateSpace(context, options);
   const ruleCounts: Record<RuleSeverity, number> = { error: 0, warning: 0, info: 0 };
   for (const v of result.ruleViolations) ruleCounts[v.severity]++;
 
