@@ -4,14 +4,6 @@ import { resolveSpacePluginSchemas } from './plugins/util';
 import { loadSchema } from './schema/schema';
 import type { SpaceContext } from './types';
 
-/** Thrown by createSpaceContext when no space matches the given name. */
-export class SpaceNotFoundError extends Error {
-  constructor(public readonly spaceName: string) {
-    super(`Unknown space "${spaceName}"`);
-    this.name = 'SpaceNotFoundError';
-  }
-}
-
 export interface CreateSpaceContextOptions {
   /**
    * Directory to anchor relative plugin-config paths against. Defaults to the source
@@ -28,9 +20,8 @@ export interface CreateSpaceContextOptions {
  * Synchronously resolves schemas (including plugin-contributed schemas),
  * indexes partials into the registry, and compiles the schema validator.
  *
- * Library-safe: throws {@link SpaceNotFoundError} on an unknown space rather than
- * writing to the console or exiting the process. CLI callers that want the
- * exit-on-error behaviour should wrap this (see buildSpaceContext in index.ts).
+ * Library-safe: throws SctxError (E_SPACE_NOT_FOUND) on an unknown space rather than
+ * writing to the console or exiting the process.
  */
 export function createSpaceContext(
   spaceName: string,
@@ -39,7 +30,7 @@ export function createSpaceContext(
 ): SpaceContext {
   const space = config.spaces.find((s) => s.name === spaceName);
   if (!space) {
-    throw new SpaceNotFoundError(spaceName);
+    throw new SctxError('E_SPACE_NOT_FOUND', `Unknown space "${spaceName}"`);
   }
   const configDir = options.configDir ?? space.sourceDir;
   if (configDir === undefined) {

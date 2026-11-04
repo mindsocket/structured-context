@@ -58,7 +58,7 @@ export {
 export { listSchemas } from './schema/list-schemas';
 export type { SharedEmbeddingFields } from './schema/metadata-contract';
 export { bundledSchemasDir, loadSchema, type PluginSchemaSource, setBundledSchemasDir } from './schema/schema';
-export { createSpaceContext, SpaceNotFoundError } from './space-context';
+export { createSpaceContext } from './space-context';
 export { buildSpaceGraph } from './space-graph';
 export { exportSpaceGraph } from './space-graph-data';
 export type {

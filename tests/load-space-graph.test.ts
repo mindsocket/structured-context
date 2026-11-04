@@ -5,7 +5,7 @@ import { type Config, loadConfig, setConfigPath } from '../src/config';
 import { assembleSpaceGraph, loadSpaceGraph } from '../src/load-space-graph';
 import { readSpace } from '../src/read/read-space';
 import { bundledSchemasDir } from '../src/schema/schema';
-import { createSpaceContext, SpaceNotFoundError } from '../src/space-context';
+import { createSpaceContext } from '../src/space-context';
 import { validateSpace } from '../src/validate';
 import { makeSpaceContext } from './helpers/context';
 
@@ -13,9 +13,9 @@ const VALID_DIR = join(import.meta.dir, 'fixtures/general/valid-ost');
 const SCHEMA_PATH = join(bundledSchemasDir, 'strategy_general.json');
 
 describe('createSpaceContext', () => {
-  it('throws SpaceNotFoundError for an unknown space', () => {
+  it('throws E_SPACE_NOT_FOUND for an unknown space', () => {
     const config: Config = { spaces: [{ name: 'known', path: VALID_DIR, schema: SCHEMA_PATH }] };
-    expect(() => createSpaceContext('missing', config)).toThrow(SpaceNotFoundError);
+    expect(() => createSpaceContext('missing', config)).toThrow(expect.objectContaining({ code: 'E_SPACE_NOT_FOUND' }));
   });
 });
 
