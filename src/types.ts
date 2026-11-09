@@ -117,7 +117,7 @@ export type ResolvedContentLink = ContentLinkBase & {
    * - 'internal' — wikilink or relative path, in the source system but not a space node
    * - 'external' — http/https URL
    * - 'system'   — file:// URL
-   * - 'protocol' — other scheme (e.g. obsidian://)
+   * - 'protocol' — other scheme (e.g. obsidian://, mailto:)
    */
   location: 'node' | 'internal' | 'external' | 'system' | 'protocol';
 };
