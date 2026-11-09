@@ -277,7 +277,8 @@ export type SpaceContext = {
 export interface FileValidationIssue {
   kind: string;
   message: string;
-  severity?: RuleSeverity;
+  /** How serious the issue is; consumers read it rather than infer it from `kind`. */
+  severity: RuleSeverity;
   /** 1-indexed line number in source file, if available. */
   line?: number;
   /** 1-indexed column number in source file, if available. */

@@ -28,7 +28,7 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `wikilinkToTarget(link)` | Extract the plain target lookup key from a wikilink string. |
 | `buildTargetIndex(nodes)` | Build a fast lookup index mapping link target strings to nodes (marking ambiguous targets as `null`). |
 
-`ValidationResult.ruleViolations` carries each violation's effective `severity` (`error`, `warning` or `info`). Only `error` severity violations should be treated as failures; `validateFile` reports `warning` and `info` rule violations under `warnings` rather than `errors`.
+`ValidationResult.ruleViolations` carries each violation's effective `severity` (`error`, `warning` or `info`). Only `error` severity violations should be treated as failures; `validateFile` reports `warning` and `info` rule violations under `warnings` rather than `errors`. Every issue `validateFile` returns carries a `severity`, as does each of `ValidationResult.unresolvedContentLinks` (`info`). Read it rather than deriving severity from an issue's `kind`.
 
 Each `ValidationResult` entry about a node carries its `nodeId`, and, where the entry is tied to a location, an optional `source` (`{ file, line?, column? }`). `duplicateErrors` lists a `sources` location for each node that shares the `id`. See [Validation results and nodes](concepts.md#validation-results-and-nodes).
 
