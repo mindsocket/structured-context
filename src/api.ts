@@ -83,6 +83,8 @@ export type {
   SpaceContext,
   UnresolvedRef,
   ValidateFileOutput,
+  ValidationIssueKind,
 } from './types';
+export { VALIDATION_ISSUE_KINDS } from './types';
 export type { ValidationResult } from './validate';
 export { nodeIssues, validateFile, validateSpace } from './validate';
