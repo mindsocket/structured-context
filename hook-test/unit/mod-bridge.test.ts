@@ -105,6 +105,7 @@ describe('paneValidation', () => {
       'too long',
       'Unresolved content link: Nowhere',
     ]);
+    expect(validation.ruleViolations[1]?.severity).toBe('info');
   });
 });
 

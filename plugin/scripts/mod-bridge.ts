@@ -96,7 +96,7 @@ export interface PaneData {
 /**
  * Rearrange `validate --json` into the parts `annotationsFrom` attaches, keeping every issue the
  * hooks count: rule errors come from `ruleViolations` only, and parse errors and unresolved content
- * links, which have no field of their own there, ride along as schema errors and rule warnings.
+ * links, which have no field of their own there, ride along as schema errors and, at info severity as validate reports them, rule results.
  */
 export function paneValidation(output: ValidateJson): PaneValidation {
   const nodeErrors: PaneValidation['nodeErrors'] = [];
@@ -117,7 +117,7 @@ export function paneValidation(output: ValidateJson): PaneValidation {
     ...(output.ruleViolations ?? []),
     ...(output.unresolvedContentLinks ?? []).map(({ nodeId, target }) => ({
       nodeId,
-      severity: 'warning' as const,
+      severity: 'info' as const,
       description: `Unresolved content link: ${target}`,
     })),
   ];
