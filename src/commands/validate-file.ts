@@ -1,6 +1,6 @@
 import { loadConfig } from '../config';
 import { createSpaceContext } from '../space-context';
-import type { FileValidationIssue, FileValidationResult, ValidateFileOutput } from '../types';
+import type { FileValidationResult, ValidateFileOutput, ValidationIssue } from '../types';
 import { fileNotInSpace, resolveFileSpace, type ValidateFileOptions, validateResolvedFile } from '../validate';
 
 export { validateFile } from '../validate';
@@ -57,7 +57,7 @@ function printHumanReadable(result: FileValidationResult): void {
 
   if (result.errorCount > 0) {
     console.log(`\n${red}✗${reset} ${result.label} (space: ${result.space}) — ${result.errorCount} error(s)\n`);
-    for (const issue of Object.values(result.issues).filter((i) => i.severity === 'error')) {
+    for (const issue of result.issues.filter((i) => i.severity === 'error')) {
       console.log(`  [${issueLabel(issue)}] ${issue.message}`);
     }
   } else {
@@ -66,7 +66,7 @@ function printHumanReadable(result: FileValidationResult): void {
 
   if (result.warningCount > 0) {
     console.log(`\n  ${yellow}${result.warningCount} warning(s):${reset}`);
-    for (const issue of Object.values(result.issues).filter((i) => i.severity !== 'error')) {
+    for (const issue of result.issues.filter((i) => i.severity !== 'error')) {
       console.log(`  ${yellow}[${issueLabel(issue)}]${reset} ${issue.message}`);
     }
   }
@@ -75,6 +75,6 @@ function printHumanReadable(result: FileValidationResult): void {
 }
 
 // A structural error (schema, hierarchy, broken link) is always an error, so its label leaves the severity out
-function issueLabel({ kind, severity }: FileValidationIssue): string {
+function issueLabel({ kind, severity }: ValidationIssue): string {
   return severity === 'error' && kind !== 'rule' ? kind : `${kind}:${severity}`;
 }

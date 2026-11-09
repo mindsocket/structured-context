@@ -9,6 +9,7 @@ import { bundledSchemasDir, loadMetadata } from '../../../src/schema/schema';
 import type { NodeId, SpaceNode, UnresolvedRef } from '../../../src/types';
 import { validateSpace } from '../../../src/validate';
 import { makePluginContext, makeSpaceContext } from '../../helpers/context';
+import { ofKind } from '../../helpers/issues';
 
 const PAGES: Record<string, string> = {
   'Vision.md': 'type: vision',
@@ -144,7 +145,7 @@ describe('folderIndex off', () => {
 describe('validation', () => {
   it('does not report same-named pages as duplicates', async () => {
     const result = await validateSpace(makeSpaceContext(DIR));
-    expect(result.duplicateErrors).toEqual([]);
+    expect(ofKind(result.issues, 'duplicate')).toEqual([]);
   });
 
   it('reports a duplicate when two nodes share an id', async () => {
@@ -159,7 +160,7 @@ describe('validation', () => {
         return { nodes, parseIssues: [], diagnostics: {}, source: 'test', unresolvedRefs };
       })(),
     });
-    expect(result.duplicateErrors.map((d) => d.id as string)).toEqual(['alpha/Overview.md']);
+    expect(ofKind(result.issues, 'duplicate').map((d) => d.nodeId as string)).toEqual(['alpha/Overview.md']);
   });
 });
 
@@ -170,10 +171,9 @@ describe('non-string title', () => {
       writeFileSync(join(dir, 'Numeric.md'), '---\ntype: goal\ntitle: 42\n---\n');
       writeFileSync(join(dir, 'Empty.md'), '---\ntype: goal\ntitle:\n---\n');
       const result = await validateSpace(makeSpaceContext(dir));
-      expect(result.nodeErrors.map((e) => e.nodeId as string).sort()).toEqual(['Empty.md', 'Numeric.md']);
-      for (const { issues } of result.nodeErrors) {
-        expect(issues.some((i) => i.message.startsWith('title:'))).toBe(true);
-      }
+      const schema = ofKind(result.issues, 'schema');
+      expect([...new Set(schema.map((e) => e.nodeId as string))].sort()).toEqual(['Empty.md', 'Numeric.md']);
+      expect(schema.every((i) => i.message.startsWith('title:'))).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

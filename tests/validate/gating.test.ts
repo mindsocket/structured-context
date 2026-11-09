@@ -5,6 +5,7 @@ import type { Config } from '../../src/config';
 import { bundledSchemasDir } from '../../src/schema/schema';
 import { validateFile, validateSpace } from '../../src/validate';
 import { makeSpaceContext } from '../helpers/context';
+import { ofKind, schemaFailures, withKey } from '../helpers/issues';
 
 const SCHEMA_PATH = join(bundledSchemasDir, 'strict_ost.json');
 const VALID_DIR = join(import.meta.dir, '../fixtures/strict_ost/valid-directory');
@@ -16,11 +17,11 @@ describe('validateSpace cascade gating', () => {
     const result = await validateSpace(context);
 
     // Bad Outcome fails schema validation (missing required "metric").
-    expect(result.nodeErrors.some((e) => e.nodeId === 'Bad Outcome.md')).toBe(true);
+    expect(ofKind(result.issues, 'schema').some((e) => e.nodeId === 'Bad Outcome.md')).toBe(true);
 
     // Child Opportunity would otherwise violate solution-quantity (only one solution below),
     // but its rule evaluation is gated by the ancestor's schema failure.
-    expect(result.ruleViolations.some((v) => v.nodeId === 'Child Opportunity.md')).toBe(false);
+    expect(ofKind(result.issues, 'rule').some((v) => v.nodeId === 'Child Opportunity.md')).toBe(false);
 
     const gate = result.coverageGates.find((g) => g.nodeId === 'Bad Outcome.md');
     expect(gate).toBeDefined();
@@ -35,7 +36,9 @@ describe('validateSpace cascade gating', () => {
     const result = await validateSpace(context, { includeGated: true });
 
     expect(
-      result.ruleViolations.some((v) => v.nodeId === 'Child Opportunity.md' && v.ruleId === 'solution-quantity'),
+      ofKind(result.issues, 'rule').some(
+        (v) => v.nodeId === 'Child Opportunity.md' && v.ruleId === 'solution-quantity',
+      ),
     ).toBe(true);
 
     const gate = result.coverageGates.find((g) => g.nodeId === 'Bad Outcome.md');
@@ -49,8 +52,8 @@ describe('validateSpace cascade gating', () => {
     const context = makeSpaceContext(VALID_DIR, SCHEMA_PATH);
     const result = await validateSpace(context);
 
-    expect(result.nodeErrorCount).toBe(0);
-    expect(result.ruleViolations.some((v) => v.ruleId === 'solution-quantity')).toBe(true);
+    expect(schemaFailures(result.issues)).toBe(0);
+    expect(ofKind(result.issues, 'rule').some((v) => v.ruleId === 'solution-quantity')).toBe(true);
     expect(result.coverageGates).toEqual([]);
   });
 });
@@ -62,8 +65,8 @@ describe('validateSpace depth limiting', () => {
     const shallow = await validateSpace(context, { depth: 1 });
 
     expect(shallow.skippedByDepth.length).toBeGreaterThan(0);
-    expect(shallow.skippedByDepth.length + shallow.validCount + shallow.nodeErrorCount).toBe(
-      full.validCount + full.nodeErrorCount,
+    expect(shallow.skippedByDepth.length + shallow.validCount + schemaFailures(shallow.issues)).toBe(
+      full.validCount + schemaFailures(full.issues),
     );
     expect(shallow.depthLimit).toBe(1);
     // Only the outcome (root) node remains.
@@ -80,8 +83,8 @@ describe('validateSpace depth limiting', () => {
     );
     const result = await validateSpace(context, { depth: 1 });
     expect(result.skippedByDepth.map((s) => s.title)).toEqual(['Opp A']);
-    expect(result.refErrors).toEqual([]);
-    expect(result.hierarchyViolations).toEqual([]);
+    expect(ofKind(result.issues, 'broken-link')).toEqual([]);
+    expect(ofKind(result.issues, 'hierarchy')).toEqual([]);
   });
 
   it('does not affect validation when depth is unset', async () => {
@@ -106,17 +109,16 @@ describe('validateFile matches validateSpace', () => {
           const result = await validateFile(join(dir, file), config, { includeGated, configDir: import.meta.dir });
           if (!result.inSpace) throw new Error(`expected ${file} to be in space`);
 
-          const fileRules = Object.keys(result.issues)
-            .filter((k) => k.startsWith('rule:'))
-            .map((k) => k.slice('rule:'.length))
+          const fileRules = ofKind(result.issues, 'rule')
+            .map((v) => v.ruleId)
             .sort();
-          const spaceRules = space.ruleViolations
+          const spaceRules = ofKind(space.issues, 'rule')
             .filter((v) => v.nodeId === file)
             .map((v) => v.ruleId)
             .sort();
           expect(fileRules).toEqual(spaceRules);
 
-          const fileGated = Object.keys(result.issues).some((k) => k.startsWith('gated:'));
+          const fileGated = result.issues.some((issue) => issue.kind === 'gated');
           const spaceGated = space.coverageGates.some((g) => g.gatedNodeIds.some((id) => id === file));
           expect(fileGated).toBe(spaceGated);
         }
@@ -128,15 +130,15 @@ describe('validateFile matches validateSpace', () => {
     const config: Config = { spaces: [{ name: 'space', path: GATING_DIR, schema: SCHEMA_PATH }] };
     const result = await validateFile(join(GATING_DIR, 'Child Opportunity.md'), config, { configDir: import.meta.dir });
     if (!result.inSpace) throw new Error('expected file to be in space');
-    expect(result.issues['gated:Bad Outcome.md']?.message).toContain('not evaluated');
-    expect(result.issues['rule:solution-quantity']).toBeUndefined();
+    expect(withKey(result.issues, 'gated:Bad Outcome.md')?.message).toContain('not evaluated');
+    expect(withKey(result.issues, 'rule:solution-quantity')).toBeUndefined();
 
     const forced = await validateFile(join(GATING_DIR, 'Child Opportunity.md'), config, {
       includeGated: true,
       configDir: import.meta.dir,
     });
     if (!forced.inSpace) throw new Error('expected file to be in space');
-    expect(forced.issues['gated:Bad Outcome.md']?.message).toContain('evaluated anyway');
-    expect(forced.issues['rule:solution-quantity']).toBeDefined();
+    expect(withKey(forced.issues, 'gated:Bad Outcome.md')?.message).toContain('evaluated anyway');
+    expect(withKey(forced.issues, 'rule:solution-quantity')).toBeDefined();
   });
 });

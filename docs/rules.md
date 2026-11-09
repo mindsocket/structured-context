@@ -235,8 +235,8 @@ the next). Excluded nodes are reported under `skippedByDepth`, separate from gat
 ## Output
 
 - **`sctx validate`** — the summary counts rule violations per severity, and details are grouped by severity with each line showing the rule's category and id.
-- **`sctx validate --json`** — `issues` holds each node's issues of every severity, keyed by node id and then by a composite id such as `rule:<id>`. Each issue has a `kind`, `message` and `severity`. A `ruleViolations` array lists every violation with `file`, `ruleId`, `category`, `severity` and `description` (`file` is empty for global rules). A violation from a failed `expression` has the evidence `expression failed: <expression>` when the rule also has a `semantic` part, and no verdict.
-- **`sctx validate-file --json`** — `issues` holds the file's issues of every severity, each with a `severity` field. `errorCount` counts the `error` ones.
+- **`sctx validate --json`** — prints the run's `ValidationResult` (see [the API](api.md#main-building-blocks)) with `space`, `valid` and `errorCount`. `issues` lists every issue of every severity, each with a `kind`, `key`, `severity` and `message`. A `rule` issue also has `ruleId`, `category` and `description`, and `nodeId` unless the rule is global. A violation from a failed `expression` has the evidence `expression failed: <expression>` when the rule also has a `semantic` part, and no verdict.
+- **`sctx validate-file --json`** — `issues` lists the file's issues of every severity, in the same shape. `errorCount` counts the `error` ones.
 
 Gated files: see [Single-file validation](#single-file-validation).
 

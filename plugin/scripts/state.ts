@@ -106,7 +106,7 @@ export interface SpacesOutput {
 }
 
 /** The parts of `validate --json` the hooks read */
-type ValidateOutput = Partial<Pick<ValidateJsonOutput, 'issues' | 'ruleViolations' | 'parseIssues'>>;
+type ValidateOutput = Partial<Pick<ValidateJsonOutput, 'issues'>>;
 
 export function stateFilePath(sessionId: string | undefined, options?: HookOptions): string {
   const dir = options?.stateDir ?? process.env.SCTX_STATE_DIR ?? '/tmp';
@@ -289,26 +289,13 @@ export async function validateSpace(
     return byFile[label];
   };
 
-  for (const [label, issues] of Object.entries(output.issues ?? {})) {
-    for (const [key, issue] of Object.entries(issues)) {
-      if (issue.severity === 'error') issuesFor(label).errors[key] = issue;
-      else if (issue.severity === 'warning') issuesFor(label).warnings[key] = issue;
-    }
-  }
-  for (const issue of output.parseIssues ?? []) {
-    if (issue.severity === 'error') {
-      issuesFor(issue.file).errors[`parse:${issue.type}`] = {
-        kind: 'parse',
-        message: issue.message ?? `Could not parse (${issue.type})`,
-      };
-    }
-  }
-  // Rule violations without a node aren't in `issues`
-  for (const v of output.ruleViolations ?? []) {
-    if (v.nodeId || v.severity === 'info') continue;
-    const issue = { kind: 'rule', message: `[${v.ruleId}] ${v.description}`, severity: v.severity };
-    const bucket = v.severity === 'error' ? issuesFor('').errors : issuesFor('').warnings;
-    bucket[`rule:${v.ruleId}`] = issue;
+  for (const issue of output.issues ?? []) {
+    // A file excluded from the space without a parse failure (such as a note with no type) is not worth a turn
+    if (issue.kind === 'parse' && issue.severity !== 'error') continue;
+    const label = issue.nodeId ?? (issue.kind === 'parse' ? issue.source.file : '');
+    const { kind, message, severity } = issue;
+    if (severity === 'error') issuesFor(label).errors[issue.key] = { kind, message, severity };
+    else if (severity === 'warning') issuesFor(label).warnings[issue.key] = { kind, message, severity };
   }
   return byFile;
 }

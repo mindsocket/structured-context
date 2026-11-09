@@ -66,7 +66,6 @@ export type {
   ContentLink,
   EdgeDefinition,
   FileNotInSpaceResult,
-  FileValidationIssue,
   FileValidationResult,
   Hierarchy,
   HierarchyLevel,
@@ -83,8 +82,9 @@ export type {
   SpaceContext,
   UnresolvedRef,
   ValidateFileOutput,
+  ValidationIssue,
   ValidationIssueKind,
 } from './types';
 export { VALIDATION_ISSUE_KINDS } from './types';
 export type { ValidationResult } from './validate';
-export { nodeIssues, validateFile, validateSpace } from './validate';
+export { validateFile, validateSpace } from './validate';

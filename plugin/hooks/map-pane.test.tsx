@@ -1,7 +1,7 @@
 import type { On } from 'claude-code';
 import { type Engine, expect, test } from 'claude-code/testing';
 
-import type { CwdContext, ModStatus, PaneData } from '../types';
+import type { CwdContext, ModStatus, NodeId, PaneData } from '../types';
 import { fit } from './map-pane';
 
 const level = (type: string) => ({ type, field: 'parent', fieldOn: 'child', multiple: false, selfRef: false });
@@ -36,13 +36,33 @@ const DATA: PaneData = {
     ],
   },
   validation: {
-    issues: {
-      'Broken.md': { 'schema:type': { kind: 'schema', message: 'type is not allowed', severity: 'error' } },
-      'Opp A.md': { 'rule:summary': { kind: 'rule', message: '[summary] missing summary', severity: 'warning' } },
-    },
-    // Rule results on a node are in `issues`; `ruleViolations` adds only those without one
-    ruleViolations: [],
-    parseIssues: [{ file: 'Bad.md', severity: 'error', type: 'yaml', message: 'bad frontmatter' }],
+    issues: [
+      {
+        kind: 'parse',
+        key: 'parse:yaml',
+        severity: 'error',
+        message: 'bad frontmatter',
+        source: { file: 'Bad.md' },
+        type: 'yaml',
+      },
+      {
+        kind: 'schema',
+        key: 'schema:type',
+        severity: 'error',
+        message: 'type is not allowed',
+        nodeId: 'Broken.md' as NodeId,
+      },
+      {
+        kind: 'rule',
+        key: 'rule:summary',
+        severity: 'warning',
+        message: '[summary] missing summary',
+        nodeId: 'Opp A.md' as NodeId,
+        ruleId: 'summary',
+        category: 'coherence',
+        description: 'missing summary',
+      },
+    ],
   },
 };
 

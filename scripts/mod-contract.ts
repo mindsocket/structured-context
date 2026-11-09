@@ -1,8 +1,6 @@
-import type { FileValidationIssue, ParseIssue, RuleViolation } from '../src/types';
+import type { ValidationIssue } from '../src/types';
 
-/** The parts of `validate --json` the pane reads, as validate gives them */
+/** The part of `validate --json` the pane reads, as validate gives it */
 export type PaneValidation = {
-  issues: Record<string, Record<string, FileValidationIssue>>;
-  ruleViolations: RuleViolation[];
-  parseIssues: ParseIssue[];
+  issues: ValidationIssue[];
 };
