@@ -2,6 +2,7 @@
 /**
  * Stop hook: validate each space baselined this turn and report issues missing from its baseline,
  * in any file of the space. New errors block the stop; new warnings are passed back as context.
+ * The Stop that follows such feedback only updates the report the mod shows.
  */
 
 import { join } from 'node:path';
@@ -13,6 +14,7 @@ import {
   listSpaces,
   loadState,
   type ReportedIssue,
+  type SessionState,
   type SpaceReport,
   saveState,
   spaceKeys,
@@ -40,14 +42,46 @@ function formatIssues(header: string, issues: ValidationIssue[], noun: string): 
   return `  ${header} — ${issues.length} new ${noun}(s):\n${lines}`;
 }
 
+/** Keep only the report's new issues that validation still finds, and refresh each space's counts */
+async function settleReport(state: SessionState, options: HookOptions): Promise<void> {
+  const spaces = state.report?.spaces.filter((space) => space.added.length > 0) ?? [];
+  if (spaces.length === 0) return;
+  const { configFiles, spaces: configured } = await listSpaces(options);
+  await Promise.all(
+    spaces.map(async (report) => {
+      const space = configured.find(({ name }) => name === report.name);
+      if (!space) return;
+      const hash = hashSpace(space, configFiles);
+      if (state.latest[space.name]?.hash === hash) return;
+      const byFile = await validateSpace(space.name, options);
+      const found = new Set(
+        Object.entries(byFile).flatMap(([label, { errors, warnings }]) => [
+          ...Object.values(errors).map(({ message }) => `${label}\0error\0${message}`),
+          ...Object.values(warnings).map(({ message }) => `${label}\0warning\0${message}`),
+        ]),
+      );
+      report.added = report.added.filter(({ file, severity, message }) =>
+        found.has(`${file}\0${severity}\0${message}`),
+      );
+      Object.assign(report, issueCounts(byFile));
+      state.latest[space.name] = spaceKeys(space, hash, byFile);
+    }),
+  );
+  state.report!.at = Date.now();
+}
+
 export async function runOnStop(input: OnStopInput, options?: HookOptions): Promise<OnStopResult> {
-  // Guard against infinite loop: stop hooks can trigger another stop cycle
+  const STATE_FILE = stateFilePath(input.session_id, options);
+  const state = loadState(STATE_FILE);
+
+  // This Stop follows one that sent issues back to Claude. Never block or report again (that could
+  // loop), but drop the reported issues Claude has since fixed, so the mod stops showing them.
   if (input.stop_hook_active === true) {
+    await settleReport(state, { ...options, cwd: input.cwd ?? options?.cwd });
+    saveState(STATE_FILE, state);
     return { hasNewErrors: false };
   }
 
-  const STATE_FILE = stateFilePath(input.session_id, options);
-  const state = loadState(STATE_FILE);
   if (Object.keys(state.baseline).length === 0) {
     return { hasNewErrors: false };
   }
