@@ -274,9 +274,22 @@ export type SpaceContext = {
   configDir: string;
 };
 
+/** The checks a validation issue can come from. */
+export const VALIDATION_ISSUE_KINDS = [
+  'schema',
+  'duplicate',
+  'broken-link',
+  'hierarchy',
+  'rule',
+  'gated',
+  'content-link',
+] as const;
+
+export type ValidationIssueKind = (typeof VALIDATION_ISSUE_KINDS)[number];
+
 export interface FileValidationIssue {
-  /** The check it came from: `schema`, `duplicate`, `broken-link`, `hierarchy`, `rule`, `gated` or `content-link`. */
-  kind: string;
+  /** The check it came from. */
+  kind: ValidationIssueKind;
   message: string;
   /** How serious the issue is; consumers read it rather than infer it from `kind`. */
   severity: RuleSeverity;
