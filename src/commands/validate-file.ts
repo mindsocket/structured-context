@@ -74,6 +74,7 @@ function printHumanReadable(result: FileValidationResult): void {
   console.log('');
 }
 
+// A structural error (schema, hierarchy, broken link) is always an error, so its label leaves the severity out
 function issueLabel({ kind, severity }: FileValidationIssue): string {
-  return severity ? `${kind}:${severity}` : kind;
+  return severity === 'error' && kind !== 'rule' ? kind : `${kind}:${severity}`;
 }

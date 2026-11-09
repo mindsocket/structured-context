@@ -53,8 +53,8 @@ export interface ValidationResult {
   hierarchyViolations: GraphViolation[];
   orphans: SpaceNode[];
   parseIssues: ParseIssue[];
-  /** Content links that could not be resolved to a space node. Warning only — not counted in errors. */
-  unresolvedContentLinks: Array<{ nodeId: NodeId; target: string }>;
+  /** Content links that could not be resolved to a space node, at `info` severity: not counted in errors. */
+  unresolvedContentLinks: Array<{ nodeId: NodeId; target: string; severity: 'info' }>;
   /**
    * Cascade gates: nodes whose schema/hierarchy failure or blocking rule violation
    * suppressed rule evaluation for themselves and/or their hierarchy subtree.
@@ -420,7 +420,7 @@ export async function validateNodes(
         const key = `${node.id}::${link.target}`;
         if (!seen.has(key)) {
           seen.add(key);
-          result.unresolvedContentLinks.push({ nodeId: node.id, target: link.target });
+          result.unresolvedContentLinks.push({ nodeId: node.id, target: link.target, severity: 'info' });
         }
       }
     }
@@ -523,7 +523,7 @@ function issuesForFile(
       ...(node.source?.column !== undefined ? { column: node.source.column } : {}),
     };
     for (const { message, dedupeKey } of issues) {
-      errors[`schema:${dedupeKey}`] = { kind: 'schema', message, ...position };
+      errors[`schema:${dedupeKey}`] = { kind: 'schema', message, severity: 'error', ...position };
     }
   }
 
@@ -532,6 +532,7 @@ function issuesForFile(
     if (id !== label) continue;
     errors[`duplicate:${id}`] = {
       kind: 'duplicate',
+      severity: 'error',
       message: `Duplicate id "${id}" is used by ${sources.length} nodes${sources.length > 0 ? `: ${sources.map(formatSource).join(', ')}` : ''}`,
     };
   }
@@ -539,12 +540,12 @@ function issuesForFile(
   // Broken links and hierarchy violations from this file
   for (const { nodeId, parent, error } of result.refErrors) {
     if (nodeId === label) {
-      errors[`broken-link:${parent}`] = { kind: 'broken-link', message: `${parent} → ${error}` };
+      errors[`broken-link:${parent}`] = { kind: 'broken-link', message: `${parent} → ${error}`, severity: 'error' };
     }
   }
   for (const v of result.hierarchyViolations) {
     if (v.nodeId === label) {
-      errors[`hierarchy:${v.description}`] = { kind: 'hierarchy', message: v.description };
+      errors[`hierarchy:${v.description}`] = { kind: 'hierarchy', message: v.description, severity: 'error' };
     }
   }
 
@@ -576,7 +577,7 @@ function issuesForFile(
       warnings[`content-link:${link.target}`] = {
         kind: 'content-link',
         message: `Unresolved content link: ${link.target}`,
-        severity: 'info',
+        severity: link.severity,
       };
     }
   }

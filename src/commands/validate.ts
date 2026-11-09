@@ -18,9 +18,9 @@ export async function validate(
   if (options.json) {
     const errorsByFile: Record<string, Record<string, FileValidationIssue>> = {};
 
-    const addError = (file: string, key: string, kind: string, message: string, severity?: RuleSeverity) => {
+    const addError = (file: string, key: string, kind: string, message: string, severity: RuleSeverity = 'error') => {
       if (!errorsByFile[file]) errorsByFile[file] = {};
-      errorsByFile[file]![key] = severity ? { kind, message, severity } : { kind, message };
+      errorsByFile[file]![key] = { kind, message, severity };
     };
 
     for (const { nodeId, issues } of result.nodeErrors) {
