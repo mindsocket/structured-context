@@ -96,6 +96,14 @@ export function focusContext(node: FocusedNode): string {
   );
 }
 
+const MIN_TITLE = 12;
+
+/** `text` cut to `room` cells with an ellipsis, never below MIN_TITLE */
+export function fit(text: string, room: number): string {
+  const width = Math.max(MIN_TITLE, room);
+  return text.length <= width ? text : `${text.slice(0, width - 1)}…`;
+}
+
 type Row = { occurrence: Occurrence; depth: number; hasHiddenChildren: boolean };
 
 /** The tree's rows in order, leaving out what's under a collapsed row */
@@ -240,31 +248,36 @@ export function registerMapPane(on: On): void {
     const toggle = (key: string) =>
       update($, collapsed, (keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
 
+    // A row is one line: the title gives way to the indent, type and badge, which keep their width
     const row = ({ occurrence, depth, hasHiddenChildren }: Row) => {
       const { key, node, children, repeatOf } = occurrence;
       const results = annotations.annotations.get(node.id) ?? [];
       const worst = worstSeverity(results);
       const marker = repeatOf ? '↺' : children.length === 0 ? '·' : hidden.has(key) ? '▸' : '▾';
+      const indent = '  '.repeat(depth);
+      const type = `${node.resolvedType}${hasHiddenChildren ? ` +${children.length}` : ''}`;
+      const badge = worst ? `● ${results.length}` : '';
+      const room = e.props.bodyColumns - indent.length - marker.length - type.length - badge.length - 4;
       return (
         <Box key={`row:${key}`} gap={1}>
-          <Text>{'  '.repeat(depth)}</Text>
-          {children.length > 0 ? (
+          <Text>
+            {indent}
+            {children.length > 0 ? '' : marker}
+          </Text>
+          {children.length > 0 && (
             <Button key={`toggle:${key}`} plain dimColor label={marker} onPress={() => toggle(key)} />
-          ) : (
-            <Text dimColor>{marker}</Text>
           )}
           <Button
             key={`select:${key}`}
             plain
             dimColor={repeatOf !== undefined}
-            label={node.title}
+            label={fit(node.title, room)}
             onPress={() => update($, selected, (current) => (current === key ? null : key))}
           />
-          <Text dimColor>
-            {node.resolvedType}
-            {hasHiddenChildren ? ` +${children.length}` : ''}
+          <Text dimColor wrap="truncate-end">
+            {type}
           </Text>
-          {worst && <Text color={SEVERITY_COLOR[worst]}>● {results.length}</Text>}
+          {worst && <Text color={SEVERITY_COLOR[worst]}>{badge}</Text>}
         </Box>
       );
     };

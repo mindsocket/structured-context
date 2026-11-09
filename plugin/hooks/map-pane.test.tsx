@@ -2,6 +2,7 @@ import type { On } from 'claude-code';
 import { type Engine, expect, test } from 'claude-code/testing';
 
 import type { CwdContext, ModStatus, PaneData } from '../types';
+import { fit } from './map-pane';
 
 const level = (type: string) => ({ type, field: 'parent', fieldOn: 'child', multiple: false, selfRef: false });
 const node = (id: string, type: string, parent?: string) => ({
@@ -201,5 +202,19 @@ test('switching space hides the old tree until the new one loads', async ($, on)
   await picking;
   expect(await ui.find({ type: 'Text', text: 'Loading…' })).toBeUndefined();
   expect(await ui.find({ type: 'Button', text: 'Opp A' })).toBeDefined();
+  await ui.unmount();
+});
+
+test('a long title is cut to fit the pane, so its row stays one line', async ($, on) => {
+  expect(fit('SafetyCulture - 2nd interview - 1st formal round', 20)).toBe('SafetyCulture - 2nd…');
+  expect(fit('Goal', 20)).toBe('Goal');
+  // However deep the row, a title keeps a readable stub
+  expect(fit('SafetyCulture - 2nd interview', -5)).toBe('SafetyCultu…');
+
+  engine(on);
+  await opened($);
+  const ui = await $.ui.mount({ ...PANE, props: { ...PANE.props, bodyColumns: 30 }, surface: 'terminal' });
+  expect(await ui.find({ type: 'Button', text: 'Opp A' })).toBeDefined();
+  expect(await ui.find({ type: 'Text', text: 'opportunity' })).toBeDefined();
   await ui.unmount();
 });
