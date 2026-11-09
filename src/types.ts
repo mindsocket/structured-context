@@ -275,6 +275,7 @@ export type SpaceContext = {
 };
 
 export interface FileValidationIssue {
+  /** The check it came from: `schema`, `duplicate`, `broken-link`, `hierarchy`, `rule`, `gated` or `content-link`. */
   kind: string;
   message: string;
   /** How serious the issue is; consumers read it rather than infer it from `kind`. */
@@ -289,14 +290,11 @@ export interface FileValidationResult {
   file: string;
   label: string;
   space: string;
-  /** Errors keyed by composite id (e.g. `schema:/status:enum:active`, `rule:my-rule-id`). */
-  errors: Record<string, FileValidationIssue>;
+  /** The file's issues of every severity, keyed by composite id (e.g. `schema:/status:enum:active`, `rule:my-rule-id`). */
+  issues: Record<string, FileValidationIssue>;
+  /** Issues at `error` severity: only these fail validation. */
   errorCount: number;
-  /**
-   * Warnings keyed by composite id, including `warning` and `info` severity rule violations.
-   * Do not affect exit code or errorCount.
-   */
-  warnings: Record<string, FileValidationIssue>;
+  /** Issues at `warning` or `info` severity. */
   warningCount: number;
   inSpace: true;
 }

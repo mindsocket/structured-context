@@ -208,7 +208,7 @@ don't depend on an ancestor being valid.
 
 - Expressions are evaluated for the whole space; the output is restricted to the file.
 - Semantic parts are evaluated only for the file and its gating ancestors (see [Semantic rules](semantic-rules.md#how-semantic-evaluation-works)).
-- If the file is gated, its rules are skipped and a `gated:<file>` entry under `warnings` names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway.
+- If the file is gated, its rules are skipped and a `gated:<file>` issue at `info` severity names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway.
 
 ## Controlling validation runs
 
@@ -235,8 +235,8 @@ the next). Excluded nodes are reported under `skippedByDepth`, separate from gat
 ## Output
 
 - **`sctx validate`** — the summary counts rule violations per severity, and details are grouped by severity with each line showing the rule's category and id.
-- **`sctx validate --json`** — `errors` includes only `error` severity rule violations (keyed `rule:<id>`, with a `severity` field). A `ruleViolations` array lists every violation with `file`, `ruleId`, `category`, `severity` and `description` (`file` is empty for global rules). A violation from a failed `expression` has the evidence `expression failed: <expression>` when the rule also has a `semantic` part, and no verdict.
-- **`sctx validate-file`** — `error` severity violations appear under `errors`; `warning` and `info` violations appear under `warnings`. Rule entries carry a `severity` field.
+- **`sctx validate --json`** — `issues` holds each node's issues of every severity, keyed by node id and then by a composite id such as `rule:<id>`. Each issue has a `kind`, `message` and `severity`. A `ruleViolations` array lists every violation with `file`, `ruleId`, `category`, `severity` and `description` (`file` is empty for global rules). A violation from a failed `expression` has the evidence `expression failed: <expression>` when the rule also has a `semantic` part, and no verdict.
+- **`sctx validate-file --json`** — `issues` holds the file's issues of every severity, each with a `severity` field. `errorCount` counts the `error` ones.
 
 Gated files: see [Single-file validation](#single-file-validation).
 

@@ -87,7 +87,7 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
       judge: new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } }),
       configDir: space.dir,
     })) as FileValidationResult;
-    expect(result.warnings['rule:step-fit']?.message).toContain('Guidance: Tighten the wording.');
+    expect(result.issues['rule:step-fit']?.message).toContain('Guidance: Tighten the wording.');
   });
 
   it('--rule-filter severity matches any severity a verdict map can report', async () => {
@@ -262,8 +262,8 @@ describe('semantic rule check precondition', () => {
     })) as FileValidationResult;
     // T.md's failing check gates S.md, so S.md is not judged and only reports the gate.
     expect(judgedLabels(judge)).toEqual([]);
-    expect(Object.keys(result.warnings)).toEqual(['gated:T.md']);
-    expect(result.warnings['gated:T.md']?.message).toContain('task-fit');
+    expect(Object.keys(result.issues)).toEqual(['gated:T.md']);
+    expect(result.issues['gated:T.md']?.message).toContain('task-fit');
   });
 
   describe('without a judge', () => {

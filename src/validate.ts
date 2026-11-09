@@ -466,11 +466,7 @@ export async function validateSpace(
   return {
     validCount: result.validCount,
     nodeErrorCount: result.nodeFailures.length,
-    nodeErrors: result.nodeFailures.map(({ node, issues }) => ({
-      nodeId: node.id,
-      ...(node.source !== undefined && { source: node.source }),
-      issues,
-    })),
+    nodeErrors: toNodeErrors(result.nodeFailures),
     refErrors: result.refErrors,
     duplicateErrors: result.duplicateErrors,
     ruleViolations: result.ruleViolations,
@@ -504,85 +500,84 @@ export interface ValidateFileOptions extends CommonValidateOptions {
   configDir?: string;
 }
 
-/**
- * Select one file's entries from a space's validation result: issues keyed and formatted, errors split from warnings.
- * Pure — a file's entries are exactly its slice of the result.
- */
-function issuesForFile(
-  result: SpaceValidationResult,
-  label: string,
-  includeGated: boolean | undefined,
-): { errors: Record<string, FileValidationIssue>; warnings: Record<string, FileValidationIssue> } {
-  const errors: Record<string, FileValidationIssue> = {};
-  const warnings: Record<string, FileValidationIssue> = {};
+/** The parts of a validation result that `nodeIssues` reads. */
+type NodeIssueSources = Pick<
+  ValidationResult,
+  | 'nodeErrors'
+  | 'refErrors'
+  | 'duplicateErrors'
+  | 'hierarchyViolations'
+  | 'ruleViolations'
+  | 'coverageGates'
+  | 'unresolvedContentLinks'
+>;
 
-  for (const { node, issues } of result.nodeFailures) {
-    if (node.id !== label) continue;
+/**
+ * Every result that belongs to a node, by node id, each keyed by a composite id (e.g.
+ * `schema:/status:enum:active`, `rule:my-rule-id`) and carrying its severity. Rule violations without
+ * a node (global scope) and parse issues are not per node, so they stay in their own parts of the result.
+ * `includeGated` words the note on a gated node as it was validated.
+ */
+export function nodeIssues(
+  result: NodeIssueSources,
+  options: { includeGated?: boolean } = {},
+): Record<string, Record<string, FileValidationIssue>> {
+  const byNode: Record<string, Record<string, FileValidationIssue>> = {};
+  const add = (nodeId: NodeId, key: string, issue: FileValidationIssue) => {
+    byNode[nodeId] ??= {};
+    byNode[nodeId][key] = issue;
+  };
+
+  for (const { nodeId, source, issues } of result.nodeErrors) {
     const position = {
-      ...(node.source?.line !== undefined ? { line: node.source.line } : {}),
-      ...(node.source?.column !== undefined ? { column: node.source.column } : {}),
+      ...(source?.line !== undefined ? { line: source.line } : {}),
+      ...(source?.column !== undefined ? { column: source.column } : {}),
     };
     for (const { message, dedupeKey } of issues) {
-      errors[`schema:${dedupeKey}`] = { kind: 'schema', message, severity: 'error', ...position };
+      add(nodeId, `schema:${dedupeKey}`, { kind: 'schema', message, severity: 'error', ...position });
     }
   }
-
-  // Duplicate id errors — include if this node's id is duplicated
   for (const { id, sources } of result.duplicateErrors) {
-    if (id !== label) continue;
-    errors[`duplicate:${id}`] = {
+    const where = sources.length > 0 ? `: ${sources.map(formatSource).join(', ')}` : '';
+    add(id, `duplicate:${id}`, {
       kind: 'duplicate',
+      message: `Duplicate id "${id}" is used by ${sources.length} nodes${where}`,
       severity: 'error',
-      message: `Duplicate id "${id}" is used by ${sources.length} nodes${sources.length > 0 ? `: ${sources.map(formatSource).join(', ')}` : ''}`,
-    };
+    });
   }
-
-  // Broken links and hierarchy violations from this file
   for (const { nodeId, parent, error } of result.refErrors) {
-    if (nodeId === label) {
-      errors[`broken-link:${parent}`] = { kind: 'broken-link', message: `${parent} → ${error}`, severity: 'error' };
-    }
+    add(nodeId, `broken-link:${parent}`, { kind: 'broken-link', message: `${parent} → ${error}`, severity: 'error' });
   }
-  for (const v of result.hierarchyViolations) {
-    if (v.nodeId === label) {
-      errors[`hierarchy:${v.description}`] = { kind: 'hierarchy', message: v.description, severity: 'error' };
-    }
+  for (const { nodeId, description } of result.hierarchyViolations) {
+    add(nodeId, `hierarchy:${description}`, { kind: 'hierarchy', message: description, severity: 'error' });
   }
-
-  // Rule violations — only error severity counts as an error.
   for (const v of result.ruleViolations) {
-    if (v.nodeId === label) {
-      const target = v.severity === 'error' ? errors : warnings;
-      target[`rule:${v.ruleId}`] = {
-        kind: 'rule',
-        message: ruleViolationMessage(v),
-        severity: v.severity,
-      };
-    }
+    if (v.nodeId)
+      add(v.nodeId, `rule:${v.ruleId}`, { kind: 'rule', message: ruleViolationMessage(v), severity: v.severity });
   }
-  // A gated file with no violations would otherwise look clean — say that its rules were not checked.
+  // A gated node with no violations would otherwise look clean: say that its rules were not checked
   for (const gate of result.coverageGates) {
-    if (!gate.gatedNodeIds.some((id) => id === label)) continue;
     const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
-    warnings[`gated:${gate.nodeId}`] = {
-      kind: 'gated',
-      message: `Rule checks ${includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.nodeId}`,
-      severity: 'info',
-    };
+    const message = `Rule checks ${options.includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.nodeId}`;
+    for (const id of gate.gatedNodeIds) add(id, `gated:${gate.nodeId}`, { kind: 'gated', message, severity: 'info' });
   }
-
-  // Unresolved content links are info: a target outside the space is often valid elsewhere.
-  for (const link of result.unresolvedContentLinks) {
-    if (link.nodeId === label) {
-      warnings[`content-link:${link.target}`] = {
-        kind: 'content-link',
-        message: `Unresolved content link: ${link.target}`,
-        severity: link.severity,
-      };
-    }
+  for (const { nodeId, target, severity } of result.unresolvedContentLinks) {
+    add(nodeId, `content-link:${target}`, {
+      kind: 'content-link',
+      message: `Unresolved content link: ${target}`,
+      severity,
+    });
   }
+  return byNode;
+}
 
-  return { errors, warnings };
+/** `ValidationResult['nodeErrors']` from the failures `validateNodes` collects */
+function toNodeErrors(failures: NodeValidationFailure[]): ValidationResult['nodeErrors'] {
+  return failures.map(({ node, issues }) => ({
+    nodeId: node.id,
+    ...(node.source !== undefined && { source: node.source }),
+    issues,
+  }));
 }
 
 /** The result for a file that belongs to no configured space. */
@@ -619,16 +614,20 @@ export async function validateResolvedFileWith(
     ...runOptions,
     judgeTarget: label,
   });
-  const { errors, warnings } = issuesForFile(result, label, runOptions.includeGated);
+  const byNode = nodeIssues(
+    { ...result, nodeErrors: toNodeErrors(result.nodeFailures) },
+    { includeGated: runOptions.includeGated },
+  );
+  const issues = byNode[label] ?? {};
+  const errorCount = Object.values(issues).filter((issue) => issue.severity === 'error').length;
 
   return {
     file: isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath),
     label,
     space: context.space.name,
-    errors,
-    errorCount: Object.keys(errors).length,
-    warnings,
-    warningCount: Object.keys(warnings).length,
+    issues,
+    errorCount,
+    warningCount: Object.keys(issues).length - errorCount,
     inSpace: true,
   };
 }
