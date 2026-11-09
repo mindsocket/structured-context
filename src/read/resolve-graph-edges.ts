@@ -155,12 +155,18 @@ function resolveEdge(
 }
 
 /**
+ * An RFC 3986 scheme (`mailto:`, `tel:`, `https://`), which need not be followed by `//`.
+ * Two characters at least, so a Windows drive letter (`C:\`) is not a scheme.
+ */
+const URL_SCHEME = /^([a-zA-Z][a-zA-Z0-9+.-]+):/;
+
+/**
  * Classify a ContentLink into a ResolvedContentLink by determining its location.
  *
  * Wikilinks are resolved against the target index: if found, location is 'node',
  * otherwise 'internal' (in the source system but not a space node).
  * Markdown links are classified by URL scheme: external (http/https), system (file://),
- * protocol (other scheme), or internal (relative path / no scheme).
+ * protocol (any other scheme, such as mailto: or obsidian://), or internal (relative path / no scheme).
  */
 function classifyContentLink(link: ContentLink, targetIndex: Map<string, SpaceNode | null>): ResolvedContentLink {
   const { linkSyntax, target, text, action, anchor } = link;
@@ -174,9 +180,8 @@ function classifyContentLink(link: ContentLink, targetIndex: Map<string, SpaceNo
   }
 
   // Markdown link: classify by URL scheme.
-  const colonIdx = target.indexOf('://');
-  if (colonIdx > 0) {
-    const scheme = target.slice(0, colonIdx).toLowerCase();
+  const scheme = URL_SCHEME.exec(target)?.[1]?.toLowerCase();
+  if (scheme) {
     const location = scheme === 'https' || scheme === 'http' ? 'external' : scheme === 'file' ? 'system' : 'protocol';
     return { ...base, location };
   }

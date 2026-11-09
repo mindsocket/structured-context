@@ -263,6 +263,39 @@ describe('link location classification', () => {
     expect(nodes[0]!.resolvedLinks[0]?.location).toBe('protocol');
   });
 
+  it.each([['mailto:someone@example.com'], ['tel:+61290000000'], ['data:text/plain,hello'], ['urn:isbn:0451450523']])(
+    'classifies %s (a scheme without //) as protocol',
+    (target) => {
+      const solution = makeBaseNode('My Solution', 'solution', [
+        { text: 'Link', target, action: 'link', linkSyntax: 'markdown' },
+      ]);
+      const { nodes } = resolveEdges([solution], metadata);
+      expect(nodes[0]!.resolvedLinks[0]?.location).toBe('protocol');
+    },
+  );
+
+  it('classifies a bare email address in a body or frontmatter as protocol', () => {
+    const body = extractLinksFromAstNode(parseBody('Contact someone@example.com for details.'));
+    const frontmatter = extractLinksFromFrontmatter({ owner: 'someone@example.com' }, new Set());
+    for (const links of [body, frontmatter]) {
+      expect(links.map((l) => l.target)).toEqual(['mailto:someone@example.com']);
+      const solution = makeBaseNode('My Solution', 'solution', links);
+      const { nodes } = resolveEdges([solution], metadata);
+      expect(nodes[0]!.resolvedLinks[0]?.location).toBe('protocol');
+    }
+  });
+
+  it.each([['C:\\notes\\other.md'], ['C:/notes/other.md'], ['#heading']])(
+    'classifies %s (no scheme) as internal',
+    (target) => {
+      const solution = makeBaseNode('My Solution', 'solution', [
+        { text: 'Note', target, action: 'link', linkSyntax: 'markdown' },
+      ]);
+      const { nodes } = resolveEdges([solution], metadata);
+      expect(nodes[0]!.resolvedLinks[0]?.location).toBe('internal');
+    },
+  );
+
   it('classifies relative path as internal', () => {
     const solution = makeBaseNode('My Solution', 'solution', [
       { text: 'Note', target: './other.md', action: 'link', linkSyntax: 'markdown' },

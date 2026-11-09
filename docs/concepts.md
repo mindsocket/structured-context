@@ -356,7 +356,7 @@ Each entry is a `ResolvedContentLink` object:
 - `internal` — wikilink or relative path to an in-source target that is not a space node
 - `external` — `http://` or `https://` URL
 - `system` — `file://` URL
-- `protocol` — any other scheme (e.g. `obsidian://`)
+- `protocol` — any other scheme (e.g. `obsidian://`, `mailto:`, `tel:`). A bare email address is a `mailto:` link.
 
 **Sources:** Both wikilink syntax (`[[Target]]`, `![[Image]]`) and markdown link syntax (`[text](url)`, `![alt](url)`) are extracted. Bare URLs in frontmatter string fields are also captured. Graph edge fields (hierarchy `parent`, relationship fields) are excluded — those are graph edges, not content links.
 
