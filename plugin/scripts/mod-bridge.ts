@@ -5,10 +5,24 @@
  *
  *   status <session_id>   the last Stop's report and each space's latest issue counts
  *   digest                the spaces inside or containing the working directory, with a schema summary of each
+ *   pane <session_id> <space>  a space's graph and validation results, for the map pane
  *   sctx <args...>        run sctx the way the hooks do
  */
 
-import { contains, type IssueCounts, listSpaces, loadState, runSctx, stateFilePath, type TurnReport } from './state';
+import {
+  contains,
+  type HookOptions,
+  hashSpace,
+  type IssueCounts,
+  listSpaces,
+  loadResult,
+  loadState,
+  resultsDirPath,
+  runSctx,
+  stateFilePath,
+  type TurnReport,
+  validateSpace,
+} from './state';
 
 export interface ModStatus {
   report: TurnReport | null;
@@ -50,6 +64,91 @@ export async function cwdContext(cwd: string, sctxBin?: string): Promise<CwdCont
   return { spaces: related.map((space) => space.name), digests: shown.flat() };
 }
 
+/** `validate --json` output, as far as the pane reads it */
+interface ValidateJson {
+  errors?: Record<string, Record<string, { kind: string; message: string }>>;
+  ruleViolations?: { nodeId?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
+  parseIssues?: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
+  unresolvedContentLinks?: { nodeId: string; target: string }[];
+}
+
+/** The validation results the pane attaches to nodes: the shape map-views' `annotationsFrom` takes */
+export interface PaneValidation {
+  nodeErrors: { nodeId: string; issues: { message: string }[] }[];
+  hierarchyViolations: { nodeId: string; description: string }[];
+  ruleViolations: { nodeId?: string; ruleId?: string; severity: 'error' | 'warning' | 'info'; description: string }[];
+}
+
+/** What the pane draws a space from */
+export interface PaneData {
+  space: string;
+  /** The space's directory (or file), to open its nodes' files from */
+  path: string;
+  /** `sctx dump --graph`, with node bodies and data left out: the pane draws titles, types and edges */
+  graph: {
+    hierarchies: ({ name: string } & Record<string, unknown>)[];
+    mainHierarchy?: string;
+    nodes: unknown[];
+  } & Record<string, unknown>;
+  validation: PaneValidation;
+}
+
+/**
+ * Rearrange `validate --json` into the parts `annotationsFrom` attaches, keeping every issue the
+ * hooks count: rule errors come from `ruleViolations` only, and parse errors and unresolved content
+ * links, which have no field of their own there, ride along as schema errors and rule warnings.
+ */
+export function paneValidation(output: ValidateJson): PaneValidation {
+  const nodeErrors: PaneValidation['nodeErrors'] = [];
+  const hierarchyViolations: PaneValidation['hierarchyViolations'] = [];
+  for (const [nodeId, issues] of Object.entries(output.errors ?? {})) {
+    const messages: { message: string }[] = [];
+    for (const { kind, message } of Object.values(issues)) {
+      if (kind === 'hierarchy') hierarchyViolations.push({ nodeId, description: message });
+      else if (kind !== 'rule') messages.push({ message });
+    }
+    if (messages.length > 0) nodeErrors.push({ nodeId, issues: messages });
+  }
+  for (const issue of output.parseIssues ?? []) {
+    if (issue.severity !== 'error') continue;
+    nodeErrors.push({ nodeId: issue.file, issues: [{ message: issue.message ?? `Could not parse (${issue.type})` }] });
+  }
+  const ruleViolations: PaneValidation['ruleViolations'] = [
+    ...(output.ruleViolations ?? []),
+    ...(output.unresolvedContentLinks ?? []).map(({ nodeId, target }) => ({
+      nodeId,
+      severity: 'warning' as const,
+      description: `Unresolved content link: ${target}`,
+    })),
+  ];
+  return { nodeErrors, hierarchyViolations, ruleViolations };
+}
+
+/**
+ * A space's graph and validation results. The results the hooks kept this session are reused while
+ * the space's content hash matches them; otherwise the space is validated now and the results kept.
+ */
+export async function paneData(sessionId: string, space: string, options: HookOptions): Promise<PaneData> {
+  const { configFiles, spaces } = await listSpaces(options);
+  const info = spaces.find((one) => one.name === space);
+  if (!info) throw new Error(`No space named "${space}" in the config this directory finds.`);
+
+  const dir = resultsDirPath(stateFilePath(sessionId, options));
+  const hash = hashSpace(info, configFiles);
+  if (loadResult(dir, space)?.hash !== hash) await validateSpace(space, options, { dir, hash });
+  const output = loadResult(dir, space)!.output as ValidateJson;
+
+  const dump = await runSctx(['dump', space, '--graph'], options);
+  if (dump.exitCode !== 0) {
+    throw new Error(dump.stderr.trim().split('\n')[0] || `sctx dump exited with code ${dump.exitCode}`);
+  }
+  const graph = JSON.parse(dump.stdout) as PaneData['graph'];
+  const nodes = (graph.nodes as Record<string, unknown>[]).map(
+    ({ content: _content, contentLinks: _links, ...node }) => ({ ...node, schemaData: {} }),
+  );
+  return { space, path: info.path, graph: { ...graph, nodes }, validation: paneValidation(output) };
+}
+
 async function main(argv: string[]): Promise<number> {
   const [command, ...rest] = argv;
   if (command === 'status' && rest[0]) {
@@ -60,13 +159,22 @@ async function main(argv: string[]): Promise<number> {
     console.log(JSON.stringify(await cwdContext(process.cwd())));
     return 0;
   }
+  if (command === 'pane' && rest[0] && rest[1]) {
+    try {
+      console.log(JSON.stringify(await paneData(rest[0], rest[1], { cwd: process.cwd() })));
+      return 0;
+    } catch (err) {
+      console.error((err as Error).message);
+      return 1;
+    }
+  }
   if (command === 'sctx') {
     const run = await runSctx(rest, { cwd: process.cwd() });
     process.stdout.write(run.stdout);
     process.stderr.write(run.stderr);
     return run.exitCode ?? 1;
   }
-  console.error('usage: mod-bridge.ts status <session_id> | digest | sctx <args...>');
+  console.error('usage: mod-bridge.ts status <session_id> | digest | pane <session_id> <space> | sctx <args...>');
   return 2;
 }
 

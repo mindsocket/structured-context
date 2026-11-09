@@ -14,6 +14,7 @@ import {
   listSpaces,
   loadState,
   type ReportedIssue,
+  resultsDirPath,
   type SessionState,
   type SpaceReport,
   saveState,
@@ -43,7 +44,7 @@ function formatIssues(header: string, issues: ValidationIssue[], noun: string): 
 }
 
 /** Keep only the report's new issues that validation still finds, and refresh each space's counts */
-async function settleReport(state: SessionState, options: HookOptions): Promise<void> {
+async function settleReport(state: SessionState, options: HookOptions, resultsDir: string): Promise<void> {
   const spaces = state.report?.spaces.filter((space) => space.added.length > 0) ?? [];
   if (spaces.length === 0) return;
   const { configFiles, spaces: configured } = await listSpaces(options);
@@ -53,7 +54,7 @@ async function settleReport(state: SessionState, options: HookOptions): Promise<
       if (!space) return;
       const hash = hashSpace(space, configFiles);
       if (state.latest[space.name]?.hash === hash) return;
-      const byFile = await validateSpace(space.name, options);
+      const byFile = await validateSpace(space.name, options, { dir: resultsDir, hash });
       const found = new Set(
         Object.entries(byFile).flatMap(([label, { errors, warnings }]) => [
           ...Object.values(errors).map(({ message }) => `${label}\0error\0${message}`),
@@ -77,7 +78,7 @@ export async function runOnStop(input: OnStopInput, options?: HookOptions): Prom
   // This Stop follows one that sent issues back to Claude. Never block or report again (that could
   // loop), but drop the reported issues Claude has since fixed, so the mod stops showing them.
   if (input.stop_hook_active === true) {
-    await settleReport(state, { ...options, cwd: input.cwd ?? options?.cwd });
+    await settleReport(state, { ...options, cwd: input.cwd ?? options?.cwd }, resultsDirPath(STATE_FILE));
     saveState(STATE_FILE, state);
     return { hasNewErrors: false };
   }
@@ -107,7 +108,10 @@ export async function runOnStop(input: OnStopInput, options?: HookOptions): Prom
   const changed = spaces.filter(
     (space) => hashes.has(space.name) && hashes.get(space.name) !== state.baseline[space.name]!.hash,
   );
-  const results = await Promise.all(changed.map((space) => validateSpace(space.name, options)));
+  const resultsDir = resultsDirPath(STATE_FILE);
+  const results = await Promise.all(
+    changed.map((space) => validateSpace(space.name, options, { dir: resultsDir, hash: hashes.get(space.name)! })),
+  );
 
   const reports: SpaceReport[] = [];
   changed.forEach((space, i) => {

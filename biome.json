@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!.worktrees"]
+    "includes": ["**", "!.worktrees", "!plugin/hooks/projection.js"]
   },
   "formatter": {
     "enabled": true,

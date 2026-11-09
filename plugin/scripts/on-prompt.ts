@@ -6,7 +6,16 @@
  */
 
 import { runSafely } from './safe';
-import { contains, type HookOptions, listSpaces, loadState, recordBaselines, saveState, stateFilePath } from './state';
+import {
+  contains,
+  type HookOptions,
+  listSpaces,
+  loadState,
+  recordBaselines,
+  resultsDirPath,
+  saveState,
+  stateFilePath,
+} from './state';
 
 export interface OnPromptInput {
   session_id?: string;
@@ -24,7 +33,7 @@ export async function runOnPrompt(input: OnPromptInput, options?: HookOptions): 
 
   const STATE_FILE = stateFilePath(input.session_id, options);
   const state = loadState(STATE_FILE);
-  if (await recordBaselines(state, related, configFiles, options)) {
+  if (await recordBaselines(state, related, configFiles, options, resultsDirPath(STATE_FILE))) {
     saveState(STATE_FILE, state);
   }
 }

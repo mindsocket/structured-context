@@ -44,6 +44,7 @@ const BAND = {
 function engine(on: On, submitted: string[] = [], statuses: (string | undefined)[] = []) {
   on('session.id', () => ({ value: 'session-1' }));
   on('tool.register', (_, e) => ({ value: { tool: `mcp__structured-context__${e.name}` } }));
+  on('command.register', (_, e) => ({ value: { command: e.name } }));
   on('ui.status', (_, e) => {
     statuses.push(e.text);
     return { value: undefined };

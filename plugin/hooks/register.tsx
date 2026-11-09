@@ -9,7 +9,9 @@ import type { EngineInterface, Register } from 'claude-code';
 import { atom, read, update } from 'claude-code';
 
 import type { CwdContext, ModStatus, SpaceReport } from '../types';
+import { registerMapCommand, registerMapPane, reloadMapAfterStop } from './map-pane';
 
+// map-pane.tsx reads these too, under the same references
 const status = atom({ plugin: 'structured-context', key: 'status' } as const, null, { shape: 'status-1' });
 const cwd = atom(
   { plugin: 'structured-context', key: 'cwd' } as const,
@@ -112,12 +114,15 @@ const TOOLS = [
 // Hooks that only observe end in .catch((_, e, next) => next(e)): if one fails, the event goes on
 // as the hooks beneath settle it (a call already made is replayed, not run twice).
 export const register: Register = (on) => {
+  registerMapPane(on);
+
   on('session.start', async ($, e, next) => {
     await Promise.all(
       TOOLS.map(({ name, description, ...rest }) =>
         $.tool.register({ name, description, ...('inputSchema' in rest ? { inputSchema: rest.inputSchema } : {}) }),
       ),
     );
+    await registerMapCommand($);
     await refreshCwd($);
     await refreshStatus($);
     return next(e);
@@ -159,6 +164,7 @@ export const register: Register = (on) => {
     const result = await next(e);
     if (await read($, isDigestStale)) await refreshCwd($);
     await refreshStatus($);
+    await reloadMapAfterStop($);
     return result;
   }).catch((_, e, next) => next(e));
 
