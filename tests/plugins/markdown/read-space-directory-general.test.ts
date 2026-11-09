@@ -1,4 +1,6 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readSpaceDirectory } from '../../../src/plugins/markdown/read-space';
 import type { ParseResult } from '../../../src/plugins/util';
@@ -218,5 +220,29 @@ describe('readSpaceDirectory', () => {
       const result = await readSpaceDirectory(makePluginContext(INVALID_DIR));
       expect(result.nodes).toHaveLength(3);
     });
+  });
+});
+
+describe('headings below a horizontal rule', () => {
+  it('reports one warning per file, at the first heading that would have been a node', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sctx-terminated-'));
+    try {
+      writeFileSync(
+        join(dir, 'Goal.md'),
+        '---\ntype: goal\nstatus: active\n---\nBody\n\n---\n\n## Notes\n\n## A [type:: opportunity]\n\n## B [type:: opportunity]\n',
+      );
+      const { parseIssues } = await readSpaceDirectory(makePluginContext(dir));
+      expect(parseIssues).toEqual([
+        {
+          file: 'Goal.md',
+          severity: 'warning',
+          type: 'terminated',
+          message: 'Ignored heading "A" and 1 more below a horizontal rule (---).',
+          line: 11,
+        },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

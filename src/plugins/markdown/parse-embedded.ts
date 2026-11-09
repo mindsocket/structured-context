@@ -460,7 +460,8 @@ export interface ExtractEmbeddedOptions {
 export interface ExtractEmbeddedResult {
   nodes: BaseNode[];
   preambleNodeCount: number;
-  terminatedHeadings: string[];
+  /** Headings below a horizontal rule that would otherwise have become nodes. */
+  terminatedHeadings: { title: string; line?: number }[];
   preambleContent?: string;
   preambleFields?: Record<string, unknown>;
 }
@@ -503,7 +504,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
   let parseState: ParseState = isOnAPageMode ? 'preamble' : 'active';
 
   let preambleNodeCount = 0;
-  const terminatedHeadings: string[] = [];
+  const terminatedHeadings: ExtractEmbeddedResult['terminatedHeadings'] = [];
 
   /**
    * Returns the nearest typed parent context, skipping stack entries at depth >= headingDepth
@@ -717,11 +718,19 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     const consumeBlock = (node: BaseNode): void => consume(claims, node, spanStart, blockStart);
 
     if (parseState === 'done') {
-      if (child.type === 'heading') {
-        const rawTitle = mdastToString(child);
-        const { cleanText: afterBracketed } = extractBracketedFields(rawTitle);
-        const { cleanText: title } = extractAnchor(afterBracketed);
-        terminatedHeadings.push(title);
+      if (child.type === 'heading' && child.depth <= 5) {
+        const { cleanText: afterBracketed, fields } = extractBracketedFields(mdastToString(child));
+        const { cleanText: title, anchor } = extractAnchor(afterBracketed);
+        // On a typed page, a plain heading is body text, so losing it below the rule loses no node.
+        const wouldBeNode =
+          isOnAPageMode ||
+          !!applyFieldMap(fields, fieldMap).type ||
+          (!!anchor && !!anchorToNodeType(anchor, hierarchy, relationships)) ||
+          !!matchEmbedding(title, getParentContextType(child.depth));
+        if (wouldBeNode) {
+          const line = child.position ? child.position.start.line + (options.lineOffset ?? 0) : undefined;
+          terminatedHeadings.push({ title, ...(line !== undefined ? { line } : {}) });
+        }
       }
       continue;
     }
