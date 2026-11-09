@@ -66,10 +66,10 @@ export async function cwdContext(cwd: string, sctxBin?: string): Promise<CwdCont
 
 /** `validate --json` output, as far as the pane reads it */
 interface ValidateJson {
-  errors?: Record<string, Record<string, { kind: string; message: string; severity: 'error' | 'warning' | 'info' }>>;
+  /** Each node's issues of every severity, by key */
+  issues?: Record<string, Record<string, { kind: string; message: string; severity: 'error' | 'warning' | 'info' }>>;
   ruleViolations?: { nodeId?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
   parseIssues?: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
-  unresolvedContentLinks?: { nodeId: string; target: string; severity: 'error' | 'warning' | 'info' }[];
 }
 
 /** The validation results the pane attaches to nodes: the shape map-views' `annotationsFrom` takes */
@@ -95,18 +95,22 @@ export interface PaneData {
 
 /**
  * Rearrange `validate --json` into the parts `annotationsFrom` attaches. Rule results come from
- * `ruleViolations` only. Parse errors and unresolved content links have no part of their own there:
- * parse errors go with the schema errors, and content links go with the rule results, each with the
- * severity validate gives it.
+ * `ruleViolations`, which carry their rule ids. Errors of other kinds (schema, broken link,
+ * duplicate id, and parse errors) go with the schema errors. Issues below error that are not rule
+ * results, such as unresolved content links and gated rule checks, go with the rule results, each
+ * with the severity validate gives it.
  */
 export function paneValidation(output: ValidateJson): PaneValidation {
   const nodeErrors: PaneValidation['nodeErrors'] = [];
   const hierarchyViolations: PaneValidation['hierarchyViolations'] = [];
-  for (const [nodeId, issues] of Object.entries(output.errors ?? {})) {
+  const ruleViolations: PaneValidation['ruleViolations'] = [...(output.ruleViolations ?? [])];
+  for (const [nodeId, issues] of Object.entries(output.issues ?? {})) {
     const messages: { message: string }[] = [];
-    for (const { kind, message } of Object.values(issues)) {
+    for (const { kind, message, severity } of Object.values(issues)) {
+      if (kind === 'rule') continue;
       if (kind === 'hierarchy') hierarchyViolations.push({ nodeId, description: message });
-      else if (kind !== 'rule') messages.push({ message });
+      else if (severity === 'error') messages.push({ message });
+      else ruleViolations.push({ nodeId, severity, description: message });
     }
     if (messages.length > 0) nodeErrors.push({ nodeId, issues: messages });
   }
@@ -114,14 +118,6 @@ export function paneValidation(output: ValidateJson): PaneValidation {
     if (issue.severity !== 'error') continue;
     nodeErrors.push({ nodeId: issue.file, issues: [{ message: issue.message ?? `Could not parse (${issue.type})` }] });
   }
-  const ruleViolations: PaneValidation['ruleViolations'] = [
-    ...(output.ruleViolations ?? []),
-    ...(output.unresolvedContentLinks ?? []).map(({ nodeId, target, severity }) => ({
-      nodeId,
-      severity,
-      description: `Unresolved content link: ${target}`,
-    })),
-  ];
   return { nodeErrors, hierarchyViolations, ruleViolations };
 }
 
