@@ -12,7 +12,7 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 - `bun run lint:fix` — biome with fixes
 - `bun run build` — compile `src/` to `dist/` (`tsconfig.build.json`)
 - see `package.json` 
-- Releases go through the `/release` skill.
+- Releases go through the `/release` skill. Its tag push runs `.github/workflows/release.yml`, which publishes to npm.
 
 Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or the nearest `.sctx.json` walking up from the working directory
 
