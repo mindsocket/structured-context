@@ -66,10 +66,10 @@ export async function cwdContext(cwd: string, sctxBin?: string): Promise<CwdCont
 
 /** `validate --json` output, as far as the pane reads it */
 interface ValidateJson {
-  errors?: Record<string, Record<string, { kind: string; message: string }>>;
+  errors?: Record<string, Record<string, { kind: string; message: string; severity: 'error' | 'warning' | 'info' }>>;
   ruleViolations?: { nodeId?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
   parseIssues?: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
-  unresolvedContentLinks?: { nodeId: string; target: string }[];
+  unresolvedContentLinks?: { nodeId: string; target: string; severity: 'error' | 'warning' | 'info' }[];
 }
 
 /** The validation results the pane attaches to nodes: the shape map-views' `annotationsFrom` takes */
@@ -94,9 +94,10 @@ export interface PaneData {
 }
 
 /**
- * Rearrange `validate --json` into the parts `annotationsFrom` attaches, keeping every issue the
- * hooks count: rule errors come from `ruleViolations` only, and parse errors and unresolved content
- * links, which have no field of their own there, ride along as schema errors and, at info severity as validate reports them, rule results.
+ * Rearrange `validate --json` into the parts `annotationsFrom` attaches. Rule results come from
+ * `ruleViolations` only. Parse errors and unresolved content links have no part of their own there:
+ * parse errors go with the schema errors, and content links go with the rule results, each with the
+ * severity validate gives it.
  */
 export function paneValidation(output: ValidateJson): PaneValidation {
   const nodeErrors: PaneValidation['nodeErrors'] = [];
@@ -115,9 +116,9 @@ export function paneValidation(output: ValidateJson): PaneValidation {
   }
   const ruleViolations: PaneValidation['ruleViolations'] = [
     ...(output.ruleViolations ?? []),
-    ...(output.unresolvedContentLinks ?? []).map(({ nodeId, target }) => ({
+    ...(output.unresolvedContentLinks ?? []).map(({ nodeId, target, severity }) => ({
       nodeId,
-      severity: 'info' as const,
+      severity,
       description: `Unresolved content link: ${target}`,
     })),
   ];

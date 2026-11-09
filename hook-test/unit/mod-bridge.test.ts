@@ -87,14 +87,14 @@ describe('paneValidation', () => {
     const validation = paneValidation({
       errors: {
         'Goal.md': {
-          'schema:a': { kind: 'schema', message: 'missing status' },
-          'rule:r1': { kind: 'rule', message: '[r1] too long' },
-          'hierarchy:x': { kind: 'hierarchy', message: 'wrong parent type' },
+          'schema:a': { kind: 'schema', message: 'missing status', severity: 'error' },
+          'rule:r1': { kind: 'rule', message: '[r1] too long', severity: 'error' },
+          'hierarchy:x': { kind: 'hierarchy', message: 'wrong parent type', severity: 'error' },
         },
       },
       ruleViolations: [{ nodeId: 'Goal.md', ruleId: 'r1', severity: 'error', description: 'too long' }],
       parseIssues: [{ file: 'Bad.md', severity: 'error', type: 'yaml', message: 'bad frontmatter' }],
-      unresolvedContentLinks: [{ nodeId: 'Goal.md', target: 'Nowhere' }],
+      unresolvedContentLinks: [{ nodeId: 'Goal.md', target: 'Nowhere', severity: 'info' }],
     });
     expect(validation.nodeErrors).toEqual([
       { nodeId: 'Goal.md', issues: [{ message: 'missing status' }] },
