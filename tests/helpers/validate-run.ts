@@ -16,7 +16,7 @@ import {
  */
 export async function validateSpaceWith(context: SpaceContext, runOptions: RunOptions = {}) {
   const read = await readSpace(context);
-  return validateNodes(context, read.nodes, read.unresolvedRefs, runOptions);
+  return validateNodes(context, read.nodes, read, runOptions);
 }
 
 /** `validateFile` with the options already built; see {@link validateSpaceWith}. */

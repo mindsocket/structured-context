@@ -358,6 +358,8 @@ Each entry is a `ResolvedContentLink` object:
 - `system` — `file://` URL
 - `protocol` — any other scheme (e.g. `obsidian://`, `mailto:`, `tel:`). A bare email address is a `mailto:` link.
 
+`validate` warns about each `internal` link as an unresolved content link. A link to a file the space read but did not make a node, such as a note without a `type`, is not reported. That file's own parse warning says why it is not a node.
+
 **Sources:** Both wikilink syntax (`[[Target]]`, `![[Image]]`) and markdown link syntax (`[text](url)`, `![alt](url)`) are extracted. Bare URLs in frontmatter string fields are also captured. Graph edge fields (hierarchy `parent`, relationship fields) are excluded — those are graph edges, not content links.
 
 ### Anchor
