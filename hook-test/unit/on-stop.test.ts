@@ -208,6 +208,31 @@ describe('Report', () => {
     expect(latest['test-space']!.counts).toEqual({ errors: space.errors, warnings: space.warnings });
   });
 
+  it('drops reported issues that Claude fixed after the Stop hook sent them back', async () => {
+    await prompt();
+    write('valid.md', validWithParent('Ghost Node'));
+    expect((await stop()).hasNewErrors).toBe(true);
+    const report = () => loadState(stateFilePath(sessionId, opts())).report!;
+    const first = report();
+    expect(first.spaces[0]!.added.length).toBeGreaterThan(0);
+
+    write('valid.md', validWithParent('Root'));
+    expect(await stop(true)).toEqual({ hasNewErrors: false });
+    expect(report().spaces[0]!.added).toEqual([]);
+    expect(report().at).toBeGreaterThanOrEqual(first.at);
+  });
+
+  it('keeps reported issues that are still there after the Stop hook sent them back', async () => {
+    await prompt();
+    write('valid.md', validWithParent('Ghost Node'));
+    await stop();
+    const { added } = loadState(stateFilePath(sessionId, opts())).report!.spaces[0]!;
+
+    write('other.md', validWithParent('Root'));
+    await stop(true);
+    expect(loadState(stateFilePath(sessionId, opts())).report!.spaces[0]!.added).toEqual(added);
+  });
+
   it('keeps the previous report when no space changed', async () => {
     await prompt();
     write('valid.md', validWithParent('Ghost Node'));
