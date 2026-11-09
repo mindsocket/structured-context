@@ -70,7 +70,7 @@ bunx structured-context --help
 
 ## Setup for AI Agents
 
-Claude Code plugin, providing validation hooks, slash commands, and agent skills. In Claude Code versions with mods, it also shows each turn's new issues beside the chat, adds the session's schemas to the system prompt, and gives Claude sctx tools. Install it with:
+Claude Code plugin, providing validation hooks, slash commands, and agent skills. In Claude Code versions with mods, it also shows each turn's new issues beside the chat, opens a map of a space's hierarchy with each node's issues (`/sctx-map`), adds the session's schemas to the system prompt, and gives Claude sctx tools. Install it with:
 
 ```
 claude plugin marketplace add mindsocket/structured-context

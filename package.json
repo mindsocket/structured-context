@@ -38,6 +38,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "generate:schema-meta": "bun run scripts/generate-schema-meta.ts",
+    "build:mod-projection": "bun run scripts/build-mod-projection.ts",
     "typecheck": "tsc --noEmit",
     "build": "bun run clean && bun run generate:schema-meta && tsc -p tsconfig.build.json && cp -r schemas dist/ && chmod +x dist/index.js",
     "prepublishOnly": "bun run build",
@@ -62,7 +63,8 @@
     "@anthropic-ai/claude-agent-sdk": "^0.3.310",
     "@biomejs/biome": "^2.5.15",
     "@types/bun": "^1.4.4",
-    "lefthook": "^2.2.2"
+    "lefthook": "^2.2.2",
+    "structured-context-map-views": "^0.4.0"
   },
   "peerDependencies": {
     "typescript": "^5"

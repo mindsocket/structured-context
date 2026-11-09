@@ -116,6 +116,39 @@ export function stateFilePath(sessionId: string | undefined, options?: HookOptio
   return join(dir, `sctx-hook-${sessionId ?? 'unknown'}.json`);
 }
 
+/**
+ * Where the raw `validate --json` output of each space is kept for the session, beside its state file,
+ * one file per space so spaces validated in parallel don't overwrite each other. The mod's map pane
+ * reads it (`mod-bridge.ts pane`), so a space the hooks just validated isn't validated again.
+ */
+export function resultsDirPath(stateFile: string): string {
+  return stateFile.replace(/\.json$/, '-results');
+}
+
+/** A space's raw `validate --json` output, and the content hash it was made at */
+export interface SpaceResult {
+  hash: string;
+  output: unknown;
+}
+
+/** Where `validateSpace` keeps the output it parses */
+export interface ResultTarget {
+  dir: string;
+  hash: string;
+}
+
+const resultFile = (dir: string, space: string) => join(dir, `${encodeURIComponent(space)}.json`);
+
+export function loadResult(dir: string, space: string): SpaceResult | undefined {
+  const file = resultFile(dir, space);
+  return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf-8')) as SpaceResult) : undefined;
+}
+
+export function saveResult(target: ResultTarget, space: string, output: unknown): void {
+  mkdirSync(target.dir, { recursive: true });
+  writeFileSync(resultFile(target.dir, space), JSON.stringify({ hash: target.hash, output } satisfies SpaceResult));
+}
+
 export function loadState(file: string): SessionState {
   if (!existsSync(file)) return { baseline: {}, latest: {} };
   const state = JSON.parse(readFileSync(file, 'utf-8')) as Partial<SessionState>;
@@ -239,13 +272,19 @@ export function hashSpace(space: SpaceInfo, configFiles: string[]): string {
  * Throws when validation could not run (for example a schema that fails to load), so the hook reports
  * that once instead of treating the space as clean.
  */
-export async function validateSpace(name: string, options?: HookOptions): Promise<Record<string, FileIssues>> {
+/** Validate a space and key its issues by file. With `keep`, the raw output is also saved for the map pane. */
+export async function validateSpace(
+  name: string,
+  options?: HookOptions,
+  keep?: ResultTarget,
+): Promise<Record<string, FileIssues>> {
   const run = await runSctx(['validate', name, '--json'], options);
   if (!run.stdout.trim()) {
     const detail = run.stderr.trim().split('\n')[0] || `exit code ${run.exitCode}`;
     throw new Error(`validating space "${name}" produced no result: ${detail}`);
   }
   const output = JSON.parse(run.stdout) as ValidateOutput;
+  if (keep) saveResult(keep, name, output);
 
   const byFile: Record<string, FileIssues> = {};
   const issuesFor = (label: string): FileIssues => {
@@ -308,13 +347,16 @@ export async function recordBaselines(
   spaces: SpaceInfo[],
   configFiles: string[],
   options?: HookOptions,
+  resultsDir?: string,
 ): Promise<boolean> {
   const pending = spaces.filter((space) => !state.baseline[space.name]);
   await Promise.all(
     pending.map(async (space) => {
       const hash = hashSpace(space, configFiles);
       const latest = state.latest[space.name];
-      const keys = latest?.hash === hash ? latest : spaceKeys(space, hash, await validateSpace(space.name, options));
+      const keep = resultsDir ? { dir: resultsDir, hash } : undefined;
+      const keys =
+        latest?.hash === hash ? latest : spaceKeys(space, hash, await validateSpace(space.name, options, keep));
       state.latest[space.name] = keys;
       state.baseline[space.name] = keys;
     }),

@@ -6,9 +6,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cwdContext, readStatus, trimSchemaShow } from '../../plugin/scripts/mod-bridge';
+import { cwdContext, paneData, paneValidation, readStatus, trimSchemaShow } from '../../plugin/scripts/mod-bridge';
 import { runOnPrompt } from '../../plugin/scripts/on-prompt';
 import { runOnStop } from '../../plugin/scripts/on-stop';
+import { loadResult, resultsDirPath, saveResult, stateFilePath } from '../../plugin/scripts/state';
 import { type IsolatedFixtures, isolateFixtures } from '../fixture-utils';
 
 const SCTX_BIN = join(import.meta.dir, '../../src/index.ts');
@@ -78,5 +79,62 @@ describe('cwdContext', () => {
     } finally {
       rmSync(elsewhere, { recursive: true, force: true });
     }
+  });
+});
+
+describe('paneValidation', () => {
+  it('sorts validate output into the parts annotationsFrom attaches, counting rule errors once', () => {
+    const validation = paneValidation({
+      errors: {
+        'Goal.md': {
+          'schema:a': { kind: 'schema', message: 'missing status' },
+          'rule:r1': { kind: 'rule', message: '[r1] too long' },
+          'hierarchy:x': { kind: 'hierarchy', message: 'wrong parent type' },
+        },
+      },
+      ruleViolations: [{ nodeId: 'Goal.md', ruleId: 'r1', severity: 'error', description: 'too long' }],
+      parseIssues: [{ file: 'Bad.md', severity: 'error', type: 'yaml', message: 'bad frontmatter' }],
+      unresolvedContentLinks: [{ nodeId: 'Goal.md', target: 'Nowhere' }],
+    });
+    expect(validation.nodeErrors).toEqual([
+      { nodeId: 'Goal.md', issues: [{ message: 'missing status' }] },
+      { nodeId: 'Bad.md', issues: [{ message: 'bad frontmatter' }] },
+    ]);
+    expect(validation.hierarchyViolations).toEqual([{ nodeId: 'Goal.md', description: 'wrong parent type' }]);
+    expect(validation.ruleViolations.map((v) => v.description)).toEqual([
+      'too long',
+      'Unresolved content link: Nowhere',
+    ]);
+  });
+});
+
+describe('paneData', () => {
+  it('reuses the results a hook kept while the space is unchanged, and validates again once it changes', async () => {
+    await runOnPrompt({ session_id: sessionId, cwd: fixtures.fixtureDir }, opts());
+    const dir = resultsDirPath(stateFilePath(sessionId, opts()));
+    const kept = loadResult(dir, 'test-space')!;
+    const marker = {
+      nodeId: 'valid.md',
+      ruleId: 'kept',
+      severity: 'warning' as const,
+      description: 'from the kept result',
+    };
+    saveResult({ dir, hash: kept.hash }, 'test-space', { ruleViolations: [marker] });
+
+    const reused = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });
+    expect(reused.validation.ruleViolations).toEqual([marker]);
+    expect(reused.graph.nodes.length).toBeGreaterThan(0);
+    expect(reused.graph.nodes.every((node) => !('content' in (node as object)))).toBe(true);
+
+    writeFileSync(join(fixtures.vaultDir, 'valid.md'), '---\ntype: mission\nstatus: identified\n---\n\n# Changed\n');
+    const fresh = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });
+    expect(fresh.validation.ruleViolations).not.toContainEqual(marker);
+    expect(loadResult(dir, 'test-space')!.hash).not.toBe(kept.hash);
+  });
+
+  it('names a space the config lacks', async () => {
+    await expect(paneData(sessionId, 'nope', { ...opts(), cwd: fixtures.fixtureDir })).rejects.toThrow(
+      'No space named "nope"',
+    );
   });
 });
