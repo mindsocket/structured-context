@@ -3,8 +3,8 @@ import chokidar from 'chokidar';
 import { getConfigSourceFiles } from '../config';
 import { resolveSpacePluginSchemas } from '../plugins/util';
 import { bundledSchemasDir } from '../schema/schema';
-import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
-import { formatSource, nodeIssues, ruleViolationMessage, type ValidateSpaceOptions, validateSpace } from '../validate';
+import type { RuleSeverity, SpaceContext } from '../types';
+import { formatSource, nodeIssues, type ValidateSpaceOptions, validateSpace } from '../validate';
 
 export async function validate(
   context: SpaceContext,
