@@ -26,7 +26,7 @@
         "@types/bun": "^1.4.4",
         "esbuild": "0.25.12",
         "lefthook": "^2.2.2",
-        "structured-context-map-views": "^0.4.0",
+        "structured-context-map-views": "^0.5.0",
       },
       "peerDependencies": {
         "typescript": "^5",
@@ -510,9 +510,9 @@
 
     "strip-bom-string": ["strip-bom-string@1.0.0", "", {}, "sha512-uCC2VHvQRYu+lMh4My/sFNmF2klFymLX1wHJeXnbEJERpV/ZsVuonzerjfrGpIGF7LBVa1O7i9kjiWvJiFck8g=="],
 
-    "structured-context": ["structured-context@0.21.0", "", { "dependencies": { "ajv": "^8.20.0", "chokidar": "^5.0.0", "commander": "^15.0.0", "fast-glob": "^3.3.3", "gray-matter": "^4.0.3", "js-yaml": "^5.4.3", "json-schema-to-ts": "^3.1.1", "json5": "^2.2.3", "jsonata": "^2.2.1", "mdast-util-to-string": "^4.0.0", "remark-gfm": "^4.0.1", "remark-parse": "^11.0.0", "unified": "^11.0.5", "unist-util-visit": "^5.1.0" }, "peerDependencies": { "typescript": "^5" }, "bin": { "sctx": "dist/index.js" } }, "sha512-VTzmp1FneT3Y6Vym5oHDKzbXbwtyoPrEEKnLPTXYa2nNoK5patXkG8gWNrtS8rWJKXqheYXjjCz7YEIzCzrcfg=="],
+    "structured-context": ["structured-context@0.22.1", "", { "dependencies": { "ajv": "^8.20.0", "chokidar": "^5.0.0", "commander": "^15.0.0", "fast-glob": "^3.3.3", "gray-matter": "^4.0.3", "js-yaml": "^5.4.3", "json-schema-to-ts": "^3.1.1", "json5": "^2.2.3", "jsonata": "^2.2.1", "mdast-util-to-string": "^4.0.0", "remark-gfm": "^4.0.1", "remark-parse": "^11.0.0", "unified": "^11.0.5", "unist-util-visit": "^5.1.0" }, "peerDependencies": { "typescript": "^5" }, "bin": { "sctx": "dist/index.js" } }, "sha512-YBCurh4UAL+0uC0OLYTfAVONu3RQkuozqXkHn3/iM/z7xIsjQQPdwPrS8Lf16TaIVs/NufOiQwRwPsbj7pY8dA=="],
 
-    "structured-context-map-views": ["structured-context-map-views@0.4.0", "", { "dependencies": { "ajv": "^8.20.0", "commander": "^15.0.0", "json-schema-to-ts": "^3.1.1", "json5": "^2.2.3" }, "peerDependencies": { "react": "^19.3.0", "react-dom": "^19.3.0", "structured-context": "^0.21.0" }, "bin": { "structured-context-map-views": "dist/cli.js" } }, "sha512-zxmCgKkeQlqY2qwPhxpDCakXvObov9RXIWhzc4q5my4d7gopPifQwRkEW2ddioQ2dywWC73pnRbN8GMEJi1MPg=="],
+    "structured-context-map-views": ["structured-context-map-views@0.5.0", "", { "dependencies": { "ajv": "^8.20.0", "commander": "^15.0.0", "json-schema-to-ts": "^3.1.1", "json5": "^2.2.3" }, "peerDependencies": { "react": "^19.3.0", "react-dom": "^19.3.0", "structured-context": "^0.22.1" }, "bin": { "structured-context-map-views": "dist/cli.js" } }, "sha512-WrAiYsMlF4sW0iLeQ2gtyI9lhW8wyNJN+ugdvZGifGLNPFsrx2mVbZXe44m/A/kjyEwG1Dfk9+Tk+rp/20NgDA=="],
 
     "to-regex-range": ["to-regex-range@5.0.1", "", { "dependencies": { "is-number": "^7.0.0" } }, "sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ=="],
 

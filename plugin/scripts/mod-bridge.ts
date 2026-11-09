@@ -64,19 +64,14 @@ export async function cwdContext(cwd: string, sctxBin?: string): Promise<CwdCont
   return { spaces: related.map((space) => space.name), digests: shown.flat() };
 }
 
-/** `validate --json` output, as far as the pane reads it */
-interface ValidateJson {
-  /** Each node's issues of every severity, by key */
-  issues?: Record<string, Record<string, { kind: string; message: string; severity: 'error' | 'warning' | 'info' }>>;
-  ruleViolations?: { nodeId?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
-  parseIssues?: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
-}
-
-/** The validation results the pane attaches to nodes: the shape map-views' `annotationsFrom` takes */
+/**
+ * The parts of `validate --json` the pane reads, passed through unchanged: map-views' `annotationsFrom`
+ * takes `issues` and `ruleViolations` as they are, and the pane lists the parse errors itself.
+ */
 export interface PaneValidation {
-  nodeErrors: { nodeId: string; issues: { message: string }[] }[];
-  hierarchyViolations: { nodeId: string; description: string }[];
-  ruleViolations: { nodeId?: string; ruleId?: string; severity: 'error' | 'warning' | 'info'; description: string }[];
+  issues: Record<string, Record<string, { kind: string; message: string; severity: 'error' | 'warning' | 'info' }>>;
+  ruleViolations: { nodeId?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
+  parseIssues: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
 }
 
 /** What the pane draws a space from */
@@ -94,34 +89,6 @@ export interface PaneData {
 }
 
 /**
- * Rearrange `validate --json` into the parts `annotationsFrom` attaches. Rule results come from
- * `ruleViolations`, which carry their rule ids. Errors of other kinds (schema, broken link,
- * duplicate id, and parse errors) go with the schema errors. Issues below error that are not rule
- * results, such as unresolved content links and gated rule checks, go with the rule results, each
- * with the severity validate gives it.
- */
-export function paneValidation(output: ValidateJson): PaneValidation {
-  const nodeErrors: PaneValidation['nodeErrors'] = [];
-  const hierarchyViolations: PaneValidation['hierarchyViolations'] = [];
-  const ruleViolations: PaneValidation['ruleViolations'] = [...(output.ruleViolations ?? [])];
-  for (const [nodeId, issues] of Object.entries(output.issues ?? {})) {
-    const messages: { message: string }[] = [];
-    for (const { kind, message, severity } of Object.values(issues)) {
-      if (kind === 'rule') continue;
-      if (kind === 'hierarchy') hierarchyViolations.push({ nodeId, description: message });
-      else if (severity === 'error') messages.push({ message });
-      else ruleViolations.push({ nodeId, severity, description: message });
-    }
-    if (messages.length > 0) nodeErrors.push({ nodeId, issues: messages });
-  }
-  for (const issue of output.parseIssues ?? []) {
-    if (issue.severity !== 'error') continue;
-    nodeErrors.push({ nodeId: issue.file, issues: [{ message: issue.message ?? `Could not parse (${issue.type})` }] });
-  }
-  return { nodeErrors, hierarchyViolations, ruleViolations };
-}
-
-/**
  * A space's graph and validation results. The results the hooks kept this session are reused while
  * the space's content hash matches them; otherwise the space is validated now and the results kept.
  */
@@ -133,7 +100,7 @@ export async function paneData(sessionId: string, space: string, options: HookOp
   const dir = resultsDirPath(stateFilePath(sessionId, options));
   const hash = hashSpace(info, configFiles);
   if (loadResult(dir, space)?.hash !== hash) await validateSpace(space, options, { dir, hash });
-  const output = loadResult(dir, space)!.output as ValidateJson;
+  const output = loadResult(dir, space)!.output as Partial<PaneValidation>;
 
   const dump = await runSctx(['dump', space, '--graph'], options);
   if (dump.exitCode !== 0) {
@@ -143,7 +110,16 @@ export async function paneData(sessionId: string, space: string, options: HookOp
   const nodes = (graph.nodes as Record<string, unknown>[]).map(
     ({ content: _content, contentLinks: _links, ...node }) => ({ ...node, schemaData: {} }),
   );
-  return { space, path: info.path, graph: { ...graph, nodes }, validation: paneValidation(output) };
+  return {
+    space,
+    path: info.path,
+    graph: { ...graph, nodes },
+    validation: {
+      issues: output.issues ?? {},
+      ruleViolations: output.ruleViolations ?? [],
+      parseIssues: output.parseIssues ?? [],
+    },
+  };
 }
 
 async function main(argv: string[]): Promise<number> {

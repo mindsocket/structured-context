@@ -36,9 +36,12 @@ const DATA: PaneData = {
     ],
   },
   validation: {
-    nodeErrors: [{ nodeId: 'Broken.md', issues: [{ message: 'type is not allowed' }] }],
-    hierarchyViolations: [],
+    issues: {
+      'Broken.md': { 'schema:type': { kind: 'schema', message: 'type is not allowed', severity: 'error' } },
+      'Opp A.md': { 'rule:summary': { kind: 'rule', message: '[summary] missing summary', severity: 'warning' } },
+    },
     ruleViolations: [{ nodeId: 'Opp A.md', ruleId: 'summary', severity: 'warning', description: 'missing summary' }],
+    parseIssues: [{ file: 'Bad.md', severity: 'error', type: 'yaml', message: 'bad frontmatter' }],
   },
 };
 
@@ -127,11 +130,12 @@ test('the pane draws the hierarchy with each node’s results, on every surface'
 
   for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
     const ui = await $.ui.mount({ ...PANE, surface });
-    expect(await ui.find({ type: 'Text', text: /1 errors, 1 warnings/ })).toBeDefined();
+    expect(await ui.find({ type: 'Text', text: /2 errors, 1 warnings/ })).toBeDefined();
     expect(await ui.find({ type: 'Button', text: 'Opp A' })).toBeDefined();
     expect(await ui.find({ type: 'Text', text: /● 1/ })).toBeDefined();
     // A node that failed its schema isn't on the tree, so it is listed under it
     expect((await ui.find({ type: 'Text', text: /type is not allowed/ }))?.text).toContain('Broken.md');
+    expect((await ui.find({ type: 'Text', text: /bad frontmatter/ }))?.text).toContain('Bad.md');
     await ui.unmount();
   }
 });
@@ -162,12 +166,12 @@ test('a focused node goes with each prompt until it is unfocused', async ($, on)
   await opened($);
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' });
   await ui.press({ key: 'select:["pane","Goal.md","Opp A.md"]' });
-  expect((await ui.find({ type: 'Text', text: /missing summary/ }))?.text).toBe('warning [summary]: missing summary');
+  expect((await ui.find({ type: 'Text', text: /missing summary/ }))?.text).toBe('warning: [summary] missing summary');
   await ui.press({ key: 'focus' });
 
   await $.prompt.submit(typed('tighten this node'));
   expect(submitted[0]?.context?.[0]).toContain('"Opp A" (opportunity) in space `ost`, in /vault/ost/Opp A.md');
-  expect(submitted[0]?.context?.[0]).toContain('- warning [summary]: missing summary');
+  expect(submitted[0]?.context?.[0]).toContain('- warning: [summary] missing summary');
 
   await ui.press({ key: 'unfocus' });
   await $.prompt.submit(typed('and now?'));

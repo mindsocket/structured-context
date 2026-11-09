@@ -83,7 +83,8 @@ function nodeFile(data: PaneData, node: Occurrence['node']): string | undefined 
   return data.path.endsWith('.md') ? data.path : `${data.path.replace(/\/$/, '')}/${file}`;
 }
 
-const describe = (a: Annotation) => `${a.severity}${a.ruleId ? ` [${a.ruleId}]` : ''}: ${a.message}`;
+// A rule result's message starts with its rule id
+const describe = (a: Annotation) => `${a.severity}: ${a.message}`;
 
 /** The text attached to each prompt while a node is focused */
 export function focusContext(node: FocusedNode): string {
@@ -128,9 +129,9 @@ function findOccurrence(occurrences: Occurrence[], key: string): Occurrence | un
 function project(data: PaneData, hierarchy?: string): { graph: Graph; tree: Tree; annotations: Annotations } {
   const graph = spaceGraphFrom(data.graph as Parameters<typeof spaceGraphFrom>[0], { hierarchy });
   const tree = buildTree(graph, 'pane');
-  // annotationsFrom reads nodeId, description, severity and ruleId of a violation: the parts the bridge keeps
-  const validation = data.validation as unknown as Parameters<typeof annotationsFrom>[0];
-  const annotations = annotationsFrom(validation, graph);
+  // Passed as validate gives it; only its node ids are plain strings here, not core's branded NodeId
+  const input = { issues: data.validation.issues, ruleViolations: data.validation.ruleViolations };
+  const annotations = annotationsFrom(input as Parameters<typeof annotationsFrom>[0], graph);
   return { graph, tree, annotations };
 }
 
@@ -244,6 +245,8 @@ export function registerMapPane(on: On): void {
     const counts = { error: 0, warning: 0, info: 0 };
     for (const results of annotations.annotations.values()) for (const a of results) counts[a.severity]++;
     for (const a of annotations.unattached) counts[a.severity]++;
+    const parseIssues = data.validation.parseIssues;
+    for (const issue of parseIssues) counts[issue.severity]++;
 
     const toggle = (key: string) =>
       update($, collapsed, (keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]));
@@ -348,6 +351,16 @@ export function registerMapPane(on: On): void {
         ))}
         {unattached.length > UNATTACHED_LIMIT && (
           <Text dimColor>{`  and ${unattached.length - UNATTACHED_LIMIT} more`}</Text>
+        )}
+        {parseIssues.length > 0 && <Text>Could not parse ({parseIssues.length}):</Text>}
+        {parseIssues.slice(0, UNATTACHED_LIMIT).map((issue) => (
+          <Text color={SEVERITY_COLOR[issue.severity]}>
+            {'  '}
+            {issue.file}: {issue.severity}: {issue.message ?? issue.type}
+          </Text>
+        ))}
+        {parseIssues.length > UNATTACHED_LIMIT && (
+          <Text dimColor>{`  and ${parseIssues.length - UNATTACHED_LIMIT} more`}</Text>
         )}
       </Box>
     );
