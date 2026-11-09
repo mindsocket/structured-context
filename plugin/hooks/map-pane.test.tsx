@@ -45,7 +45,7 @@ const statusAt = (at: number): ModStatus => ({
   report: { at, spaces: [{ name: 'ost', path: '/vault/ost', errors: 1, warnings: 1, added: [], fixed: 0 }] },
   spaces: [{ name: 'ost', errors: 1, warnings: 1 }],
 });
-const CWD: CwdContext = { spaces: ['ost'], digests: [] };
+const CWD: CwdContext = { spaces: ['ost', 'other'], digests: [] };
 
 const PANE = {
   plugin: 'structured-context',
@@ -62,7 +62,12 @@ const PANE = {
 } as const;
 
 // Stands for the engine and for scripts/mod-bridge.ts; returns the bridge commands run
-function engine(on: On, submitted: { text: string; context?: readonly string[] }[] = []) {
+function engine(
+  on: On,
+  submitted: { text: string; context?: readonly string[] }[] = [],
+  // A space whose pane load waits for this
+  hold?: { space: string; until: Promise<void> },
+) {
   const bridge: string[][] = [];
   // Each Stop the hooks run makes a newer report
   let reportAt = 1000;
@@ -84,8 +89,9 @@ function engine(on: On, submitted: { text: string; context?: readonly string[] }
     submitted.push({ text: e.text, context: e.context });
     return { text: e.text };
   });
-  on('process.run', (_, e) => {
+  on('process.run', async (_, e) => {
     const args = e.argv.slice(3);
+    if (hold && args[0] === 'pane' && args[2] === hold.space) await hold.until;
     bridge.push(args);
     const [command] = args;
     const stdout =
@@ -178,4 +184,22 @@ test('a Stop that validated the pane’s space reloads it', async ($, on) => {
   // A prompt refreshes the status but makes no new report
   await $.classic.UserPromptSubmit({ prompt: 'hi' });
   expect(loads()).toBe(before + 1);
+});
+
+test('switching space hides the old tree until the new one loads', async ($, on) => {
+  let release = () => {};
+  const until = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  engine(on, [], { space: 'other', until });
+  await opened($);
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' });
+  const picking = ui.select({ key: 'space', value: 'other' });
+  expect(await ui.find({ type: 'Text', text: 'Loading…' })).toBeDefined();
+  expect(await ui.find({ type: 'Button', text: 'Opp A' })).toBeUndefined();
+  release();
+  await picking;
+  expect(await ui.find({ type: 'Text', text: 'Loading…' })).toBeUndefined();
+  expect(await ui.find({ type: 'Button', text: 'Opp A' })).toBeDefined();
+  await ui.unmount();
 });

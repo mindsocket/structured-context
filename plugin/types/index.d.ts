@@ -41,6 +41,8 @@ export type MapView = {
   data?: PaneData;
   /** Why the last load failed */
   error?: string;
+  /** True from a load's start until its data or error arrives */
+  isLoading?: boolean;
   /** The `status.report.at` the data was loaded after, so a later report reloads it */
   loadedAt: number;
 };
