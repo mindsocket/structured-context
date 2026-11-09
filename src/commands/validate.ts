@@ -6,6 +6,38 @@ import { bundledSchemasDir } from '../schema/schema';
 import type { RuleSeverity, SpaceContext } from '../types';
 import { formatSource, nodeIssues, type ValidateSpaceOptions, validateSpace } from '../validate';
 
+/** What `validate --json` prints. The Claude Code plugin's scripts read it by this type. */
+export type ValidateJsonOutput = ReturnType<typeof validateJson>;
+
+function validateJson(
+  context: SpaceContext,
+  result: Awaited<ReturnType<typeof validateSpace>>,
+  options: ValidateSpaceOptions,
+) {
+  const issues = nodeIssues(result, options);
+  const nodeErrorCount = Object.values(issues)
+    .flatMap((byKey) => Object.values(byKey))
+    .filter((issue) => issue.severity === 'error').length;
+  const globalRuleErrorCount = result.ruleViolations.filter((v) => !v.nodeId && v.severity === 'error').length;
+  const parseErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
+  const errorCount = nodeErrorCount + parseErrorCount + globalRuleErrorCount;
+  return {
+    space: context.space.name,
+    valid: errorCount === 0,
+    validCount: result.validCount,
+    errorCount,
+    issues,
+    ruleViolations: result.ruleViolations,
+    orphanCount: result.orphans.length,
+    parseIssues: result.parseIssues,
+    unresolvedContentLinks: result.unresolvedContentLinks,
+    coverageGates: result.coverageGates,
+    contextTrimmed: result.contextTrimmed,
+    skippedByDepth: result.skippedByDepth,
+    depthLimit: result.depthLimit,
+  };
+}
+
 export async function validate(
   context: SpaceContext,
   options: { json?: boolean } & ValidateSpaceOptions = {},
@@ -14,38 +46,10 @@ export async function validate(
   const ruleCounts: Record<RuleSeverity, number> = { error: 0, warning: 0, info: 0 };
   for (const v of result.ruleViolations) ruleCounts[v.severity]++;
 
-  // JSON output mode
   if (options.json) {
-    const issues = nodeIssues(result, options);
-    const nodeErrorCount = Object.values(issues)
-      .flatMap((byKey) => Object.values(byKey))
-      .filter((issue) => issue.severity === 'error').length;
-    const globalRuleErrorCount = result.ruleViolations.filter((v) => !v.nodeId && v.severity === 'error').length;
-
-    const parseErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
-    const errorCount = nodeErrorCount + parseErrorCount + globalRuleErrorCount;
-    console.log(
-      JSON.stringify(
-        {
-          space: context.space.name,
-          valid: errorCount === 0,
-          validCount: result.validCount,
-          errorCount,
-          issues,
-          ruleViolations: result.ruleViolations,
-          orphanCount: result.orphans.length,
-          parseIssues: result.parseIssues,
-          unresolvedContentLinks: result.unresolvedContentLinks,
-          coverageGates: result.coverageGates,
-          contextTrimmed: result.contextTrimmed,
-          skippedByDepth: result.skippedByDepth,
-          depthLimit: result.depthLimit,
-        },
-        null,
-        2,
-      ),
-    );
-    return errorCount > 0 ? 1 : 0;
+    const output = validateJson(context, result, options);
+    console.log(JSON.stringify(output, null, 2));
+    return output.valid ? 0 : 1;
   }
 
   // Human-readable output
