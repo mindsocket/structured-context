@@ -6,11 +6,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cwdContext, paneData, readStatus, trimSchemaShow } from '../../plugin/scripts/mod-bridge';
+import { cwdContext, type PaneData, paneData, readStatus, trimSchemaShow } from '../../plugin/scripts/mod-bridge';
 import { runOnPrompt } from '../../plugin/scripts/on-prompt';
 import { runOnStop } from '../../plugin/scripts/on-stop';
 import { loadResult, resultsDirPath, saveResult, stateFilePath } from '../../plugin/scripts/state';
+import type { PaneData as ModPaneData } from '../../plugin/types';
 import { type IsolatedFixtures, isolateFixtures } from '../fixture-utils';
+
+// The mod's contract (plugin/types) must be self-contained, so it restates core's types: this stops typechecking if they drift
+const _sameShape: (data: PaneData) => ModPaneData = (data) => data;
 
 const SCTX_BIN = join(import.meta.dir, '../../src/index.ts');
 
@@ -90,9 +94,10 @@ describe('paneData', () => {
     const marker = {
       nodeId: 'valid.md',
       ruleId: 'kept',
-      severity: 'warning' as const,
+      category: 'coherence',
+      severity: 'warning',
       description: 'from the kept result',
-    };
+    } as PaneData['validation']['ruleViolations'][number];
     saveResult({ dir, hash: kept.hash }, 'test-space', { ruleViolations: [marker] });
 
     const reused = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });

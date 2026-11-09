@@ -9,6 +9,7 @@
 
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import type { ValidateJsonOutput } from '../../src/commands/validate';
 
 export interface HookOptions {
   /** Overrides SCTX_STATE_DIR env var */
@@ -104,13 +105,8 @@ export interface SpacesOutput {
   problems?: ConfigProblem[];
 }
 
-interface ValidateOutput {
-  /** Each node's issues of every severity (`nodeIssues`) */
-  issues?: Record<string, Record<string, ValidationIssue>>;
-  ruleViolations?: { nodeId?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
-  parseIssues?: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
-  unresolvedContentLinks?: { nodeId: string; target: string; severity: 'error' | 'warning' | 'info' }[];
-}
+/** The parts of `validate --json` the hooks read */
+type ValidateOutput = Partial<Pick<ValidateJsonOutput, 'issues' | 'ruleViolations' | 'parseIssues'>>;
 
 export function stateFilePath(sessionId: string | undefined, options?: HookOptions): string {
   const dir = options?.stateDir ?? process.env.SCTX_STATE_DIR ?? '/tmp';
@@ -311,18 +307,8 @@ export async function validateSpace(
   for (const v of output.ruleViolations ?? []) {
     if (v.nodeId || v.severity === 'info') continue;
     const issue = { kind: 'rule', message: `[${v.ruleId}] ${v.description}`, severity: v.severity };
-    // File-level rule errors are already in `errors`
-    if (v.severity === 'error' && !v.nodeId) issuesFor('').errors[`rule:${v.ruleId}`] = issue;
-    if (v.severity === 'warning') issuesFor(v.nodeId ?? '').warnings[`rule:${v.ruleId}`] = issue;
-  }
-  for (const { nodeId, target, severity } of output.unresolvedContentLinks ?? []) {
-    if (severity === 'info') continue;
-    const bucket = severity === 'error' ? issuesFor(nodeId).errors : issuesFor(nodeId).warnings;
-    bucket[`content-link:${target}`] = {
-      kind: 'content-link',
-      message: `Unresolved content link: ${target}`,
-      severity,
-    };
+    const bucket = v.severity === 'error' ? issuesFor('').errors : issuesFor('').warnings;
+    bucket[`rule:${v.ruleId}`] = issue;
   }
   return byFile;
 }
