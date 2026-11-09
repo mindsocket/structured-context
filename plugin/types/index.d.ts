@@ -15,26 +15,76 @@ export type SchemaDigest = { space: string; text: string };
 
 export type CwdContext = { spaces: string[]; digests: SchemaDigest[] };
 
-export type Severity = 'error' | 'warning' | 'info';
-
+// BEGIN generated from scripts/mod-contract.ts by `bun run build:mod-projection`; do not edit
+/** Unique key of a node within a space. Supplied by the plugin that produced the node. */
+export type NodeId = string & {
+  readonly __brand: 'NodeId';
+};
+export type ParseIssue = {
+  /** Source identifier of the file or item (filename or heading title). */
+  file: string;
+  /** error: prevented the file from producing nodes; warning: file was silently excluded. */
+  severity: 'error' | 'warning';
+  /** no-type: no type field;
+   *  parse: parse failure (syntax issue or unexpected content);
+   *  plugins may choose to provide additional types. */
+  type: 'no-type' | 'parse' | string;
+  /** Human-readable detail. */
+  message?: string;
+  /** 1-indexed line number in source file, if available. */
+  line?: number;
+  /** 1-indexed column number in source file, if available. */
+  column?: number;
+};
+/** Rule categories for organizing executable validation rules */
+export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-practice';
+/**
+ * Rule violation severity. Only `error` fails validation; `warning` and `info` are reported only.
+ * A rule's severity defaults from its category and may be overridden per rule.
+ */
+export type RuleSeverity = 'error' | 'warning' | 'info';
+export type RuleViolation = {
+  /** Id of the violating node. Absent for global-scope rules. */
+  nodeId?: NodeId;
+  ruleId: string;
+  category: RuleCategory;
+  severity: RuleSeverity;
+  description: string;
+  /** Cited evidence or reasoning from evaluation (for semantic judge rules). */
+  evidence?: string;
+  /** The verdict that failed the rule (semantic rules). */
+  verdict?: string;
+  /** User-facing guidance declared for that verdict (semantic rules). */
+  guidance?: string;
+};
+export type ValidationIssueKind = (readonly [
+  'schema',
+  'duplicate',
+  'broken-link',
+  'hierarchy',
+  'rule',
+  'gated',
+  'content-link',
+])[number];
+export interface FileValidationIssue {
+  /** The check it came from. */
+  kind: ValidationIssueKind;
+  message: string;
+  /** How serious the issue is; consumers read it rather than infer it from `kind`. */
+  severity: RuleSeverity;
+  /** 1-indexed line number in source file, if available. */
+  line?: number;
+  /** 1-indexed column number in source file, if available. */
+  column?: number;
+}
 /** The parts of `validate --json` the pane reads, as validate gives them */
 export type PaneValidation = {
-  issues: Record<
-    string,
-    Record<
-      string,
-      {
-        kind: 'schema' | 'duplicate' | 'broken-link' | 'hierarchy' | 'rule' | 'gated' | 'content-link';
-        message: string;
-        severity: Severity;
-        line?: number;
-        column?: number;
-      }
-    >
-  >;
-  ruleViolations: { nodeId?: string; ruleId: string; severity: Severity; description: string }[];
-  parseIssues: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
+  issues: Record<string, Record<string, FileValidationIssue>>;
+  ruleViolations: RuleViolation[];
+  parseIssues: ParseIssue[];
 };
+
+// END generated
 
 /** A space's graph (the space graph format, bodies left out) and validation results */
 export type PaneData = {

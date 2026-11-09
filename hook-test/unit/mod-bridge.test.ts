@@ -10,11 +10,7 @@ import { cwdContext, type PaneData, paneData, readStatus, trimSchemaShow } from 
 import { runOnPrompt } from '../../plugin/scripts/on-prompt';
 import { runOnStop } from '../../plugin/scripts/on-stop';
 import { loadResult, resultsDirPath, saveResult, stateFilePath } from '../../plugin/scripts/state';
-import type { PaneData as ModPaneData } from '../../plugin/types';
 import { type IsolatedFixtures, isolateFixtures } from '../fixture-utils';
-
-// The mod's contract (plugin/types) must be self-contained, so it restates core's types: this stops typechecking if they drift
-const _sameShape: (data: PaneData) => ModPaneData = (data) => data;
 
 const SCTX_BIN = join(import.meta.dir, '../../src/index.ts');
 
