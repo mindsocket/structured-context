@@ -6,9 +6,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { renameSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import JSON5 from 'json5';
 import { runOnPrompt } from '../../plugin/scripts/on-prompt';
 import { runOnStop } from '../../plugin/scripts/on-stop';
 import { loadState, stateFilePath } from '../../plugin/scripts/state';
@@ -19,6 +20,35 @@ const SCTX_BIN = join(import.meta.dir, '../../src/index.ts');
 const validWithParent = (parent: string) =>
   `---\ntype: mission\nparent: "[[${parent}]]"\nstatus: identified\n---\n\n# Test Title\n`;
 const validWithContentLink = `${validWithParent('Root')}\nSee [[Missing Note]].\n`;
+// Breaks the warning-severity rule in WARNING_SCHEMA
+const validPaused = validWithParent('Root').replace('status: identified', 'status: paused');
+
+/** strategy_general plus a coherence rule, which is a warning by default */
+const WARNING_SCHEMA = {
+  ...JSON5.parse(readFileSync(join(import.meta.dir, '../../schemas/strategy_general.json'), 'utf-8')),
+  $id: 'sctx://hook_test_warning',
+  $metadata: {
+    imports: ['sctx://core/_strategy_general'],
+    rules: [
+      {
+        id: 'mission-not-paused',
+        category: 'coherence',
+        type: 'mission',
+        description: 'Missions should not be paused',
+        expression: "current.status != 'paused'",
+      },
+    ],
+  },
+};
+
+function useWarningSchema() {
+  const schema = join(fixtures.fixtureDir, 'warning_schema.json');
+  writeFileSync(schema, JSON.stringify(WARNING_SCHEMA));
+  writeFileSync(
+    fixtures.configPath,
+    JSON.stringify({ spaces: [{ name: 'test-space', path: fixtures.vaultDir, schema }] }),
+  );
+}
 
 let fixtures: IsolatedFixtures;
 let stateDir: string;
@@ -160,40 +190,50 @@ describe('State', () => {
 });
 
 describe('Warnings', () => {
+  beforeEach(useWarningSchema);
+
   it('reports a new warning without blocking', async () => {
     await prompt();
-    write('valid.md', validWithContentLink);
+    write('valid.md', validPaused);
 
     const result = await stop();
     expect(result.hasNewErrors).toBe(false);
     expect(result.errorMessage).toBeUndefined();
     expect(result.warningMessage).toContain('structured-context: new validation warnings');
-    expect(result.warningMessage).toContain('Missing Note');
+    expect(result.warningMessage).toContain('mission-not-paused');
   });
 
   it('does not report warnings already present in the baseline', async () => {
-    write('valid.md', validWithContentLink);
+    write('valid.md', validPaused);
     await prompt();
-    write('valid.md', `${validWithContentLink}\nMore text.\n`);
+    write('valid.md', `${validPaused}\nMore text.\n`);
 
     expect(await stop()).toEqual({ hasNewErrors: false });
   });
 
   it('reports both errors and warnings when both are new', async () => {
     await prompt();
-    write('valid.md', validWithContentLink.replace('[[Root]]', '[[Ghost Node]]'));
+    write('valid.md', validPaused.replace('[[Root]]', '[[Ghost Node]]'));
 
     const result = await stop();
     expect(result.hasNewErrors).toBe(true);
     expect(result.errorMessage).toContain('Ghost Node');
-    expect(result.warningMessage).toContain('Missing Note');
+    expect(result.warningMessage).toContain('mission-not-paused');
+  });
+
+  it('leaves out unresolved content links, which validate reports as info', async () => {
+    await prompt();
+    write('valid.md', validWithContentLink);
+
+    expect(await stop()).toEqual({ hasNewErrors: false });
   });
 });
 
 describe('Report', () => {
   it('records new and fixed issues for the mod to show', async () => {
     await prompt();
-    write('valid.md', validWithContentLink.replace('[[Root]]', '[[Ghost Node]]'));
+    useWarningSchema();
+    write('valid.md', validPaused.replace('[[Root]]', '[[Ghost Node]]'));
     write('broken.md', '---\ntype: mission\nparent: "[[Root]]"\nstatus: identified\n---\n\n# Broken Note\n');
 
     await stop();

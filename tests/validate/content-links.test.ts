@@ -43,11 +43,12 @@ describe('unresolved content links', () => {
   it('resolves links to files the space read but excluded, and reports missing targets', async () => {
     const result = await validateSpace(createSpaceContext('links', config, { configDir: dir }));
     expect(result.unresolvedContentLinks.map((l) => l.target).sort()).toEqual(['Missing', 'gone.md']);
+    expect(result.unresolvedContentLinks.every((l) => l.severity === 'info')).toBe(true);
   });
 
   it('reports the same for a single file', async () => {
     const result = (await validateFile(join(space, 'A.md'), config, { configDir: dir })) as FileValidationResult;
-    expect(Object.keys(result.warnings).sort()).toEqual(['content-link:Missing', 'content-link:gone.md']);
-    expect(result.warnings['content-link:Missing']?.severity).toBe('info');
+    expect(Object.keys(result.issues).sort()).toEqual(['content-link:Missing', 'content-link:gone.md']);
+    expect(result.issues['content-link:Missing']?.severity).toBe('info');
   });
 });
