@@ -106,7 +106,7 @@ describe('validateFile matches validateSpace', () => {
           const result = await validateFile(join(dir, file), config, { includeGated, configDir: import.meta.dir });
           if (!result.inSpace) throw new Error(`expected ${file} to be in space`);
 
-          const fileRules = Object.keys({ ...result.errors, ...result.warnings })
+          const fileRules = Object.keys(result.issues)
             .filter((k) => k.startsWith('rule:'))
             .map((k) => k.slice('rule:'.length))
             .sort();
@@ -116,7 +116,7 @@ describe('validateFile matches validateSpace', () => {
             .sort();
           expect(fileRules).toEqual(spaceRules);
 
-          const fileGated = Object.keys(result.warnings).some((k) => k.startsWith('gated:'));
+          const fileGated = Object.keys(result.issues).some((k) => k.startsWith('gated:'));
           const spaceGated = space.coverageGates.some((g) => g.gatedNodeIds.some((id) => id === file));
           expect(fileGated).toBe(spaceGated);
         }
@@ -128,15 +128,15 @@ describe('validateFile matches validateSpace', () => {
     const config: Config = { spaces: [{ name: 'space', path: GATING_DIR, schema: SCHEMA_PATH }] };
     const result = await validateFile(join(GATING_DIR, 'Child Opportunity.md'), config, { configDir: import.meta.dir });
     if (!result.inSpace) throw new Error('expected file to be in space');
-    expect(result.warnings['gated:Bad Outcome.md']?.message).toContain('not evaluated');
-    expect(result.warnings['rule:solution-quantity']).toBeUndefined();
+    expect(result.issues['gated:Bad Outcome.md']?.message).toContain('not evaluated');
+    expect(result.issues['rule:solution-quantity']).toBeUndefined();
 
     const forced = await validateFile(join(GATING_DIR, 'Child Opportunity.md'), config, {
       includeGated: true,
       configDir: import.meta.dir,
     });
     if (!forced.inSpace) throw new Error('expected file to be in space');
-    expect(forced.warnings['gated:Bad Outcome.md']?.message).toContain('evaluated anyway');
-    expect(forced.warnings['rule:solution-quantity']).toBeDefined();
+    expect(forced.issues['gated:Bad Outcome.md']?.message).toContain('evaluated anyway');
+    expect(forced.issues['rule:solution-quantity']).toBeDefined();
   });
 });

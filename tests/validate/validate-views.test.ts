@@ -56,7 +56,7 @@ describe('validateFile is a view over the validateSpace core', () => {
       const result = (await validateFile(join(context.space.path, file), config, {
         configDir: import.meta.dir,
       })) as FileValidationResult;
-      const actual = Object.keys({ ...result.errors, ...result.warnings }).map(normaliseKey);
+      const actual = Object.keys({ ...result.issues, ...result.issues }).map(normaliseKey);
       expect(actual.sort()).toEqual([...new Set(expected)].sort());
     }
   });
@@ -122,7 +122,7 @@ describe('judging a node with an expression rule violation', () => {
       const { config, dir, file } = setup(hierarchy, 'error');
       const judge = new FakeJudgeProvider({ pass: true });
       const result = (await validateFileWith(file, config, { judge, configDir: dir })) as FileValidationResult;
-      expect(result.errors['rule:never-holds']).toBeDefined();
+      expect(result.issues['rule:never-holds']).toBeDefined();
       expect(judgedRules(judge)).toEqual([]);
     });
 
@@ -130,7 +130,7 @@ describe('judging a node with an expression rule violation', () => {
       const { config, dir, file } = setup(hierarchy, 'info');
       const judge = new FakeJudgeProvider({ pass: true });
       const result = (await validateFileWith(file, config, { judge, configDir: dir })) as FileValidationResult;
-      expect(result.warnings['rule:never-holds']).toBeDefined();
+      expect(result.issues['rule:never-holds']).toBeDefined();
       expect(judgedRules(judge)).toEqual(['sound']);
     });
   }

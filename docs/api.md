@@ -22,13 +22,16 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `spaceGraphFrom(data, options?)` | Build a `SpaceGraph` from that JSON. `options.hierarchy` names the hierarchy that structures it (default: the main hierarchy). |
 | `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. Semantic rules run only when `semantic` is passed; it takes the same values as `sctx validate --semantic`, with the provider coming from config and the environment. |
 | `validateFile(filePath, config)` | Validate a single file within its space. |
+| `nodeIssues(result, options?)` | Each node's issues from a `ValidationResult`, by node id: the per-node view `validateFile` and `sctx validate --json` give. |
 | `listSchemas(options?)` | List the schemas available to a config: bundled, plugin-contributed and configured. |
 | `formatWikilink(target, alias?)` | Format a target into an Obsidian wikilink (`[[target]]` or `[[target|alias]]`). |
 | `parseWikilink(link)` | Parse a wikilink or target string into `{ target, anchor?, displayText? }`. |
 | `wikilinkToTarget(link)` | Extract the plain target lookup key from a wikilink string. |
 | `buildTargetIndex(nodes)` | Build a fast lookup index mapping link target strings to nodes (marking ambiguous targets as `null`). |
 
-`ValidationResult.ruleViolations` carries each violation's effective `severity` (`error`, `warning` or `info`). Only `error` severity violations should be treated as failures; `validateFile` reports `warning` and `info` rule violations under `warnings` rather than `errors`. Every issue `validateFile` returns carries a `severity`, as does each of `ValidationResult.unresolvedContentLinks` (`info`). Read it rather than deriving severity from an issue's `kind`.
+`ValidationResult.ruleViolations` carries each violation's effective `severity` (`error`, `warning` or `info`). Only `error` severity violations should be treated as failures.
+
+`nodeIssues(result)` gathers every result about a node into one map per node: schema, duplicate id, broken link, hierarchy, rule, gated and unresolved content link issues, each keyed by a composite id such as `rule:<id>` and carrying its `kind`, `message` and `severity`. Read `severity` rather than deriving it from `kind`. Pass `{ includeGated }` as validation ran, so a gated node's note says whether its rules were evaluated. Rule violations without a node and parse issues stay in their own parts of the result. `validateFile` returns one node's map as `issues`.
 
 Each `ValidationResult` entry about a node carries its `nodeId`, and, where the entry is tied to a location, an optional `source` (`{ file, line?, column? }`). `duplicateErrors` lists a `sources` location for each node that shares the `id`. See [Validation results and nodes](concepts.md#validation-results-and-nodes).
 

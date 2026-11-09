@@ -57,8 +57,8 @@ describe('rule severity', () => {
       expect(exitCode).toBe(1);
       expect(failing.valid).toBe(false);
       expect(failing.errorCount).toBe(1);
-      expect(failing.errors['Blocked goal.md']['rule:not-blocked'].severity).toBe('error');
-      expect(failing.errors['Blocked goal.md']['rule:always-warning']).toBeUndefined();
+      expect(failing.issues['Blocked goal.md']['rule:not-blocked'].severity).toBe('error');
+      expect(failing.issues['Blocked goal.md']['rule:always-warning'].severity).toBe('warning');
       expect(failing.ruleViolations).toContainEqual({
         nodeId: 'Blocked goal.md',
         ruleId: 'not-blocked',
@@ -81,15 +81,15 @@ describe('rule severity', () => {
       const result = await validateFile(join(CLEAN_DIR, 'Clean goal.md'), config, { configDir: FIXTURES_DIR });
       if (!result.inSpace) throw new Error('expected file to be in space');
       expect(result.errorCount).toBe(0);
-      expect(result.warnings['rule:always-info']?.severity).toBe('info');
-      expect(result.warnings['rule:always-warning']?.severity).toBe('warning');
+      expect(result.issues['rule:always-info']?.severity).toBe('info');
+      expect(result.issues['rule:always-warning']?.severity).toBe('warning');
     });
 
     it('reports error severity rule violations as errors', async () => {
       const result = await validateFile(join(FAILING_DIR, 'Blocked goal.md'), config, { configDir: FIXTURES_DIR });
       if (!result.inSpace) throw new Error('expected file to be in space');
       expect(result.errorCount).toBe(1);
-      expect(result.errors['rule:not-blocked']).toEqual({
+      expect(result.issues['rule:not-blocked']).toEqual({
         kind: 'rule',
         message: '[not-blocked] Goals must not be blocked (workflow rule overridden to error)',
         severity: 'error',

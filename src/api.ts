@@ -85,4 +85,4 @@ export type {
   ValidateFileOutput,
 } from './types';
 export type { ValidationResult } from './validate';
-export { validateFile, validateSpace } from './validate';
+export { nodeIssues, validateFile, validateSpace } from './validate';

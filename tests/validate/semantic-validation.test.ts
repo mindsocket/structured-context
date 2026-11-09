@@ -107,7 +107,7 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       })) as FileValidationResult;
 
       expect(result.inSpace).toBe(true);
-      expect(result.errors['rule:opportunity-customer-voice']).toBeUndefined();
+      expect(result.issues['rule:opportunity-customer-voice']).toBeUndefined();
     });
 
     it('evaluates semantic rule and reports evidence on violation when semantic: true', async () => {
@@ -123,7 +123,7 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
 
       expect(result.inSpace).toBe(true);
       // best-practice rules default to non-error severity, so they land in warnings
-      const ruleError = result.warnings['rule:opportunity-customer-voice'];
+      const ruleError = result.issues['rule:opportunity-customer-voice'];
       expect(ruleError).toBeDefined();
       expect(ruleError?.kind).toBe('rule');
       expect(ruleError?.message).toContain('Evidence: Opportunity is framed in solution space.');
@@ -169,15 +169,15 @@ describe('validateFile judges only the target and its gate-capable ancestor rule
   it('still lets a failing ancestor rule gate the target', async () => {
     const judge = new FakeJudgeProvider({ 'goal-sound': { verdict: 'fail' } });
     const result = await run(judge, 'S.md');
-    expect(result.warnings['rule:step-sound']).toBeUndefined();
-    expect(Object.keys(result.warnings).some((k) => k.startsWith('gated:'))).toBe(true);
+    expect(result.issues['rule:step-sound']).toBeUndefined();
+    expect(Object.keys(result.issues).some((k) => k.startsWith('gated:'))).toBe(true);
     expect(judge.callHistory.some((c) => c.node.id === 'S.md')).toBe(false);
   });
 
   it('with includeGated judges the target even when an ancestor fails', async () => {
     const judge = new FakeJudgeProvider({ 'goal-sound': { verdict: 'fail' }, 'step-sound': { verdict: 'fail' } });
     const result = await run(judge, 'S.md', { includeGated: true });
-    expect(result.warnings['rule:step-sound']).toBeDefined();
+    expect(result.issues['rule:step-sound']).toBeDefined();
   });
 
   it('judges nothing when the filter excludes every semantic rule', async () => {

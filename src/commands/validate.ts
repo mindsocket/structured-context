@@ -4,7 +4,7 @@ import { getConfigSourceFiles } from '../config';
 import { resolveSpacePluginSchemas } from '../plugins/util';
 import { bundledSchemasDir } from '../schema/schema';
 import type { FileValidationIssue, RuleSeverity, SpaceContext } from '../types';
-import { formatSource, ruleViolationMessage, type ValidateSpaceOptions, validateSpace } from '../validate';
+import { formatSource, nodeIssues, ruleViolationMessage, type ValidateSpaceOptions, validateSpace } from '../validate';
 
 export async function validate(
   context: SpaceContext,
@@ -16,40 +16,14 @@ export async function validate(
 
   // JSON output mode
   if (options.json) {
-    const errorsByFile: Record<string, Record<string, FileValidationIssue>> = {};
-
-    const addError = (file: string, key: string, kind: string, message: string, severity: RuleSeverity = 'error') => {
-      if (!errorsByFile[file]) errorsByFile[file] = {};
-      errorsByFile[file]![key] = { kind, message, severity };
-    };
-
-    for (const { nodeId, issues } of result.nodeErrors) {
-      for (const { message, dedupeKey } of issues) {
-        addError(nodeId, `schema:${dedupeKey}`, 'schema', message);
-      }
-    }
-    for (const { nodeId, parent, error } of result.refErrors) {
-      addError(nodeId, `broken-link:${parent}`, 'broken-link', `${parent} → ${error}`);
-    }
-    for (const { id, sources } of result.duplicateErrors) {
-      const where = sources.length > 0 ? `: ${sources.map(formatSource).join(', ')}` : '';
-      addError(id, `duplicate:${id}`, 'duplicate', `Duplicate id "${id}" is used by ${sources.length} nodes${where}`);
-    }
-    for (const v of result.ruleViolations) {
-      if (v.nodeId && v.severity === 'error') {
-        addError(v.nodeId, `rule:${v.ruleId}`, 'rule', ruleViolationMessage(v), v.severity);
-      }
-    }
+    const issues = nodeIssues(result, options);
+    const nodeErrorCount = Object.values(issues)
+      .flatMap((byKey) => Object.values(byKey))
+      .filter((issue) => issue.severity === 'error').length;
     const globalRuleErrorCount = result.ruleViolations.filter((v) => !v.nodeId && v.severity === 'error').length;
-    for (const v of result.hierarchyViolations) {
-      addError(v.nodeId, `hierarchy:${v.description}`, 'hierarchy', v.description);
-    }
 
     const parseErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
-    const errorCount =
-      Object.values(errorsByFile).reduce((sum, errs) => sum + Object.keys(errs).length, 0) +
-      parseErrorCount +
-      globalRuleErrorCount;
+    const errorCount = nodeErrorCount + parseErrorCount + globalRuleErrorCount;
     console.log(
       JSON.stringify(
         {
@@ -57,7 +31,7 @@ export async function validate(
           valid: errorCount === 0,
           validCount: result.validCount,
           errorCount,
-          errors: errorsByFile,
+          issues,
           ruleViolations: result.ruleViolations,
           orphanCount: result.orphans.length,
           parseIssues: result.parseIssues,

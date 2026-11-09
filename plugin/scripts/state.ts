@@ -105,10 +105,10 @@ export interface SpacesOutput {
 }
 
 interface ValidateOutput {
-  errors?: Record<string, Record<string, ValidationIssue>>;
+  /** Each node's issues of every severity (`nodeIssues`) */
+  issues?: Record<string, Record<string, ValidationIssue>>;
   ruleViolations?: { nodeId?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
   parseIssues?: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
-  unresolvedContentLinks?: { nodeId: string; target: string }[];
 }
 
 export function stateFilePath(sessionId: string | undefined, options?: HookOptions): string {
@@ -235,7 +235,7 @@ export function hashSpace(space: SpaceInfo, configFiles: string[]): string {
 
 /**
  * Validate a whole space and group its errors and warnings by file label.
- * Info-level rule violations are left out: they are not worth another turn from Claude.
+ * Info-level results are left out, by the severity validate gives each: they are not worth another turn from Claude.
  * Throws when validation could not run (for example a schema that fails to load), so the hook reports
  * that once instead of treating the space as clean.
  */
@@ -253,8 +253,11 @@ export async function validateSpace(name: string, options?: HookOptions): Promis
     return byFile[label];
   };
 
-  for (const [label, errors] of Object.entries(output.errors ?? {})) {
-    Object.assign(issuesFor(label).errors, errors);
+  for (const [label, issues] of Object.entries(output.issues ?? {})) {
+    for (const [key, issue] of Object.entries(issues)) {
+      if (issue.severity === 'error') issuesFor(label).errors[key] = issue;
+      else if (issue.severity === 'warning') issuesFor(label).warnings[key] = issue;
+    }
   }
   for (const issue of output.parseIssues ?? []) {
     if (issue.severity === 'error') {
@@ -264,17 +267,12 @@ export async function validateSpace(name: string, options?: HookOptions): Promis
       };
     }
   }
+  // Rule violations without a node aren't in `issues`
   for (const v of output.ruleViolations ?? []) {
+    if (v.nodeId || v.severity === 'info') continue;
     const issue = { kind: 'rule', message: `[${v.ruleId}] ${v.description}`, severity: v.severity };
-    // File-level rule errors are already in `errors`
-    if (v.severity === 'error' && !v.nodeId) issuesFor('').errors[`rule:${v.ruleId}`] = issue;
-    if (v.severity === 'warning') issuesFor(v.nodeId ?? '').warnings[`rule:${v.ruleId}`] = issue;
-  }
-  for (const { nodeId, target } of output.unresolvedContentLinks ?? []) {
-    issuesFor(nodeId).warnings[`content-link:${target}`] = {
-      kind: 'content-link',
-      message: `Unresolved content link: ${target}`,
-    };
+    if (v.severity === 'error') issuesFor('').errors[`rule:${v.ruleId}`] = issue;
+    else issuesFor('').warnings[`rule:${v.ruleId}`] = issue;
   }
   return byFile;
 }

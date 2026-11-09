@@ -48,7 +48,7 @@ describe('unresolved content links', () => {
 
   it('reports the same for a single file', async () => {
     const result = (await validateFile(join(space, 'A.md'), config, { configDir: dir })) as FileValidationResult;
-    expect(Object.keys(result.warnings).sort()).toEqual(['content-link:Missing', 'content-link:gone.md']);
-    expect(result.warnings['content-link:Missing']?.severity).toBe('info');
+    expect(Object.keys(result.issues).sort()).toEqual(['content-link:Missing', 'content-link:gone.md']);
+    expect(result.issues['content-link:Missing']?.severity).toBe('info');
   });
 });
