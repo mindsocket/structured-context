@@ -189,3 +189,33 @@ describe('Warnings', () => {
     expect(result.warningMessage).toContain('Missing Note');
   });
 });
+
+describe('Report', () => {
+  it('records new and fixed issues for the mod to show', async () => {
+    await prompt();
+    write('valid.md', validWithContentLink.replace('[[Root]]', '[[Ghost Node]]'));
+    write('broken.md', '---\ntype: mission\nparent: "[[Root]]"\nstatus: identified\n---\n\n# Broken Note\n');
+
+    await stop();
+
+    const { report, latest } = loadState(stateFilePath(sessionId, opts()));
+    const space = report!.spaces[0]!;
+    expect(space.name).toBe('test-space');
+    expect(space.fixed).toBeGreaterThan(0);
+    expect(space.added.map(({ file, severity }) => `${file} ${severity}`)).toEqual(
+      expect.arrayContaining(['valid.md error', 'valid.md warning']),
+    );
+    expect(latest['test-space']!.counts).toEqual({ errors: space.errors, warnings: space.warnings });
+  });
+
+  it('keeps the previous report when no space changed', async () => {
+    await prompt();
+    write('valid.md', validWithParent('Ghost Node'));
+    await stop();
+    const first = loadState(stateFilePath(sessionId, opts())).report;
+
+    await prompt();
+    await stop();
+    expect(loadState(stateFilePath(sessionId, opts())).report).toEqual(first);
+  });
+});

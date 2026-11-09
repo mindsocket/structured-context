@@ -38,6 +38,37 @@ export interface SpaceIssueKeys {
   hash: string;
   /** Issue keys by file label; files without issues are omitted. Space-level issues use the label ''. */
   issues: Record<string, string[]>;
+  /** Absent from state written by an older plugin */
+  counts?: IssueCounts;
+}
+
+export interface IssueCounts {
+  errors: number;
+  warnings: number;
+}
+
+/** An issue the last Stop found that its baseline lacked */
+export interface ReportedIssue {
+  /** File label within the space; '' for space-level issues */
+  file: string;
+  severity: 'error' | 'warning';
+  message: string;
+}
+
+/** What the last Stop found in one space, compared with the space before the turn */
+export interface SpaceReport extends IssueCounts {
+  name: string;
+  path: string;
+  added: ReportedIssue[];
+  /** Issues the baseline had that are gone */
+  fixed: number;
+}
+
+/** The last Stop's findings, read by the Claude Code mod (`hooks/register.tsx`) to draw them */
+export interface TurnReport {
+  /** Milliseconds since the epoch */
+  at: number;
+  spaces: SpaceReport[];
 }
 
 export interface SessionState {
@@ -47,6 +78,8 @@ export interface SessionState {
   baseline: Record<string, SpaceIssueKeys>;
   /** Per space: the most recent issue keys, reused while the hash still matches */
   latest: Record<string, SpaceIssueKeys>;
+  /** The last Stop's findings for the spaces that changed */
+  report?: TurnReport;
 }
 
 export interface SpaceInfo {
@@ -86,7 +119,7 @@ export function stateFilePath(sessionId: string | undefined, options?: HookOptio
 export function loadState(file: string): SessionState {
   if (!existsSync(file)) return { baseline: {}, latest: {} };
   const state = JSON.parse(readFileSync(file, 'utf-8')) as Partial<SessionState>;
-  return { baseline: state.baseline ?? {}, latest: state.latest ?? {}, reported: state.reported };
+  return { baseline: state.baseline ?? {}, latest: state.latest ?? {}, reported: state.reported, report: state.report };
 }
 
 export function saveState(file: string, state: SessionState): void {
@@ -255,6 +288,19 @@ export function issueKeys(byFile: Record<string, FileIssues>): Record<string, st
   );
 }
 
+export function issueCounts(byFile: Record<string, FileIssues>): IssueCounts {
+  const counts = { errors: 0, warnings: 0 };
+  for (const { errors, warnings } of Object.values(byFile)) {
+    counts.errors += Object.keys(errors).length;
+    counts.warnings += Object.keys(warnings).length;
+  }
+  return counts;
+}
+
+export function spaceKeys(space: SpaceInfo, hash: string, byFile: Record<string, FileIssues>): SpaceIssueKeys {
+  return { path: space.path, hash, issues: issueKeys(byFile), counts: issueCounts(byFile) };
+}
+
 /**
  * Record a baseline for each space that doesn't have one yet, reusing the latest issue keys
  * when the space's hash still matches them. Returns whether anything was recorded.
@@ -270,10 +316,7 @@ export async function recordBaselines(
     pending.map(async (space) => {
       const hash = hashSpace(space, configFiles);
       const latest = state.latest[space.name];
-      const keys =
-        latest?.hash === hash
-          ? latest
-          : { path: space.path, hash, issues: issueKeys(await validateSpace(space.name, options)) };
+      const keys = latest?.hash === hash ? latest : spaceKeys(space, hash, await validateSpace(space.name, options));
       state.latest[space.name] = keys;
       state.baseline[space.name] = keys;
     }),
