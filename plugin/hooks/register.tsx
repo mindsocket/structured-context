@@ -37,7 +37,10 @@ async function refreshStatus($: EngineInterface): Promise<void> {
   if (!text) return;
   const next = JSON.parse(text) as ModStatus;
   await update($, status, () => next);
-  $.ui.status(next.spaces.length > 0 ? next.spaces.map(countsLine).join(' · ') : undefined);
+  // `next.spaces` holds every space the session baselined, including ones edited outside the directory
+  const { spaces: here } = await read($, cwd);
+  const shown = next.spaces.filter((space) => here.includes(space.name));
+  $.ui.status(shown.length > 0 ? shown.map(countsLine).join(' · ') : undefined);
 }
 
 async function refreshCwd($: EngineInterface): Promise<void> {
@@ -115,7 +118,8 @@ export const register: Register = (on) => {
         $.tool.register({ name, description, ...('inputSchema' in rest ? { inputSchema: rest.inputSchema } : {}) }),
       ),
     );
-    await Promise.all([refreshCwd($), refreshStatus($)]);
+    await refreshCwd($);
+    await refreshStatus($);
     return next(e);
   });
 
@@ -153,8 +157,8 @@ export const register: Register = (on) => {
 
   on('classic.Stop', async ($, e, next) => {
     const result = await next(e);
-    await refreshStatus($);
     if (await read($, isDigestStale)) await refreshCwd($);
+    await refreshStatus($);
     return result;
   }).catch((_, e, next) => next(e));
 

@@ -20,10 +20,11 @@ const STATUS: ModStatus = {
   spaces: [
     { name: 'ost', errors: 1, warnings: 2 },
     { name: 'personal', errors: 0, warnings: 0 },
+    { name: 'elsewhere', errors: 3, warnings: 0 },
   ],
 };
 
-const CWD: CwdContext = { spaces: ['ost'], digests: [{ space: 'ost', text: 'vision → mission → goal' }] };
+const CWD: CwdContext = { spaces: ['ost', 'personal'], digests: [{ space: 'ost', text: 'vision → mission → goal' }] };
 
 const BAND = {
   plugin: 'structured-context',
@@ -136,9 +137,10 @@ test('the validate tool answers with the CLI output', async ($, on) => {
   expect(refused.deny).toBe('Give a space name or a file path.');
 });
 
-test('the status line shows each space with only its non-zero counts', async ($, on) => {
+test('the status line shows the spaces in the directory, with only their non-zero counts', async ($, on) => {
   const statuses: (string | undefined)[] = [];
   engine(on, [], statuses);
+  await $.session.start({ cwd: '/vault', surface: 'terminal', isInteractive: true });
   await $.classic.Stop(stop);
   expect(statuses.at(-1)).toBe('ost ❌ 1 ⚠️ 2 · personal ✓');
 });
