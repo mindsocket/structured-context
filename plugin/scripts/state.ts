@@ -109,6 +109,7 @@ interface ValidateOutput {
   issues?: Record<string, Record<string, ValidationIssue>>;
   ruleViolations?: { nodeId?: string; ruleId: string; severity: 'error' | 'warning' | 'info'; description: string }[];
   parseIssues?: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
+  unresolvedContentLinks?: { nodeId: string; target: string; severity: 'error' | 'warning' | 'info' }[];
 }
 
 export function stateFilePath(sessionId: string | undefined, options?: HookOptions): string {
@@ -268,11 +269,11 @@ export function hashSpace(space: SpaceInfo, configFiles: string[]): string {
 
 /**
  * Validate a whole space and group its errors and warnings by file label.
- * Info-level results are left out, by the severity validate gives each: they are not worth another turn from Claude.
+ * Info-level results are left out, by the severity validate gives each: they are not worth another
+ * turn from Claude. With `keep`, the raw output is also saved for the map pane.
  * Throws when validation could not run (for example a schema that fails to load), so the hook reports
  * that once instead of treating the space as clean.
  */
-/** Validate a space and key its issues by file. With `keep`, the raw output is also saved for the map pane. */
 export async function validateSpace(
   name: string,
   options?: HookOptions,
@@ -310,8 +311,18 @@ export async function validateSpace(
   for (const v of output.ruleViolations ?? []) {
     if (v.nodeId || v.severity === 'info') continue;
     const issue = { kind: 'rule', message: `[${v.ruleId}] ${v.description}`, severity: v.severity };
-    if (v.severity === 'error') issuesFor('').errors[`rule:${v.ruleId}`] = issue;
-    else issuesFor('').warnings[`rule:${v.ruleId}`] = issue;
+    // File-level rule errors are already in `errors`
+    if (v.severity === 'error' && !v.nodeId) issuesFor('').errors[`rule:${v.ruleId}`] = issue;
+    if (v.severity === 'warning') issuesFor(v.nodeId ?? '').warnings[`rule:${v.ruleId}`] = issue;
+  }
+  for (const { nodeId, target, severity } of output.unresolvedContentLinks ?? []) {
+    if (severity === 'info') continue;
+    const bucket = severity === 'error' ? issuesFor(nodeId).errors : issuesFor(nodeId).warnings;
+    bucket[`content-link:${target}`] = {
+      kind: 'content-link',
+      message: `Unresolved content link: ${target}`,
+      severity,
+    };
   }
   return byFile;
 }
