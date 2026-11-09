@@ -85,16 +85,20 @@ describe('cwdContext', () => {
 describe('paneValidation', () => {
   it('sorts validate output into the parts annotationsFrom attaches, counting rule errors once', () => {
     const validation = paneValidation({
-      errors: {
+      issues: {
         'Goal.md': {
           'schema:a': { kind: 'schema', message: 'missing status', severity: 'error' },
           'rule:r1': { kind: 'rule', message: '[r1] too long', severity: 'error' },
           'hierarchy:x': { kind: 'hierarchy', message: 'wrong parent type', severity: 'error' },
+          'content-link:Nowhere': {
+            kind: 'content-link',
+            message: 'Unresolved content link: Nowhere',
+            severity: 'info',
+          },
         },
       },
       ruleViolations: [{ nodeId: 'Goal.md', ruleId: 'r1', severity: 'error', description: 'too long' }],
       parseIssues: [{ file: 'Bad.md', severity: 'error', type: 'yaml', message: 'bad frontmatter' }],
-      unresolvedContentLinks: [{ nodeId: 'Goal.md', target: 'Nowhere', severity: 'info' }],
     });
     expect(validation.nodeErrors).toEqual([
       { nodeId: 'Goal.md', issues: [{ message: 'missing status' }] },
@@ -130,6 +134,10 @@ describe('paneData', () => {
     writeFileSync(join(fixtures.vaultDir, 'valid.md'), '---\ntype: mission\nstatus: identified\n---\n\n# Changed\n');
     const fresh = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });
     expect(fresh.validation.ruleViolations).not.toContainEqual(marker);
+
+    writeFileSync(join(fixtures.vaultDir, 'valid.md'), '---\ntype: mission\n---\n\n# No status\n');
+    const failing = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });
+    expect(failing.validation.nodeErrors.map(({ nodeId }) => nodeId)).toContain('valid.md');
     expect(loadResult(dir, 'test-space')!.hash).not.toBe(kept.hash);
   });
 
