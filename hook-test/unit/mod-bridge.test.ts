@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cwdContext, paneData, paneValidation, readStatus, trimSchemaShow } from '../../plugin/scripts/mod-bridge';
+import { cwdContext, paneData, readStatus, trimSchemaShow } from '../../plugin/scripts/mod-bridge';
 import { runOnPrompt } from '../../plugin/scripts/on-prompt';
 import { runOnStop } from '../../plugin/scripts/on-stop';
 import { loadResult, resultsDirPath, saveResult, stateFilePath } from '../../plugin/scripts/state';
@@ -82,37 +82,6 @@ describe('cwdContext', () => {
   });
 });
 
-describe('paneValidation', () => {
-  it('sorts validate output into the parts annotationsFrom attaches, counting rule errors once', () => {
-    const validation = paneValidation({
-      issues: {
-        'Goal.md': {
-          'schema:a': { kind: 'schema', message: 'missing status', severity: 'error' },
-          'rule:r1': { kind: 'rule', message: '[r1] too long', severity: 'error' },
-          'hierarchy:x': { kind: 'hierarchy', message: 'wrong parent type', severity: 'error' },
-          'content-link:Nowhere': {
-            kind: 'content-link',
-            message: 'Unresolved content link: Nowhere',
-            severity: 'info',
-          },
-        },
-      },
-      ruleViolations: [{ nodeId: 'Goal.md', ruleId: 'r1', severity: 'error', description: 'too long' }],
-      parseIssues: [{ file: 'Bad.md', severity: 'error', type: 'yaml', message: 'bad frontmatter' }],
-    });
-    expect(validation.nodeErrors).toEqual([
-      { nodeId: 'Goal.md', issues: [{ message: 'missing status' }] },
-      { nodeId: 'Bad.md', issues: [{ message: 'bad frontmatter' }] },
-    ]);
-    expect(validation.hierarchyViolations).toEqual([{ nodeId: 'Goal.md', description: 'wrong parent type' }]);
-    expect(validation.ruleViolations.map((v) => v.description)).toEqual([
-      'too long',
-      'Unresolved content link: Nowhere',
-    ]);
-    expect(validation.ruleViolations[1]?.severity).toBe('info');
-  });
-});
-
 describe('paneData', () => {
   it('reuses the results a hook kept while the space is unchanged, and validates again once it changes', async () => {
     await runOnPrompt({ session_id: sessionId, cwd: fixtures.fixtureDir }, opts());
@@ -127,7 +96,7 @@ describe('paneData', () => {
     saveResult({ dir, hash: kept.hash }, 'test-space', { ruleViolations: [marker] });
 
     const reused = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });
-    expect(reused.validation.ruleViolations).toEqual([marker]);
+    expect(reused.validation).toEqual({ issues: {}, ruleViolations: [marker], parseIssues: [] });
     expect(reused.graph.nodes.length).toBeGreaterThan(0);
     expect(reused.graph.nodes.every((node) => !('content' in (node as object)))).toBe(true);
 
@@ -137,7 +106,10 @@ describe('paneData', () => {
 
     writeFileSync(join(fixtures.vaultDir, 'valid.md'), '---\ntype: mission\n---\n\n# No status\n');
     const failing = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });
-    expect(failing.validation.nodeErrors.map(({ nodeId }) => nodeId)).toContain('valid.md');
+    const kinds = Object.values(failing.validation.issues['valid.md'] ?? {}).map(
+      ({ kind, severity }) => `${kind}:${severity}`,
+    );
+    expect(kinds).toContain('schema:error');
     expect(loadResult(dir, 'test-space')!.hash).not.toBe(kept.hash);
   });
 

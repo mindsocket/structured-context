@@ -15,10 +15,25 @@ export type SchemaDigest = { space: string; text: string };
 
 export type CwdContext = { spaces: string[]; digests: SchemaDigest[] };
 
+export type Severity = 'error' | 'warning' | 'info';
+
+/** The parts of `validate --json` the pane reads, as validate gives them */
 export type PaneValidation = {
-  nodeErrors: { nodeId: string; issues: { message: string }[] }[];
-  hierarchyViolations: { nodeId: string; description: string }[];
-  ruleViolations: { nodeId?: string; ruleId?: string; severity: 'error' | 'warning' | 'info'; description: string }[];
+  issues: Record<
+    string,
+    Record<
+      string,
+      {
+        kind: 'schema' | 'duplicate' | 'broken-link' | 'hierarchy' | 'rule' | 'gated' | 'content-link';
+        message: string;
+        severity: Severity;
+        line?: number;
+        column?: number;
+      }
+    >
+  >;
+  ruleViolations: { nodeId?: string; ruleId: string; severity: Severity; description: string }[];
+  parseIssues: { file: string; severity: 'error' | 'warning'; type: string; message?: string }[];
 };
 
 /** A space's graph (the space graph format, bodies left out) and validation results */
