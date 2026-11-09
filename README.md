@@ -45,7 +45,7 @@ Content and structure
   Rule violations (info)                   1
   Hierarchy violations                     0
   Orphans (hierarchy nodes - no parent)    1
-  Unresolved content links                 0
+  Unresolved content links (info)          0
   Excluded during parsing                  0
 ```
 
