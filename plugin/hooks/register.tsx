@@ -37,7 +37,7 @@ async function refreshStatus($: EngineInterface): Promise<void> {
   if (!text) return;
   const next = JSON.parse(text) as ModStatus;
   await update($, status, () => next);
-  $.ui.status(next.spaces.length > 0 ? `sctx ${next.spaces.map(countsLine).join(' · ')}` : undefined);
+  $.ui.status(next.spaces.length > 0 ? next.spaces.map(countsLine).join(' · ') : undefined);
 }
 
 async function refreshCwd($: EngineInterface): Promise<void> {
@@ -49,7 +49,11 @@ async function refreshCwd($: EngineInterface): Promise<void> {
 }
 
 function countsLine(space: { name: string; errors: number; warnings: number }): string {
-  return `${space.name}: ${space.errors} errors, ${space.warnings} warnings`;
+  const counts = [
+    ...(space.errors > 0 ? [`❌ ${space.errors}`] : []),
+    ...(space.warnings > 0 ? [`⚠️ ${space.warnings}`] : []),
+  ];
+  return `${space.name} ${counts.length > 0 ? counts.join(' ') : '✓'}`;
 }
 
 function changeLine(space: SpaceReport): string {
