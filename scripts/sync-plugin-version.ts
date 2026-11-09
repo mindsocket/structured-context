@@ -100,31 +100,32 @@ function checkMode(): void {
     );
   }
 
-  // Find commits where plugin content changed but plugin.json did NOT
+  // A branch needs one patch bump when it changes plugin content. The bump can
+  // be in a separate commit, so compare HEAD with the last release rather than
+  // requiring plugin.json to change in every plugin commit.
   const lastTag = tryExec('git describe --tags --abbrev=0') ?? '';
   const range = lastTag ? `${lastTag}..HEAD` : 'HEAD';
+  const changed = tryExec(`git diff --name-only ${range}`) ?? '';
+  const pluginContentChanged = changed.split('\n').some((file) => file.startsWith('plugin/') && file !== PLUGIN_JSON);
 
-  const commits = tryExec(`git log ${range} --format=%H`)?.split('\n') ?? [];
+  if (pluginContentChanged) {
+    const releasedPlugin = lastTag ? tryExec(`git show ${lastTag}:${PLUGIN_JSON}`) : null;
+    const releasedPluginVersion = releasedPlugin
+      ? parseSemver(JSON.parse(releasedPlugin).version)
+      : { major: 0, minor: 0, patch: 0 };
 
-  const unversioned: string[] = [];
-  for (const hash of commits) {
-    if (!hash) continue;
-
-    const changed = tryExec(`git diff-tree --no-commit-id -r ${hash} --name-only`) ?? '';
-    const files = changed.split('\n');
-
-    const pluginContent = files.filter((f) => f.startsWith('plugin/') && f !== PLUGIN_JSON);
-    const pluginJsonChanged = files.includes(PLUGIN_JSON);
-
-    if (pluginContent.length > 0 && !pluginJsonChanged) {
-      const subject = tryExec(`git log -1 --format=%s ${hash}`) ?? '';
-      unversioned.push(`  ${hash.slice(0, 7)} ${subject}`);
+    if (
+      pluginVersion.major < releasedPluginVersion.major ||
+      (pluginVersion.major === releasedPluginVersion.major && pluginVersion.minor < releasedPluginVersion.minor) ||
+      (pluginVersion.major === releasedPluginVersion.major &&
+        pluginVersion.minor === releasedPluginVersion.minor &&
+        pluginVersion.patch <= releasedPluginVersion.patch)
+    ) {
+      errors.push(
+        `plugin content changed since ${lastTag || 'the first commit'}, but plugin version (${formatSemver(pluginVersion)}) was not bumped from ${formatSemver(releasedPluginVersion)}`,
+      );
+      errors.push("Run 'bash scripts/sync-plugin-version.sh' staged with any plugin change to fix, then commit.");
     }
-  }
-
-  if (unversioned.length > 0) {
-    errors.push(`plugin content changed without a version bump in:\n${unversioned.join('\n')}`);
-    errors.push("Run 'bash scripts/sync-plugin-version.sh' staged with any plugin change to fix, then commit.");
   }
 
   if (errors.length > 0) {
