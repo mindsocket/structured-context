@@ -47,18 +47,28 @@ async function load($: EngineInterface, space?: string): Promise<void> {
     await update($, map, () => ({ loadedAt, error: 'No structured-context space in or around this directory.' }));
     return;
   }
+  const isSameSpace = name === current.space;
+  // Another space's tree stays out of sight while this one loads; the same space's stays up
+  await update($, map, (view) =>
+    isSameSpace ? { ...view, isLoading: true } : { space: name, loadedAt: view.loadedAt, isLoading: true },
+  );
+  if (!isSameSpace) await update($, selected, () => null);
   const run = await $.process.run(
     ['bun', 'run', `${$.plugin.root}/scripts/mod-bridge.ts`, 'pane', await $.session.id(), name],
     { timeoutMs: 120_000 },
   );
-  const hierarchy = name === current.space ? current.hierarchy : undefined;
   if (run.exitCode !== 0) {
     const error = run.stderr.trim().split('\n')[0] || `mod-bridge exited with code ${run.exitCode}`;
-    await update($, map, () => ({ space: name, hierarchy, loadedAt, error }));
+    await update($, map, (view) =>
+      view.space === name ? { space: name, hierarchy: view.hierarchy, loadedAt, error } : view,
+    );
     return;
   }
   const data = JSON.parse(run.stdout) as PaneData;
-  await update($, map, () => ({ space: name, hierarchy, data, loadedAt }));
+  // A pick of another space while this one loaded wins: its load writes the pane
+  await update($, map, (view) =>
+    view.space === name ? { space: name, hierarchy: view.hierarchy, data, loadedAt } : view,
+  );
 }
 
 async function open($: EngineInterface): Promise<void> {
@@ -178,7 +188,11 @@ export function registerMapPane(on: On): void {
             onSelect={(value) => update($, map, (current) => ({ ...current, hierarchy: value }))}
           />
         )}
-        <Button key="reload" label="Reload" dimColor onPress={reload} />
+        {view.isLoading ? (
+          <Text dimColor>Loading…</Text>
+        ) : (
+          <Button key="reload" label="Reload" dimColor onPress={reload} />
+        )}
       </Box>
     );
     const focusLine = focus && (
@@ -195,7 +209,7 @@ export function registerMapPane(on: On): void {
         <Box flexDirection="column">
           {header}
           {focusLine}
-          <Text dimColor>{view.error ?? 'Loading…'}</Text>
+          {!view.isLoading && <Text dimColor>{view.error ?? 'Loading…'}</Text>}
         </Box>
       );
     }
