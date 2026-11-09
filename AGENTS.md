@@ -22,6 +22,8 @@ The lefthook pre-commit hook syncs the plugin version (below), then runs biome (
 
 A Claude Code plugin lives at `plugin/`. It includes skills, commands and hooks used when working with collections of Obsidian markdown content (aka a space) in a vault.
 
+The command hooks in `plugin/hooks/hooks.json` baseline each turn and gate it at Stop. The mod (`plugin/hooks/register.tsx`, a hooks module) adds to them: a line under the answer and a band above the prompt for the turn's new issues, a status line, the schemas of the spaces in the working directory in the system prompt, and `spaces`, `validate` and `schema` tools. It never validates per tool call, because a space can be invalid partway through a multi-file change. A mod has no Node, so it reaches the hooks' state and the CLI through `plugin/scripts/mod-bridge.ts`. `plugin/types/index.d.ts` declares the mod's `$.state`.
+
 The plugin version in `plugin/.claude-plugin/plugin.json` is managed by git hooks (`lefthook.yml`, `scripts/sync-plugin-version.ts`); never edit it by hand:
 - **pre-commit:** bumps the patch version for any commit touching `plugin/`, so the plugin version runs ahead of `package.json` between releases by design. It also syncs major.minor up when `package.json` moves ahead (i.e. a release).
 - **pre-push:** fails if a commit since the last tag changed `plugin/` without bumping the version.
@@ -44,6 +46,7 @@ There are several places that need reviewing and updating with any new feature o
 | User-visible error or warning message | the troubleshooting table in `SKILL.md` |
 | Config key or space config | `docs/config.md`; the config example in `references/commands.md` |
 | `validate --json` output | `plugin/scripts/state.ts` (the hooks parse it) and `bun run test:hook` |
+| Hook state or `schemas show` output | `plugin/scripts/mod-bridge.ts`, `plugin/types/index.d.ts` and `bun run test:mod` |
 | Parsing or node content | `docs/concepts.md`; the embedded nodes section in `SKILL.md` |
 | New term | `docs/concepts.md` |
 
@@ -84,6 +87,7 @@ There are several places that need reviewing and updating with any new feature o
 For most development only the main unit tests need re-running regularly.
 - `bun run test` — unit tests (fixtures in `tests/`)
 - `bun run test:hook` — unit test plugin hooks (`hook-test/unit/`) - hook development only
+- `bun run test:mod` — test the mod (`plugin/hooks/register.test.tsx`, with `claude plugin test`) - mod development only
 - `bun run test:hook:e2e` — test plugin hooks in Claude Code (`hook-test/`) - hook development only
 - `bun run test:smoke` — smoke tests run against locally configured spaces - only use when changes could affect compatibility.
 - `bun run test:package` — builds and packs the package, installs the tarball, and runs the installed CLI. Runs in CI and before every version bump; run it after changing the build, `tsconfig*.json` or `files`.

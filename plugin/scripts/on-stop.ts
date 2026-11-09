@@ -9,10 +9,13 @@ import { warnOnce } from './safe';
 import {
   type HookOptions,
   hashSpace,
-  issueKeys,
+  issueCounts,
   listSpaces,
   loadState,
+  type ReportedIssue,
+  type SpaceReport,
   saveState,
+  spaceKeys,
   stateFilePath,
   type ValidationIssue,
   validateSpace,
@@ -72,9 +75,17 @@ export async function runOnStop(input: OnStopInput, options?: HookOptions): Prom
   );
   const results = await Promise.all(changed.map((space) => validateSpace(space.name, options)));
 
+  const reports: SpaceReport[] = [];
   changed.forEach((space, i) => {
     const byFile = results[i]!;
     const before = state.baseline[space.name]!.issues;
+    const added: ReportedIssue[] = [];
+    const now = new Set(
+      Object.entries(byFile).flatMap(([label, { errors, warnings }]) =>
+        [...Object.keys(errors), ...Object.keys(warnings)].map((key) => `${label}\0${key}`),
+      ),
+    );
+    const fixed = Object.entries(before).flatMap(([label, keys]) => keys.filter((key) => !now.has(`${label}\0${key}`)));
 
     for (const [label, issues] of Object.entries(byFile)) {
       const file = join(space.path, label);
@@ -87,6 +98,7 @@ export async function runOnStop(input: OnStopInput, options?: HookOptions): Prom
       if (fileErrors.length > 0) {
         newErrors.push(formatIssues(HEADER, fileErrors, 'error'));
       }
+      added.push(...fileErrors.map(({ message }) => ({ file: label, severity: 'error' as const, message })));
 
       const fileWarnings = Object.entries(issues.warnings)
         .filter(([key]) => !known.has(key) && unreported(file, key))
@@ -94,12 +106,15 @@ export async function runOnStop(input: OnStopInput, options?: HookOptions): Prom
       if (fileWarnings.length > 0) {
         newWarnings.push(formatIssues(HEADER, fileWarnings, 'warning'));
       }
+      added.push(...fileWarnings.map(({ message }) => ({ file: label, severity: 'warning' as const, message })));
     }
 
-    state.latest[space.name] = { path: space.path, hash: hashes.get(space.name)!, issues: issueKeys(byFile) };
+    state.latest[space.name] = spaceKeys(space, hashes.get(space.name)!, byFile);
+    reports.push({ name: space.name, path: space.path, ...issueCounts(byFile), added, fixed: fixed.length });
   });
 
   state.baseline = {};
+  if (reports.length > 0) state.report = { at: Date.now(), spaces: reports };
   saveState(STATE_FILE, state);
 
   const warningMessage =
