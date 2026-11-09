@@ -129,9 +129,8 @@ function findOccurrence(occurrences: Occurrence[], key: string): Occurrence | un
 function project(data: PaneData, hierarchy?: string): { graph: Graph; tree: Tree; annotations: Annotations } {
   const graph = spaceGraphFrom(data.graph as Parameters<typeof spaceGraphFrom>[0], { hierarchy });
   const tree = buildTree(graph, 'pane');
-  // Passed as validate gives it; only its node ids are plain strings here, not core's branded NodeId
-  const input = { issues: data.validation.issues, ruleViolations: data.validation.ruleViolations };
-  const annotations = annotationsFrom(input as Parameters<typeof annotationsFrom>[0], graph);
+  const { issues, ruleViolations } = data.validation;
+  const annotations = annotationsFrom({ issues, ruleViolations }, graph);
   return { graph, tree, annotations };
 }
 

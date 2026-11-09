@@ -8,7 +8,9 @@
  * Bun's bundler, whose version the CI and each developer pick, does not promise.
  */
 
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { generateDtsBundle } from 'dts-bundle-generator';
 import { build } from 'esbuild';
 
 const ROOT = join(import.meta.dir, '..');
@@ -36,6 +38,44 @@ export async function buildModProjection(): Promise<string> {
   return result.outputFiles[0]!.text;
 }
 
+export const MOD_TYPES_FILE = join(ROOT, 'plugin/types/index.d.ts');
+const BEGIN = '// BEGIN generated from scripts/mod-contract.ts by `bun run build:mod-projection`; do not edit\n';
+const END = '// END generated\n';
+
+/**
+ * The mod's contract (plugin/types/index.d.ts) must be one self-contained file, so the core types it
+ * shares with the bridge are inlined into its marked section from `mod-contract.ts`.
+ */
+export async function buildModTypes(): Promise<string> {
+  const current = readFileSync(MOD_TYPES_FILE, 'utf-8');
+  const start = current.indexOf(BEGIN);
+  const end = current.indexOf(END);
+  if (start < 0 || end < start) throw new Error(`${MOD_TYPES_FILE} lacks its generated section markers`);
+  const [bundle] = generateDtsBundle(
+    [{ filePath: join(import.meta.dir, 'mod-contract.ts'), output: { noBanner: true } }],
+    {
+      preferredConfigPath: join(ROOT, 'tsconfig.json'),
+    },
+  );
+  // A contract holds types only: a type read off a constant (`typeof KINDS`) takes the constant's type instead
+  const constants = new Map<string, string>();
+  const generated = bundle!
+    .replace(/\nexport \{\};\n*$/, '\n')
+    .replace(/^declare const (\w+): ([\s\S]*?);\n/gm, (_, name: string, type: string) => {
+      constants.set(name, type);
+      return '';
+    })
+    .replace(/\(typeof (\w+)\)/g, (whole, name: string) => (constants.has(name) ? `(${constants.get(name)})` : whole));
+  const spliced = current.slice(0, start) + BEGIN + generated + current.slice(end);
+  const biome = Bun.spawnSync(['bunx', 'biome', 'format', `--stdin-file-path=${MOD_TYPES_FILE}`], {
+    cwd: ROOT,
+    stdin: new TextEncoder().encode(spliced),
+  });
+  if (biome.exitCode !== 0) throw new Error(`biome format failed: ${biome.stderr.toString()}`);
+  return biome.stdout.toString();
+}
+
 if (import.meta.main) {
   await Bun.write(PROJECTION_FILE, await buildModProjection());
+  await Bun.write(MOD_TYPES_FILE, await buildModTypes());
 }

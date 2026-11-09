@@ -40,7 +40,8 @@ const DATA: PaneData = {
       'Broken.md': { 'schema:type': { kind: 'schema', message: 'type is not allowed', severity: 'error' } },
       'Opp A.md': { 'rule:summary': { kind: 'rule', message: '[summary] missing summary', severity: 'warning' } },
     },
-    ruleViolations: [{ nodeId: 'Opp A.md', ruleId: 'summary', severity: 'warning', description: 'missing summary' }],
+    // Rule results on a node are in `issues`; `ruleViolations` adds only those without one
+    ruleViolations: [],
     parseIssues: [{ file: 'Bad.md', severity: 'error', type: 'yaml', message: 'bad frontmatter' }],
   },
 };

@@ -24,7 +24,7 @@ A Claude Code plugin lives at `plugin/`. It includes skills, commands and hooks 
 
 The command hooks in `plugin/hooks/hooks.json` baseline each turn and gate it at Stop. The mod (`plugin/hooks/register.tsx`, a hooks module) adds to them: a line under the answer and a band above the prompt for the turn's new issues, a status line, the schemas of the spaces in the working directory in the system prompt, and `spaces`, `validate` and `schema` tools. It never validates per tool call, because a space can be invalid partway through a multi-file change. A mod has no Node, so it reaches the hooks' state and the CLI through `plugin/scripts/mod-bridge.ts`. `plugin/types/index.d.ts` declares the mod's `$.state`.
 
-The map pane (`plugin/hooks/map-pane.tsx`, `/sctx-map`) draws a space's hierarchy with each node's validation results. A mod can't import packages, so the code it runs from core and `structured-context-map-views` is bundled into the committed `plugin/hooks/projection.js` by `bun run build:mod-projection`.
+The map pane (`plugin/hooks/map-pane.tsx`, `/sctx-map`) draws a space's hierarchy with each node's validation results. A mod can't import packages, so the code it runs from core and `structured-context-map-views` is bundled into the committed `plugin/hooks/projection.js` by `bun run build:mod-projection`. The same command inlines the core types the mod shares (`scripts/mod-contract.ts`) into `plugin/types/index.d.ts`, which must be self-contained.
 
 The plugin version in `plugin/.claude-plugin/plugin.json` is managed by git hooks (`lefthook.yml`, `scripts/sync-plugin-version.ts`); never edit it by hand:
 - **pre-commit:** bumps the patch version for any commit touching `plugin/`, so the plugin version runs ahead of `package.json` between releases by design. It also syncs major.minor up when `package.json` moves ahead (i.e. a release).
@@ -47,9 +47,9 @@ There are several places that need reviewing and updating with any new feature o
 | Rule, schema or `$metadata` shape | `docs/schemas.md`, `docs/rules.md`, `docs/semantic-rules.md`; `references/schema-authoring.md`, `references/schema-design.md`; bundled `schemas/` |
 | User-visible error or warning message | the troubleshooting table in `SKILL.md` |
 | Config key or space config | `docs/config.md`; the config example in `references/commands.md` |
-| `validate --json` output | `plugin/scripts/state.ts` (the hooks parse it), the pane's copy of its shape in `plugin/types/index.d.ts`, and `bun run test:hook` |
+| `validate --json` output | `plugin/scripts/state.ts` (the hooks parse it), `scripts/mod-contract.ts` and `bun run test:hook` |
 | Hook state or `schemas show` output | `plugin/scripts/mod-bridge.ts`, `plugin/types/index.d.ts` and `bun run test:mod` |
-| `src/browser.ts`, the space graph format, or the `structured-context-map-views` version | `bun run build:mod-projection` |
+| `src/browser.ts`, the space graph format, the types in `scripts/mod-contract.ts`, or the `structured-context-map-views` version | `bun run build:mod-projection` |
 | Parsing or node content | `docs/concepts.md`; the embedded nodes section in `SKILL.md` |
 | New term | `docs/concepts.md` |
 

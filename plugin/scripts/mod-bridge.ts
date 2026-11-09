@@ -9,7 +9,7 @@
  *   sctx <args...>        run sctx the way the hooks do
  */
 
-import type { ValidateJsonOutput } from '../../src/commands/validate';
+import type { PaneValidation } from '../../scripts/mod-contract';
 import {
   contains,
   type HookOptions,
@@ -65,13 +65,9 @@ export async function cwdContext(cwd: string, sctxBin?: string): Promise<CwdCont
   return { spaces: related.map((space) => space.name), digests: shown.flat() };
 }
 
-/**
- * The parts of `validate --json` the pane reads, passed through unchanged: map-views' `annotationsFrom`
- * takes `issues` and `ruleViolations` as they are, and the pane lists the parse errors itself.
- */
-export type PaneValidation = Pick<ValidateJsonOutput, 'issues' | 'ruleViolations' | 'parseIssues'>;
-
 /** What the pane draws a space from */
+export type { PaneValidation };
+
 export interface PaneData {
   space: string;
   /** The space's directory (or file), to open its nodes' files from */
