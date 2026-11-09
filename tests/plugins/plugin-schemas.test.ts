@@ -1,7 +1,9 @@
 import { describe, expect, it, spyOn } from 'bun:test';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type Config, resolveSchemaPath } from '../../src/config';
+import { resolveSpacePluginSchemas } from '../../src/plugins/util';
 import { SCHEMA_META_ID } from '../../src/schema/metadata-contract';
 import { buildFullRegistry, createValidator, readRawSchema } from '../../src/schema/schema';
 import { createSpaceContext } from '../../src/space-context';
@@ -273,6 +275,29 @@ describe('Plugin-contributed schemas', () => {
       const context = createSpaceContext('plugin-space-short', config, { configDir: FIXTURES_DIR });
       expect(context.resolvedSchemaPath).toBe(join(PLUGIN_SCHEMAS_DIR, 'plugin_schema.json'));
       expect(context.schemaRefRegistry.has('sctx://schema-plugin/_test_partial')).toBe(true);
+    });
+  });
+
+  describe('resolveSpacePluginSchemas', () => {
+    it('does not resolve built-in plugin names', () => {
+      const configDir = mkdtempSync(join(tmpdir(), 'sctx-plugin-schemas-'));
+      try {
+        for (const name of ['sctx-markdown', 'sctx-mermaid', 'sctx-miro', 'sctx-extra']) {
+          mkdirSync(join(configDir, 'plugins', name, 'schemas'), { recursive: true });
+        }
+        const space = {
+          name: 'space',
+          path: configDir,
+          schema: 'miro/board.json',
+          plugins: { markdown: {}, 'sctx-mermaid': {}, 'sctx-extra': {} },
+        };
+        const sources = resolveSpacePluginSchemas(space, { spaces: [space] }, configDir);
+        expect(sources).toEqual([
+          { pluginName: 'extra', schemasDir: join(configDir, 'plugins', 'sctx-extra', 'schemas') },
+        ]);
+      } finally {
+        rmSync(configDir, { recursive: true, force: true });
+      }
     });
   });
 });
