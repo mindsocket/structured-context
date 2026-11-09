@@ -18,4 +18,7 @@ jobs:
       - run: bun run typecheck
       - run: bun run test
       - run: bun run test:hook
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: claude plugin validate plugin
+      - run: bun run test:mod
       - run: bun run test:package
