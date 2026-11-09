@@ -119,9 +119,11 @@ A wikilink is looked up in `linkTargets`, and the result is stored as the target
 
 ### Validation results and nodes
 
-A validation result refers to a node by its `id`, in a `nodeId` field. Where the node is defined is a separate `source` (`file`, and `line` / `column` where available). A result may copy a node's identity and location, but not its content. A node can lack a `source` (for example when a plugin reads from a service rather than files), so treat `source` as optional.
+A validation run reports a list of **validation issues**. Each issue has a **kind** (the check that found it, such as `schema`, `rule` or `hierarchy`), a **severity** (`error`, `warning` or `info`) and a message. Core decides the severity; consumers read it. Only `error` issues fail validation.
 
-Rule violations on a global rule have no `nodeId`.
+A validation issue refers to a node by its `id`, in a `nodeId` field. Where the node is defined is a separate `source` (`file`, and `line` / `column` where available). A result may copy a node's identity and location, but not its content. A node can lack a `source` (for example when a plugin reads from a service rather than files), so treat `source` as optional.
+
+Parse issues (files that produced no nodes) and violations of a global rule have no `nodeId`.
 
 ### Folder index
 

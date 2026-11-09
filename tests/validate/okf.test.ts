@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { bundledSchemasDir, createValidator } from '../../src/schema/schema';
 import { validateSpace } from '../../src/validate';
 import { makeSpaceContext } from '../helpers/context';
+import { ofKind } from '../helpers/issues';
 
 const OKF_SCHEMA_PATH = join(bundledSchemasDir, 'okf.json');
 const BUNDLE_DIR = join(import.meta.dir, '../fixtures/okf/bundle');
@@ -80,17 +81,27 @@ describe('OKF schema', () => {
 describe('OKF bundle validation', () => {
   it('validates the sample bundle as a markdown space, excluding the reserved index.md and log.md', async () => {
     const result = await validateSpace(makeSpaceContext(BUNDLE_DIR, OKF_SCHEMA_PATH));
-    expect(result.nodeErrors).toEqual([]);
+    expect(ofKind(result.issues, 'schema')).toEqual([]);
     expect(result.validCount).toBe(4);
-    expect(result.parseIssues.map((i) => i.file).sort()).toEqual(['index.md', 'log.md']);
+    expect(
+      ofKind(result.issues, 'parse')
+        .map((i) => i.source.file)
+        .sort(),
+    ).toEqual(['index.md', 'log.md']);
     // playbooks/bare.md has only `type`: the description best-practice rule is the sole finding
-    expect(result.ruleViolations.map((v) => [v.nodeId, v.ruleId])).toEqual([['playbooks/bare.md', 'okf-description']]);
+    expect(ofKind(result.issues, 'rule').map((v) => [v.nodeId, v.ruleId])).toEqual([
+      ['playbooks/bare.md', 'okf-description'],
+    ]);
   });
 
   it('flags coherence and contract rule violations', async () => {
     const result = await validateSpace(makeSpaceContext(RULE_VIOLATIONS_DIR, OKF_SCHEMA_PATH));
-    expect(result.nodeErrors).toEqual([]);
-    expect(result.ruleViolations.map((v) => `${v.nodeId}:${v.ruleId}`).sort()).toEqual([
+    expect(ofKind(result.issues, 'schema')).toEqual([]);
+    expect(
+      ofKind(result.issues, 'rule')
+        .map((v) => `${v.nodeId}:${v.ruleId}`)
+        .sort(),
+    ).toEqual([
       'body-without-computation.md:okf-computation-present',
       'no-computation.md:okf-computation-present',
       'stale-before-generated.md:okf-stale-after-generated',
@@ -101,7 +112,7 @@ describe('OKF bundle validation', () => {
   it('passes okf-computation-present on a `# Computation` line inside a code fence (known limitation)', async () => {
     // The rule matches the heading text with a regex, so it cannot tell a fenced comment from a real heading.
     const result = await validateSpace(makeSpaceContext(KNOWN_LIMITATIONS_DIR, OKF_SCHEMA_PATH));
-    expect(result.nodeErrors).toEqual([]);
-    expect(result.ruleViolations).toEqual([]);
+    expect(ofKind(result.issues, 'schema')).toEqual([]);
+    expect(ofKind(result.issues, 'rule')).toEqual([]);
   });
 });

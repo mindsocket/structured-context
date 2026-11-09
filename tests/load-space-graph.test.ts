@@ -8,6 +8,7 @@ import { bundledSchemasDir } from '../src/schema/schema';
 import { createSpaceContext } from '../src/space-context';
 import { validateSpace } from '../src/validate';
 import { makeSpaceContext } from './helpers/context';
+import { ofKind } from './helpers/issues';
 
 const VALID_DIR = join(import.meta.dir, 'fixtures/general/valid-ost');
 const SCHEMA_PATH = join(bundledSchemasDir, 'strategy_general.json');
@@ -43,9 +44,9 @@ describe('assembleSpaceGraph', () => {
 
     it('reports one issue for the node', async () => {
       const result = await validateSpace(makeSpaceContext(dir, SCHEMA_PATH));
-      const mission = result.nodeErrors.find((e) => e.nodeId === 'Mission.md');
-      expect(mission?.issues).toHaveLength(1);
-      expect(mission?.issues[0]?.message).toStartWith('status: "exploding" is not valid');
+      const mission = ofKind(result.issues, 'schema').filter((e) => e.nodeId === 'Mission.md');
+      expect(mission).toHaveLength(1);
+      expect(mission[0]?.message).toStartWith('status: "exploding" is not valid');
     });
 
     it('keeps the node in the graph, with its children beneath it', async () => {
@@ -89,7 +90,7 @@ describe('validateSpace with shared readResult', () => {
     const shared = await validateSpace(context, { readResult });
     const fresh = await validateSpace(context);
     expect(shared.validCount).toBe(fresh.validCount);
-    expect(shared.nodeErrorCount).toBe(fresh.nodeErrorCount);
+    expect(shared.issues).toEqual(fresh.issues);
   });
 });
 

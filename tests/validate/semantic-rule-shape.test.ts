@@ -3,6 +3,7 @@ import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { createSpaceContext } from '../../src/space-context';
 import type { FileValidationResult, NodeId } from '../../src/types';
 import { validateSpace } from '../../src/validate';
+import { ofKind, withKey } from '../helpers/issues';
 import { makeTempSpace } from '../helpers/temp-space';
 import { validateFileWith, validateSpaceWith } from '../helpers/validate-run';
 
@@ -87,7 +88,7 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
       judge: new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } }),
       configDir: space.dir,
     })) as FileValidationResult;
-    expect(result.issues['rule:step-fit']?.message).toContain('Guidance: Tighten the wording.');
+    expect(withKey(result.issues, 'rule:step-fit')?.message).toContain('Guidance: Tighten the wording.');
   });
 
   it('--rule-filter severity matches any severity a verdict map can report', async () => {
@@ -114,7 +115,11 @@ describe('rule `when` precondition', () => {
     };
     const { context } = setup([rule], { frontmatter: { T: 'status: ready', S: 'status: draft' } });
     const result = await validateSpace(context());
-    expect(result.ruleViolations.map((v) => v.nodeId as string).sort()).toEqual(['T.md']);
+    expect(
+      ofKind(result.issues, 'rule')
+        .map((v) => v.nodeId as string)
+        .sort(),
+    ).toEqual(['T.md']);
   });
 
   it('does not call the judge for nodes where `when` is not true', async () => {
@@ -136,7 +141,7 @@ describe('judge option', () => {
   it('evaluates no semantic rules without a judge', async () => {
     const { context } = setup([stepRule]);
     const result = await validateSpace(context(), {});
-    expect(result.ruleViolations).toEqual([]);
+    expect(ofKind(result.issues, 'rule')).toEqual([]);
   });
 
   it('judges with the judge it is given', async () => {
@@ -162,7 +167,7 @@ describe('rule expression errors', () => {
   it('reports a failing check or when as an error violation instead of passing silently', async () => {
     const { context } = setup([broken, brokenWhen]);
     const result = await validateSpace(context(), {});
-    const byId = (id: string) => result.ruleViolations.filter((v) => v.ruleId === id);
+    const byId = (id: string) => ofKind(result.issues, 'rule').filter((v) => v.ruleId === id);
     expect(byId('broken').length).toBeGreaterThan(0);
     expect(byId('broken')[0]).toMatchObject({ severity: 'error' });
     expect(byId('broken')[0]?.description).toContain('Rule error');
@@ -262,15 +267,15 @@ describe('semantic rule check precondition', () => {
     })) as FileValidationResult;
     // T.md's failing check gates S.md, so S.md is not judged and only reports the gate.
     expect(judgedLabels(judge)).toEqual([]);
-    expect(Object.keys(result.issues)).toEqual(['gated:T.md']);
-    expect(result.issues['gated:T.md']?.message).toContain('task-fit');
+    expect(result.issues.map((issue) => issue.key)).toEqual(['gated:T.md']);
+    expect(withKey(result.issues, 'gated:T.md')?.message).toContain('task-fit');
   });
 
   describe('without a judge', () => {
     it('reports a failing check, marked as an expression check failure', async () => {
       const { context } = setup([gated]);
       const result = await validateSpace(context(), {});
-      expect(result.ruleViolations).toEqual([
+      expect(ofKind(result.issues, 'rule')).toEqual([
         expect.objectContaining({
           ruleId: 'step-fit',
           nodeId: 'S.md' as NodeId,
@@ -282,12 +287,12 @@ describe('semantic rule check precondition', () => {
     it('reports nothing when the check passes', async () => {
       const { context } = setup([gated], { frontmatter: { S: 'owner: sam' } });
       const result = await validateSpace(context(), {});
-      expect(result.ruleViolations).toEqual([]);
+      expect(ofKind(result.issues, 'rule')).toEqual([]);
     });
 
     it('still skips a semantic-only rule', async () => {
       const { context } = setup([stepRule]);
-      expect((await validateSpace(context(), {})).ruleViolations).toEqual([]);
+      expect(ofKind((await validateSpace(context(), {})).issues, 'rule')).toEqual([]);
     });
 
     it('honours --rule-filter', async () => {
@@ -307,7 +312,9 @@ describe('semantic rule check precondition', () => {
     };
     const { context } = setup([rule]);
     const result = await validateSpace(context(), {});
-    expect(result.ruleViolations).toEqual([expect.objectContaining({ ruleId: 'step-fit', severity: 'warning' })]);
+    expect(ofKind(result.issues, 'rule')).toEqual([
+      expect.objectContaining({ ruleId: 'step-fit', severity: 'warning' }),
+    ]);
   });
 
   it('evaluates when before check', async () => {

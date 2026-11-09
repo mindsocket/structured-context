@@ -107,11 +107,7 @@ export async function paneData(sessionId: string, space: string, options: HookOp
     space,
     path: info.path,
     graph: { ...graph, nodes },
-    validation: {
-      issues: output.issues ?? {},
-      ruleViolations: output.ruleViolations ?? [],
-      parseIssues: output.parseIssues ?? [],
-    },
+    validation: { issues: output.issues ?? [] },
   };
 }
 
