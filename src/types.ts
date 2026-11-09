@@ -277,7 +277,7 @@ export type SpaceContext = {
 export interface FileValidationIssue {
   kind: string;
   message: string;
-  /** Present for rule violations (`kind: 'rule'`). */
+  /** Present for rule violations (`kind: 'rule'`) and unresolved content links (`info`). */
   severity?: RuleSeverity;
   /** 1-indexed line number in source file, if available. */
   line?: number;

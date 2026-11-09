@@ -213,7 +213,7 @@ export async function validate(
   console.log(fmt('  Rule violations (info)', ruleCounts.info, true, true));
   console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
   console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphans.length, true, true));
-  console.log(fmt('  Unresolved content links', result.unresolvedContentLinks.length, true, true));
+  console.log(fmt('  Unresolved content links (info)', result.unresolvedContentLinks.length, true, true));
   console.log(fmt('  Excluded during parsing', result.parseIssues.length, true, parseIssueErrorCount === 0));
   if (result.depthLimit !== undefined) {
     console.log(fmt('  Skipped by depth limit', result.skippedByDepth.length, true, true));

@@ -410,7 +410,7 @@ export async function validateNodes(
     result.contextTrimmed = summariseTrim(trimReport);
   }
 
-  // Collect unresolved content links (warnings — not errors). A link to a file the parser read but
+  // Collect unresolved content links (info — not errors). A link to a file the parser read but
   // excluded (e.g. no type) resolves; that file's own parse issue already says why it is not a node.
   const excludedTargets = excludedFileTargets(read.parseIssues);
   const seen = new Set<string>();
@@ -570,12 +570,13 @@ function issuesForFile(
     };
   }
 
-  // Unresolved content links (warnings — do not affect errorCount)
+  // Unresolved content links are info: a target outside the space is often valid elsewhere.
   for (const link of result.unresolvedContentLinks) {
     if (link.nodeId === label) {
       warnings[`content-link:${link.target}`] = {
         kind: 'content-link',
         message: `Unresolved content link: ${link.target}`,
+        severity: 'info',
       };
     }
   }
