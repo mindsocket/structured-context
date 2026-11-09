@@ -7,8 +7,9 @@ import { extractSchemaTypeNames } from '../../schema/schema';
 import type { NodeId, ParseIssue } from '../../types';
 import type { ParseResult, PluginContext } from '../util';
 import type { MarkdownPluginConfig } from '.';
-import { extractLinksFromBody, extractLinksFromFrontmatter, getEdgeFieldNames } from './extract-content-links';
+import { extractLinksFromAstNode, extractLinksFromFrontmatter, getEdgeFieldNames } from './extract-content-links';
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
+import { parseMarkdown } from './parse-markdown';
 import { applyFieldMap, defaultPageTitle, inferTypeFromPath, MATTER_OPTIONS, pathLinkTargets } from './util';
 
 /** One warning per file for the headings a horizontal rule cut off, at the first of them. */
@@ -160,6 +161,8 @@ export async function readSpaceDirectory(
     const pathTargets = pathLinkTargets(file);
     const fmMatch = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
     const lineOffset = fmMatch ? (fmMatch[0].match(/\n/g) || []).length : 0;
+    // The page's links come from the whole body; embedded nodes take theirs from their own blocks of the same tree.
+    const tree = parseMarkdown(parsed.content);
 
     const pageNode: BaseNode = {
       id: file as NodeId,
@@ -170,7 +173,7 @@ export async function readSpaceDirectory(
       type: pageType,
       source: { file, line: 1 },
       ...(data.content !== undefined ? { content: data.content as string } : {}),
-      contentLinks: [...extractLinksFromFrontmatter(data, edgeFields), ...extractLinksFromBody(parsed.content)],
+      contentLinks: [...extractLinksFromFrontmatter(data, edgeFields), ...extractLinksFromAstNode(tree)],
     };
 
     if (!ON_A_PAGE_TYPES.includes(pageType)) {
@@ -186,6 +189,7 @@ export async function readSpaceDirectory(
         fieldMap,
         file,
         lineOffset,
+        tree,
       });
       if (preambleFields) {
         Object.assign(pageNode.schemaData, preambleFields);

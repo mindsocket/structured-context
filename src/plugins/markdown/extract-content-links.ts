@@ -1,10 +1,8 @@
-import type { Image, Link, Node, Parent, Root, Text } from 'mdast';
+import type { Image, Link, Node, Parent, Text } from 'mdast';
 import { toString as mdastToString } from 'mdast-util-to-string';
-import remarkGfm from 'remark-gfm';
-import remarkParse from 'remark-parse';
-import { unified } from 'unified';
 import { parseWikilink } from '../../read/wikilink-utils';
 import type { ContentLink, SchemaMetadata } from '../../types';
+import { parseMarkdown } from './parse-markdown';
 
 /**
  * Extract wikilinks (and Obsidian embed wikilinks) from a plain text string.
@@ -86,8 +84,7 @@ export function extractLinksFromAstNode(node: Node): ContentLink[] {
  * Parses the full document and collects links from every node in the tree.
  */
 export function extractLinksFromBody(body: string): ContentLink[] {
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(body) as Root;
-  return extractLinksFromAstNode(tree);
+  return extractLinksFromAstNode(parseMarkdown(body));
 }
 
 /**

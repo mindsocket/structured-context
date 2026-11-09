@@ -1,8 +1,5 @@
 import type { Code, Heading, List, ListItem, Paragraph, Root, Table, TableRow } from 'mdast';
 import { toString as mdastToString } from 'mdast-util-to-string';
-import remarkGfm from 'remark-gfm';
-import remarkParse from 'remark-parse';
-import { unified } from 'unified';
 import type {
   BaseNode,
   EdgeDefinition,
@@ -13,6 +10,7 @@ import type {
 } from '../../api';
 import type { NodeId } from '../../types';
 import { extractLinksFromAstNode } from './extract-content-links';
+import { parseMarkdown } from './parse-markdown';
 import { applyFieldMap, parseYaml } from './util';
 
 /** Type values that identify a space_on_a_page container (not themselves space nodes). */
@@ -455,6 +453,8 @@ export interface ExtractEmbeddedOptions {
   file?: string;
   /** Line offset of the body within the source file (e.g. frontmatter lines). */
   lineOffset?: number;
+  /** The tree of `body`, when the caller has already parsed it. */
+  tree?: Root;
 }
 
 export interface ExtractEmbeddedResult {
@@ -491,7 +491,7 @@ export function extractEmbeddedNodes(body: string, options: ExtractEmbeddedOptio
     contentLinks: [],
   };
 
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(body) as Root;
+  const tree = options.tree ?? parseMarkdown(body);
 
   // In typed-page mode: stack starts with the page's own virtual entry (depth 0).
   // In space_on_a_page mode: stack starts empty (first heading has no parent).
