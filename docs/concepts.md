@@ -83,7 +83,7 @@ Key properties:
 - Heading hierarchy determines node depth and infers `space node` type (depth-based type inference).
 - Heading levels must not skip — each level must be exactly one deeper than its parent.
 - Typed bullets work the same as in typed pages.
-- A horizontal rule (`---`) terminates parsing; headings below it are ignored.
+- A horizontal rule (`---`) terminates parsing; headings below it are ignored, with one warning for the file.
 
 #### Preamble
 
@@ -132,6 +132,8 @@ A **folder index** is a page that stands for its folder: `Overview.md` or `index
 An **embedded node** is a `space node` defined *within* a containing document rather than as its own file. Embedded nodes are declared using markdown heading syntax with inline field annotations (e.g. `[type:: goal]`) or `anchor-implied types`, and are extracted at parse time.
 
 A `typed page` may contain embedded nodes in its body. Those nodes become full members of the parsed node set, with `parent references` wired to their containing page or enclosing heading.
+
+A horizontal rule (`---`) ends parsing for embedded nodes; headings below it do not become nodes. Validation warns once per file, at the first ignored heading that would have been a node. In a `space_on_a_page` file, that is every heading below the rule.
 
 ### Node content
 

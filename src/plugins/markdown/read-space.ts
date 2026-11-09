@@ -11,6 +11,23 @@ import { extractLinksFromBody, extractLinksFromFrontmatter, getEdgeFieldNames } 
 import { extractEmbeddedNodes, ON_A_PAGE_TYPES } from './parse-embedded';
 import { applyFieldMap, defaultPageTitle, inferTypeFromPath, MATTER_OPTIONS, pathLinkTargets } from './util';
 
+/** One warning per file for the headings a horizontal rule cut off, at the first of them. */
+function terminatedIssue(
+  file: string,
+  headings: ReturnType<typeof extractEmbeddedNodes>['terminatedHeadings'],
+): ParseIssue | undefined {
+  const [first] = headings;
+  if (!first) return undefined;
+  const more = headings.length > 1 ? ` and ${headings.length - 1} more` : '';
+  return {
+    file,
+    severity: 'warning',
+    type: 'terminated',
+    message: `Ignored heading "${first.title}"${more} below a horizontal rule (---).`,
+    ...(first.line !== undefined ? { line: first.line } : {}),
+  };
+}
+
 type ReadSpaceDirectoryOptions = {
   includeOnAPageFiles?: boolean;
 };
@@ -52,12 +69,8 @@ export function readSpaceOnAPage(context: PluginContext): ParseResult {
     lineOffset,
   });
 
-  const parseIssues: ParseIssue[] = terminatedHeadings.map((heading) => ({
-    file: heading,
-    severity: 'warning',
-    type: 'terminated',
-    message: 'Ignored headings detected beyond end of hierarchy.',
-  }));
+  const terminated = terminatedIssue(fileName, terminatedHeadings);
+  const parseIssues: ParseIssue[] = terminated ? [terminated] : [];
   return { nodes, parseIssues, diagnostics: { kind: 'page', preambleNodeCount } };
 }
 
@@ -183,14 +196,8 @@ export async function readSpaceDirectory(
       }
       nodes.push(pageNode);
       nodes.push(...embedded);
-      for (const heading of terminatedHeadings) {
-        parseIssues.push({
-          file: `${file} > ${heading}`,
-          severity: 'warning',
-          type: 'terminated',
-          message: 'Ignored headings detected beyond end of hierarchy.',
-        });
-      }
+      const terminated = terminatedIssue(file, terminatedHeadings);
+      if (terminated) parseIssues.push(terminated);
     } else {
       nodes.push(pageNode);
     }
