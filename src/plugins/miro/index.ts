@@ -1,8 +1,9 @@
-import { PLUGIN_PREFIX, type StructuredContextPlugin } from '../../api';
+import type { StructuredContextPlugin } from '../../api';
+import { BUILTIN_PLUGIN_NAMES } from '../builtin-names';
 import { miroSync } from './sync';
 
 export const miroPlugin: StructuredContextPlugin = {
-  name: `${PLUGIN_PREFIX}miro`,
+  name: BUILTIN_PLUGIN_NAMES.miro,
   configSchema: {
     type: 'object',
     properties: {

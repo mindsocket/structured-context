@@ -4,6 +4,7 @@ import type { AnySchemaObject } from 'ajv';
 import Ajv2020 from 'ajv/dist/2020';
 import { getConfigSourceFiles } from '../config';
 import { builtinPlugins } from '.';
+import { isBuiltinPluginName } from './builtin-names';
 import {
   CONFIG_PLUGINS_DIR,
   normalizePluginName,
@@ -94,7 +95,6 @@ export async function loadPlugins(
   pluginMap: Record<string, Record<string, unknown>>,
   configDir: string,
 ): Promise<LoadedPlugin[]> {
-  const builtinsByName = new Map(builtinPlugins.map((p) => [p.name, p]));
   const ajv = new Ajv2020();
   ajv.addFormat('path', (value: string) => value.length > 0 && !value.includes('\0'));
   const loaded: LoadedPlugin[] = [];
@@ -102,7 +102,7 @@ export async function loadPlugins(
   // External plugins: entries in the map that are not built-in names
   for (const [rawName, rawConfig] of Object.entries(pluginMap)) {
     const name = normalizePluginName(rawName);
-    if (builtinsByName.has(name)) continue;
+    if (isBuiltinPluginName(name)) continue;
     if (!name.startsWith(PLUGIN_PREFIX)) {
       throw new Error(`Plugin name must start with "${PLUGIN_PREFIX}" (got "${rawName}")`);
     }

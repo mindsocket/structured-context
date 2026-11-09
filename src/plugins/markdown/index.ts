@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs';
 import type { FromSchema } from 'json-schema-to-ts';
+import { BUILTIN_PLUGIN_NAMES } from '../builtin-names';
 import type { ParseResult, PluginContext, StructuredContextPlugin } from '../util';
-import { PLUGIN_PREFIX } from '../util';
 import { readSpaceDirectory, readSpaceOnAPage } from './read-space';
 import { renderBullets } from './render-bullets';
 import { renderMarkdownDirectory } from './render-directory';
@@ -31,7 +31,7 @@ export type MarkdownPluginConfig = FromSchema<typeof MARKDOWN_CONFIG_SCHEMA>;
 export type TypeInferenceConfig = FromSchema<typeof TYPE_INFERENCE_CONFIG_SCHEMA>;
 
 export function getMarkdownConfig(plugins?: Record<string, Record<string, unknown>>): MarkdownPluginConfig {
-  return (plugins?.[`${PLUGIN_PREFIX}markdown`] ?? {}) as MarkdownPluginConfig;
+  return (plugins?.[BUILTIN_PLUGIN_NAMES.markdown] ?? {}) as MarkdownPluginConfig;
 }
 
 async function parse(context: PluginContext): Promise<ParseResult | null> {
@@ -42,7 +42,7 @@ async function parse(context: PluginContext): Promise<ParseResult | null> {
 }
 
 export const markdownPlugin: StructuredContextPlugin = {
-  name: `${PLUGIN_PREFIX}markdown`,
+  name: BUILTIN_PLUGIN_NAMES.markdown,
   configSchema: MARKDOWN_CONFIG_SCHEMA,
   parse,
   templateSync,

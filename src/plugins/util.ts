@@ -7,6 +7,7 @@ import { PLUGIN_PREFIX as _PLUGIN_PREFIX } from '../constants';
 import type { PluginSchemaSource } from '../schema/schema';
 import type { SpaceGraph } from '../space-graph';
 import type { BaseNode, ParseIssue, SpaceContext } from '../types';
+import { isBuiltinPluginName } from './builtin-names';
 
 export const PLUGIN_PREFIX = _PLUGIN_PREFIX;
 export const CONFIG_PLUGINS_DIR = 'plugins';
@@ -215,6 +216,9 @@ export function resolveSpacePluginSchemas(
   const seenPlugins = new Set<string>();
 
   const maybeAddPlugin = (name: string) => {
+    // Built-in plugins ship no schemas. Resolving one as a package can query the npm registry or find an unrelated
+    // package of the same short name (such as `markdown`).
+    if (isBuiltinPluginName(name)) return;
     const shortName = shortenPluginName(name);
     if (seenPlugins.has(shortName)) return;
     seenPlugins.add(shortName);
