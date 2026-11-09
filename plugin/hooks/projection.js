@@ -162,7 +162,7 @@ function buildSpaceGraph(nodes, hierarchy) {
   const levels = hierarchy?.levels ?? [];
   const hierarchyTypes = new Set(levels.map((l) => l.type));
   const rootType = levels[0]?.type;
-  const isHierarchyEdge = (r) => r.kind === "hierarchy" && r.hierarchy === hierarchy?.name;
+  const isHierarchyEdge2 = (r) => r.kind === "hierarchy" && r.hierarchy === hierarchy?.name;
   const nodesMap = new Map;
   const hierarchyChildrenMap = new Map;
   const childrenMap = new Map;
@@ -189,7 +189,7 @@ function buildSpaceGraph(nodes, hierarchy) {
       if (!childrenMap.has(parentRef.id))
         childrenMap.set(parentRef.id, []);
       childrenMap.get(parentRef.id).push(node);
-      if (isHierarchyEdge(parentRef)) {
+      if (isHierarchyEdge2(parentRef)) {
         if (!hierarchyChildrenMap.has(parentRef.id))
           hierarchyChildrenMap.set(parentRef.id, []);
         hierarchyChildrenMap.get(parentRef.id).push(node);
@@ -202,7 +202,7 @@ function buildSpaceGraph(nodes, hierarchy) {
       nonHierarchy.push(node);
       continue;
     }
-    const hierarchyParents = node.resolvedParents.filter(isHierarchyEdge);
+    const hierarchyParents = node.resolvedParents.filter(isHierarchyEdge2);
     if (hierarchyParents.length === 0) {
       if (nodeType === rootType) {
         hierarchyRoots.push(node);
@@ -311,8 +311,8 @@ function spaceGraphFrom(data, options = {}) {
   return buildSpaceGraph(data.nodes, selectHierarchy(metadata, options.hierarchy));
 }
 export {
-  annotationsFrom,
-  buildTree,
+  worstSeverity,
   spaceGraphFrom,
-  worstSeverity
+  buildTree,
+  annotationsFrom
 };
