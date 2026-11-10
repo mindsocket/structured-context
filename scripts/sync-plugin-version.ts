@@ -3,8 +3,8 @@
  * Keeps plugin/.claude-plugin/plugin.json version in sync with package.json.
  *
  * Sync mode (default): Bumps plugin version if needed based on staged changes.
- * Check mode (--check): Validates that no plugin content changes were committed
- *                     without a version bump since the last release tag.
+ * Check mode (--check): Validates that plugin content changes since the fork point
+ *                     from origin/main include a version bump.
  *
  * Usage:
  *   bun run scripts/sync-plugin-version.ts         # sync mode
@@ -39,7 +39,11 @@ function tryExec(cmd: string): string | null {
 
 const PLUGIN_JSON = 'plugin/.claude-plugin/plugin.json';
 const pkg = JSON.parse(readFileSync('package.json', 'utf-8'));
-const plugin = JSON.parse(readFileSync(PLUGIN_JSON, 'utf-8'));
+const isCheck = process.argv.slice(2).includes('--check');
+// Check mode judges the commits being pushed, not the working tree.
+const plugin = JSON.parse(
+  (isCheck ? tryExec(`git show HEAD:${PLUGIN_JSON}`) : null) ?? readFileSync(PLUGIN_JSON, 'utf-8'),
+);
 
 const pkgVersion = parseSemver(pkg.version);
 const pluginVersion = parseSemver(plugin.version);
@@ -100,29 +104,29 @@ function checkMode(): void {
     );
   }
 
-  // A branch needs one patch bump when it changes plugin content. The bump can
-  // be in a separate commit, so compare HEAD with the last release rather than
-  // requiring plugin.json to change in every plugin commit.
-  const lastTag = tryExec('git describe --tags --abbrev=0') ?? '';
-  const range = lastTag ? `${lastTag}..HEAD` : 'HEAD';
+  // Consumers install the plugin from main, so each change landing there needs one bump,
+  // in any of its commits. Fetch so a branch can't count a bump main already has.
+  tryExec('git fetch --quiet origin main');
+  const base = tryExec('git merge-base HEAD origin/main') ?? tryExec('git describe --tags --abbrev=0') ?? '';
+  const range = base ? `${base}..HEAD` : 'HEAD';
   const changed = tryExec(`git diff --name-only ${range}`) ?? '';
   const pluginContentChanged = changed.split('\n').some((file) => file.startsWith('plugin/') && file !== PLUGIN_JSON);
 
   if (pluginContentChanged) {
-    const releasedPlugin = lastTag ? tryExec(`git show ${lastTag}:${PLUGIN_JSON}`) : null;
-    const releasedPluginVersion = releasedPlugin
-      ? parseSemver(JSON.parse(releasedPlugin).version)
+    const basePlugin = base ? tryExec(`git show ${base}:${PLUGIN_JSON}`) : null;
+    const basePluginVersion = basePlugin
+      ? parseSemver(JSON.parse(basePlugin).version)
       : { major: 0, minor: 0, patch: 0 };
 
     if (
-      pluginVersion.major < releasedPluginVersion.major ||
-      (pluginVersion.major === releasedPluginVersion.major && pluginVersion.minor < releasedPluginVersion.minor) ||
-      (pluginVersion.major === releasedPluginVersion.major &&
-        pluginVersion.minor === releasedPluginVersion.minor &&
-        pluginVersion.patch <= releasedPluginVersion.patch)
+      pluginVersion.major < basePluginVersion.major ||
+      (pluginVersion.major === basePluginVersion.major && pluginVersion.minor < basePluginVersion.minor) ||
+      (pluginVersion.major === basePluginVersion.major &&
+        pluginVersion.minor === basePluginVersion.minor &&
+        pluginVersion.patch <= basePluginVersion.patch)
     ) {
       errors.push(
-        `plugin content changed since ${lastTag || 'the first commit'}, but plugin version (${formatSemver(pluginVersion)}) was not bumped from ${formatSemver(releasedPluginVersion)}`,
+        `plugin content changed since ${base ? 'origin/main' : 'the first commit'}, but plugin version (${formatSemver(pluginVersion)}) was not bumped from ${formatSemver(basePluginVersion)}`,
       );
       errors.push("Run 'bash scripts/sync-plugin-version.sh' staged with any plugin change to fix, then commit.");
     }
@@ -137,9 +141,6 @@ function checkMode(): void {
 }
 
 // Main
-const args = process.argv.slice(2);
-const isCheck = args.includes('--check');
-
 if (isCheck) {
   checkMode();
 } else {
