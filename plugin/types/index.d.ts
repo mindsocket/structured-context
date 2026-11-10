@@ -102,23 +102,17 @@ export type ValidationIssueKind = (readonly [
 export type IssueBase<K extends ValidationIssueKind> = {
   /** The check it came from. */
   kind: K;
-  /**
-   * Names the issue within its node (or its file, for a parse issue, or the space, for a global rule),
-   * stably across runs, for example `rule:<ruleId>` or `schema:<dedupeKey>`.
-   */
+  /** Names the issue within its node (or file, or space), stably across runs, e.g. `rule:<ruleId>`. */
   key: string;
   /** How serious the issue is; only `error` fails validation. Read it rather than infer it from `kind`. */
   severity: RuleSeverity;
-  /** One line describing the issue. */
   message: string;
   /** The node the issue is about. Absent for parse issues and global rules. */
   nodeId?: NodeId;
-  /** Where the issue is: the node's source, or the file a parse issue is about. */
+  /** The node's source, or the file a parse issue is about. */
   source?: SourceLocation;
 };
-/**
- * One finding of a validation run. `kind` says which check found it and which extra fields it carries.
- */
+/** One finding of a validation run. `kind` also selects the fields the issue carries. */
 export type ValidationIssue =
   /** A file that produced no nodes; `type` is the plugin's reason, such as `no-type` or `parse`. */
   | (IssueBase<'parse'> & {
