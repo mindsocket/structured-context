@@ -264,10 +264,10 @@ bun link
 
 ### Releasing
 ```bash
-npm login             # authenticate with npm registry if needed
-bun pm version patch  # or minor / major — runs lint, tests, then pushes with tags
-npm publish
+bun pm version patch  # or minor / major — runs lint and tests, then pushes the commit and tag
 ```
+
+Pushing the `v<version>` tag runs the Release workflow (`.github/workflows/release.yml`). It reruns the checks and publishes to npm through trusted publishing, with provenance. It also attests the tarball and attaches it to a GitHub release.
 
 ## License
 

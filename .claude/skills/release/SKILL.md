@@ -9,20 +9,22 @@ Cut a **$ARGUMENTS** release (major, minor, or patch).
 
 1. Verify the branch is `main` and working tree is clean. If not, stop and tell the user. `bun pm version` also refuses untracked files: if there are any, run `git stash push --include-untracked` before step 2 and `git stash pop` after it, whether step 2 passes or fails.
 
-2. Bump the version — this automatically runs lint, tests and the packed-package test (`test:package`), commits, and pushes with tags:
+2. Bump the version. This runs lint, tests and the packed-package test (`test:package`), commits, and pushes with tags:
    ```
    bun pm version $ARGUMENTS
    ```
    If any check fails, stop and report the errors.
 
-3. Tell the user to run these commands in their terminal to complete the release (npm requires browser-based authentication that Claude cannot handle):
-   ```
-   npm login && npm publish
-   ```
-
-4. Once the user confirms publish succeeded, wait for the registry to serve the new version (it can take a few minutes), polling for up to 5 minutes:
+3. The tag push starts the Release workflow (`.github/workflows/release.yml`). It reruns the CI checks, publishes to npm with provenance, attests the tarball and creates a GitHub release. Watch it:
    ```
    v=$(jq -r .version package.json)
+   for i in $(seq 12); do id=$(gh run list --workflow release.yml --branch "v$v" --limit 1 --json databaseId --jq '.[0].databaseId'); [ -n "$id" ] && break; sleep 5; done
+   gh run watch "$id" --exit-status
+   ```
+   If it fails, show the user `gh run view "$id" --log-failed`. For a transient failure, offer `gh run rerun "$id" --failed`. If the code needs a fix, fix it on `main` and cut a new patch release; never move or reuse a tag.
+
+4. Wait for the registry to serve the new version (it can take a few minutes), polling for up to 5 minutes:
+   ```
    for i in $(seq 20); do [ "$(npm view structured-context@$v version 2>/dev/null)" = "$v" ] && break; sleep 15; done
    npm view structured-context dist-tags
    ```
