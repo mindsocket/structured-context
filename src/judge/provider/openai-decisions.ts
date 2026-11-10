@@ -48,6 +48,7 @@ export class OpenAIDecisionsJudgeProvider implements SemanticJudgeProvider {
         `Type: ${r.type}`,
         ...fieldLines(r.data),
       ]),
+      ...(input.types ? ['', `Type definitions: ${JSON.stringify(input.types)}`] : []),
     ];
 
     const res = await fetch(this.endpoint, {

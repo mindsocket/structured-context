@@ -148,7 +148,7 @@ A global rule cannot have a `semantic` part, so it has no scope.
 
 ## Input size and trimming
 
-The input for one evaluated node is capped at about 32,000 estimated tokens. Over the cap, structured-context cuts node bodies, longest related bodies first, and marks each cut with `[RULE_EVALUATION_CONTENT_TRIMMED n chars]`. If the input still does not fit, the rule reports a semantic evaluation error. A run that trims content says so in its summary.
+The input for one evaluated node, including its type definitions, is capped at about 32,000 estimated tokens. Over the cap, structured-context cuts node bodies, longest related bodies first, and marks each cut with `[RULE_EVALUATION_CONTENT_TRIMMED n chars]`. If the input still does not fit, the rule reports a semantic evaluation error. A run that trims content says so in its summary.
 
 A rule with `semantic.scope` or `semantic.includeContent` can return `missing-context` when content it needs was cut. It is a `warning` by default; change it in `semantic.severity`.
 
@@ -159,6 +159,7 @@ A rule with `semantic.scope` or `semantic.includeContent` can return `missing-co
 - **Gating.** structured-context does not evaluate the semantic part on a gated node. [Coverage output](rules.md#coverage-output) shows which nodes were gated.
 - **Evaluation errors.** If the model provider fails (for example, a network error or output that structured-context cannot read), structured-context reports a violation with the suffix `(Semantic evaluation error: ...)`. An evaluation error does not gate.
 - **Input.** The model provider gets the node's title, type, parent titles and schema data, including frontmatter. It gets the node's body, and any [related nodes](#related-nodes-and-content), only as the rule's `semantic.scope` and `semantic.includeContent` ask ([trimmed](#input-size-and-trimming) to fit).
+- **Type definitions.** The model provider also gets the schema's definition of each type in the input: the type's `description`, the `description` and enum values of its fields, and the types above and below it in the main hierarchy. Write these descriptions to say what a good node of the type looks like, so a rule's rubric can stay short.
 - **Output.** A violation from a semantic verdict also includes the verdict, the model's evidence and any guidance.
 
 `sctx validate-file` evaluates the semantic part only for the file and the rules on its ancestors that can gate it. Thus one file costs at most one model call for each ancestor level, plus one.

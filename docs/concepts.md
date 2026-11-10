@@ -201,6 +201,8 @@ A **model provider** evaluates semantic rules: a decision model (Jev) or a chat 
 
 The **evaluated node** is the node a semantic rule is judged on. A rule's `semantic.scope` adds **related nodes** (parent, siblings, children, ancestors, descendants, or the whole branch) along the main hierarchy's edges, and `semantic.includeContent` chooses whose body is sent. See [Related nodes and content](semantic-rules.md#related-nodes-and-content).
 
+The **type definitions** in a judge input are what the schema says about each type in it: the type's description, its fields' descriptions and enum values, and its neighbours in the main hierarchy. See [How semantic evaluation works](semantic-rules.md#how-semantic-evaluation-works).
+
 A **node ruleset group** is the set of nodes that share the same semantic rules. It forms within one evaluation step of [cascade gating](#cascade-gating): one hierarchy depth, or the set of non-hierarchy nodes. Nodes are keyed on the rules left after `when` and `expression` filtering. A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates one group in as few decision requests as it can.
 
 A **decision request** is one call to a decisions API. It carries the state of one or more nodes and a list of decision questions.

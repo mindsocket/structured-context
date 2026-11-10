@@ -2,7 +2,8 @@ import { SEMANTIC_SCOPES } from '../schema/metadata-contract';
 import { ruleSemantic } from '../schema/rule-severity';
 import type { SpaceGraph } from '../space-graph';
 import type { NodeId, Rule, SpaceNode } from '../types';
-import type { RelatedNode, SemanticJudgeInput } from './types';
+import { definitionsFor } from './type-definitions';
+import type { JudgeTypeDefinition, RelatedNode, SemanticJudgeInput } from './types';
 
 export type SemanticScope = Exclude<(typeof SEMANTIC_SCOPES)[number], 'branch'>;
 export type ContentMode = 'none' | 'nodeOnly' | 'fullScope';
@@ -101,15 +102,18 @@ export function relatedNodes(graph: SpaceGraph, node: SpaceNode, context: RuleCo
   return [...found.values()];
 }
 
-/** The judge input context for rules that share `context`: the node view and its related nodes. */
+/** The judge input context for rules that share `context`: the node view, its related nodes and their types' definitions. */
 export function judgeContext(
   graph: SpaceGraph,
   node: SpaceNode,
   context: RuleContext,
-): Pick<SemanticJudgeInput, 'node' | 'related'> {
+  definitions?: ReadonlyMap<string, JudgeTypeDefinition>,
+): Pick<SemanticJudgeInput, 'node' | 'related' | 'types'> {
   const related = relatedNodes(graph, node, context);
+  const types = definitionsFor(definitions, new Set([node.resolvedType, ...related.map((r) => r.type)]));
   return {
     node: judgeNodeView(node, context.content !== 'none', graph),
     ...(related.length > 0 && { related }),
+    ...(types && { types }),
   };
 }
