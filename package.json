@@ -5,6 +5,10 @@
   "module": "./dist/index.js",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mindsocket/structured-context.git"
+  },
   "bin": {
     "sctx": "dist/index.js"
   },

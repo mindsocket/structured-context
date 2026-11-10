@@ -12,7 +12,7 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 - `bun run lint:fix` — biome with fixes
 - `bun run build` — compile `src/` to `dist/` (`tsconfig.build.json`)
 - see `package.json` 
-- Releases go through the `/release` skill.
+- Releases go through the `/release` skill. Its tag push runs `.github/workflows/release.yml`, which publishes to npm.
 
 Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or the nearest `.sctx.json` walking up from the working directory
 
@@ -90,7 +90,7 @@ There are several places that need reviewing and updating with any new feature o
 For most development only the main unit tests need re-running regularly.
 - `bun run test` — unit tests (fixtures in `tests/`)
 - `bun run test:hook` — unit test plugin hooks (`hook-test/unit/`) - hook development only
-- `bun run test:mod` — test the mod (`plugin/hooks/*.test.tsx`, with `claude plugin test`) - mod development only
+- `bun run test:mod` — test the mod (`plugin/hooks/*.test.tsx`, with `claude plugin test`) - mod development only. CI runs it, and `claude plugin validate plugin`
 - `bun run test:hook:e2e` — test plugin hooks in Claude Code (`hook-test/`) - hook development only
 - `bun run test:smoke` — smoke tests run against locally configured spaces - only use when changes could affect compatibility.
 - `bun run test:package` — builds and packs the package, installs the tarball, and runs the installed CLI. Runs in CI and before every version bump; run it after changing the build, `tsconfig*.json` or `files`.

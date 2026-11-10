@@ -88,28 +88,31 @@ describe('paneData', () => {
     const dir = resultsDirPath(stateFilePath(sessionId, opts()));
     const kept = loadResult(dir, 'test-space')!;
     const marker = {
+      kind: 'rule',
+      key: 'rule:kept',
+      message: '[kept] from the kept result',
       nodeId: 'valid.md',
       ruleId: 'kept',
       category: 'coherence',
       severity: 'warning',
       description: 'from the kept result',
-    } as PaneData['validation']['ruleViolations'][number];
-    saveResult({ dir, hash: kept.hash }, 'test-space', { ruleViolations: [marker] });
+    } as PaneData['validation']['issues'][number];
+    saveResult({ dir, hash: kept.hash }, 'test-space', { issues: [marker] });
 
     const reused = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });
-    expect(reused.validation).toEqual({ issues: {}, ruleViolations: [marker], parseIssues: [] });
+    expect(reused.validation).toEqual({ issues: [marker] });
     expect(reused.graph.nodes.length).toBeGreaterThan(0);
     expect(reused.graph.nodes.every((node) => !('content' in (node as object)))).toBe(true);
 
     writeFileSync(join(fixtures.vaultDir, 'valid.md'), '---\ntype: mission\nstatus: identified\n---\n\n# Changed\n');
     const fresh = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });
-    expect(fresh.validation.ruleViolations).not.toContainEqual(marker);
+    expect(fresh.validation.issues).not.toContainEqual(marker);
 
     writeFileSync(join(fixtures.vaultDir, 'valid.md'), '---\ntype: mission\n---\n\n# No status\n');
     const failing = await paneData(sessionId, 'test-space', { ...opts(), cwd: fixtures.fixtureDir });
-    const kinds = Object.values(failing.validation.issues['valid.md'] ?? {}).map(
-      ({ kind, severity }) => `${kind}:${severity}`,
-    );
+    const kinds = failing.validation.issues
+      .filter((issue) => issue.nodeId === 'valid.md')
+      .map(({ kind, severity }) => `${kind}:${severity}`);
     expect(kinds).toContain('schema:error');
     expect(loadResult(dir, 'test-space')!.hash).not.toBe(kept.hash);
   });

@@ -126,11 +126,33 @@ function findOccurrence(occurrences: Occurrence[], key: string): Occurrence | un
   return undefined;
 }
 
+type Issue = PaneData['validation']['issues'][number];
+
+// PROTOTYPE: structured-context-map-views 0.5 takes issues by node plus the global rule violations.
+// Drop this once a map-views release takes the issue list itself.
+function byNode(list: Issue[]): Parameters<typeof annotationsFrom>[0] {
+  const issues: Record<
+    string,
+    Record<string, Pick<Issue, 'kind' | 'message' | 'severity'> & { line?: number; column?: number }>
+  > = {};
+  const ruleViolations: { ruleId: string; severity: Issue['severity']; description: string }[] = [];
+  for (const issue of list) {
+    if (issue.kind === 'parse') continue;
+    if (issue.nodeId === undefined) {
+      if (issue.kind === 'rule') ruleViolations.push(issue);
+      continue;
+    }
+    const { kind, message, severity, source } = issue;
+    issues[issue.nodeId] ??= {};
+    issues[issue.nodeId]![issue.key] = { kind, message, severity, line: source?.line, column: source?.column };
+  }
+  return { issues, ruleViolations } as Parameters<typeof annotationsFrom>[0];
+}
+
 function project(data: PaneData, hierarchy?: string): { graph: Graph; tree: Tree; annotations: Annotations } {
   const graph = spaceGraphFrom(data.graph as Parameters<typeof spaceGraphFrom>[0], { hierarchy });
   const tree = buildTree(graph, 'pane');
-  const { issues, ruleViolations } = data.validation;
-  const annotations = annotationsFrom({ issues, ruleViolations }, graph);
+  const annotations = annotationsFrom(byNode(data.validation.issues), graph);
   return { graph, tree, annotations };
 }
 
@@ -244,7 +266,7 @@ export function registerMapPane(on: On): void {
     const counts = { error: 0, warning: 0, info: 0 };
     for (const results of annotations.annotations.values()) for (const a of results) counts[a.severity]++;
     for (const a of annotations.unattached) counts[a.severity]++;
-    const parseIssues = data.validation.parseIssues;
+    const parseIssues = data.validation.issues.filter((issue) => issue.kind === 'parse');
     for (const issue of parseIssues) counts[issue.severity]++;
 
     const toggle = (key: string) =>
@@ -355,7 +377,7 @@ export function registerMapPane(on: On): void {
         {parseIssues.slice(0, UNATTACHED_LIMIT).map((issue) => (
           <Text color={SEVERITY_COLOR[issue.severity]}>
             {'  '}
-            {issue.file}: {issue.severity}: {issue.message ?? issue.type}
+            {issue.source?.file}: {issue.severity}: {issue.message}
           </Text>
         ))}
         {parseIssues.length > UNATTACHED_LIMIT && (

@@ -16,7 +16,6 @@ import { buildSpaceGraph } from './space-graph';
 import type {
   CoverageGate,
   FileNotInSpaceResult,
-  FileValidationIssue,
   FileValidationResult,
   GraphViolation,
   NodeId,
@@ -29,6 +28,7 @@ import type {
   SpaceContext,
   SpaceNode,
   ValidateFileOutput,
+  ValidationIssue,
 } from './types';
 
 export interface FormattedError {
@@ -37,24 +37,12 @@ export interface FormattedError {
 }
 
 export interface ValidationResult {
+  /** Every issue the run found, of every severity. Only `error` issues fail validation. */
+  issues: ValidationIssue[];
+  /** Nodes that passed their type and schema checks. */
   validCount: number;
-  nodeErrorCount: number;
-  nodeErrors: Array<{
-    nodeId: NodeId;
-    source?: SourceLocation;
-    /** Formatted, deduplicated schema problems for the node, one per field problem. */
-    issues: FormattedError[];
-  }>;
-  refErrors: Array<{ nodeId: NodeId; source?: SourceLocation; parent: string; error: string }>;
-  /** Nodes that share an id; `sources` lists where each is defined (a node without a source adds no entry). */
-  duplicateErrors: Array<{ id: NodeId; sources: SourceLocation[] }>;
-  /** All rule violations with their effective severity. Only `error` severity fails validation. */
-  ruleViolations: RuleViolation[];
-  hierarchyViolations: GraphViolation[];
-  orphans: SpaceNode[];
-  parseIssues: ParseIssue[];
-  /** Content links that could not be resolved to a space node, at `info` severity: not counted in errors. */
-  unresolvedContentLinks: Array<{ nodeId: NodeId; target: string; severity: 'info' }>;
+  /** Hierarchy nodes without a parent: informational, not issues. */
+  orphans: Array<{ nodeId: NodeId; title: string }>;
   /**
    * Cascade gates: nodes whose schema/hierarchy failure or blocking rule violation
    * suppressed rule evaluation for themselves and/or their hierarchy subtree.
@@ -280,27 +268,31 @@ interface NodeValidationFailure {
 export interface SpaceValidationResult {
   validCount: number;
   nodeFailures: NodeValidationFailure[];
-  refErrors: ValidationResult['refErrors'];
-  duplicateErrors: ValidationResult['duplicateErrors'];
+  refErrors: Array<{ nodeId: NodeId; source?: SourceLocation; parent: string; error: string }>;
+  /** Nodes that share an id; `sources` lists where each is defined (a node without a source adds no entry). */
+  duplicateErrors: DuplicateId[];
   ruleViolations: RuleViolation[];
   hierarchyViolations: GraphViolation[];
   orphans: SpaceNode[];
-  unresolvedContentLinks: ValidationResult['unresolvedContentLinks'];
+  /** Content links that could not be resolved to a space node. */
+  unresolvedContentLinks: Array<{ nodeId: NodeId; target: string }>;
   coverageGates: CoverageGate[];
   contextTrimmed: ValidationResult['contextTrimmed'];
 }
+
+type DuplicateId = { id: NodeId; sources: SourceLocation[] };
 
 /**
  * Nodes that share an id, with where each is defined. A plugin should keep ids unique, so this guards that contract.
  * Display titles may repeat.
  */
-export function findDuplicateIds(nodes: SpaceNode[]): ValidationResult['duplicateErrors'] {
+export function findDuplicateIds(nodes: SpaceNode[]): DuplicateId[] {
   const idToNodes = new Map<NodeId, SpaceNode[]>();
   for (const node of nodes) {
     if (!idToNodes.has(node.id)) idToNodes.set(node.id, []);
     idToNodes.get(node.id)!.push(node);
   }
-  const duplicates: ValidationResult['duplicateErrors'] = [];
+  const duplicates: DuplicateId[] = [];
   for (const [id, sameId] of idToNodes) {
     if (sameId.length > 1) duplicates.push({ id, sources: sameId.flatMap((n) => (n.source ? [n.source] : [])) });
   }
@@ -420,7 +412,7 @@ export async function validateNodes(
         const key = `${node.id}::${link.target}`;
         if (!seen.has(key)) {
           seen.add(key);
-          result.unresolvedContentLinks.push({ nodeId: node.id, target: link.target, severity: 'info' });
+          result.unresolvedContentLinks.push({ nodeId: node.id, target: link.target });
         }
       }
     }
@@ -464,16 +456,9 @@ export async function validateSpace(
   const result = await validateNodes(context, nodes, readResult, runOptions);
 
   return {
+    issues: issuesOf(result, readResult.parseIssues, runOptions),
     validCount: result.validCount,
-    nodeErrorCount: result.nodeFailures.length,
-    nodeErrors: toNodeErrors(result.nodeFailures),
-    refErrors: result.refErrors,
-    duplicateErrors: result.duplicateErrors,
-    ruleViolations: result.ruleViolations,
-    hierarchyViolations: result.hierarchyViolations,
-    orphans: result.orphans,
-    parseIssues: readResult.parseIssues,
-    unresolvedContentLinks: result.unresolvedContentLinks,
+    orphans: result.orphans.map((node) => ({ nodeId: node.id, title: node.title })),
     coverageGates: result.coverageGates,
     contextTrimmed: result.contextTrimmed,
     skippedByDepth,
@@ -500,84 +485,102 @@ export interface ValidateFileOptions extends CommonValidateOptions {
   configDir?: string;
 }
 
-/** The parts of a validation result that `nodeIssues` reads. */
-type NodeIssueSources = Pick<
-  ValidationResult,
-  | 'nodeErrors'
-  | 'refErrors'
-  | 'duplicateErrors'
-  | 'hierarchyViolations'
-  | 'ruleViolations'
-  | 'coverageGates'
-  | 'unresolvedContentLinks'
->;
-
 /**
- * Every result that belongs to a node, by node id, each keyed by a composite id (e.g.
- * `schema:/status:enum:active`, `rule:my-rule-id`) and carrying its severity. Rule violations without
- * a node (global scope) and parse issues are not per node, so they stay in their own parts of the result.
- * `includeGated` words the note on a gated node as it was validated.
+ * The run's findings as issues, each with its severity. This is the one place severity is decided for
+ * the checks that have no severity of their own. An issue repeated within its node (or file) is kept once.
  */
-export function nodeIssues(
-  result: NodeIssueSources,
-  options: { includeGated?: boolean } = {},
-): Record<string, Record<string, FileValidationIssue>> {
-  const byNode: Record<string, Record<string, FileValidationIssue>> = {};
-  const add = (nodeId: NodeId, key: string, issue: FileValidationIssue) => {
-    byNode[nodeId] ??= {};
-    byNode[nodeId][key] = issue;
+export function issuesOf(
+  result: SpaceValidationResult,
+  parseIssues: ParseIssue[],
+  options: { includeGated?: boolean },
+): ValidationIssue[] {
+  const issues = new Map<string, ValidationIssue>();
+  const add = (issue: ValidationIssue) => {
+    const scope = issue.nodeId ?? (issue.kind === 'parse' ? issue.source.file : '');
+    issues.set(`${scope}\0${issue.key}`, issue);
   };
+  const at = (source: SourceLocation | undefined) => (source ? { source } : {});
 
-  for (const { nodeId, source, issues } of result.nodeErrors) {
-    const position = {
-      ...(source?.line !== undefined ? { line: source.line } : {}),
-      ...(source?.column !== undefined ? { column: source.column } : {}),
-    };
-    for (const { message, dedupeKey } of issues) {
-      add(nodeId, `schema:${dedupeKey}`, { kind: 'schema', message, severity: 'error', ...position });
+  for (const { file, severity, type, message, line, column } of parseIssues) {
+    add({
+      kind: 'parse',
+      key: `parse:${type}`,
+      severity,
+      message: message ?? (type === 'no-type' ? 'No type field' : `Excluded during parsing (${type})`),
+      source: { file, ...(line !== undefined && { line }), ...(column !== undefined && { column }) },
+      type,
+    });
+  }
+  for (const { node, issues: problems } of result.nodeFailures) {
+    for (const { message, dedupeKey } of problems) {
+      add({
+        kind: 'schema',
+        key: `schema:${dedupeKey}`,
+        severity: 'error',
+        message,
+        nodeId: node.id,
+        ...at(node.source),
+      });
     }
   }
   for (const { id, sources } of result.duplicateErrors) {
     const where = sources.length > 0 ? `: ${sources.map(formatSource).join(', ')}` : '';
-    add(id, `duplicate:${id}`, {
+    add({
       kind: 'duplicate',
-      message: `Duplicate id "${id}" is used by ${sources.length} nodes${where}`,
+      key: `duplicate:${id}`,
       severity: 'error',
+      message: `Duplicate id "${id}" is used by ${sources.length} nodes${where}`,
+      nodeId: id,
+      sources,
     });
   }
-  for (const { nodeId, parent, error } of result.refErrors) {
-    add(nodeId, `broken-link:${parent}`, { kind: 'broken-link', message: `${parent} → ${error}`, severity: 'error' });
+  for (const { nodeId, source, parent, error } of result.refErrors) {
+    add({
+      kind: 'broken-link',
+      key: `broken-link:${parent}`,
+      severity: 'error',
+      message: `${parent} → ${error}`,
+      nodeId,
+      ...at(source),
+      ref: parent,
+      reason: error,
+    });
   }
-  for (const { nodeId, description } of result.hierarchyViolations) {
-    add(nodeId, `hierarchy:${description}`, { kind: 'hierarchy', message: description, severity: 'error' });
+  for (const { description, ...violation } of result.hierarchyViolations) {
+    add({ kind: 'hierarchy', key: `hierarchy:${description}`, severity: 'error', message: description, ...violation });
   }
   for (const v of result.ruleViolations) {
-    if (v.nodeId)
-      add(v.nodeId, `rule:${v.ruleId}`, { kind: 'rule', message: ruleViolationMessage(v), severity: v.severity });
+    add({ kind: 'rule', key: `rule:${v.ruleId}`, message: ruleViolationMessage(v), ...v });
   }
   // A gated node with no violations would otherwise look clean: say that its rules were not checked
   for (const gate of result.coverageGates) {
     const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
     const message = `Rule checks ${options.includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.nodeId}`;
-    for (const id of gate.gatedNodeIds) add(id, `gated:${gate.nodeId}`, { kind: 'gated', message, severity: 'info' });
+    for (const nodeId of gate.gatedNodeIds) {
+      add({
+        kind: 'gated',
+        key: `gated:${gate.nodeId}`,
+        severity: 'info',
+        message,
+        nodeId,
+        gatedBy: gate.nodeId,
+        reason: gate.reason,
+        ...(gate.ruleId !== undefined && { ruleId: gate.ruleId }),
+      });
+    }
   }
-  for (const { nodeId, target, severity } of result.unresolvedContentLinks) {
-    add(nodeId, `content-link:${target}`, {
+  for (const { nodeId, target } of result.unresolvedContentLinks) {
+    // Info: a target outside the space is often valid elsewhere
+    add({
       kind: 'content-link',
+      key: `content-link:${target}`,
+      severity: 'info',
       message: `Unresolved content link: ${target}`,
-      severity,
+      nodeId,
+      target,
     });
   }
-  return byNode;
-}
-
-/** `ValidationResult['nodeErrors']` from the failures `validateNodes` collects */
-function toNodeErrors(failures: NodeValidationFailure[]): ValidationResult['nodeErrors'] {
-  return failures.map(({ node, issues }) => ({
-    nodeId: node.id,
-    ...(node.source !== undefined && { source: node.source }),
-    issues,
-  }));
+  return [...issues.values()];
 }
 
 /** The result for a file that belongs to no configured space. */
@@ -614,12 +617,8 @@ export async function validateResolvedFileWith(
     ...runOptions,
     judgeTarget: label,
   });
-  const byNode = nodeIssues(
-    { ...result, nodeErrors: toNodeErrors(result.nodeFailures) },
-    { includeGated: runOptions.includeGated },
-  );
-  const issues = byNode[label] ?? {};
-  const errorCount = Object.values(issues).filter((issue) => issue.severity === 'error').length;
+  const issues = issuesOf(result, [], runOptions).filter((issue) => issue.nodeId === label);
+  const errorCount = issues.filter((issue) => issue.severity === 'error').length;
 
   return {
     file: isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath),
@@ -627,7 +626,7 @@ export async function validateResolvedFileWith(
     space: context.space.name,
     issues,
     errorCount,
-    warningCount: Object.keys(issues).length - errorCount,
+    warningCount: issues.length - errorCount,
     inSpace: true,
   };
 }

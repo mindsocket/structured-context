@@ -1,0 +1,60 @@
+name: Release
+
+# Pushing a version tag (`bun pm version` does this) publishes that version to npm.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    # npm's trusted publisher config for this package names this workflow and environment.
+    environment: npm
+    permissions:
+      contents: write # GitHub release
+      id-token: write # npm trusted publishing and provenance
+      attestations: write # artifact attestation of the tarball
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # Trusted publishing needs npm 11.5.1 or later, which Node 24 ships.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Check the tag matches package.json
+        run: |
+          v=$(jq -r .version package.json)
+          if [ "$GITHUB_REF_NAME" != "v$v" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $v"
+            exit 1
+          fi
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      # Pack once, so the tarball that is attested is the one published and attached.
+      - name: Pack
+        id: pack
+        run: echo "tarball=$(npm pack --ignore-scripts --silent)" >>"$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+      - run: npm publish "$TARBALL" --provenance --access public
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+      - name: Create the GitHub release
+        run: gh release create "$GITHUB_REF_NAME" "$TARBALL" --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}

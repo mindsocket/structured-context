@@ -3,39 +3,20 @@ import chokidar from 'chokidar';
 import { getConfigSourceFiles } from '../config';
 import { resolveSpacePluginSchemas } from '../plugins/util';
 import { bundledSchemasDir } from '../schema/schema';
-import type { RuleSeverity, SpaceContext } from '../types';
-import { formatSource, nodeIssues, type ValidateSpaceOptions, validateSpace } from '../validate';
+import type { RuleSeverity, SpaceContext, ValidationIssue } from '../types';
+import { formatSource, type ValidateSpaceOptions, type ValidationResult, validateSpace } from '../validate';
 
-/** What `validate --json` prints. The Claude Code plugin's scripts read it by this type. */
+/** What `validate --json` prints: the run's `ValidationResult` and a summary. The Claude Code plugin's scripts read it by this type. */
 export type ValidateJsonOutput = ReturnType<typeof validateJson>;
 
-function validateJson(
-  context: SpaceContext,
-  result: Awaited<ReturnType<typeof validateSpace>>,
-  options: ValidateSpaceOptions,
-) {
-  const issues = nodeIssues(result, options);
-  const nodeErrorCount = Object.values(issues)
-    .flatMap((byKey) => Object.values(byKey))
-    .filter((issue) => issue.severity === 'error').length;
-  const globalRuleErrorCount = result.ruleViolations.filter((v) => !v.nodeId && v.severity === 'error').length;
-  const parseErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
-  const errorCount = nodeErrorCount + parseErrorCount + globalRuleErrorCount;
-  return {
-    space: context.space.name,
-    valid: errorCount === 0,
-    validCount: result.validCount,
-    errorCount,
-    issues,
-    ruleViolations: result.ruleViolations,
-    orphanCount: result.orphans.length,
-    parseIssues: result.parseIssues,
-    unresolvedContentLinks: result.unresolvedContentLinks,
-    coverageGates: result.coverageGates,
-    contextTrimmed: result.contextTrimmed,
-    skippedByDepth: result.skippedByDepth,
-    depthLimit: result.depthLimit,
-  };
+function validateJson(context: SpaceContext, result: ValidationResult) {
+  const errorCount = result.issues.filter((issue) => issue.severity === 'error').length;
+  return { space: context.space.name, valid: errorCount === 0, errorCount, ...result };
+}
+
+/** The issues of one kind, narrowed to that kind's fields */
+function ofKind<K extends ValidationIssue['kind']>(result: ValidationResult, kind: K) {
+  return result.issues.filter((issue): issue is Extract<ValidationIssue, { kind: K }> => issue.kind === kind);
 }
 
 export async function validate(
@@ -43,13 +24,11 @@ export async function validate(
   options: { json?: boolean } & ValidateSpaceOptions = {},
 ): Promise<number> {
   const result = await validateSpace(context, options);
-  const ruleCounts: Record<RuleSeverity, number> = { error: 0, warning: 0, info: 0 };
-  for (const v of result.ruleViolations) ruleCounts[v.severity]++;
+  const errorCount = result.issues.filter((issue) => issue.severity === 'error').length;
 
   if (options.json) {
-    const output = validateJson(context, result, options);
-    console.log(JSON.stringify(output, null, 2));
-    return output.valid ? 0 : 1;
+    console.log(JSON.stringify(validateJson(context, result), null, 2));
+    return errorCount === 0 ? 0 : 1;
   }
 
   // Human-readable output
@@ -74,69 +53,65 @@ export async function validate(
     return `${label.padEnd(40)} ${color}${countStr}${reset}`;
   };
 
-  const parseIssueErrorCount = result.parseIssues.filter((i) => i.severity === 'error').length;
+  const where = (issue: ValidationIssue) => (issue.source ? formatSource(issue.source) : (issue.nodeId ?? ''));
+  const parseIssues = ofKind(result, 'parse');
+  const schemaIssues = ofKind(result, 'schema');
+  const brokenLinks = ofKind(result, 'broken-link');
+  const duplicates = ofKind(result, 'duplicate');
+  const ruleViolations = ofKind(result, 'rule');
+  const hierarchyViolations = ofKind(result, 'hierarchy');
+  const contentLinks = ofKind(result, 'content-link');
+  const ruleCounts: Record<RuleSeverity, number> = { error: 0, warning: 0, info: 0 };
+  for (const v of ruleViolations) ruleCounts[v.severity]++;
 
   if (result.orphans.length > 0) {
     console.log(`\nOrphans (hierarchy nodes - no parent):`);
-    for (const node of result.orphans) console.log(`   ${node.id}`);
+    for (const { nodeId } of result.orphans) console.log(`   ${nodeId}`);
   }
 
-  if (result.unresolvedContentLinks.length > 0) {
+  if (contentLinks.length > 0) {
     console.log(`\nUnresolved content links (may be outside-space or broken):`);
-    const byFile = new Map<string, string[]>();
-    for (const { nodeId, target } of result.unresolvedContentLinks) {
-      if (!byFile.has(nodeId)) byFile.set(nodeId, []);
-      byFile.get(nodeId)!.push(target);
-    }
-    for (const [nodeId, targets] of byFile) {
+    const byNode = Map.groupBy(contentLinks, (link) => link.nodeId);
+    for (const [nodeId, links] of byNode) {
       console.log(`   ${nodeId}:`);
-      for (const target of targets) console.log(`      ${target}`);
+      for (const { target } of links) console.log(`      ${target}`);
     }
   }
 
-  if (result.parseIssues.length > 0) {
+  if (parseIssues.length > 0) {
     console.log(`\nExcluded during parsing:`);
-    for (const issue of result.parseIssues) {
-      const loc =
-        issue.line !== undefined ? `:${issue.line}${issue.column !== undefined ? `:${issue.column}` : ''}` : '';
-      const detail = issue.message ? ` - ${issue.message}` : '';
-      console.log(`   ${issue.file}${loc}: ${issue.severity} - ${issue.type}${detail}`);
+    for (const issue of parseIssues) {
+      console.log(`   ${formatSource(issue.source)}: ${issue.severity} - ${issue.type} - ${issue.message}`);
     }
   }
 
-  if (result.nodeErrors.length > 0) {
+  if (schemaIssues.length > 0) {
     console.log(`\nSchema validation errors:`);
-    result.nodeErrors.forEach(({ nodeId, source, issues }) => {
-      console.log(`\n   ${source ? formatSource(source) : nodeId}:`);
-      issues.forEach(({ message }) => {
-        console.log(`      ${message}`);
-      });
-    });
+    for (const [, issues] of Map.groupBy(schemaIssues, (issue) => issue.nodeId)) {
+      console.log(`\n   ${where(issues[0]!)}:`);
+      for (const { message } of issues) console.log(`      ${message}`);
+    }
   }
 
-  if (result.refErrors.length > 0) {
+  if (brokenLinks.length > 0) {
     console.log(`\nBroken links:`);
-    result.refErrors.forEach(({ nodeId, source, parent, error }) => {
-      console.log(`   ${source ? formatSource(source) : nodeId}: ${parent} → ${error}`);
-    });
+    for (const issue of brokenLinks) console.log(`   ${where(issue)}: ${issue.message}`);
   }
 
-  if (result.duplicateErrors.length > 0) {
+  if (duplicates.length > 0) {
     console.log(`\nDuplicate ids (same id on multiple nodes):`);
-    result.duplicateErrors.forEach(({ id, sources }) => {
-      console.log(`   "${id}":`);
-      for (const source of sources) {
-        console.log(`      ${formatSource(source)}`);
-      }
-    });
+    for (const { nodeId, sources } of duplicates) {
+      console.log(`   "${nodeId}":`);
+      for (const source of sources) console.log(`      ${formatSource(source)}`);
+    }
   }
 
-  if (result.ruleViolations.length > 0) {
+  if (ruleViolations.length > 0) {
     console.log(`\nRule violations:`);
 
     const severityColor: Record<RuleSeverity, string> = { error: red, warning: yellow, info: reset };
     for (const severity of ['error', 'warning', 'info'] as const) {
-      const violations = result.ruleViolations.filter((v) => v.severity === severity);
+      const violations = ruleViolations.filter((v) => v.severity === severity);
       if (violations.length === 0) continue;
       console.log(`  ${severityColor[severity]}${severity.toUpperCase()}${reset} (${violations.length}):`);
       for (const v of violations) {
@@ -151,10 +126,10 @@ export async function validate(
     }
   }
 
-  if (result.hierarchyViolations.length > 0) {
+  if (hierarchyViolations.length > 0) {
     console.log(`\nHierarchy violations:`);
-    for (const v of result.hierarchyViolations) {
-      console.log(`   ${v.nodeId}: ${v.description}`);
+    for (const v of hierarchyViolations) {
+      console.log(`   ${v.nodeId}: ${v.message}`);
     }
   }
 
@@ -183,16 +158,17 @@ export async function validate(
   console.log(`━`.repeat(45));
   console.log('Content and structure');
   console.log(fmt('  Valid', result.validCount));
-  console.log(fmt('  Schema validation errors', result.nodeErrorCount, true));
-  console.log(fmt('  Broken links', result.refErrors.length, true));
-  console.log(fmt('  Duplicate ids', result.duplicateErrors.length, true));
+  console.log(fmt('  Schema validation errors', new Set(schemaIssues.map((issue) => issue.nodeId)).size, true));
+  console.log(fmt('  Broken links', brokenLinks.length, true));
+  console.log(fmt('  Duplicate ids', duplicates.length, true));
   console.log(fmt('  Rule violations (error)', ruleCounts.error, true));
   console.log(fmt('  Rule violations (warning)', ruleCounts.warning, true, true));
   console.log(fmt('  Rule violations (info)', ruleCounts.info, true, true));
-  console.log(fmt('  Hierarchy violations', result.hierarchyViolations.length, true));
+  console.log(fmt('  Hierarchy violations', hierarchyViolations.length, true));
   console.log(fmt('  Orphans (hierarchy nodes - no parent)', result.orphans.length, true, true));
-  console.log(fmt('  Unresolved content links (info)', result.unresolvedContentLinks.length, true, true));
-  console.log(fmt('  Excluded during parsing', result.parseIssues.length, true, parseIssueErrorCount === 0));
+  console.log(fmt('  Unresolved content links (info)', contentLinks.length, true, true));
+  const parseErrors = parseIssues.filter((issue) => issue.severity === 'error').length;
+  console.log(fmt('  Excluded during parsing', parseIssues.length, true, parseErrors === 0));
   if (result.depthLimit !== undefined) {
     console.log(fmt('  Skipped by depth limit', result.skippedByDepth.length, true, true));
   }
@@ -201,17 +177,7 @@ export async function validate(
 
   console.log(`\n`);
 
-  if (
-    result.nodeErrorCount > 0 ||
-    result.refErrors.length > 0 ||
-    result.duplicateErrors.length > 0 ||
-    ruleCounts.error > 0 ||
-    result.hierarchyViolations.length > 0 ||
-    parseIssueErrorCount > 0
-  ) {
-    return 1;
-  }
-  return 0;
+  return errorCount === 0 ? 0 : 1;
 }
 
 export async function watchValidate(context: SpaceContext): Promise<never> {

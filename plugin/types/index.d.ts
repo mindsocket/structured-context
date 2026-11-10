@@ -16,9 +16,31 @@ export type SchemaDigest = { space: string; text: string };
 export type CwdContext = { spaces: string[]; digests: SchemaDigest[] };
 
 // BEGIN generated from scripts/mod-contract.ts by `bun run build:mod-projection`; do not edit
+/**
+ * Records one cascade: a node whose failure or blocking rule violation suppressed
+ * rule evaluation for itself (if schema/hierarchy caused it) and/or its hierarchy subtree.
+ */
+export type CoverageGate = {
+  /** Id of the blocking node. */
+  nodeId: NodeId;
+  /** What kind of check triggered the gate. */
+  reason: 'schema' | 'hierarchy' | 'rule';
+  /** Rule id responsible, when `reason` is `'rule'`. */
+  ruleId?: string;
+  /** Ids of nodes whose rule evaluation was suppressed as a result of this gate. */
+  gatedNodeIds: NodeId[];
+};
 /** Unique key of a node within a space. Supplied by the plugin that produced the node. */
 export type NodeId = string & {
   readonly __brand: 'NodeId';
+};
+export type SourceLocation = {
+  /** File path relative to the space root. */
+  file: string;
+  /** 1-indexed starting line number in the source file, if available. */
+  line?: number;
+  /** 1-indexed starting column number in the source file, if available. */
+  column?: number;
 };
 export type ParseIssue = {
   /** Source identifier of the file or item (filename or heading title). */
@@ -57,7 +79,17 @@ export type RuleViolation = {
   /** User-facing guidance declared for that verdict (semantic rules). */
   guidance?: string;
 };
+export type GraphViolation = {
+  /** Id of the node whose parent link breaks the hierarchy. */
+  nodeId: NodeId;
+  nodeType: string;
+  nodeTitle: string;
+  parentType: string;
+  parentTitle: string;
+  description: string;
+};
 export type ValidationIssueKind = (readonly [
+  'parse',
   'schema',
   'duplicate',
   'broken-link',
@@ -66,22 +98,62 @@ export type ValidationIssueKind = (readonly [
   'gated',
   'content-link',
 ])[number];
-export interface FileValidationIssue {
+/** What every validation issue has, whatever its kind. */
+export type IssueBase<K extends ValidationIssueKind> = {
   /** The check it came from. */
-  kind: ValidationIssueKind;
-  message: string;
-  /** How serious the issue is; consumers read it rather than infer it from `kind`. */
+  kind: K;
+  /** Names the issue within its node (or file, or space), stably across runs, e.g. `rule:<ruleId>`. */
+  key: string;
+  /** How serious the issue is; only `error` fails validation. Read it rather than infer it from `kind`. */
   severity: RuleSeverity;
-  /** 1-indexed line number in source file, if available. */
-  line?: number;
-  /** 1-indexed column number in source file, if available. */
-  column?: number;
-}
-/** The parts of `validate --json` the pane reads, as validate gives them */
+  message: string;
+  /** The node the issue is about. Absent for parse issues and global rules. */
+  nodeId?: NodeId;
+  /** The node's source, or the file a parse issue is about. */
+  source?: SourceLocation;
+};
+/** One finding of a validation run. `kind` also selects the fields the issue carries. */
+export type ValidationIssue =
+  /** A file that produced no nodes; `type` is the plugin's reason, such as `no-type` or `parse`. */
+  | (IssueBase<'parse'> & {
+      source: SourceLocation;
+      type: ParseIssue['type'];
+    })
+  /** A node that failed its type or its schema, one issue per field problem. */
+  | (IssueBase<'schema'> & {
+      nodeId: NodeId;
+    })
+  /** An id used by more than one node; `sources` lists where each is defined. */
+  | (IssueBase<'duplicate'> & {
+      nodeId: NodeId;
+      sources: SourceLocation[];
+    })
+  /** A link in a field that does not resolve to a node; `ref` is the link as written. */
+  | (IssueBase<'broken-link'> & {
+      nodeId: NodeId;
+      ref: string;
+      reason: string;
+    })
+  /** A parent link that breaks the hierarchy. */
+  | (IssueBase<'hierarchy'> & Omit<GraphViolation, 'description'>)
+  /** A rule violation; `nodeId` is absent for a global rule. */
+  | (IssueBase<'rule'> & RuleViolation)
+  /** A node whose rules a coverage gate suppressed (or, with `includeGated`, evaluated anyway). */
+  | (IssueBase<'gated'> & {
+      nodeId: NodeId;
+      /** The node whose failure gated this one. */
+      gatedBy: NodeId;
+      reason: CoverageGate['reason'];
+      ruleId?: string;
+    })
+  /** A content link to a target outside the space's nodes. */
+  | (IssueBase<'content-link'> & {
+      nodeId: NodeId;
+      target: string;
+    });
+/** The part of `validate --json` the pane reads, as validate gives it */
 export type PaneValidation = {
-  issues: Record<string, Record<string, FileValidationIssue>>;
-  ruleViolations: RuleViolation[];
-  parseIssues: ParseIssue[];
+  issues: ValidationIssue[];
 };
 
 // END generated

@@ -115,7 +115,7 @@ sctx dump <space> [--filter <view-or-expression>] [--hierarchy <name>] [--graph]
 ```
 
 Outputs `{ nodes, source, diagnostics }` as strict JSON. Each node includes resolved fields:
-- `id` — unique node key; for a page it is the path `validate --json` uses for its `issues` map
+- `id` — unique node key (for a page, its path); `validate --json` issues name it as `nodeId`
 - `title`, `resolvedType` — display title and type after alias resolution
 - `resolvedParents` — parent refs after link resolution, with the edge field and kind
 
@@ -134,7 +134,7 @@ sctx dump <space> | jq '.nodes[] | select(.title == "My Node Title")'
 
 # Join nodes with their validation errors
 sctx validate <space> --json > v.json
-sctx dump <space> | jq --slurpfile v v.json '.nodes[] | {id, resolvedType, issues: $v[0].issues[.id]}'
+sctx dump <space> | jq --slurpfile v v.json '.nodes[] | .id as $id | {id, resolvedType, issues: [$v[0].issues[] | select(.nodeId == $id)]}'
 ```
 
 ## diagram
