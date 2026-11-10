@@ -115,7 +115,7 @@ sctx dump <space> [--filter <view-or-expression>] [--hierarchy <name>] [--graph]
 ```
 
 Outputs `{ nodes, source, diagnostics }` as strict JSON. Each node includes resolved fields:
-- `id` — unique node key; for a page it is the path; `validate --json` gives it as each issue's `nodeId`
+- `id` — unique node key (for a page, its path); `validate --json` issues name it as `nodeId`
 - `title`, `resolvedType` — display title and type after alias resolution
 - `resolvedParents` — parent refs after link resolution, with the edge field and kind
 

@@ -28,11 +28,7 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `wikilinkToTarget(link)` | Extract the plain target lookup key from a wikilink string. |
 | `buildTargetIndex(nodes)` | Build a fast lookup index mapping link target strings to nodes (marking ambiguous targets as `null`). |
 
-`ValidationResult.issues` lists every issue the run found: parse, schema, duplicate id, broken link, hierarchy, rule, gated and unresolved content link issues. Each `ValidationIssue` has a `kind`, a `key`, a `severity` (`error`, `warning` or `info`) and a one-line `message`. Only `error` issues are failures. Read `severity` rather than deriving it from `kind`. `kind` is a `ValidationIssueKind`, and `VALIDATION_ISSUE_KINDS` lists every kind at runtime. Each kind adds its own fields, such as a rule's `ruleId` and `category`, or a duplicate's `sources`.
-
-An issue about a node carries its `nodeId` and, where known, the node's `source` (`{ file, line?, column? }`). A parse issue has a `source` and no `nodeId`; so does a global rule's violation, without a `source`. `key` names the issue within its node, or its file for a parse issue, stably across runs (for example `rule:<id>`). Group by `nodeId` for a per-node view. `validateFile` returns one node's issues. See [Validation results and nodes](concepts.md#validation-results-and-nodes).
-
-The rest of `ValidationResult` describes the run rather than reporting issues: `validCount`, `orphans`, `coverageGates`, `contextTrimmed`, `skippedByDepth` and `depthLimit`.
+`ValidationResult.issues` lists every [validation issue](concepts.md#validation-results-and-nodes) the run found, and `validateFile` returns one node's issues. Only `error` issues are failures. Read each issue's `severity` rather than deriving it from `kind`. `VALIDATION_ISSUE_KINDS` lists the kinds at runtime.
 
 A `SpaceGraph` classifies nodes against one hierarchy, and indexes child nodes and typed edges in both
 directions.
@@ -111,7 +107,7 @@ const validation = await validateSpace(context, { readResult });
 `loadSpaceGraph` keeps every node whose type the schema defines, including nodes with field errors
 such as an invalid enum value. Nodes of an unknown type are left out. The graph is *not* a validation
 pass: use `validateSpace` (or `validateFile`) for field errors, broken references, rule violations and
-duplicates. A node with field errors has one `schema` issue per problem.
+duplicates.
 
 ## Hand-assembled config
 
