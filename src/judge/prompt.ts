@@ -27,7 +27,7 @@ export function buildJudgeSystemPrompt(): string {
 
 /** User prompt for one rule on one node. */
 export function buildJudgeUserPrompt(
-  { node, related = [] }: Pick<SemanticJudgeInput, 'node' | 'related'>,
+  { node, related = [], types }: Pick<SemanticJudgeInput, 'node' | 'related' | 'types'>,
   rule: SemanticRuleSpec,
 ): string {
   const rubric = rule.rubric || rule.description;
@@ -64,6 +64,16 @@ export function buildJudgeUserPrompt(
         '',
       );
     }
+  }
+  if (types) {
+    lines.push(
+      '# Type Definitions',
+      "What the space's schema says each type is, and what its fields mean. Judge nodes against their type's definition.",
+      '```json',
+      JSON.stringify(types, null, 2),
+      '```',
+      '',
+    );
   }
   lines.push('Evaluate this node against the rule. Return only JSON with "verdict", "confidence" and "evidence".');
   return lines.join('\n');

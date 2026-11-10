@@ -1,7 +1,7 @@
 import type { NodeJudgement } from '../judge/judge-node';
 import { judgeNodes } from '../judge/judge-node';
 import type { TrimReport } from '../judge/trim';
-import type { SemanticJudgeProvider } from '../judge/types';
+import type { JudgeTypeDefinition, SemanticJudgeProvider } from '../judge/types';
 import type { SpaceGraph } from '../space-graph';
 import type { NodeId, Rule, RuleSeverity, RuleViolation, SpaceNode } from '../types';
 import {
@@ -68,6 +68,8 @@ export interface GatingOptions {
    * semantic rules (top-down, so a gated ancestor stops the walk). Other nodes' semantic rules are not evaluated.
    */
   judgeTarget?: string;
+  /** What the schema says about each type, sent to the judge with the nodes of that type. */
+  typeDefinitions?: ReadonlyMap<string, JudgeTypeDefinition>;
 }
 
 /**
@@ -273,7 +275,7 @@ export async function evaluateRulesWithGating(
     for (const node of nodes) prepared.push(await prepareNode(node));
     if (judge) {
       const pending = nodes.map((node, i) => ({ node, rules: prepared[i]!.semantic }));
-      const judgements = await judgeNodes(judge, pending, graph, options.trimReport);
+      const judgements = await judgeNodes(judge, pending, graph, options.trimReport, options.typeDefinitions);
       prepared.forEach((p, i) => {
         p.judged(judgements[i] ?? []);
       });

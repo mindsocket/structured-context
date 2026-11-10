@@ -3,7 +3,8 @@ import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
 import { judgeForRun } from './judge/factory';
 import type { TrimReport } from './judge/trim';
-import type { SemanticJudgeProvider } from './judge/types';
+import { judgeTypeDefinitions } from './judge/type-definitions';
+import type { JudgeTypeDefinition, SemanticJudgeProvider } from './judge/types';
 import { pathLinkTargets } from './plugins/markdown/util';
 import { readSpace } from './read/read-space';
 import { computeHierarchyDepths, evaluateRulesWithGating, type GatingSeed } from './schema/gating';
@@ -236,6 +237,7 @@ async function evaluateSpaceRules(
     judgeTarget?: string;
     ruleFilter?: RuleFilter;
     trimReport?: TrimReport;
+    typeDefinitions?: ReadonlyMap<string, JudgeTypeDefinition>;
   } = {},
 ): Promise<SpaceRuleEvaluation> {
   const rules = metadata.rules && filterRules(metadata.rules, options.ruleFilter);
@@ -246,6 +248,7 @@ async function evaluateSpaceRules(
       judge: provider,
       judgeTarget: options.judgeTarget,
       trimReport: options.trimReport,
+      typeDefinitions: options.typeDefinitions,
     });
     return { violations: result, gates: [] };
   }
@@ -255,6 +258,7 @@ async function evaluateSpaceRules(
     provider,
     judgeTarget: options.judgeTarget,
     trimReport: options.trimReport,
+    typeDefinitions: options.typeDefinitions,
   });
 }
 
@@ -396,7 +400,11 @@ export async function validateNodes(
       ...result.hierarchyViolations.map((v): GatingSeed => ({ id: v.nodeId, reason: 'hierarchy' })),
     ];
     const trimReport: TrimReport = { nodes: new Set(), ruleIds: new Set() };
-    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, { ...options, trimReport });
+    const { violations, gates } = await evaluateSpaceRules(nodes, metadata, seeds, {
+      ...options,
+      trimReport,
+      typeDefinitions: options.judge ? judgeTypeDefinitions(schema, schemaRefRegistry) : undefined,
+    });
     result.ruleViolations = violations;
     result.coverageGates = gates;
     result.contextTrimmed = summariseTrim(trimReport);

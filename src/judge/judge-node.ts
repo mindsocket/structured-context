@@ -2,7 +2,7 @@ import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, SpaceNode } from '../types';
 import { judgeContext, type RuleContext, ruleContext } from './context';
 import { type TrimReport, trimToCap } from './trim';
-import type { SemanticJudgeInput, SemanticJudgeProvider } from './types';
+import type { JudgeTypeDefinition, SemanticJudgeInput, SemanticJudgeProvider } from './types';
 import { isJudgeError, resolveSemanticRule } from './verdicts';
 
 export type NodeJudgement = {
@@ -76,6 +76,7 @@ function planUnits(
   graph: SpaceGraph,
   items: Array<{ node: SpaceNode; rules: Rule[] }>,
   report?: TrimReport,
+  definitions?: ReadonlyMap<string, JudgeTypeDefinition>,
 ): { units: Unit[]; overCap: Slot[] } {
   const units: Unit[] = [];
   const overCap: Slot[] = [];
@@ -91,7 +92,7 @@ function planUnits(
     for (const { context, positions } of groups.values()) {
       const unitRules = positions.map((p) => rules[p]!);
       const resolved = resolveAll(unitRules);
-      const fitted = trimToCap(judgeContext(graph, node, context));
+      const fitted = trimToCap(judgeContext(graph, node, context, definitions));
       if (!fitted) {
         overCap.push({ item, positions, rules: unitRules });
         continue;
@@ -123,8 +124,9 @@ export async function judgeNodes(
   items: Array<{ node: SpaceNode; rules: Rule[] }>,
   graph: SpaceGraph,
   report?: TrimReport,
+  definitions?: ReadonlyMap<string, JudgeTypeDefinition>,
 ): Promise<NodeJudgement[][]> {
-  const { units, overCap } = planUnits(graph, items, report);
+  const { units, overCap } = planUnits(graph, items, report, definitions);
   const out: NodeJudgement[][] = items.map(({ rules }) => new Array<NodeJudgement>(rules.length));
   const place = (unit: Slot, judgements: NodeJudgement[]) => {
     unit.positions.forEach((position, k) => {
