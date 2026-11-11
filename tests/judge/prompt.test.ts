@@ -13,8 +13,8 @@ describe('judge prompt and response parser', () => {
   it('user prompt lists the rule, its allowed verdicts and the node', () => {
     const prompt = buildJudgeUserPrompt({ node }, graded);
     expect(prompt).toContain('framing');
-    expect(prompt).toContain('"weak": Vague need');
-    expect(prompt).toContain('"solution": A solution in disguise');
+    expect(prompt).toContain('<verdict name="weak">Vague need');
+    expect(prompt).toContain('<verdict name="solution">A solution in disguise');
     expect(prompt).toContain('I cannot find my receipts');
     expect(prompt).toContain('Faster Tax Filing');
     expect(prompt).toContain('User interview with Alice');
@@ -22,7 +22,7 @@ describe('judge prompt and response parser', () => {
 
   it('user prompt prefers the rubric over the description', () => {
     expect(buildJudgeUserPrompt({ node }, passFailRule)).toContain('Needs to sound like a customer quote');
-    expect(buildJudgeUserPrompt({ node }, graded)).toContain('Rubric: Framing quality');
+    expect(buildJudgeUserPrompt({ node }, graded)).toContain('<rubric>Framing quality');
   });
 
   const allowed = ['pass', 'fail'];
@@ -72,13 +72,13 @@ describe('related nodes in the chat prompt', () => {
       },
       passFailRule,
     );
-    expect(prompt).toContain('Related Items');
+    expect(prompt).toContain('<related_items>');
     expect(prompt).toContain('Faster Tax Filing');
-    expect(prompt).toContain('Relation: parent, ancestor');
+    expect(prompt).toContain('relation="parent, ancestor"');
     expect(prompt).toContain('finance');
   });
 
   it('has no related section without related nodes', () => {
-    expect(buildJudgeUserPrompt({ node }, passFailRule)).not.toContain('Related Items');
+    expect(buildJudgeUserPrompt({ node }, passFailRule)).not.toContain('<related_items>');
   });
 });

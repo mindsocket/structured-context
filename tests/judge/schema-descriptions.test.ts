@@ -46,7 +46,7 @@ describe('schema descriptions for the judge', () => {
   it('puts the descriptions in the chat prompt, and nothing when there are none', () => {
     const schemaDescriptions = { opportunity: descriptions.opportunity! };
     expect(buildJudgeUserPrompt({ node, schemaDescriptions }, passFailRule)).toContain('Customer research source');
-    expect(buildJudgeUserPrompt({ node }, passFailRule)).not.toContain('# Item Types');
+    expect(buildJudgeUserPrompt({ node }, passFailRule)).not.toContain('<item_types>');
   });
 
   it('sends the descriptions to Jev beside the node state', async () => {
