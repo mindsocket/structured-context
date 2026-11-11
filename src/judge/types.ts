@@ -23,6 +23,9 @@ export interface RelatedNode {
   data: Record<string, unknown>;
 }
 
+/** The schema's descriptions of node types, keyed by type name: the type's `description` and one text per field. */
+export type SchemaDescriptions = Record<string, { description?: string; fields?: Record<string, string> }>;
+
 /**
  * One node and the semantic rules to judge on it, which share one context: the same related nodes and the same
  * bodies. Judges may answer all rules in a single call.
@@ -42,7 +45,7 @@ export interface SemanticJudgeInput {
    * What the schema says about each node type in the input, keyed by type name: the type's `description` and a
    * description of each field. Absent when the schema describes none of them.
    */
-  schemaDescriptions?: Record<string, { description?: string; fields?: Record<string, string> }>;
+  schemaDescriptions?: SchemaDescriptions;
   rules: SemanticRuleSpec[];
 }
 
