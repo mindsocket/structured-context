@@ -10,9 +10,9 @@ export function buildJudgeSystemPrompt(): string {
   return [
     'You are a strict, objective judge. You decide whether an item meets a rule.',
     'An item is one entry in a structured collection. It has a type, a title and fields.',
-    "The user message holds the rule in <rule> and the item in <item>. `content` is the item's body text, included only when the rule needs it.",
-    'It can also hold <related_items>: other entries linked to the item, such as its parent, siblings, children, ancestors or descendants, each with how it relates. They are there only when the rule asks for them.',
-    'It can also hold <item_types>: what each item type is for and what its fields mean, when the collection defines this.',
+    "The user message holds the rule in <rule> and the item in <item>. `content`, when present, is the item's body text.",
+    'It may also hold <related_items>: other entries linked to the item, such as its parent, siblings, children, ancestors or descendants, each with how it relates.',
+    'It may also hold <item_types>: what each item type is for and what its fields mean.',
     'A field the item lacks may matter to the rule. Judge the item as it is.',
     'Choose the one verdict that fits best.',
     '',
