@@ -30,17 +30,13 @@ export function ruleContext(rule: Rule): RuleContext {
   };
 }
 
-/** All schema data, without the body unless asked for. */
-function dataWithBody(node: SpaceNode, withBody: boolean): Record<string, unknown> {
-  if (withBody) return node.schemaData;
-  const { content: _content, ...data } = node.schemaData;
-  return data;
-}
-
-/** Title and type travel separately, the type as the canonical one, so a judge never sees an alias. */
-function withoutTitleAndType(data: Record<string, unknown>): Record<string, unknown> {
-  const { title: _title, type: _type, ...rest } = data;
-  return rest;
+/**
+ * A node's fields as a judge sees them: without the body unless asked for, and without `title` and `type`, which
+ * travel separately (the type as the canonical one, so a judge never sees an alias).
+ */
+function judgeFields(node: SpaceNode, withBody: boolean): Record<string, unknown> {
+  const { title: _title, type: _type, content, ...fields } = node.schemaData;
+  return withBody && content !== undefined ? { ...fields, content } : fields;
 }
 
 /** The evaluated node as a judge sees it. */
@@ -49,7 +45,7 @@ function judgeNodeView(node: SpaceNode, withBody: boolean, graph: SpaceGraph): S
     id: node.id,
     title: node.title,
     resolvedType: node.resolvedType,
-    schemaData: withoutTitleAndType(dataWithBody(node, withBody)),
+    schemaData: judgeFields(node, withBody),
     parentTitles: node.resolvedParents.map((p) => graph.nodes.get(p.id)?.title ?? p.id),
   };
 }
@@ -61,7 +57,7 @@ function relatedView(node: SpaceNode, relation: Relation, withBody: boolean): Re
     relations: [relation],
     title: node.title,
     type: node.resolvedType,
-    data: withoutTitleAndType(dataWithBody(node, withBody)),
+    data: judgeFields(node, withBody),
   };
 }
 
