@@ -78,6 +78,27 @@ Validation runs as one pipeline over the whole space. `validateSpace` returns it
 
 ---
 
+## Module Boundaries
+
+Each module owns one concern.
+
+| Module | Owns |
+|---|---|
+| `index.ts`, `commands/` | The CLI: flags, output and exit codes |
+| `api.ts`, `browser.ts`, `types.ts`, `testing.ts` | The public entry points |
+| `config/`, `space-context.ts` | Finding the config and loading a space's config, schema and plugins |
+| `read/`, `plugins/` | Turning source files into nodes and graph edges |
+| `validate.ts` | A validation run: its options, the schema and hierarchy checks, and the result |
+| `schema/` | Schemas, the dialect, rule evaluation and cascade gating |
+| `judge/` | Semantic evaluation: model input, providers and verdicts |
+| `space-graph.ts`, `space-graph-data.ts`, `filter/` | The space graph, its exchange format and node filters |
+
+Dependencies point one way: the CLI calls the run, the run calls rule evaluation, and rule evaluation calls the judge. A caller passes what it has, and the module that owns a concern derives what it needs. For example, `validate.ts` builds the run's judge from config and passes the schema to rule evaluation. Only `judge/` builds model input from them.
+
+`tests/module-boundaries.test.ts` checks these import directions. `tests/space-graph-data.test.ts` checks that `browser.ts` bundles without Node built-ins.
+
+---
+
 ## Field Remapping
 
 Spaces may use different frontmatter field names than the canonical names expected by the schema (e.g. `record_type` instead of `type`). The `fieldMap` config option handles this transparently:
