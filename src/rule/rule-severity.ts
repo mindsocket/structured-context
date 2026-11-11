@@ -1,5 +1,5 @@
+import type { RuleSemantic } from '../schema/metadata-contract';
 import type { Rule, RuleCategory, RuleSeverity } from '../types';
-import type { RuleSemantic } from './metadata-contract';
 
 /** Default severity for each rule category. A rule's own `severity` field overrides this. */
 export const DEFAULT_SEVERITY_BY_CATEGORY: Record<RuleCategory, RuleSeverity> = {

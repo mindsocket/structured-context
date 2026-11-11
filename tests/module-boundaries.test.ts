@@ -8,7 +8,7 @@ const srcDir = join(import.meta.dir, '../src');
 const LAYERS: string[][] = [
   ['types', 'constants', 'errors'],
   ['schema', 'config', 'space-context', 'space-graph', 'space-graph-data'],
-  ['filter', 'judge', 'plugins'],
+  ['filter', 'judge', 'rule', 'plugins'],
   ['read', 'render', 'validate', 'load-space-graph'],
   ['index', 'commands', 'api', 'browser', 'testing'],
 ];
@@ -18,8 +18,6 @@ const LAYERS: string[][] = [
  * The test fails when an entry no longer applies, so remove it with its fix.
  */
 const EXCEPTIONS: Record<string, string> = {
-  'schema/gating -> judge/judge-node': 'rule evaluation moves from schema/ into a validate/ area',
-  'schema/validate-rules -> judge/judge-node': 'rule evaluation moves from schema/ into a validate/ area',
   'config/index -> judge/types': 'the model provider APIs move to a concept the judge and config share',
   'config/index -> plugins/util': 'plugin name and path helpers move out of plugins/',
   'schema/schema -> plugins/util': 'plugin name and path helpers move out of plugins/',

@@ -3,7 +3,7 @@ import { judgeContext, type RuleContext, relatedNodes, ruleContext } from '../..
 import { judgeNodes } from '../../src/judge/judge-node';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import type { SemanticJudgeInput, SemanticJudgeProvider } from '../../src/judge/types';
-import { evaluateRules } from '../../src/schema/gating';
+import { evaluateRules } from '../../src/rule/gating';
 import { buildSpaceGraph } from '../../src/space-graph';
 import type { Rule, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef, makeSpaceNode } from '../test-helpers';

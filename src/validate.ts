@@ -5,14 +5,13 @@ import { judgeForRun } from './judge/factory';
 import type { JudgeRun } from './judge/judge-node';
 import type { TrimReport } from './judge/trim';
 import { readSpace } from './read/read-space';
-import { evaluateRules, type GatingSeed, type RuleEvaluation } from './schema/gating';
-import { filterRules, parseRuleFilter, type RuleFilter } from './schema/rule-filter';
+import { type CoverageGate, evaluateRules, type GatingSeed, type RuleEvaluation } from './rule/gating';
+import { filterRules, parseRuleFilter, type RuleFilter } from './rule/rule-filter';
 import { extractEntityInfo, typeValidatorFor } from './schema/schema';
 import { validateGraph } from './schema/validate-graph';
 import { createSpaceContext } from './space-context';
 import { buildSpaceGraph, computeHierarchyDepths } from './space-graph';
 import type {
-  CoverageGate,
   FileNotInSpaceResult,
   FileValidationResult,
   GraphViolation,
