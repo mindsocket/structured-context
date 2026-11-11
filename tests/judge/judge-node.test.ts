@@ -17,7 +17,7 @@ function canned(results: Record<string, SemanticJudgeResult>): SemanticJudgeProv
 
 const graph = buildSpaceGraph([], undefined);
 const judgeNodes = (j: SemanticJudgeProvider, items: Array<{ node: SpaceNode; rules: Rule[] }>) =>
-  judgeNodesIn(j, items, graph);
+  judgeNodesIn({ provider: j }, items, graph);
 const judgeNode = async (j: SemanticJudgeProvider, n: SpaceNode, rules: Rule[]) =>
   (await judgeNodes(j, [{ node: n, rules }]))[0] ?? [];
 

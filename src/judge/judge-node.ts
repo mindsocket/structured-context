@@ -5,6 +5,20 @@ import { type TrimReport, trimToCap } from './trim';
 import type { SemanticJudgeInput, SemanticJudgeProvider } from './types';
 import { isJudgeError, resolveSemanticRule } from './verdicts';
 
+/** What a run judges with: everything rule evaluation passes to the judge. */
+export type JudgeRun = {
+  provider: SemanticJudgeProvider;
+  /**
+   * Id of the one node whose result is wanted (`validate-file`). Rule evaluation sends only that node, and its
+   * hierarchy ancestors' rules that can gate.
+   */
+  target?: string;
+  /** Collects the inputs trimmed to fit the per-node input cap. */
+  trimReport?: TrimReport;
+  /** The space's schema. The judge sends its descriptions of the node types it evaluates. */
+  schemaContext?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>;
+};
+
 export type NodeJudgement = {
   rule: Rule;
   /** True when the verdict has a severity (so it reports a violation), or the provider errored. */
@@ -121,17 +135,16 @@ function planUnits(
 /**
  * Judge several nodes at once. A judge with `evaluateNodes` gets every input in one call and may fold them into
  * fewer requests; any other judge is called once per input. A node's rules that share a context (related nodes
- * and bodies) form one input, with the `schemaContext`'s descriptions of the types in it; an input that cannot fit the per-node input cap is not sent. Results align with
+ * and bodies) form one input, with the run's schema descriptions of the types in it; an input that cannot fit the per-node input cap is not sent. Results align with
  * `items`, in rule order. A failure marks only the affected rules as errors.
  */
 export async function judgeNodes(
-  judge: SemanticJudgeProvider,
+  run: Omit<JudgeRun, 'target'>,
   items: Array<{ node: SpaceNode; rules: Rule[] }>,
   graph: SpaceGraph,
-  report?: TrimReport,
-  schemaContext?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
 ): Promise<NodeJudgement[][]> {
-  const { units, overCap } = planUnits(graph, items, report, schemaContext);
+  const judge = run.provider;
+  const { units, overCap } = planUnits(graph, items, run.trimReport, run.schemaContext);
   const out: NodeJudgement[][] = items.map(({ rules }) => new Array<NodeJudgement>(rules.length));
   const place = (unit: Slot, judgements: NodeJudgement[]) => {
     unit.positions.forEach((position, k) => {

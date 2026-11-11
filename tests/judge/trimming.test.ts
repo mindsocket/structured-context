@@ -22,7 +22,11 @@ describe('per-node input cap in judgeNodes', () => {
     const fake = new FakeJudgeProvider();
     const trimmed = report();
     const rules = [rule('r', { scope: ['parent'], includeContent: 'fullScope' })];
-    const out = await judgeNodes(fake, [{ node: nodes[1]!, rules }], buildSpaceGraph(nodes, hierarchy), trimmed);
+    const out = await judgeNodes(
+      { provider: fake, trimReport: trimmed },
+      [{ node: nodes[1]!, rules }],
+      buildSpaceGraph(nodes, hierarchy),
+    );
     expect(out[0]?.[0]?.violated).toBe(false);
     expect(fake.callHistory).toHaveLength(1);
     expect(String(fake.callHistory[0]?.related?.[0]?.data.content)).toContain('[RULE_EVALUATION_CONTENT_TRIMMED');
@@ -35,14 +39,22 @@ describe('per-node input cap in judgeNodes', () => {
     const nodes = [goal('short'), opp('short')];
     const trimmed = report();
     const rules = [rule('r', { scope: ['parent'], includeContent: 'fullScope' })];
-    await judgeNodes(new FakeJudgeProvider(), [{ node: nodes[1]!, rules }], buildSpaceGraph(nodes, hierarchy), trimmed);
+    await judgeNodes(
+      { provider: new FakeJudgeProvider(), trimReport: trimmed },
+      [{ node: nodes[1]!, rules }],
+      buildSpaceGraph(nodes, hierarchy),
+    );
     expect(trimmed.nodes.size).toBe(0);
   });
 
   it('reports an error under the rule id, without calling the provider, when fields alone exceed the cap', async () => {
     const huge = makeSpaceNode('Huge', 'opportunity', { notes: text(PER_NODE_INPUT_CAP_TOKENS * 2) });
     const fake = new FakeJudgeProvider();
-    const out = await judgeNodes(fake, [{ node: huge, rules: [rule('r', {})] }], buildSpaceGraph([huge], hierarchy));
+    const out = await judgeNodes(
+      { provider: fake },
+      [{ node: huge, rules: [rule('r', {})] }],
+      buildSpaceGraph([huge], hierarchy),
+    );
     expect(fake.callHistory).toHaveLength(0);
     expect(out[0]?.[0]).toMatchObject({
       violated: true,
@@ -54,7 +66,7 @@ describe('per-node input cap in judgeNodes', () => {
     const huge = makeSpaceNode('Huge', 'opportunity', { notes: text(PER_NODE_INPUT_CAP_TOKENS * 2) });
     const fake = new FakeJudgeProvider();
     const rules = [rule('a', { scope: ['parent'] }), rule('b', {})];
-    const out = await judgeNodes(fake, [{ node: huge, rules }], buildSpaceGraph([huge], hierarchy));
+    const out = await judgeNodes({ provider: fake }, [{ node: huge, rules }], buildSpaceGraph([huge], hierarchy));
     expect(out[0]?.every((j) => j.error?.includes('per-node cap'))).toBe(true);
   });
 });
@@ -87,7 +99,7 @@ describe('missing-context verdict', () => {
     const nodes = [goal('g'), opp('o')];
     const fake = new FakeJudgeProvider({ verdict: 'missing-context', evidence: 'cut' });
     const out = await judgeNodes(
-      fake,
+      { provider: fake },
       [{ node: nodes[1]!, rules: [rule('r', { scope: ['parent'] })] }],
       buildSpaceGraph(nodes, hierarchy),
     );
