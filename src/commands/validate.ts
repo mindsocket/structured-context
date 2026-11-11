@@ -136,7 +136,7 @@ export async function validate(
   if (result.coverageGates.length > 0) {
     console.log(`\nCoverage — rule checks gated by cascade (use --include-gated to evaluate anyway):`);
     for (const gate of result.coverageGates) {
-      const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
+      const cause = gate.reason === 'rule' ? `rule "${gate.ruleId}"` : `${gate.reason} failure`;
       console.log(`   ${gate.nodeId} — ${cause} gated ${gate.gatedNodeIds.length} node(s):`);
       for (const nodeId of gate.gatedNodeIds) console.log(`      ${nodeId}`);
     }

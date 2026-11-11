@@ -17,17 +17,17 @@ export type CwdContext = { spaces: string[]; digests: SchemaDigest[] };
 
 // BEGIN generated from scripts/mod-contract.ts by `bun run build:mod-projection`; do not edit
 /**
- * Records one cascade: a node whose failure or blocking rule violation suppressed
- * rule evaluation for itself (if schema/hierarchy caused it) and/or its hierarchy subtree.
+ * A gate, as a run reports it: a node whose schema or hierarchy failure, or gating violation, stopped rule
+ * evaluation below it, and for the node itself after a failure.
  */
 export type CoverageGate = {
-  /** Id of the blocking node. */
+  /** Id of the gate node. */
   nodeId: NodeId;
-  /** What kind of check triggered the gate. */
+  /** What made the node a gate. */
   reason: 'schema' | 'hierarchy' | 'rule';
-  /** Rule id responsible, when `reason` is `'rule'`. */
+  /** Id of the rule with the gating violation, when `reason` is `'rule'`. */
   ruleId?: string;
-  /** Ids of nodes whose rule evaluation was suppressed as a result of this gate. */
+  /** Ids of the nodes it gated. */
   gatedNodeIds: NodeId[];
 };
 /** Unique key of a node within a space. Supplied by the plugin that produced the node. */

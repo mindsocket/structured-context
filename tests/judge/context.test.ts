@@ -3,7 +3,7 @@ import { judgeContext, type RuleContext, relatedNodes, ruleContext } from '../..
 import { judgeNodes } from '../../src/judge/judge-node';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import type { SemanticJudgeInput, SemanticJudgeProvider } from '../../src/judge/types';
-import { evaluateRulesWithGating } from '../../src/schema/gating';
+import { evaluateRules } from '../../src/schema/gating';
 import { buildSpaceGraph } from '../../src/space-graph';
 import type { Rule, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef, makeSpaceNode } from '../test-helpers';
@@ -140,7 +140,7 @@ describe('scope under gating', () => {
       },
     ] as unknown as Rule[];
     const fake = new FakeJudgeProvider();
-    await evaluateRulesWithGating(nodes, rules, graph, [], { provider: fake, includeGated: true });
+    await evaluateRules(nodes, rules, graph, [], { judge: fake, includeGated: true });
     const call = fake.callHistory.find((c) => c.node.title === 'Sol');
     expect(call?.related?.map((r) => [r.title, r.relations])).toEqual([
       ['Opp', ['parent', 'ancestor']],

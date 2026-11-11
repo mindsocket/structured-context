@@ -152,7 +152,7 @@ export type ExpressionRuleResult =
   | { passed: false; violation: RuleViolation; failed: boolean };
 
 /**
- * Evaluate a rule's `expression` against a node (`nodeId` null and `node` a sentinel for a global rule). A failure
+ * Evaluate a rule's `expression` against a node (`nodeId` null and `node` any node, for a global rule). A failure
  * reports the rule's severity; a rule with a semantic part names the expression in the evidence, so the
  * violation is not mistaken for a verdict. An evaluation error reports `error` and is not a `failed` result.
  */

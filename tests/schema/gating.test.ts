@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import type { SemanticJudgeProvider } from '../../src/judge/types';
-import {
-  computeHierarchyDepths,
-  evaluateRulesWithGating,
-  type GatingSeed,
-  ruleGatesDescendants,
-} from '../../src/schema/gating';
-import { buildSpaceGraph } from '../../src/space-graph';
+import { evaluateRules, type GatingSeed, ruleGatesDescendants } from '../../src/schema/gating';
+import { buildSpaceGraph, computeHierarchyDepths } from '../../src/space-graph';
 import type { NodeId, Rule, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef } from '../test-helpers';
 
@@ -41,14 +36,14 @@ describe('computeHierarchyDepths', () => {
   });
 });
 
-describe('evaluateRulesWithGating', () => {
+describe('evaluateRules', () => {
   const alwaysFailRule: Rule = {
     id: 'always-fail',
     category: 'validation',
     description: 'always fails',
     expression: 'false',
   };
-  const nonBlockingFailRule: Rule = {
+  const nonGatingFailRule: Rule = {
     id: 'non-gating',
     category: 'validation',
     description: 'fails but does not block',
@@ -75,7 +70,7 @@ describe('evaluateRulesWithGating', () => {
     const { goal, nodes, graph } = buildTree();
     const seeds: GatingSeed[] = [{ id: goal.id, reason: 'schema' }];
 
-    const { violations, gates } = await evaluateRulesWithGating(nodes, [alwaysFailRule], graph, seeds);
+    const { violations, gates } = await evaluateRules(nodes, [alwaysFailRule], graph, seeds);
 
     // Goal itself is gated (schema failure suppresses its own rule layer) — no violation recorded for it.
     expect(violations.find((v) => v.nodeId === 'Goal')).toBeUndefined();
@@ -91,7 +86,7 @@ describe('evaluateRulesWithGating', () => {
     const { nodes, graph, opp } = buildTree();
     const seeds: GatingSeed[] = [{ id: opp.id, reason: 'hierarchy' }];
 
-    const { violations, gates } = await evaluateRulesWithGating(nodes, [passRule], graph, seeds);
+    const { violations, gates } = await evaluateRules(nodes, [passRule], graph, seeds);
 
     expect(violations).toHaveLength(0);
     expect(violations.find((v) => v.nodeId === 'Opp')).toBeUndefined();
@@ -102,10 +97,10 @@ describe('evaluateRulesWithGating', () => {
     expect(gates[0]!.gatedNodeIds as string[]).toEqual(['Opp', 'Sol']);
   });
 
-  it('a blocking rule violation gates descendants but not the violating node itself', async () => {
+  it('a gating violation gates descendants but not the violating node itself', async () => {
     const { nodes, graph } = buildTree();
 
-    const { violations, gates } = await evaluateRulesWithGating(nodes, [alwaysFailRule], graph, []);
+    const { violations, gates } = await evaluateRules(nodes, [alwaysFailRule], graph, []);
 
     // All three nodes are evaluated (nothing gates the root); goal's failure then gates its subtree.
     expect(violations.map((v) => v.nodeId as string | undefined)).toEqual(['Goal']);
@@ -117,7 +112,7 @@ describe('evaluateRulesWithGating', () => {
   it('a rule with gatesDescendants:false fails without gating descendants', async () => {
     const { nodes, graph } = buildTree();
 
-    const { violations, gates } = await evaluateRulesWithGating(nodes, [nonBlockingFailRule], graph, []);
+    const { violations, gates } = await evaluateRules(nodes, [nonGatingFailRule], graph, []);
 
     // All nodes evaluated and all fail, since nothing gates.
     expect(violations.map((v) => v.nodeId as string | undefined)).toEqual(['Goal', 'Opp', 'Sol']);
@@ -135,11 +130,11 @@ describe('evaluateRulesWithGating', () => {
     expect(ruleGatesDescendants({ ...alwaysFailRule, severity: 'warning' })).toBe(false);
 
     const { nodes, graph } = buildTree();
-    const advisoryRun = await evaluateRulesWithGating(nodes, [advisory], graph, []);
+    const advisoryRun = await evaluateRules(nodes, [advisory], graph, []);
     expect(advisoryRun.violations.map((v) => v.nodeId as string | undefined)).toEqual(['Goal', 'Opp', 'Sol']);
     expect(advisoryRun.gates).toHaveLength(0);
 
-    const forcedRun = await evaluateRulesWithGating(nodes, [{ ...advisory, gatesDescendants: true }], graph, []);
+    const forcedRun = await evaluateRules(nodes, [{ ...advisory, gatesDescendants: true }], graph, []);
     expect(forcedRun.violations.map((v) => v.nodeId as string | undefined)).toEqual(['Goal']);
     expect(forcedRun.gates).toHaveLength(1);
   });
@@ -148,7 +143,7 @@ describe('evaluateRulesWithGating', () => {
     const { goal, nodes, graph } = buildTree();
     const seeds: GatingSeed[] = [{ id: goal.id, reason: 'schema' }];
 
-    const { violations, gates } = await evaluateRulesWithGating(nodes, [passRule], graph, seeds, {
+    const { violations, gates } = await evaluateRules(nodes, [passRule], graph, seeds, {
       includeGated: true,
     });
 
@@ -166,7 +161,7 @@ describe('evaluateRulesWithGating', () => {
     const fullGraph = buildSpaceGraph(allNodes, hierarchy);
     const seeds: GatingSeed[] = [{ id: goal.id, reason: 'schema' }];
 
-    const { violations } = await evaluateRulesWithGating(allNodes, [alwaysFailRule], fullGraph, seeds);
+    const { violations } = await evaluateRules(allNodes, [alwaysFailRule], fullGraph, seeds);
 
     expect(violations.find((v) => v.nodeId === 'Standalone')).toBeDefined();
   });
@@ -182,7 +177,7 @@ describe('evaluateRulesWithGating', () => {
     };
     const seeds: GatingSeed[] = [{ id: goal.id, reason: 'schema' }];
 
-    const { violations } = await evaluateRulesWithGating(nodes, [globalRule], graph, seeds);
+    const { violations } = await evaluateRules(nodes, [globalRule], graph, seeds);
 
     expect(violations.find((v) => v.ruleId === 'global-fail')).toBeDefined();
   });
@@ -216,7 +211,7 @@ describe('evaluateRulesWithGating', () => {
         },
       };
 
-      const { violations, gates } = await evaluateRulesWithGating(nodes, [semanticRule], graph, [], { provider });
+      const { violations, gates } = await evaluateRules(nodes, [semanticRule], graph, [], { judge: provider });
       expect(calls).toEqual([['Goal'], ['Opp A', 'Opp B'], ['Sol B']]);
       expect(violations.map((v) => v.nodeId as string | undefined)).toEqual(['Opp A']);
       expect(gates).toHaveLength(1);
