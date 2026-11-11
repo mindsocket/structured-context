@@ -182,9 +182,9 @@ Gating keeps costly checks, such as [semantic rules](semantic-rules.md), from ru
 
 A rule has one `gatesDescendants` setting. It applies to whichever part reported the violation, the `expression` or the `semantic` part. Its default comes from the severity of that violation: `true` for `error`, and `false` for `warning` and `info`. Set it explicitly when that default doesn't fit.
 
-### Coverage output
+### Reporting gated nodes
 
-`sctx validate` reports each gate as a **coverage gate**: the gate's node, its cause (`schema`, `hierarchy`, or a rule's `ruleId`), and the ids of the nodes it gated. This shows where evaluation stopped and why, for example "this goal's error means none of the opportunities below it were evaluated". `--json` output lists them under `coverageGates`.
+Each gated node gets a `gated` validation issue at `info` severity, so a gated node does not read as clean. `--json` output lists them under `issues` like every other finding; grouping them by `gatedBy` shows which nodes each gate suppressed.
 
 Use `--include-gated` to evaluate rules on gated nodes anyway. They are still reported as gated. This is useful for cheap, bottom-up checks, such as content quality, that don't depend on an ancestor being valid.
 

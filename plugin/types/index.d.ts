@@ -16,20 +16,6 @@ export type SchemaDigest = { space: string; text: string };
 export type CwdContext = { spaces: string[]; digests: SchemaDigest[] };
 
 // BEGIN generated from scripts/mod-contract.ts by `bun run build:mod-projection`; do not edit
-/**
- * A gate, as a run reports it: a node whose schema or hierarchy failure, or gating violation, stopped rule
- * evaluation below it, and for the node itself after a failure.
- */
-export type CoverageGate = {
-  /** Id of the gate node. */
-  nodeId: NodeId;
-  /** What made the node a gate. */
-  reason: 'schema' | 'hierarchy' | 'rule';
-  /** Id of the rule with the gating violation, when `reason` is `'rule'`. */
-  ruleId?: string;
-  /** Ids of the nodes it gated. */
-  gatedNodeIds: NodeId[];
-};
 /** Unique key of a node within a space. Supplied by the plugin that produced the node. */
 export type NodeId = string & {
   readonly __brand: 'NodeId';
@@ -62,20 +48,6 @@ export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-pract
  * A rule's severity defaults from its category and may be overridden per rule.
  */
 export type RuleSeverity = 'error' | 'warning' | 'info';
-export type RuleViolation = {
-  /** Id of the violating node. Absent for global-scope rules. */
-  nodeId?: NodeId;
-  ruleId: string;
-  category: RuleCategory;
-  severity: RuleSeverity;
-  description: string;
-  /** Cited evidence or reasoning from evaluation (for semantic judge rules). */
-  evidence?: string;
-  /** The verdict that failed the rule (semantic rules). */
-  verdict?: string;
-  /** User-facing guidance declared for that verdict (semantic rules). */
-  guidance?: string;
-};
 export type GraphViolation = {
   /** Id of the node whose parent link breaks the hierarchy. */
   nodeId: NodeId;
@@ -131,14 +103,23 @@ export type ValidationIssue =
   /** A parent link that breaks the hierarchy. */
   | (IssueBase<'hierarchy'> & Omit<GraphViolation, 'description'>)
   /** A rule violation; `nodeId` is absent for a global rule. */
-  | (IssueBase<'rule'> & RuleViolation)
-  /** A node whose rules a coverage gate suppressed (or, with `includeGated`, evaluated anyway). */
+  | (IssueBase<'rule'> & {
+      /** Id of the violated rule. Absent `nodeId` means a global rule. */
+      ruleId: string;
+      category: RuleCategory;
+      /** What evaluation found: cited evidence or reasoning (semantic rules). */
+      evidence?: string;
+      /** The verdict that failed the rule (semantic rules). */
+      verdict?: string;
+      /** User-facing guidance declared for that verdict (semantic rules). */
+      guidance?: string;
+    })
+  /** A node whose rules a gate suppressed (or, with `includeGated`, evaluated anyway). The gate's cause and
+   * rule id are in the message; `gatedBy` names the gate, for grouping and styling. */
   | (IssueBase<'gated'> & {
       nodeId: NodeId;
       /** The node whose failure gated this one. */
       gatedBy: NodeId;
-      reason: CoverageGate['reason'];
-      ruleId?: string;
     })
   /** A content link to a target outside the space's nodes. */
   | (IssueBase<'content-link'> & {

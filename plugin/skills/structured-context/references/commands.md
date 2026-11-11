@@ -22,8 +22,8 @@ Validates all `.md` files in the space against the JSON schema. For each file:
 - Runs rules from `$metadata.rules` (each rule's `expression`; its `semantic` part only with
   `--semantic`), with cascade gating: a
   schema or hierarchy failure, or a gating violation, on a node stops rule evaluation for the
-  nodes below it. Gated nodes are reported in a coverage section (and `coverageGates` in
-  `--json` output) so you know what wasn't checked and why.
+  nodes below it. Each gated node gets a `gated` issue at `info` severity naming the gate and
+  its cause, so you know what wasn't checked and why.
 - Checks hierarchy ordering
 
 `--depth <n>` restricts evaluation to hierarchy nodes within `n` breadth-first levels from

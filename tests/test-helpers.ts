@@ -10,13 +10,18 @@ export {
 
 import { evaluateRules, type RuleEvaluationOptions } from '../src/rule/gating';
 import { buildSpaceGraph } from '../src/space-graph';
-import type { Rule, RuleViolation, SpaceNode } from '../src/types';
+import type { Rule, SpaceNode, ValidationIssue } from '../src/types';
 
-/** Rule violations for nodes of a schema without a hierarchy, where nothing is gated. */
+/** The fields every rule issue carries. */
+export type RuleIssue = Extract<ValidationIssue, { kind: 'rule' }>;
+
+/** Rule issues for nodes of a schema without a hierarchy, where nothing is gated. */
 export async function evaluateFlat(
   nodes: SpaceNode[],
   rules: Rule[],
   options?: RuleEvaluationOptions,
-): Promise<RuleViolation[]> {
-  return (await evaluateRules(nodes, rules, buildSpaceGraph(nodes, undefined), [], options)).violations;
+): Promise<RuleIssue[]> {
+  return (await evaluateRules(nodes, rules, buildSpaceGraph(nodes, undefined), undefined, options)).issues.filter(
+    (issue): issue is RuleIssue => issue.kind === 'rule',
+  );
 }

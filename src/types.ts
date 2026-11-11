@@ -1,6 +1,5 @@
 import type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
 import type { Config, SpaceConfig } from './config';
-import type { CoverageGate } from './rule/gating';
 import type {
   MetadataContractHierarchyLevel,
   MetadataContractRelationship,
@@ -194,21 +193,6 @@ export type RuleSeverity = 'error' | 'warning' | 'info';
 
 export type { Rule } from './schema/metadata-contract';
 
-export type RuleViolation = {
-  /** Id of the violating node. Absent for global-scope rules. */
-  nodeId?: NodeId;
-  ruleId: string;
-  category: RuleCategory;
-  severity: RuleSeverity;
-  description: string;
-  /** Cited evidence or reasoning from evaluation (for semantic judge rules). */
-  evidence?: string;
-  /** The verdict that failed the rule (semantic rules). */
-  verdict?: string;
-  /** User-facing guidance declared for that verdict (semantic rules). */
-  guidance?: string;
-};
-
 export type GraphViolation = {
   /** Id of the node whose parent link breaks the hierarchy. */
   nodeId: NodeId;
@@ -315,14 +299,23 @@ export type ValidationIssue =
   /** A parent link that breaks the hierarchy. */
   | (IssueBase<'hierarchy'> & Omit<GraphViolation, 'description'>)
   /** A rule violation; `nodeId` is absent for a global rule. */
-  | (IssueBase<'rule'> & RuleViolation)
-  /** A node whose rules a coverage gate suppressed (or, with `includeGated`, evaluated anyway). */
+  | (IssueBase<'rule'> & {
+      /** Id of the violated rule. Absent `nodeId` means a global rule. */
+      ruleId: string;
+      category: RuleCategory;
+      /** What evaluation found: cited evidence or reasoning (semantic rules). */
+      evidence?: string;
+      /** The verdict that failed the rule (semantic rules). */
+      verdict?: string;
+      /** User-facing guidance declared for that verdict (semantic rules). */
+      guidance?: string;
+    })
+  /** A node whose rules a gate suppressed (or, with `includeGated`, evaluated anyway). The gate's cause and
+   * rule id are in the message; `gatedBy` names the gate, for grouping and styling. */
   | (IssueBase<'gated'> & {
       nodeId: NodeId;
       /** The node whose failure gated this one. */
       gatedBy: NodeId;
-      reason: CoverageGate['reason'];
-      ruleId?: string;
     })
   /** A content link to a target outside the space's nodes. */
   | (IssueBase<'content-link'> & { nodeId: NodeId; target: string });

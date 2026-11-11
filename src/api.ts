@@ -75,7 +75,6 @@ export type {
   ResolvedContentLink,
   RuleCategory,
   RuleSeverity,
-  RuleViolation,
   SchemaMetadata,
   SchemaWithMetadata,
   SourceLocation,

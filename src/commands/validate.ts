@@ -115,7 +115,7 @@ export async function validate(
       if (violations.length === 0) continue;
       console.log(`  ${severityColor[severity]}${severity.toUpperCase()}${reset} (${violations.length}):`);
       for (const v of violations) {
-        console.log(`    ${v.nodeId ? `${v.nodeId}: ` : ''}${v.description} [${v.category}: ${v.ruleId}]`);
+        console.log(`    ${v.nodeId ? `${v.nodeId}: ` : ''}${v.message} [${v.category}: ${v.ruleId}]`);
         if (v.evidence) {
           console.log(`      Evidence: ${v.evidence}`);
         }
@@ -133,12 +133,13 @@ export async function validate(
     }
   }
 
-  if (result.coverageGates.length > 0) {
-    console.log(`\nCoverage — rule checks gated by cascade (use --include-gated to evaluate anyway):`);
-    for (const gate of result.coverageGates) {
-      const cause = gate.reason === 'rule' ? `rule "${gate.ruleId}"` : `${gate.reason} failure`;
-      console.log(`   ${gate.nodeId} — ${cause} gated ${gate.gatedNodeIds.length} node(s):`);
-      for (const nodeId of gate.gatedNodeIds) console.log(`      ${nodeId}`);
+  const gatedIssues = ofKind(result, 'gated');
+  const byGate = Map.groupBy(gatedIssues, (issue) => issue.gatedBy);
+  if (byGate.size > 0) {
+    console.log(`\nRule checks gated by cascade (use --include-gated to evaluate anyway):`);
+    for (const [gateNodeId, issues] of byGate) {
+      console.log(`   ${gateNodeId} — gated ${issues.length} node(s):`);
+      for (const { nodeId } of issues) console.log(`      ${nodeId}`);
     }
   }
 
@@ -172,8 +173,7 @@ export async function validate(
   if (result.depthLimit !== undefined) {
     console.log(fmt('  Skipped by depth limit', result.skippedByDepth.length, true, true));
   }
-  const gatedFileCount = result.coverageGates.reduce((sum, g) => sum + g.gatedNodeIds.length, 0);
-  console.log(fmt('  Rule checks gated (cascade)', gatedFileCount, true, true));
+  console.log(fmt('  Rule checks gated (cascade)', gatedIssues.length, true, true));
 
   console.log(`\n`);
 

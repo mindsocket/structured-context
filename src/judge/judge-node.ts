@@ -6,15 +6,13 @@ import type { SemanticJudgeInput, SemanticJudgeProvider } from './types';
 import { isJudgeError, resolveSemanticRule } from './verdicts';
 
 /** What a run judges with: everything rule evaluation passes to the judge. */
-export type JudgeRun = {
+export type JudgeSession = {
   provider: SemanticJudgeProvider;
   /**
    * Id of the one node whose result is wanted (`validate-file`). Rule evaluation sends only that node, and its
    * hierarchy ancestors' rules that can gate.
    */
   target?: string;
-  /** Collects the inputs trimmed to fit the per-node input cap. */
-  trimReport?: TrimReport;
   /** The space's schema. The judge sends its descriptions of the node types it evaluates. */
   schemaContext?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>;
 };
@@ -139,12 +137,13 @@ function planUnits(
  * `items`, in rule order. A failure marks only the affected rules as errors.
  */
 export async function judgeNodes(
-  run: Omit<JudgeRun, 'target'>,
+  run: Omit<JudgeSession, 'target'>,
   items: Array<{ node: SpaceNode; rules: Rule[] }>,
   graph: SpaceGraph,
+  report?: TrimReport,
 ): Promise<NodeJudgement[][]> {
   const judge = run.provider;
-  const { units, overCap } = planUnits(graph, items, run.trimReport, run.schemaContext);
+  const { units, overCap } = planUnits(graph, items, report, run.schemaContext);
   const out: NodeJudgement[][] = items.map(({ rules }) => new Array<NodeJudgement>(rules.length));
   const place = (unit: Slot, judgements: NodeJudgement[]) => {
     unit.positions.forEach((position, k) => {

@@ -1,3 +1,4 @@
+import type { Config, SpaceConfig } from '../config';
 import { SctxError } from '../errors';
 import type { AnthropicJudgeProviderOptions } from './provider/anthropic';
 import { AnthropicJudgeProvider, RECOMMENDED_ANTHROPIC_MODEL } from './provider/anthropic';
@@ -150,17 +151,19 @@ export function createModelProvider(
   }
 }
 
+type JudgeConfig = Pick<Config, 'modelProviders' | 'semantic'>;
+type SpaceJudgeConfig = Pick<SpaceConfig, 'semantic'>;
 /**
  * The provider a CLI run asks for: none without `--semantic`; the named one with `--semantic <provider>`;
  * else the configured one.
  */
-export function judgeForRun(
-  config: Parameters<typeof createJudge>[0],
-  space: Parameters<typeof createJudge>[1],
+export function createJudgeProvider(
+  config: JudgeConfig,
+  space: SpaceJudgeConfig,
   semantic?: boolean | string,
 ): SemanticJudgeProvider | undefined {
   if (!semantic) return undefined;
-  return createJudge(config, space, typeof semantic === 'string' ? semantic : undefined);
+  return _createJudgeProvider(config, space, typeof semantic === 'string' ? semantic : undefined);
 }
 
 /**
@@ -168,9 +171,9 @@ export function judgeForRun(
  * `semantic.provider`, else the top-level one. The name resolves against `modelProviders` first, then
  * the bundled providers. Throws {@link SctxError} `E_MODEL_PROVIDER_INVALID` when it cannot be built.
  */
-export function createJudge(
-  config: { modelProviders?: Record<string, ModelProviderConfig>; semantic?: { provider?: string } },
-  space: { semantic?: { provider?: string } } = {},
+export function _createJudgeProvider(
+  config: JudgeConfig,
+  space: SpaceJudgeConfig = {},
   name?: string,
   env: Env = process.env,
 ): SemanticJudgeProvider {

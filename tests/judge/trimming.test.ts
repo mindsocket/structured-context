@@ -23,9 +23,10 @@ describe('per-node input cap in judgeNodes', () => {
     const trimmed = report();
     const rules = [rule('r', { scope: ['parent'], includeContent: 'fullScope' })];
     const out = await judgeNodes(
-      { provider: fake, trimReport: trimmed },
+      { provider: fake },
       [{ node: nodes[1]!, rules }],
       buildSpaceGraph(nodes, hierarchy),
+      trimmed,
     );
     expect(out[0]?.[0]?.violated).toBe(false);
     expect(fake.callHistory).toHaveLength(1);
@@ -40,9 +41,10 @@ describe('per-node input cap in judgeNodes', () => {
     const trimmed = report();
     const rules = [rule('r', { scope: ['parent'], includeContent: 'fullScope' })];
     await judgeNodes(
-      { provider: new FakeJudgeProvider(), trimReport: trimmed },
+      { provider: new FakeJudgeProvider() },
       [{ node: nodes[1]!, rules }],
       buildSpaceGraph(nodes, hierarchy),
+      trimmed,
     );
     expect(trimmed.nodes.size).toBe(0);
   });

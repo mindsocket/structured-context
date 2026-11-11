@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { validateGraph } from '../../src/schema/validate-graph';
-import type { NodeId, SpaceNode, UnresolvedRef } from '../../src/types';
+import type { NodeId, SpaceNode, UnresolvedRef, ValidationIssue } from '../../src/types';
 import { findDuplicateIds } from '../../src/validate';
 
 // A result entry names its node by `nodeId` and, separately, where it is defined by `source`,
@@ -31,6 +31,7 @@ describe('result entries separate node id from source location', () => {
 
 describe('findDuplicateIds', () => {
   const node = (id: string, source?: SpaceNode['source']) => ({ id: id as NodeId, source }) as SpaceNode;
+  type DuplicateIssue = Extract<ValidationIssue, { kind: 'duplicate' }>;
 
   it('lists where each node sharing an id is defined', () => {
     const dupes = findDuplicateIds([
@@ -40,16 +41,22 @@ describe('findDuplicateIds', () => {
     ]);
     expect(dupes).toEqual([
       {
-        id: 'a' as NodeId,
+        kind: 'duplicate',
+        key: 'duplicate:a',
+        severity: 'error',
+        message: expect.stringContaining('used by 2 nodes'),
+        nodeId: 'a' as NodeId,
         sources: [
           { file: 'x.md', line: 1 },
           { file: 'y.md', line: 4 },
         ],
-      },
+      } as DuplicateIssue,
     ]);
   });
 
   it('reports no sources for nodes without a source location', () => {
-    expect(findDuplicateIds([node('a'), node('a')])).toEqual([{ id: 'a' as NodeId, sources: [] }]);
+    expect(findDuplicateIds([node('a'), node('a')])).toEqual([
+      expect.objectContaining({ nodeId: 'a' as NodeId, sources: [] }) as unknown as DuplicateIssue,
+    ]);
   });
 });

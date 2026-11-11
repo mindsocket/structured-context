@@ -1,11 +1,10 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
-import { judgeForRun } from './judge/factory';
-import type { JudgeRun } from './judge/judge-node';
-import type { TrimReport } from './judge/trim';
+import { createJudgeProvider } from './judge/factory';
+import type { JudgeSession } from './judge/judge-node';
 import { readSpace } from './read/read-space';
-import { type CoverageGate, evaluateRules, type GatingSeed, type RuleEvaluation } from './rule/gating';
+import { evaluateRules, type FailedNodes, type RuleEvaluationResult } from './rule/gating';
 import { filterRules, parseRuleFilter, type RuleFilter } from './rule/rule-filter';
 import { extractEntityInfo, typeValidatorFor } from './schema/schema';
 import { validateGraph } from './schema/validate-graph';
@@ -14,11 +13,9 @@ import { buildSpaceGraph, computeHierarchyDepths } from './space-graph';
 import type {
   FileNotInSpaceResult,
   FileValidationResult,
-  GraphViolation,
   NodeId,
   ParseIssue,
   ReadSpaceResult,
-  RuleViolation,
   SchemaWithMetadata,
   SourceLocation,
   SpaceContext,
@@ -39,11 +36,6 @@ export interface ValidationResult {
   validCount: number;
   /** Hierarchy nodes without a parent: informational, not issues. */
   orphans: Array<{ nodeId: NodeId; title: string }>;
-  /**
-   * Gates: nodes whose schema or hierarchy failure, or gating violation, stopped rule evaluation
-   * for their hierarchy subtree (and for themselves, after a failure). See docs/rules.md#cascade-gating.
-   */
-  coverageGates: CoverageGate[];
   /** Semantic rule input that had content trimmed to fit the per-node input cap: the node count and the rule ids. */
   contextTrimmed: { nodeCount: number; ruleIds: string[] };
   /** Nodes excluded from validation entirely by a `depth` limit (breadth-first from hierarchy roots). */
@@ -169,21 +161,21 @@ interface CommonValidateOptions {
   semantic?: boolean | string;
 }
 
-/** What a run evaluates with: the public options after the filter is parsed and the judge is built. */
-export interface RunOptions {
+/** What a validation run evaluates with: the options after the filter is parsed and the judge session is built. */
+export interface ValidationOptions {
   includeGated?: boolean;
   ruleFilter?: RuleFilter;
-  judge?: JudgeRun['provider'];
-  /** Limit judging to one file (and the ancestors that can gate it). */
-  judgeTarget?: JudgeRun['target'];
+  /** Judges `semantic` rules. Absent: a rule runs only its `expression`, and a semantic-only rule is skipped. */
+  judge?: JudgeSession;
 }
 
 /** Throws `SctxError` `E_MODEL_PROVIDER_INVALID` when `semantic` names a provider that cannot be built. */
-function runOptionsFrom(context: SpaceContext, options: CommonValidateOptions): RunOptions {
+function toValidationOptions(context: SpaceContext, options: CommonValidateOptions): ValidationOptions {
+  const provider = createJudgeProvider(context.config, context.space, options.semantic);
   return {
     includeGated: options.includeGated,
     ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
-    judge: judgeForRun(context.config, context.space, options.semantic),
+    ...(provider && { judge: { provider } }),
   };
 }
 
@@ -198,92 +190,107 @@ export function formatSource({ file, line, column }: SourceLocation): string {
   return line === undefined ? file : `${file}:${line}${column === undefined ? '' : `:${column}`}`;
 }
 
-/** One-line text for a rule violation: rule, description, and any evidence and verdict guidance. */
-export function ruleViolationMessage(v: RuleViolation): string {
-  const evidence = v.evidence ? ` (Evidence: ${v.evidence})` : '';
-  const guidance = v.guidance ? ` Guidance: ${v.guidance}` : '';
-  return `[${v.ruleId}] ${v.description}${evidence}${guidance}`;
+/** One-line text for a rule issue: rule, message, and any evidence and verdict guidance. */
+export function ruleIssueMessage(issue: Extract<ValidationIssue, { kind: 'rule' }>): string {
+  const evidence = issue.evidence ? ` (Evidence: ${issue.evidence})` : '';
+  const guidance = issue.guidance ? ` Guidance: ${issue.guidance}` : '';
+  return `[${issue.ruleId}] ${issue.message}${evidence}${guidance}`;
 }
 
-const summariseTrim = (report: TrimReport): ValidationResult['contextTrimmed'] => ({
+const summariseTrim = (
+  report: NonNullable<RuleEvaluationResult['trimReport']>,
+): ValidationResult['contextTrimmed'] => ({
   nodeCount: report.nodes.size,
   ruleIds: [...report.ruleIds].sort(),
 });
 
 /**
- * Evaluate a space's rules, with cascade gating when the schema has a main hierarchy: a failed node (`failures`)
- * or a gating violation suppresses rule evaluation for the node's subtree.
+ * Evaluate a space's rules, with cascade gating when the schema has a main hierarchy: a failed node or a
+ * gating violation suppresses rule evaluation for the node's subtree.
  * Called by `validateNodes`, the core behind `validateSpace` and `validateFile`, so both report identical rule results for a node.
  * Semantic rules run only when a `judge` is supplied.
  */
 async function evaluateSpaceRules(
   nodes: SpaceNode[],
   schemaContext: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
-  failures: GatingSeed[],
-  options: RunOptions & Pick<JudgeRun, 'trimReport'> = {},
-): Promise<RuleEvaluation> {
+  failedNodes: FailedNodes,
+  options: ValidationOptions = {},
+): Promise<RuleEvaluationResult> {
   const { metadata } = schemaContext.schema;
   const rules = metadata.rules && filterRules(metadata.rules, options.ruleFilter);
-  if (!rules) return { violations: [], gates: [] };
+  if (!rules) return { issues: [] };
   const graph = buildSpaceGraph(nodes, metadata.hierarchy);
-  const { judge: provider, judgeTarget: target, trimReport, includeGated } = options;
-  return evaluateRules(nodes, rules, graph, failures, {
-    includeGated,
-    judge: provider && { provider, target, trimReport, schemaContext },
+  return evaluateRules(nodes, rules, graph, failedNodes, {
+    ...options,
+    judge: options.judge && { ...options.judge, schemaContext },
   });
 }
 
-/** A node that failed type or schema validation. */
-interface NodeValidationFailure {
-  node: SpaceNode;
-  issues: FormattedError[];
+/** The nodes an issue is about, deduped by its scope: a finding repeated on its node (or file) is kept once. */
+class IssueCollector {
+  private readonly seen = new Set<string>();
+  readonly issues: ValidationIssue[] = [];
+  add(issue: ValidationIssue): void {
+    const scope = issue.nodeId ?? (issue.kind === 'parse' ? issue.source.file : '');
+    const dedupe = `${scope}\0${issue.key}`;
+    if (this.seen.has(dedupe)) return;
+    this.seen.add(dedupe);
+    this.issues.push(issue);
+  }
+  addAll(issues: Iterable<ValidationIssue>): void {
+    for (const issue of issues) this.add(issue);
+  }
+  /** The issues of one kind, narrowed to that kind's fields. */
+  ofKind<K extends ValidationIssue['kind']>(kind: K) {
+    return this.issues.filter((issue): issue is Extract<ValidationIssue, { kind: K }> => issue.kind === kind);
+  }
 }
 
-/** The outcome of validating a set of nodes, before either view shapes it. */
-export interface SpaceValidationResult {
-  validCount: number;
-  nodeFailures: NodeValidationFailure[];
-  refErrors: Array<{ nodeId: NodeId; source?: SourceLocation; parent: string; error: string }>;
-  /** Nodes that share an id; `sources` lists where each is defined (a node without a source adds no entry). */
-  duplicateErrors: DuplicateId[];
-  ruleViolations: RuleViolation[];
-  hierarchyViolations: GraphViolation[];
-  orphans: SpaceNode[];
-  unresolvedContentLinks: ReadSpaceResult['unresolvedContentLinks'];
-  coverageGates: CoverageGate[];
-  contextTrimmed: ValidationResult['contextTrimmed'];
-}
-
-type DuplicateId = { id: NodeId; sources: SourceLocation[] };
-
-/**
- * Nodes that share an id, with where each is defined. A plugin should keep ids unique, so this guards that contract.
- * Display titles may repeat.
- */
-export function findDuplicateIds(nodes: SpaceNode[]): DuplicateId[] {
+/** The nodes that share an id, with where each is defined. A plugin should keep ids unique, so this guards that contract.
+ * Display titles may repeat. */
+export function findDuplicateIds(nodes: SpaceNode[]): Extract<ValidationIssue, { kind: 'duplicate' }>[] {
   const idToNodes = new Map<NodeId, SpaceNode[]>();
   for (const node of nodes) {
     if (!idToNodes.has(node.id)) idToNodes.set(node.id, []);
     idToNodes.get(node.id)!.push(node);
   }
-  const duplicates: DuplicateId[] = [];
+  const issues: Extract<ValidationIssue, { kind: 'duplicate' }>[] = [];
   for (const [id, sameId] of idToNodes) {
-    if (sameId.length > 1) duplicates.push({ id, sources: sameId.flatMap((n) => (n.source ? [n.source] : [])) });
+    if (sameId.length < 2) continue;
+    const sources = sameId.flatMap((n) => (n.source ? [n.source] : []));
+    issues.push({
+      kind: 'duplicate',
+      key: `duplicate:${id}`,
+      severity: 'error',
+      message: `Duplicate id "${id}" is used by ${sameId.length} nodes${sources.length > 0 ? `: ${sources.map(formatSource).join(', ')}` : ''}`,
+      nodeId: id,
+      sources,
+    });
   }
-  return duplicates;
+  return issues;
+}
+
+/** The outcome of validating a set of nodes: every finding is an issue; the counters summarise the set. */
+export interface SpaceValidationResult {
+  issues: ValidationIssue[];
+  validCount: number;
+  /** Hierarchy nodes without a parent: informational, not issues. */
+  orphans: SpaceNode[];
+  /** Semantic rule input that had content trimmed to fit the per-node input cap. */
+  contextTrimmed: ValidationResult['contextTrimmed'];
 }
 
 /**
  * The one validation pipeline: type and schema checks, duplicate titles, reference and hierarchy
  * checks, cascade-gated rules, and unresolved content links. Returns every entry; `validateSpace`
  * and `validateFile` are views over it, so a file's results match its entry in a full run.
- * `judgeTarget` limits judging to one file (and the ancestors that can gate it).
+ * `judge.target` limits judging to one file (and the ancestors that can gate it).
  */
 export async function validateNodes(
   context: SpaceContext,
   nodes: SpaceNode[],
   read: Pick<ReadSpaceResult, 'unresolvedRefs' | 'unresolvedContentLinks'>,
-  options: RunOptions = {},
+  options: ValidationOptions = {},
 ): Promise<SpaceValidationResult> {
   const { unresolvedRefs } = read;
   const { schema, schemaRefRegistry, schemaValidator } = context;
@@ -292,32 +299,22 @@ export async function validateNodes(
   // Pre-extract valid types for early type validation
   const validTypes = Array.isArray(schema.oneOf) ? extractEntityInfo(schema, schemaRefRegistry).map((e) => e.type) : [];
 
-  const result: SpaceValidationResult = {
-    validCount: 0,
-    nodeFailures: [],
-    refErrors: [],
-    duplicateErrors: [],
-    ruleViolations: [],
-    hierarchyViolations: [],
-    orphans: [],
-    unresolvedContentLinks: [],
-    coverageGates: [],
-    contextTrimmed: { nodeCount: 0, ruleIds: [] },
-  };
+  const collected = new IssueCollector();
+  let validCount = 0;
 
   for (const node of nodes) {
     // Check the type first: an unknown type reports one error instead of one per oneOf branch.
     const nodeType = (node.schemaData as Record<string, unknown>).type as string | undefined;
+    const at = node.source ? { source: node.source } : {};
     if (nodeType !== undefined && validTypes.length > 0 && !validTypes.includes(nodeType)) {
       const sortedTypes = [...validTypes].sort();
-      result.nodeFailures.push({
-        node,
-        issues: [
-          {
-            message: `Invalid type "${nodeType}". Valid types are: ${sortedTypes.join(', ')}`,
-            dedupeKey: `type:${sortedTypes.join(',')}`,
-          },
-        ],
+      collected.add({
+        kind: 'schema',
+        key: `schema:type:${sortedTypes.join(',')}`,
+        severity: 'error',
+        message: `Invalid type "${nodeType}". Valid types are: ${sortedTypes.join(', ')}`,
+        nodeId: node.id,
+        ...at,
       });
       continue;
     }
@@ -325,49 +322,90 @@ export async function validateNodes(
     // A valid type is checked against its own branch only, so errors come from that type alone.
     const validate = (nodeType !== undefined && typeValidatorFor(schemaValidator, nodeType)) || schemaValidator;
     if (validate(node.schemaData)) {
-      result.validCount++;
+      validCount++;
     } else {
-      result.nodeFailures.push({
-        node,
-        issues: formatErrors(
-          validate.errors || [],
-          schema,
-          schemaRefRegistry,
-          node.schemaData as Record<string, unknown>,
-        ),
-      });
+      for (const { message, dedupeKey } of formatErrors(
+        validate.errors || [],
+        schema,
+        schemaRefRegistry,
+        node.schemaData as Record<string, unknown>,
+      )) {
+        collected.add({
+          kind: 'schema',
+          key: `schema:${dedupeKey}`,
+          severity: 'error',
+          message,
+          nodeId: node.id,
+          ...at,
+        });
+      }
     }
   }
 
-  result.duplicateErrors.push(...findDuplicateIds(nodes));
+  collected.addAll(findDuplicateIds(nodes));
 
   // Validate all hierarchy constraints (field references and structure)
   const hierarchyValidation = validateGraph(nodes, metadata, unresolvedRefs);
-  result.refErrors.push(...hierarchyValidation.refErrors);
-  result.hierarchyViolations = [...hierarchyValidation.violations];
+  for (const { description, ...violation } of hierarchyValidation.violations) {
+    collected.add({
+      kind: 'hierarchy',
+      key: `hierarchy:${description}`,
+      severity: 'error',
+      message: description,
+      ...violation,
+    });
+  }
+  const hierarchyFailureNodes = hierarchyValidation.violations.map((v) => v.nodeId);
+  for (const { nodeId, source, parent, error } of hierarchyValidation.refErrors) {
+    collected.add({
+      kind: 'broken-link',
+      key: `broken-link:${parent}`,
+      severity: 'error',
+      message: `${parent} → ${error}`,
+      nodeId,
+      ...(source && { source }),
+      ref: parent,
+      reason: error,
+    });
+  }
 
   // Calculate orphans across every hierarchy (informational, not a validation error)
+  const orphans: SpaceNode[] = [];
   for (const hierarchy of metadata.hierarchies ?? []) {
-    result.orphans.push(...buildSpaceGraph(nodes, hierarchy).orphans);
+    orphans.push(...buildSpaceGraph(nodes, hierarchy).orphans);
   }
 
   // Load and execute rules validation if schema defines rules (with cascade gating, see docs/rules.md).
+  let contextTrimmed: ValidationResult['contextTrimmed'] = { nodeCount: 0, ruleIds: [] };
   if (metadata.rules) {
-    const failures: GatingSeed[] = [
-      ...result.nodeFailures.map(({ node }): GatingSeed => ({ id: node.id, reason: 'schema' })),
-      ...result.hierarchyViolations.map((v): GatingSeed => ({ id: v.nodeId, reason: 'hierarchy' })),
-    ];
-    const trimReport: TrimReport = { nodes: new Set(), ruleIds: new Set() };
-    const { violations, gates } = await evaluateSpaceRules(nodes, context, failures, { ...options, trimReport });
-    result.ruleViolations = violations;
-    result.coverageGates = gates;
-    result.contextTrimmed = summariseTrim(trimReport);
+    const failedNodes: FailedNodes = new Map();
+    for (const { nodeId } of collected.ofKind('schema')) failedNodes.set(nodeId, 'schema');
+    for (const nodeId of hierarchyFailureNodes) if (!failedNodes.has(nodeId)) failedNodes.set(nodeId, 'hierarchy');
+    const evaluation = await evaluateSpaceRules(nodes, context, failedNodes, options);
+    collected.addAll(evaluation.issues);
+    if (evaluation.trimReport) contextTrimmed = summariseTrim(evaluation.trimReport);
   }
 
   const ids = new Set(nodes.map((node) => node.id));
-  result.unresolvedContentLinks = read.unresolvedContentLinks.filter((link) => ids.has(link.nodeId));
+  const unresolvedContentLinks = read.unresolvedContentLinks.filter((link) => ids.has(link.nodeId));
+  for (const { nodeId, target } of unresolvedContentLinks) {
+    // Info: a target outside the space is often valid elsewhere
+    collected.add({
+      kind: 'content-link',
+      key: `content-link:${target}`,
+      severity: 'info',
+      message: `Unresolved content link: ${target}`,
+      nodeId,
+      target,
+    });
+  }
 
-  return result;
+  return {
+    issues: collected.issues,
+    validCount,
+    orphans,
+    contextTrimmed,
+  };
 }
 
 /**
@@ -380,7 +418,7 @@ export async function validateSpace(
 ): Promise<ValidationResult> {
   const metadata = context.schema.metadata;
 
-  const runOptions = runOptionsFrom(context, options);
+  const runOptions = toValidationOptions(context, options);
   const readResult = options.readResult ?? (await readSpace(context));
   let nodes = readResult.nodes;
 
@@ -405,14 +443,25 @@ export async function validateSpace(
   const result = await validateNodes(context, nodes, readResult, runOptions);
 
   return {
-    issues: issuesOf(result, readResult.parseIssues, runOptions),
+    issues: [...parseIssuesOf(readResult.parseIssues), ...result.issues],
     validCount: result.validCount,
     orphans: result.orphans.map((node) => ({ nodeId: node.id, title: node.title })),
-    coverageGates: result.coverageGates,
     contextTrimmed: result.contextTrimmed,
     skippedByDepth,
     depthLimit: options.depth,
   };
+}
+
+/** The issues for the files a plugin excluded or could not parse. */
+function parseIssuesOf(parseIssues: ParseIssue[]): ValidationIssue[] {
+  return parseIssues.map(({ message, source, severity, type }) => ({
+    kind: 'parse' as const,
+    key: `parse:${type}`,
+    severity,
+    message: message ?? (type === 'no-type' ? 'No type field' : `Excluded during parsing (${type})`),
+    source,
+    type,
+  }));
 }
 
 /** Find which space a file belongs to by checking directory containment. */
@@ -434,103 +483,6 @@ export interface ValidateFileOptions extends CommonValidateOptions {
   configDir?: string;
 }
 
-/**
- * The run's findings as issues, each with its severity. This is the one place severity is decided for
- * the checks that have no severity of their own. An issue repeated within its node (or file) is kept once.
- */
-export function issuesOf(
-  result: SpaceValidationResult,
-  parseIssues: ParseIssue[],
-  options: { includeGated?: boolean },
-): ValidationIssue[] {
-  const issues = new Map<string, ValidationIssue>();
-  const add = (issue: ValidationIssue) => {
-    const scope = issue.nodeId ?? (issue.kind === 'parse' ? issue.source.file : '');
-    issues.set(`${scope}\0${issue.key}`, issue);
-  };
-  const at = (source: SourceLocation | undefined) => (source ? { source } : {});
-
-  for (const { message, ...issue } of parseIssues) {
-    const { type } = issue;
-    add({
-      kind: 'parse',
-      key: `parse:${type}`,
-      message: message ?? (type === 'no-type' ? 'No type field' : `Excluded during parsing (${type})`),
-      ...issue,
-    });
-  }
-  for (const { node, issues: problems } of result.nodeFailures) {
-    for (const { message, dedupeKey } of problems) {
-      add({
-        kind: 'schema',
-        key: `schema:${dedupeKey}`,
-        severity: 'error',
-        message,
-        nodeId: node.id,
-        ...at(node.source),
-      });
-    }
-  }
-  for (const { id, sources } of result.duplicateErrors) {
-    const where = sources.length > 0 ? `: ${sources.map(formatSource).join(', ')}` : '';
-    add({
-      kind: 'duplicate',
-      key: `duplicate:${id}`,
-      severity: 'error',
-      message: `Duplicate id "${id}" is used by ${sources.length} nodes${where}`,
-      nodeId: id,
-      sources,
-    });
-  }
-  for (const { nodeId, source, parent, error } of result.refErrors) {
-    add({
-      kind: 'broken-link',
-      key: `broken-link:${parent}`,
-      severity: 'error',
-      message: `${parent} → ${error}`,
-      nodeId,
-      ...at(source),
-      ref: parent,
-      reason: error,
-    });
-  }
-  for (const { description, ...violation } of result.hierarchyViolations) {
-    add({ kind: 'hierarchy', key: `hierarchy:${description}`, severity: 'error', message: description, ...violation });
-  }
-  for (const v of result.ruleViolations) {
-    add({ kind: 'rule', key: `rule:${v.ruleId}`, message: ruleViolationMessage(v), ...v });
-  }
-  // A gated node with no violations would otherwise look clean: say that its rules were not checked
-  for (const gate of result.coverageGates) {
-    const cause = gate.reason === 'rule' ? `rule "${gate.ruleId}"` : `${gate.reason} failure`;
-    const message = `Rule checks ${options.includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.nodeId}`;
-    for (const nodeId of gate.gatedNodeIds) {
-      add({
-        kind: 'gated',
-        key: `gated:${gate.nodeId}`,
-        severity: 'info',
-        message,
-        nodeId,
-        gatedBy: gate.nodeId,
-        reason: gate.reason,
-        ...(gate.ruleId !== undefined && { ruleId: gate.ruleId }),
-      });
-    }
-  }
-  for (const { nodeId, target } of result.unresolvedContentLinks) {
-    // Info: a target outside the space is often valid elsewhere
-    add({
-      kind: 'content-link',
-      key: `content-link:${target}`,
-      severity: 'info',
-      message: `Unresolved content link: ${target}`,
-      nodeId,
-      target,
-    });
-  }
-  return [...issues.values()];
-}
-
 /** The result for a file that belongs to no configured space. */
 export function fileNotInSpace(filePath: string): FileNotInSpaceResult {
   return {
@@ -550,7 +502,7 @@ export function validateResolvedFile(
   context: SpaceContext,
   options: Omit<ValidateFileOptions, 'configDir'> = {},
 ): Promise<FileValidationResult> {
-  return validateResolvedFileWith(filePath, label, context, runOptionsFrom(context, options));
+  return validateResolvedFileWith(filePath, label, context, toValidationOptions(context, options));
 }
 
 /** `validateResolvedFile` with the options already resolved, so a caller can supply its own judge. */
@@ -558,14 +510,14 @@ export async function validateResolvedFileWith(
   filePath: string,
   label: string,
   context: SpaceContext,
-  runOptions: RunOptions,
+  validationOptions: ValidationOptions,
 ): Promise<FileValidationResult> {
   const readResult = await readSpace(context);
   const result = await validateNodes(context, readResult.nodes, readResult, {
-    ...runOptions,
-    judgeTarget: label,
+    ...validationOptions,
+    judge: validationOptions.judge && { ...validationOptions.judge, target: label },
   });
-  const issues = issuesOf(result, [], runOptions).filter((issue) => issue.nodeId === label);
+  const issues = result.issues.filter((issue) => issue.nodeId === label);
   const errorCount = issues.filter((issue) => issue.severity === 'error').length;
 
   return {

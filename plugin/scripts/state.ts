@@ -23,6 +23,7 @@ export interface HookOptions {
 }
 
 export interface ValidationIssue {
+  key?: string;
   kind: string;
   message: string;
   severity?: 'error' | 'warning' | 'info';
@@ -294,8 +295,9 @@ export async function validateSpace(
     if (issue.kind === 'parse' && issue.severity !== 'error') continue;
     const label = issue.nodeId ?? (issue.kind === 'parse' ? issue.source.file : '');
     const { kind, message, severity } = issue;
-    if (severity === 'error') issuesFor(label).errors[issue.key] = { kind, message, severity };
-    else if (severity === 'warning') issuesFor(label).warnings[issue.key] = { kind, message, severity };
+    const stored = { key: issue.key, kind, message, severity };
+    if (severity === 'error') issuesFor(label).errors[issue.key] = stored;
+    else if (severity === 'warning') issuesFor(label).warnings[issue.key] = stored;
   }
   return byFile;
 }
