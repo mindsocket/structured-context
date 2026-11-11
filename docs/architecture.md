@@ -80,10 +80,31 @@ Validation runs as one pipeline over the whole space. `validateSpace` returns it
 
 ## Module Boundaries
 
-Each module owns one concern.
+Core keeps each concern in one module. These rules hold the boundaries:
 
-| Module | Owns |
-|---|---|
+1. **One owner per concern.** Only the owning module builds a concern's data. A caller passes what it has, and the owner derives what it needs. For example, `validate.ts` passes the schema to rule evaluation, and only `judge/` turns it into model input.
+2. **Imports point down.** A module imports from its own layer or lower ones, never from a higher one.
+3. **Shared contracts sit low.** A type, constant or helper that a lower layer needs lives in a contract file at or below that layer, not in the higher module that owns its directory.
+4. **Only plugins know a source format.** The rest of core works with what a plugin's parse result reports, such as nodes and parse issues. It reaches a built-in plugin only through the plugin registry.
+
+The layers, from the top:
+
+| Layer | Modules | Owns |
+|---|---|---|
+| Entry points | `index.ts`, `commands/`, `api.ts`, `browser.ts`, `testing.ts` | The CLI and the public library surface |
+| Render | `render/` | Rendering a space through a plugin's renderer |
+| Run | `validate.ts`, `load-space-graph.ts` | A validation run and its result; loading a filtered space graph |
+| Rule evaluation | `schema/` | Schema, hierarchy and rule checks, and cascade gating |
+| Read | `read/` | Reading a space through its plugin and resolving graph edges |
+| Space loading | `plugins/`, `space-context.ts` | Plugins, and a space's config, schema and plugins together |
+| Config | `config/` | Finding and loading the config |
+| Foundations | `schema/schema.ts`, `judge/`, `filter/`, `space-graph-data.ts` | Loading schemas, semantic evaluation, node filters and the space graph format |
+| Contracts | `space-graph.ts`, the `$metadata` contract, rule severity, `judge/types.ts` and other shared files | Shapes and helpers several layers use |
+| Base | `types.ts`, `constants.ts`, `errors.ts` | Shared types, constants and errors |
+
+`tests/module-boundaries.test.ts` checks rules 2 and 4 at runtime imports. It holds the exact layer of each module, and a new top-level module fails until it has one. Rules 1 and 3 need review, because a module can build another's data without importing it. `tests/space-graph-data.test.ts` checks that `browser.ts` bundles without Node built-ins.
+
+---|---|
 | `index.ts`, `commands/` | The CLI: flags, output and exit codes |
 | `api.ts`, `browser.ts`, `types.ts`, `testing.ts` | The public entry points |
 | `config/`, `space-context.ts` | Finding the config and loading a space's config, schema and plugins |
