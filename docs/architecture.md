@@ -84,7 +84,7 @@ Core's top-level modules fall into layers. Each layer uses the ones below it.
 
 | Layer | Modules | Role |
 |---|---|---|
-| CLI and entry points | `index.ts`, `commands/`, `api.ts`, `browser.ts`, `testing.ts` | Commands call the API functions of the functional areas. The entry points export them. |
+| CLI and entry points | `index.ts`, `commands/`, `api.ts`, `browser.ts` | Commands call the API functions of the functional areas. The entry points export them. |
 | Functional areas | `read/`, `render/`, `validate.ts`, `load-space-graph.ts` | Reading, rendering and validating a space. Each provides API functions. |
 | Supporting areas and plugins | `filter/`, `judge/`, `plugins/` | Filtering nodes and semantic evaluation, which the functional areas use. Plugins are hook points that the functional areas call. |
 | Concepts | `schema/`, `config/`, `space-context.ts`, `space-graph.ts`, `space-graph-data.ts` | What the other layers work with: schemas, config, a space and its graph. |
@@ -97,36 +97,6 @@ These rules keep the boundaries:
 3. **One owner per concern.** Only the owning module builds a concern's data. A caller passes what it has, and the owner derives what it needs. For example, `validate.ts` passes the schema to rule evaluation, and only `judge/` turns it into model input.
 
 `tests/module-boundaries.test.ts` checks rules 1 and 2 on runtime imports, and fails on a top-level module with no layer. It lists the imports that break a rule today, each with the change that would remove it. Rule 3 needs review, because a module can build another's data without importing it. `tests/space-graph-data.test.ts` checks that `browser.ts` bundles without Node built-ins.
-
----|---|---|
-| Entry points | `index.ts`, `commands/`, `api.ts`, `browser.ts`, `testing.ts` | The CLI and the public library surface |
-| Render | `render/` | Rendering a space through a plugin's renderer |
-| Run | `validate.ts`, `load-space-graph.ts` | A validation run and its result; loading a filtered space graph |
-| Rule evaluation | `schema/` | Schema, hierarchy and rule checks, and cascade gating |
-| Read | `read/` | Reading a space through its plugin and resolving graph edges |
-| Space loading | `plugins/`, `space-context.ts` | Plugins, and a space's config, schema and plugins together |
-| Config | `config/` | Finding and loading the config |
-| Foundations | `schema/schema.ts`, `judge/`, `filter/`, `space-graph-data.ts` | Loading schemas, semantic evaluation, node filters and the space graph format |
-| Contracts | `space-graph.ts`, the `$metadata` contract, rule severity, `judge/types.ts` and other shared files | Shapes and helpers several layers use |
-| Base | `types.ts`, `constants.ts`, `errors.ts` | Shared types, constants and errors |
-
-`tests/module-boundaries.test.ts` checks rules 2 and 4 at runtime imports. It holds the exact layer of each module, and a new top-level module fails until it has one. Rules 1 and 3 need review, because a module can build another's data without importing it. `tests/space-graph-data.test.ts` checks that `browser.ts` bundles without Node built-ins.
-
----|---|
-| `index.ts`, `commands/` | The CLI: flags, output and exit codes |
-| `api.ts`, `browser.ts`, `types.ts`, `testing.ts` | The public entry points |
-| `config/`, `space-context.ts` | Finding the config and loading a space's config, schema and plugins |
-| `read/`, `plugins/` | Turning source files into nodes and graph edges |
-| `validate.ts` | A validation run: its options, the schema and hierarchy checks, and the result |
-| `schema/` | Schemas, the dialect, rule evaluation and cascade gating |
-| `judge/` | Semantic evaluation: model input, providers and verdicts |
-| `space-graph.ts`, `space-graph-data.ts`, `filter/` | The space graph, its exchange format and node filters |
-
-Dependencies point one way: the CLI calls the run, the run calls rule evaluation, and rule evaluation calls the judge. A caller passes what it has, and the module that owns a concern derives what it needs. For example, `validate.ts` builds the run's judge from config and passes the schema to rule evaluation. Only `judge/` builds model input from them.
-
-Only plugins know a source format, such as markdown paths or frontmatter. The rest of core works with what a plugin's parse result reports, and reaches a built-in plugin only through the plugin registry.
-
-`tests/module-boundaries.test.ts` holds the layer order and fails on an import that points up a layer, an import into a built-in plugin from outside `plugins/`, or a top-level module with no layer. It cannot see a module that builds another's data without importing it, so that stays a review check. `tests/space-graph-data.test.ts` checks that `browser.ts` bundles without Node built-ins.
 
 ---
 
