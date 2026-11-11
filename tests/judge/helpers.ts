@@ -4,9 +4,8 @@ import type { NodeId, SpaceNode } from '../../src/types';
 export const node: SemanticJudgeInput['node'] & Pick<SpaceNode, 'resolvedParents'> = {
   id: 'opp1.md' as NodeId,
   title: 'I cannot find my receipts',
-  type: 'opportunity',
   resolvedType: 'opportunity',
-  schemaData: { title: 'I cannot find my receipts', type: 'opportunity', source: 'User interview with Alice' },
+  schemaData: { source: 'User interview with Alice' },
   parentTitles: ['Faster Tax Filing'],
   resolvedParents: [
     {
