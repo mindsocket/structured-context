@@ -5,13 +5,12 @@ import { judgeForRun } from './judge/factory';
 import type { TrimReport } from './judge/trim';
 import type { SemanticJudgeProvider } from './judge/types';
 import { readSpace } from './read/read-space';
-import { computeHierarchyDepths, evaluateRulesWithGating, type GatingSeed } from './schema/gating';
+import { evaluateRules, type GatingSeed, type RuleEvaluation, type RuleEvaluationOptions } from './schema/gating';
 import { filterRules, parseRuleFilter, type RuleFilter } from './schema/rule-filter';
 import { extractEntityInfo, typeValidatorFor } from './schema/schema';
 import { validateGraph } from './schema/validate-graph';
-import { validateRules } from './schema/validate-rules';
 import { createSpaceContext } from './space-context';
-import { buildSpaceGraph } from './space-graph';
+import { buildSpaceGraph, computeHierarchyDepths } from './space-graph';
 import type {
   CoverageGate,
   FileNotInSpaceResult,
@@ -42,9 +41,8 @@ export interface ValidationResult {
   /** Hierarchy nodes without a parent: informational, not issues. */
   orphans: Array<{ nodeId: NodeId; title: string }>;
   /**
-   * Cascade gates: nodes whose schema/hierarchy failure or blocking rule violation
-   * suppressed rule evaluation for themselves and/or their hierarchy subtree.
-   * See docs/rules.md for gating semantics.
+   * Gates: nodes whose schema or hierarchy failure, or gating violation, stopped rule evaluation
+   * for their hierarchy subtree (and for themselves, after a failure). See docs/rules.md#cascade-gating.
    */
   coverageGates: CoverageGate[];
   /** Semantic rule input that had content trimmed to fit the per-node input cap: the node count and the rule ids. */
@@ -208,55 +206,28 @@ export function ruleViolationMessage(v: RuleViolation): string {
   return `[${v.ruleId}] ${v.description}${evidence}${guidance}`;
 }
 
-type SpaceRuleEvaluation = {
-  violations: RuleViolation[];
-  gates: CoverageGate[];
-};
-
 const summariseTrim = (report: TrimReport): ValidationResult['contextTrimmed'] => ({
   nodeCount: report.nodes.size,
   ruleIds: [...report.ruleIds].sort(),
 });
 
 /**
- * Evaluate a space's rules. With a main hierarchy, evaluation cascades: schema, hierarchy
- * and gating-rule failures (the `seeds`) suppress rule evaluation for the failing node's subtree.
+ * Evaluate a space's rules, with cascade gating when the schema has a main hierarchy: a failed node (`failures`)
+ * or a gating violation suppresses rule evaluation for the node's subtree.
  * Called by `validateNodes`, the core behind `validateSpace` and `validateFile`, so both report identical rule results for a node.
  * Semantic rules run only when a `judge` is supplied.
  */
 async function evaluateSpaceRules(
   nodes: SpaceNode[],
   schemaContext: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
-  seeds: GatingSeed[],
-  options: {
-    includeGated?: boolean;
-    judge?: SemanticJudgeProvider;
-    judgeTarget?: string;
-    ruleFilter?: RuleFilter;
-    trimReport?: TrimReport;
-  } = {},
-): Promise<SpaceRuleEvaluation> {
+  failures: GatingSeed[],
+  options: Omit<RuleEvaluationOptions, 'schemaContext'> & { ruleFilter?: RuleFilter } = {},
+): Promise<RuleEvaluation> {
   const { metadata } = schemaContext.schema;
   const rules = metadata.rules && filterRules(metadata.rules, options.ruleFilter);
   if (!rules) return { violations: [], gates: [] };
-  const provider = options.judge;
-  if (!metadata.hierarchy) {
-    const result = await validateRules(nodes, rules, {
-      judge: provider,
-      judgeTarget: options.judgeTarget,
-      trimReport: options.trimReport,
-      schemaContext,
-    });
-    return { violations: result, gates: [] };
-  }
   const graph = buildSpaceGraph(nodes, metadata.hierarchy);
-  return evaluateRulesWithGating(nodes, rules, graph, seeds, {
-    includeGated: options.includeGated,
-    provider,
-    judgeTarget: options.judgeTarget,
-    trimReport: options.trimReport,
-    schemaContext,
-  });
+  return evaluateRules(nodes, rules, graph, failures, { ...options, schemaContext });
 }
 
 /** A node that failed type or schema validation. */
@@ -379,14 +350,12 @@ export async function validateNodes(
 
   // Load and execute rules validation if schema defines rules (with cascade gating, see docs/rules.md).
   if (metadata.rules) {
-    const seeds: GatingSeed[] = [
-      ...result.nodeFailures.map(({ node }): GatingSeed => {
-        return { id: node.id, reason: 'schema' };
-      }),
+    const failures: GatingSeed[] = [
+      ...result.nodeFailures.map(({ node }): GatingSeed => ({ id: node.id, reason: 'schema' })),
       ...result.hierarchyViolations.map((v): GatingSeed => ({ id: v.nodeId, reason: 'hierarchy' })),
     ];
     const trimReport: TrimReport = { nodes: new Set(), ruleIds: new Set() };
-    const { violations, gates } = await evaluateSpaceRules(nodes, context, seeds, { ...options, trimReport });
+    const { violations, gates } = await evaluateSpaceRules(nodes, context, failures, { ...options, trimReport });
     result.ruleViolations = violations;
     result.coverageGates = gates;
     result.contextTrimmed = summariseTrim(trimReport);
@@ -530,7 +499,7 @@ export function issuesOf(
   }
   // A gated node with no violations would otherwise look clean: say that its rules were not checked
   for (const gate of result.coverageGates) {
-    const cause = gate.reason === 'rule' ? `blocking rule "${gate.ruleId}"` : `${gate.reason} failure`;
+    const cause = gate.reason === 'rule' ? `rule "${gate.ruleId}"` : `${gate.reason} failure`;
     const message = `Rule checks ${options.includeGated ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.nodeId}`;
     for (const nodeId of gate.gatedNodeIds) {
       add({

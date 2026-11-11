@@ -10,7 +10,7 @@ import {
   shortenPluginName,
 } from '../plugins/util';
 import { listSchemas } from '../schema/list-schemas';
-import { ruleSemantic } from '../schema/rule-severity';
+import { DEFAULT_SEVERITY_BY_CATEGORY, ruleSemantic } from '../schema/rule-severity';
 import {
   bundledSchemasDir,
   type EntityInfo,
@@ -20,7 +20,6 @@ import {
   readRawSchema,
 } from '../schema/schema';
 import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
-import { DEFAULT_SEVERITY_BY_CATEGORY } from '../schema/validate-rules';
 import { createSpaceContext } from '../space-context';
 import type { Rule, RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
 

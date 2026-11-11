@@ -166,3 +166,27 @@ export function selectHierarchy(
   }
   return hierarchy;
 }
+
+/**
+ * Breadth-first depth (1-based, from hierarchy roots and orphans) of every hierarchy node in the graph.
+ * Non-hierarchy nodes are not included.
+ */
+export function computeHierarchyDepths(graph: SpaceGraph): Map<NodeId, number> {
+  const depths = new Map<NodeId, number>();
+  const queue: Array<{ id: NodeId; depth: number }> = [];
+  for (const node of [...graph.hierarchyRoots, ...graph.orphans]) {
+    queue.push({ id: node.id, depth: 1 });
+  }
+
+  let i = 0;
+  while (i < queue.length) {
+    const { id, depth } = queue[i++]!;
+    if (depths.has(id)) continue;
+    depths.set(id, depth);
+    for (const child of graph.hierarchyChildren.get(id) ?? []) {
+      if (!depths.has(child.id)) queue.push({ id: child.id, depth: depth + 1 });
+    }
+  }
+
+  return depths;
+}

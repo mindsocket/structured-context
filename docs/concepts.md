@@ -201,7 +201,7 @@ A **model provider** evaluates semantic rules: a decision model (Jev) or a chat 
 
 The **evaluated node** is the node a semantic rule is judged on. A rule's `semantic.scope` adds **related nodes** (parent, siblings, children, ancestors, descendants, or the whole branch) along the main hierarchy's edges, and `semantic.includeContent` chooses whose body is sent. See [Related nodes and content](semantic-rules.md#related-nodes-and-content).
 
-A **node ruleset group** is the set of nodes that share the same semantic rules. It forms within one evaluation step of [cascade gating](#cascade-gating): one hierarchy depth, or the set of non-hierarchy nodes. Nodes are keyed on the rules left after `when` and `expression` filtering. A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates one group in as few decision requests as it can.
+A **node ruleset group** is the set of nodes that share the same semantic rules. It forms within one evaluation step of [cascade gating](#cascade-gating): one hierarchy level, or the set of non-hierarchy nodes. Nodes are keyed on the rules left after `when` and `expression` filtering. A model provider on the `openrouter-decisions` or `typesafe-systemone` API evaluates one group in as few decision requests as it can.
 
 A **decision request** is one call to a decisions API. It carries the state of one or more nodes and a list of decision questions.
 
@@ -211,9 +211,13 @@ The **per-node input cap** limits the input for one evaluated node and its relat
 
 ### Cascade gating
 
-**Cascade gating** is the mechanism by which a schema validation error, hierarchy structure violation, or gating rule violation on a node suppresses rule evaluation for that node's `hierarchy` subtree. It exists so downstream checks — especially costly semantic (model-judged) rules — aren't run against inputs already known to be invalid.
+**Cascade gating** stops rule evaluation below a node that is already known to be bad, so costly checks such as semantic rules don't run against invalid input. It applies within the main hierarchy.
 
-A **coverage gate** records one instance of this: the gating node, what kind of violation triggered it (`schema`, `hierarchy`, or a specific rule `id`), and the set of nodes whose rules were suppressed as a result. `sctx validate` reports coverage gates so both humans and agents can see the validation "edge" — where evaluation stopped and why. See [docs/rules.md](rules.md#cascade-gating) for the full model, including the per-rule `gatesDescendants` field and the `--include-gated` / `--depth` CLI options.
+- A **gate** is a node that failed schema validation or hierarchy structure, or that has a **gating violation** (by default, a rule violation at `error` severity).
+- A **gated** node is one below a gate. Its rules are not evaluated. A node that failed schema or hierarchy checks is gated by its own gate too.
+- A **coverage gate** is how a run reports a gate: the gate's node, its cause (`schema`, `hierarchy` or a rule `id`), and the nodes it gated.
+
+See [docs/rules.md](rules.md#cascade-gating) for the full model, including the per-rule `gatesDescendants` field and the `--include-gated` and `--depth` options.
 
 ---
 

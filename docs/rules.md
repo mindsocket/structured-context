@@ -170,37 +170,23 @@ Example override:
 
 ## Cascade gating
 
-When a schema uses `$metadata.hierarchy`, rule evaluation cascades top-down through the
-hierarchy tree (breadth-first from roots and orphans). A **gate** occurs when a node has
-a violation that makes its descendants' rules untrustworthy or wasteful to run:
+When a schema uses `$metadata.hierarchy`, rule evaluation cascades down the hierarchy, one level at a time from roots and orphans. A node becomes a **gate** when it fails in a way that makes its descendants' rules untrustworthy or wasteful to run. The nodes below a gate are **gated**: their rules are not evaluated.
 
-- **Schema validation error** on a node — always gates. The node's own rules are
-  suppressed too, since its data is structurally invalid.
-- **Hierarchy structure violation** on a node (e.g. an invalid parent) — always gates the
-  node's subtree, though the node's own rules still run.
-- **A gating rule violation** — a violation with `error` severity, or any violation of a rule with
-  `gatesDescendants: true`. It gates the node's subtree and skips the node's own semantic rules; its other
-  expressions still run.
+A node becomes a gate when it has one of these:
 
-Gating exists so that expensive or semantic downstream rules (see [Semantic rules](semantic-rules.md)) aren't wasted
-evaluating nodes whose ancestors are already known-bad, and so noise doesn't drown out the
-actionable violation. It is per-subtree: once a node is gated, its descendants inherit the same
-gate (the original blocker), rather than each generating a new one. Cascade gating only applies to nodes within the
-hierarchy DAG.
+- **A schema validation error.** The node's own rules are gated too, because its data is invalid.
+- **A hierarchy structure violation**, such as an invalid parent. The node's own rules are gated too.
+- **A gating violation**: a rule violation with `error` severity, or any violation of a rule with `gatesDescendants: true`. The node's other expressions still run, but none of its semantic parts do.
+
+Gating keeps costly checks, such as [semantic rules](semantic-rules.md), from running below a node that is already known to be bad. It also keeps the actionable violation from being lost in noise. A gated node does not start a new gate: everything below a gate is gated by that one node. Gating applies only to hierarchy nodes. Global rules and nodes outside the hierarchy are always evaluated.
 
 A rule has one `gatesDescendants` setting. It applies to whichever part reported the violation, the `expression` or the `semantic` part. Its default comes from the severity of that violation: `true` for `error`, and `false` for `warning` and `info`. Set it explicitly when that default doesn't fit.
 
 ### Coverage output
 
-`sctx validate` reports gating as **coverage gates**: which node's violation (schema,
-hierarchy, or a specific `ruleId`) suppressed rule evaluation, and the ids of the nodes gated
-as a result. This makes the validation "edge" visible — e.g. "this blocked goal means all
-opportunities beneath it were not evaluated" — for both human reading and agent consumption
-(JSON output via `--json`, under `coverageGates`).
+`sctx validate` reports each gate as a **coverage gate**: the gate's node, its cause (`schema`, `hierarchy`, or a rule's `ruleId`), and the ids of the nodes it gated. This shows where evaluation stopped and why, for example "this goal's error means none of the opportunities below it were evaluated". `--json` output lists them under `coverageGates`.
 
-Use `--include-gated` to evaluate rules on gated nodes anyway (still reported as gated) —
-useful for surfacing cheap, bottom-up checks (e.g. orphan detection, content quality) that
-don't depend on an ancestor being valid.
+Use `--include-gated` to evaluate rules on gated nodes anyway. They are still reported as gated. This is useful for cheap, bottom-up checks, such as content quality, that don't depend on an ancestor being valid.
 
 ### Single-file validation
 
@@ -208,7 +194,7 @@ don't depend on an ancestor being valid.
 
 - Expressions are evaluated for the whole space; the output is restricted to the file.
 - Semantic parts are evaluated only for the file and its gating ancestors (see [Semantic rules](semantic-rules.md#how-semantic-evaluation-works)).
-- If the file is gated, its rules are skipped and a `gated:<file>` issue at `info` severity names the blocker, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway.
+- If the file is gated, its rules are skipped and a `gated:<file>` issue at `info` severity names the gate, so a gated file doesn't read as clean. `--include-gated` evaluates the file's rules anyway.
 
 ## Controlling validation runs
 
