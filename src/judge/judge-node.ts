@@ -1,6 +1,6 @@
 import type { SpaceGraph } from '../space-graph';
 import type { Rule, RuleSeverity, SpaceContext, SpaceNode } from '../types';
-import { describeSchema, judgeContext, type RuleContext, ruleContext } from './context';
+import { describeSchema, judgeContext, type RuleContext, ruleContext, schemaDescriptionsFor } from './context';
 import { type TrimReport, trimToCap } from './trim';
 import type { SemanticJudgeInput, SemanticJudgeProvider } from './types';
 import { isJudgeError, resolveSemanticRule } from './verdicts';
@@ -76,9 +76,9 @@ function planUnits(
   graph: SpaceGraph,
   items: Array<{ node: SpaceNode; rules: Rule[] }>,
   report?: TrimReport,
-  schema?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
+  schemaContext?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
 ): { units: Unit[]; overCap: Slot[] } {
-  const descriptions = schema && describeSchema(schema);
+  const descriptions = schemaContext ? describeSchema(schemaContext) : {};
   const units: Unit[] = [];
   const overCap: Slot[] = [];
   items.forEach(({ node, rules }, item) => {
@@ -93,7 +93,7 @@ function planUnits(
     for (const { context, positions } of groups.values()) {
       const unitRules = positions.map((p) => rules[p]!);
       const resolved = resolveAll(unitRules);
-      const fitted = trimToCap(judgeContext(graph, node, context, descriptions));
+      const fitted = trimToCap(judgeContext(graph, node, context));
       if (!fitted) {
         overCap.push({ item, positions, rules: unitRules });
         continue;
@@ -107,7 +107,11 @@ function planUnits(
         positions,
         rules: unitRules,
         resolved,
-        input: { ...fitted.input, rules: resolved.map((r) => r.spec) },
+        input: {
+          ...fitted.input,
+          ...schemaDescriptionsFor(descriptions, fitted.input),
+          rules: resolved.map((r) => r.spec),
+        },
       });
     }
   });
@@ -117,7 +121,7 @@ function planUnits(
 /**
  * Judge several nodes at once. A judge with `evaluateNodes` gets every input in one call and may fold them into
  * fewer requests; any other judge is called once per input. A node's rules that share a context (related nodes
- * and bodies) form one input, with the `schema`'s descriptions of the types in it; an input that cannot fit the per-node input cap is not sent. Results align with
+ * and bodies) form one input, with the `schemaContext`'s descriptions of the types in it; an input that cannot fit the per-node input cap is not sent. Results align with
  * `items`, in rule order. A failure marks only the affected rules as errors.
  */
 export async function judgeNodes(
@@ -125,9 +129,9 @@ export async function judgeNodes(
   items: Array<{ node: SpaceNode; rules: Rule[] }>,
   graph: SpaceGraph,
   report?: TrimReport,
-  schema?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
+  schemaContext?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
 ): Promise<NodeJudgement[][]> {
-  const { units, overCap } = planUnits(graph, items, report, schema);
+  const { units, overCap } = planUnits(graph, items, report, schemaContext);
   const out: NodeJudgement[][] = items.map(({ rules }) => new Array<NodeJudgement>(rules.length));
   const place = (unit: Slot, judgements: NodeJudgement[]) => {
     unit.positions.forEach((position, k) => {

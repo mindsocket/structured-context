@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
-import { describeSchema, judgeContext } from '../../src/judge/context';
+import { describeSchema, judgeContext, schemaDescriptionsFor } from '../../src/judge/context';
 import { buildJudgeUserPrompt } from '../../src/judge/prompt';
 import { JevJudgeProvider } from '../../src/judge/provider/jev';
 import { loadSchema } from '../../src/schema/schema';
@@ -28,22 +28,25 @@ describe('schema descriptions for the judge', () => {
     }
   });
 
-  it('adds the descriptions of the evaluated and related node types to the judge context', () => {
+  it('picks the descriptions of the evaluated and related node types', () => {
     const hierarchy = makeHierarchy([makeLevel('outcome'), makeLevel('opportunity')]);
     const outcome = makeSpaceNode('Outcome', 'outcome', {});
     const opp = makeSpaceNode('Opp', 'opportunity', {}, undefined, [makeParentRef('Outcome')]);
     const graph = buildSpaceGraph([outcome, opp], hierarchy);
-    const alone = judgeContext(graph, opp, { scope: [], content: 'none' }, descriptions);
-    expect(Object.keys(alone.schemaDescriptions ?? {})).toEqual(['opportunity']);
-    const withParent = judgeContext(graph, opp, { scope: ['parent'], content: 'none' }, descriptions);
-    expect(Object.keys(withParent.schemaDescriptions ?? {}).sort()).toEqual(['opportunity', 'outcome']);
-    expect(judgeContext(graph, opp, { scope: [], content: 'none' }).schemaDescriptions).toBeUndefined();
+    const pick = (scope: Parameters<typeof judgeContext>[2]['scope']) =>
+      Object.keys(
+        schemaDescriptionsFor(descriptions, judgeContext(graph, opp, { scope, content: 'none' })).schemaDescriptions ??
+          {},
+      ).sort();
+    expect(pick([])).toEqual(['opportunity']);
+    expect(pick(['parent'])).toEqual(['opportunity', 'outcome']);
+    expect(schemaDescriptionsFor({}, judgeContext(graph, opp, { scope: [], content: 'none' }))).toEqual({});
   });
 
   it('puts the descriptions in the chat prompt, and nothing when there are none', () => {
     const schemaDescriptions = { opportunity: descriptions.opportunity! };
     expect(buildJudgeUserPrompt({ node, schemaDescriptions }, passFailRule)).toContain('Customer research source');
-    expect(buildJudgeUserPrompt({ node }, passFailRule)).not.toContain('# Schema Descriptions');
+    expect(buildJudgeUserPrompt({ node }, passFailRule)).not.toContain('# Item Types');
   });
 
   it('sends the descriptions to Jev beside the node state', async () => {

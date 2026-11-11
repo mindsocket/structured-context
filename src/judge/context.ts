@@ -141,21 +141,27 @@ export function describeSchema({
   return out;
 }
 
-/** The judge input context for rules that share `context`: the node view, its related nodes, and the schema's descriptions of their types. */
+/** The judge input context for rules that share `context`: the node view and its related nodes. */
 export function judgeContext(
   graph: SpaceGraph,
   node: SpaceNode,
   context: RuleContext,
-  descriptions: SchemaDescriptions = {},
-): Pick<SemanticJudgeInput, 'node' | 'related' | 'schemaDescriptions'> {
+): Pick<SemanticJudgeInput, 'node' | 'related'> {
   const related = relatedNodes(graph, node, context);
-  const schemaDescriptions: SchemaDescriptions = {};
-  for (const type of [node.resolvedType, ...related.map((r) => r.type)]) {
-    if (descriptions[type]) schemaDescriptions[type] = descriptions[type];
-  }
   return {
     node: judgeNodeView(node, context.content !== 'none', graph),
     ...(related.length > 0 && { related }),
-    ...(Object.keys(schemaDescriptions).length > 0 && { schemaDescriptions }),
   };
+}
+
+/** The schema's descriptions of the types in an input: the evaluated node's and its related nodes'. */
+export function schemaDescriptionsFor(
+  descriptions: SchemaDescriptions,
+  { node, related = [] }: Pick<SemanticJudgeInput, 'node' | 'related'>,
+): Pick<SemanticJudgeInput, 'schemaDescriptions'> {
+  const picked: SchemaDescriptions = {};
+  for (const type of [node.resolvedType, ...related.map((r) => r.type)]) {
+    if (descriptions[type]) picked[type] = descriptions[type];
+  }
+  return Object.keys(picked).length > 0 ? { schemaDescriptions: picked } : {};
 }

@@ -69,7 +69,7 @@ export interface GatingOptions {
    */
   judgeTarget?: string;
   /** The space's schema. The judge gets its descriptions of the node types it evaluates. */
-  schema?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>;
+  schemaContext?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>;
 }
 
 /**
@@ -275,7 +275,7 @@ export async function evaluateRulesWithGating(
     for (const node of nodes) prepared.push(await prepareNode(node));
     if (judge) {
       const pending = nodes.map((node, i) => ({ node, rules: prepared[i]!.semantic }));
-      const judgements = await judgeNodes(judge, pending, graph, options.trimReport, options.schema);
+      const judgements = await judgeNodes(judge, pending, graph, options.trimReport, options.schemaContext);
       prepared.forEach((p, i) => {
         p.judged(judgements[i] ?? []);
       });

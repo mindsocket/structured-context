@@ -7,25 +7,26 @@ function verdictList(rule: SemanticRuleSpec): string[] {
 /** System prompt: a strict judge that answers with one verdict from a closed set, as JSON. */
 export function buildJudgeSystemPrompt(): string {
   return [
-    'You are a strict, objective evaluation judge for structured planning and knowledge documents.',
-    'Your task is to choose the one verdict that best describes whether a node satisfies a rule.',
+    'You are a strict, objective judge. You decide whether an item meets a rule.',
+    'An item is one entry in a structured collection. It has a type, a title and fields, and it can sit under parent items.',
+    'Choose the one verdict that best describes whether the item meets the rule.',
     '',
     'You must respond ONLY with a JSON object in this exact format:',
     '{',
     '  "verdict": "<exactly one of the allowed verdicts>",',
     '  "confidence": <number from 0 to 1>,',
-    '  "evidence": "concise explanation citing specific quotes, phrases, or absent details from the node"',
+    '  "evidence": "concise explanation citing specific quotes, phrases, or absent details from the item"',
     '}',
     '',
     'Guidelines:',
     '1. "verdict" must be one of the allowed verdicts listed for the rule, spelled exactly.',
     '2. "confidence" is how sure you are of the verdict.',
-    '3. "evidence" must directly cite or quote relevant parts of the node, explaining the reasoning concisely.',
+    '3. "evidence" must directly cite or quote relevant parts of the item, explaining the reasoning concisely.',
     '4. Do not include markdown code block formatting, intro text, or outro text. Respond only with the JSON object.',
   ].join('\n');
 }
 
-/** User prompt for one rule on one node. */
+/** User prompt for one rule on one node, for the chat providers (Anthropic, OpenAI-compatible). Decision providers build their own request from the same input. */
 export function buildJudgeUserPrompt(
   { node, related = [], schemaDescriptions }: Pick<SemanticJudgeInput, 'node' | 'related' | 'schemaDescriptions'>,
   rule: SemanticRuleSpec,
@@ -40,19 +41,27 @@ export function buildJudgeUserPrompt(
     '## Allowed verdicts',
     ...verdictList(rule),
     '',
-    '# Node Under Evaluation',
+    '# Item Under Evaluation',
     `- Id: ${node.id}`,
     `- Title: ${node.title}`,
-    `- Type: ${node.type} (resolved: ${node.resolvedType})`,
+    `- Type: ${node.resolvedType}`,
   ];
 
   if (node.parentTitles.length > 0) {
     lines.push(`- Parents: ${node.parentTitles.join(', ')}`);
   }
 
-  lines.push('', '## Node Content & Frontmatter:', '```json', JSON.stringify(node.schemaData, null, 2), '```', '');
+  lines.push(
+    '',
+    '## Fields',
+    "The item's fields. `content` is its body text.",
+    '```json',
+    JSON.stringify(node.schemaData, null, 2),
+    '```',
+    '',
+  );
   if (related.length > 0) {
-    lines.push('# Related Nodes', 'Each is listed with its relation to the node under evaluation.', '');
+    lines.push('# Related Items', 'Each is listed with how it relates to the item under evaluation.', '');
     for (const r of related) {
       lines.push(
         `## ${r.title}`,
@@ -67,15 +76,15 @@ export function buildJudgeUserPrompt(
   }
   if (schemaDescriptions) {
     lines.push(
-      '# Schema Descriptions',
-      "What the space's schema says each node type is for, and what its fields mean.",
+      '# Item Types',
+      'What each type of item above is for, and what its fields mean.',
       '```json',
       JSON.stringify(schemaDescriptions, null, 2),
       '```',
       '',
     );
   }
-  lines.push('Evaluate this node against the rule. Return only JSON with "verdict", "confidence" and "evidence".');
+  lines.push('Evaluate this item against the rule. Return only JSON with "verdict", "confidence" and "evidence".');
   return lines.join('\n');
 }
 

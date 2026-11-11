@@ -227,7 +227,7 @@ const summariseTrim = (report: TrimReport): ValidationResult['contextTrimmed'] =
  */
 async function evaluateSpaceRules(
   nodes: SpaceNode[],
-  schema: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
+  schemaContext: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
   seeds: GatingSeed[],
   options: {
     includeGated?: boolean;
@@ -237,7 +237,7 @@ async function evaluateSpaceRules(
     trimReport?: TrimReport;
   } = {},
 ): Promise<SpaceRuleEvaluation> {
-  const { metadata } = schema.schema;
+  const { metadata } = schemaContext.schema;
   const rules = metadata.rules && filterRules(metadata.rules, options.ruleFilter);
   if (!rules) return { violations: [], gates: [] };
   const provider = options.judge;
@@ -246,7 +246,7 @@ async function evaluateSpaceRules(
       judge: provider,
       judgeTarget: options.judgeTarget,
       trimReport: options.trimReport,
-      schema,
+      schemaContext,
     });
     return { violations: result, gates: [] };
   }
@@ -256,7 +256,7 @@ async function evaluateSpaceRules(
     provider,
     judgeTarget: options.judgeTarget,
     trimReport: options.trimReport,
-    schema,
+    schemaContext,
   });
 }
 
