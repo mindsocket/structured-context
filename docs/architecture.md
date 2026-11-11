@@ -80,17 +80,25 @@ Validation runs as one pipeline over the whole space. `validateSpace` returns it
 
 ## Module Boundaries
 
-Core keeps each concern in one module. These rules hold the boundaries:
+Core's top-level modules fall into layers. Each layer uses the ones below it.
 
-1. **One owner per concern.** Only the owning module builds a concern's data. A caller passes what it has, and the owner derives what it needs. For example, `validate.ts` passes the schema to rule evaluation, and only `judge/` turns it into model input.
-2. **Imports point down.** A module imports from its own layer or lower ones, never from a higher one.
-3. **Shared contracts sit low.** A type, constant or helper that a lower layer needs lives in a contract file at or below that layer, not in the higher module that owns its directory.
-4. **Only plugins know a source format.** The rest of core works with what a plugin's parse result reports, such as nodes and parse issues. It reaches a built-in plugin only through the plugin registry.
-
-The layers, from the top:
-
-| Layer | Modules | Owns |
+| Layer | Modules | Role |
 |---|---|---|
+| CLI and entry points | `index.ts`, `commands/`, `api.ts`, `browser.ts`, `testing.ts` | Commands call the API functions of the functional areas. The entry points export them. |
+| Functional areas | `read/`, `render/`, `validate.ts`, `load-space-graph.ts` | Reading, rendering and validating a space. Each provides API functions. |
+| Supporting areas and plugins | `filter/`, `judge/`, `plugins/` | Filtering nodes and semantic evaluation, which the functional areas use. Plugins are hook points that the functional areas call. |
+| Concepts | `schema/`, `config/`, `space-context.ts`, `space-graph.ts`, `space-graph-data.ts` | What the other layers work with: schemas, config, a space and its graph. |
+| Base | `types.ts`, `constants.ts`, `errors.ts` | Types, constants and errors that any module can use. |
+
+These rules keep the boundaries:
+
+1. **Imports stay in their layer or point down.** A module can always import from its own folder.
+2. **Only plugins know a source format,** such as markdown paths or frontmatter. Other modules reach a built-in plugin only through the plugin registry in `plugins/`.
+3. **One owner per concern.** Only the owning module builds a concern's data. A caller passes what it has, and the owner derives what it needs. For example, `validate.ts` passes the schema to rule evaluation, and only `judge/` turns it into model input.
+
+`tests/module-boundaries.test.ts` checks rules 1 and 2 on runtime imports, and fails on a top-level module with no layer. It lists the imports that break a rule today, each with the change that would remove it. Rule 3 needs review, because a module can build another's data without importing it. `tests/space-graph-data.test.ts` checks that `browser.ts` bundles without Node built-ins.
+
+---|---|---|
 | Entry points | `index.ts`, `commands/`, `api.ts`, `browser.ts`, `testing.ts` | The CLI and the public library surface |
 | Render | `render/` | Rendering a space through a plugin's renderer |
 | Run | `validate.ts`, `load-space-graph.ts` | A validation run and its result; loading a filtered space graph |
