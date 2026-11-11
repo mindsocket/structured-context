@@ -356,7 +356,7 @@ Each entry is a `ResolvedContentLink` object:
 - `system` — `file://` URL
 - `protocol` — any other scheme (e.g. `obsidian://`, `mailto:`, `tel:`). A bare email address is a `mailto:` link.
 
-`validate` reports each `internal` link as an unresolved content link, at `info` severity, because a target outside the space is often valid elsewhere. A link to a file the space read but did not make a node, such as a note without a `type` or a `tooling type` page, is not reported.
+`validate` reports each `internal` link as an unresolved content link, at `info` severity, because a target outside the space is often valid elsewhere. A link to a file the space read but did not make a node, such as a note without a `type` or a `space_on_a_page` file, is not reported.
 
 **Sources:** Both wikilink syntax (`[[Target]]`, `![[Image]]`) and markdown link syntax (`[text](url)`, `![alt](url)`) are extracted. Bare URLs in frontmatter string fields are also captured. Graph edge fields (hierarchy `parent`, relationship fields) are excluded — those are graph edges, not content links.
 
