@@ -23,7 +23,7 @@ export interface ValidateRulesOptions {
   gatedNodeIds?: Set<NodeId>;
   trimReport?: TrimReport;
   /** The space's schema. The judge gets its descriptions of the node types it evaluates. */
-  schema?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>;
+  schemaContext?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>;
 }
 
 /**
@@ -117,7 +117,7 @@ export async function validateRules(
       pending,
       buildSpaceGraph(nodes, undefined),
       options.trimReport,
-      options.schema,
+      options.schemaContext,
     );
     pending.forEach(({ node, found }, i) => {
       for (const j of judged[i] ?? []) {

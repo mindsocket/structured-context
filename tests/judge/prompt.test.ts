@@ -72,13 +72,13 @@ describe('related nodes in the chat prompt', () => {
       },
       passFailRule,
     );
-    expect(prompt).toContain('Related Nodes');
+    expect(prompt).toContain('Related Items');
     expect(prompt).toContain('Faster Tax Filing');
     expect(prompt).toContain('Relation: parent, ancestor');
     expect(prompt).toContain('finance');
   });
 
   it('has no related section without related nodes', () => {
-    expect(buildJudgeUserPrompt({ node }, passFailRule)).not.toContain('Related Nodes');
+    expect(buildJudgeUserPrompt({ node }, passFailRule)).not.toContain('Related Items');
   });
 });
