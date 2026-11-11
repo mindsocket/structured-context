@@ -23,18 +23,6 @@ export interface RelatedNode {
   data: Record<string, unknown>;
 }
 
-/** What the schema says a type is, so a judge can tell what a good node of that type looks like. */
-export interface JudgeTypeDefinition {
-  /** The entity variant's `description`. */
-  description?: string;
-  /** Each field with a `description` or enum values. */
-  fields?: Record<string, { description?: string; values?: string[] }>;
-  /** The type one level up in the main hierarchy. */
-  parentType?: string;
-  /** The type one level down in the main hierarchy. */
-  childType?: string;
-}
-
 /**
  * One node and the semantic rules to judge on it, which share one context: the same related nodes and the same
  * bodies. Judges may answer all rules in a single call.
@@ -47,8 +35,11 @@ export interface SemanticJudgeInput {
   };
   /** Nodes the rules' `scope` adds, as a flat list. Absent when the scope is empty. */
   related?: RelatedNode[];
-  /** Schema definitions of the resolved types in the input, keyed by type. Absent when the schema defines none. */
-  types?: Record<string, JudgeTypeDefinition>;
+  /**
+   * What the schema says about each node type in the input, keyed by type name: the type's `description` and a
+   * description of each field. Absent when the schema describes none of them.
+   */
+  schemaDescriptions?: Record<string, { description?: string; fields?: Record<string, string> }>;
   rules: SemanticRuleSpec[];
 }
 

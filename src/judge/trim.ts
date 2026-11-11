@@ -9,8 +9,8 @@ export const estimateTokens = (value: unknown) => Math.ceil(JSON.stringify(value
 /** The placeholder that ends a body cut to fit the per-node input cap. `removed` is the number of characters cut. */
 export const trimMarker = (removed: number) => `[RULE_EVALUATION_CONTENT_TRIMMED ${removed} chars]`;
 
-/** The part of a judge input that the per-node input cap measures. Type definitions count, but are never cut. */
-export type NodeInput = Pick<SemanticJudgeInput, 'node' | 'related' | 'types'>;
+/** The part of a judge input that the per-node input cap measures. Schema descriptions count, but are never cut. */
+export type NodeInput = Pick<SemanticJudgeInput, 'node' | 'related' | 'schemaDescriptions'>;
 
 /**
  * Cut `body` to at most `limit` characters, ending at the last whitespace before the limit, and end it with the

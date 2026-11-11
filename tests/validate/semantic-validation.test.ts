@@ -53,11 +53,11 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       expect(result.ruleViolations.some((v) => v.ruleId === 'opportunity-customer-voice')).toBe(false);
     });
 
-    it("sends the schema's definition of each judged type", async () => {
+    it("sends the schema's descriptions of each judged node type", async () => {
       const fakeProvider = new FakeJudgeProvider({ pass: true });
       await validateSpaceWith(validContext, { judge: fakeProvider });
       const call = fakeProvider.callHistory.find((c) => c.rules.some((r) => r.id === 'opportunity-customer-voice'));
-      expect(call?.types?.opportunity?.fields?.source?.description).toContain('Customer research source');
+      expect(call?.schemaDescriptions?.opportunity?.fields?.source).toContain('Customer research source');
     });
 
     it('records violation with evidence when judge returns pass: false', async () => {

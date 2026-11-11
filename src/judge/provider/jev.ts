@@ -56,7 +56,10 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
       const part = rules.slice(start, start + JEV_REQUEST_PACKING_LIMIT_QUESTIONS);
       const questions: Record<string, unknown> = {};
       for (const rule of part) questions[rule.id] = decisionQuestion(rule, rule.rubric || rule.description);
-      const data = await this.post(withTypes(nodeState(node, input.related), input.types), questions);
+      const data = await this.post(
+        withDescriptions(nodeState(node, input.related), input.schemaDescriptions),
+        questions,
+      );
       for (const rule of part) results[rule.id] = toResult(rule, data.answers?.[rule.id]);
     }
     return results;
@@ -105,12 +108,12 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
     results: Array<Record<string, SemanticJudgeResult>>,
   ): Promise<void> {
     const nodes: Record<string, unknown> = {};
-    const types: NonNullable<SemanticJudgeInput['types']> = {};
+    const descriptions: SemanticJudgeInput['schemaDescriptions'] = {};
     const questions: Record<string, unknown> = {};
     requestInputs.forEach((inputIndex, k) => {
       const input = inputs[inputIndex]!;
       nodes[`n${k}`] = nodeState(input.node, input.related);
-      Object.assign(types, input.types);
+      Object.assign(descriptions, input.schemaDescriptions);
       for (const rule of input.rules) {
         questions[`${rule.id}__n${k}`] = decisionQuestion(
           rule,
@@ -118,7 +121,7 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
         );
       }
     });
-    const data = await this.post(withTypes({ nodes }, types), questions);
+    const data = await this.post(withDescriptions({ nodes }, descriptions), questions);
     requestInputs.forEach((inputIndex, k) => {
       for (const rule of inputs[inputIndex]!.rules) {
         results[inputIndex]![rule.id] = toResult(rule, data.answers?.[`${rule.id}__n${k}`]);
@@ -159,9 +162,9 @@ function nodeState(node: SemanticJudgeInput['node'], related: RelatedNode[] = []
   };
 }
 
-/** The state with the schema's type definitions beside the nodes, when there are any. */
-function withTypes(state: Record<string, unknown>, types: SemanticJudgeInput['types']) {
-  return types && Object.keys(types).length > 0 ? { ...state, typeDefinitions: types } : state;
+/** The state with the schema's descriptions of the node types beside the nodes, when there are any. */
+function withDescriptions(state: Record<string, unknown>, descriptions: SemanticJudgeInput['schemaDescriptions']) {
+  return descriptions && Object.keys(descriptions).length > 0 ? { ...state, schemaDescriptions: descriptions } : state;
 }
 
 function decisionQuestion(rule: SemanticRuleSpec, instructions: string) {

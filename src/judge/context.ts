@@ -1,9 +1,10 @@
+import type { AnySchemaObject } from 'ajv';
 import { SEMANTIC_SCOPES } from '../schema/metadata-contract';
 import { ruleSemantic } from '../schema/rule-severity';
+import { mergeVariantProperties } from '../schema/schema-refs';
 import type { SpaceGraph } from '../space-graph';
-import type { NodeId, Rule, SpaceNode } from '../types';
-import { definitionsFor } from './type-definitions';
-import type { JudgeTypeDefinition, RelatedNode, SemanticJudgeInput } from './types';
+import type { NodeId, Rule, SpaceContext, SpaceNode } from '../types';
+import type { RelatedNode, SemanticJudgeInput } from './types';
 
 export type SemanticScope = Exclude<(typeof SEMANTIC_SCOPES)[number], 'branch'>;
 export type ContentMode = 'none' | 'nodeOnly' | 'fullScope';
@@ -102,18 +103,59 @@ export function relatedNodes(graph: SpaceGraph, node: SpaceNode, context: RuleCo
   return [...found.values()];
 }
 
-/** The judge input context for rules that share `context`: the node view, its related nodes and their types' definitions. */
+type SchemaDescriptions = NonNullable<SemanticJudgeInput['schemaDescriptions']>;
+
+/** Fields every node has, which the prompt already explains. */
+const SELF_EXPLAINED_FIELDS = new Set(['type', 'title', 'content']);
+
+function describeField(def: AnySchemaObject): string | undefined {
+  const values = Array.isArray(def.enum) ? `one of: ${def.enum.join(', ')}` : undefined;
+  const description = typeof def.description === 'string' ? def.description : undefined;
+  return description && values ? `${description} (${values})` : (description ?? values);
+}
+
+/**
+ * The schema's descriptions of each node type: the `oneOf` entry's `description` and each field's `description`
+ * and enum values. A type or field the schema does not describe is left out.
+ */
+export function describeSchema({
+  schema,
+  schemaRefRegistry,
+}: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>): SchemaDescriptions {
+  const out: SchemaDescriptions = {};
+  for (const entry of Array.isArray(schema.oneOf) ? (schema.oneOf as AnySchemaObject[]) : []) {
+    const { properties } = mergeVariantProperties(entry, schema, schemaRefRegistry);
+    const fields: Record<string, string> = {};
+    for (const [name, def] of Object.entries(properties)) {
+      const text = SELF_EXPLAINED_FIELDS.has(name) ? undefined : describeField(def);
+      if (text) fields[name] = text;
+    }
+    const description = typeof entry.description === 'string' ? entry.description : undefined;
+    if (!description && Object.keys(fields).length === 0) continue;
+    const typeDef = properties.type;
+    const names = typeDef?.const !== undefined ? [typeDef.const] : Array.isArray(typeDef?.enum) ? typeDef.enum : [];
+    for (const name of names) {
+      out[String(name)] = { ...(description && { description }), ...(Object.keys(fields).length > 0 && { fields }) };
+    }
+  }
+  return out;
+}
+
+/** The judge input context for rules that share `context`: the node view, its related nodes, and the schema's descriptions of their types. */
 export function judgeContext(
   graph: SpaceGraph,
   node: SpaceNode,
   context: RuleContext,
-  definitions?: ReadonlyMap<string, JudgeTypeDefinition>,
-): Pick<SemanticJudgeInput, 'node' | 'related' | 'types'> {
+  descriptions: SchemaDescriptions = {},
+): Pick<SemanticJudgeInput, 'node' | 'related' | 'schemaDescriptions'> {
   const related = relatedNodes(graph, node, context);
-  const types = definitionsFor(definitions, new Set([node.resolvedType, ...related.map((r) => r.type)]));
+  const schemaDescriptions: SchemaDescriptions = {};
+  for (const type of [node.resolvedType, ...related.map((r) => r.type)]) {
+    if (descriptions[type]) schemaDescriptions[type] = descriptions[type];
+  }
   return {
     node: judgeNodeView(node, context.content !== 'none', graph),
     ...(related.length > 0 && { related }),
-    ...(types && { types }),
+    ...(Object.keys(schemaDescriptions).length > 0 && { schemaDescriptions }),
   };
 }

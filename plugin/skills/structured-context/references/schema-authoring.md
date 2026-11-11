@@ -100,7 +100,7 @@ Other rule fields:
 - `scope` — related nodes to send along the main hierarchy: `parent`, `siblings`, `children`, `ancestors`, `descendants`, `branch` (ancestors plus descendants). Prefer the narrowest scope that answers the rubric.
 - `includeContent` — `nodeOnly` (the evaluated node's body) or `fullScope`/`true` (every body in scope). Without it, no body is sent.
 - A rule with `scope` or `includeContent` may return `missing-context` (default `warning`) when its input was trimmed to fit.
-- The model also gets each judged type's `description`, its fields' descriptions and enum values, and its hierarchy neighbours. Put what a good node of the type looks like there, and keep rubrics to the check itself.
+- Semantic rules send the schema's type and field descriptions to the model with the rubric. Descriptions that say what a good node looks like save repeating that detail in each rubric, and let more general rules draw on the schema.
 
 ## Metadata composition semantics
 
@@ -172,7 +172,7 @@ Convention:
 ## `oneOf` authoring pattern
 
 Each entity type entry should have:
-- a clear `description` explaining the purpose of the type and what a good one looks like (semantic rules send it to the model)
+- a clear `description` explaining the purpose of the type. Semantic rules send it to the model alongside their rubric.
 - an `allOf` pulling in relevant partials (always `baseNodeProps`; domain-specific partials only when appropriate)
 - `examples` covering required fields at minimum — **exclude `title`**, which is derived from the filename in Obsidian, not written in frontmatter
 
