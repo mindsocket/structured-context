@@ -1,6 +1,6 @@
 import type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
 import type { Config, SpaceConfig } from './config';
-import type { CoverageGate } from './schema/gating';
+import type { CoverageGate } from './rule/gating';
 import type {
   MetadataContractHierarchyLevel,
   MetadataContractRelationship,
@@ -192,7 +192,6 @@ export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-pract
  */
 export type RuleSeverity = 'error' | 'warning' | 'info';
 
-export type { CoverageGate, GatingSeed } from './schema/gating';
 export type { Rule } from './schema/metadata-contract';
 
 export type RuleViolation = {

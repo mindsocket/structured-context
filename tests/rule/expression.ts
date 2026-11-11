@@ -4,7 +4,7 @@ import {
   ExpressionError,
   evaluateExpression,
   tryEvaluateExpression,
-} from '../../src/schema/evaluate-rule';
+} from '../../src/rule/expression';
 import type { NodeId, SpaceNode } from '../../src/types';
 import { makeParentRef } from '../test-helpers';
 

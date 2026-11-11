@@ -6,7 +6,7 @@ import {
   evaluateRuleExpression,
   expressionErrorViolation,
   tryEvaluateExpression,
-} from './evaluate-rule';
+} from './expression';
 import { ruleSeverities, ruleSeverity } from './rule-severity';
 
 /**

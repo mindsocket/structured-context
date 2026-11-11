@@ -8,7 +8,7 @@ export {
   withHierarchy,
 } from '../src/testing';
 
-import { evaluateRules, type RuleEvaluationOptions } from '../src/schema/gating';
+import { evaluateRules, type RuleEvaluationOptions } from '../src/rule/gating';
 import { buildSpaceGraph } from '../src/space-graph';
 import type { Rule, RuleViolation, SpaceNode } from '../src/types';
 

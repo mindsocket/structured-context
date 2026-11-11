@@ -1,6 +1,6 @@
 import type { AnySchemaObject } from 'ajv';
+import { ruleSemantic } from '../rule/rule-severity';
 import { SEMANTIC_SCOPES } from '../schema/metadata-contract';
-import { ruleSemantic } from '../schema/rule-severity';
 import { mergeVariantProperties } from '../schema/schema-refs';
 import type { SpaceGraph } from '../space-graph';
 import type { NodeId, Rule, SpaceContext, SpaceNode } from '../types';

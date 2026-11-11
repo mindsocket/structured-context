@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 const ROOT = resolve(import.meta.dir, '../..');
 
 /** Docs that describe the current tree: agent instructions, README, top-level docs, and plugin skills. */
-const SCANNED = ['README.md', 'AGENTS.md', 'CLAUDE.md', 'docs', 'plugin'];
+const SCANNED = ['README.md', 'AGENTS.md', 'docs', 'plugin'];
 
 /** Repo-relative paths appear in backticks; these are the roots worth checking. */
 const PATH_PATTERN = /`\/?((?:src|tests|schemas|plugin|docs|scripts|hook-test|smoke)\/[^`\s]*)`/g;

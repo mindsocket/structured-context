@@ -9,8 +9,8 @@ import {
   resolveSpacePluginSchemas,
   shortenPluginName,
 } from '../plugins/util';
+import { DEFAULT_SEVERITY_BY_CATEGORY, ruleSemantic } from '../rule/rule-severity';
 import { listSchemas } from '../schema/list-schemas';
-import { DEFAULT_SEVERITY_BY_CATEGORY, ruleSemantic } from '../schema/rule-severity';
 import {
   bundledSchemasDir,
   type EntityInfo,

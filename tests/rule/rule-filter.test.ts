@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { filterRules, parseRuleFilter } from '../../src/schema/rule-filter';
+import { filterRules, parseRuleFilter } from '../../src/rule/rule-filter';
 import type { Rule } from '../../src/types';
 
 const rules: Rule[] = [

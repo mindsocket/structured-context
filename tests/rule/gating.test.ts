@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import type { SemanticJudgeProvider } from '../../src/judge/types';
-import { evaluateRules, type GatingSeed } from '../../src/schema/gating';
-import { ruleGatesDescendants } from '../../src/schema/rule-evaluator';
+import { evaluateRules, type GatingSeed } from '../../src/rule/gating';
+import { ruleGatesDescendants } from '../../src/rule/rule-evaluator';
 import { buildSpaceGraph, computeHierarchyDepths } from '../../src/space-graph';
 import type { NodeId, Rule, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef } from '../test-helpers';
