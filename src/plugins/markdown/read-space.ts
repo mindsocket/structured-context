@@ -21,11 +21,10 @@ function terminatedIssue(
   if (!first) return undefined;
   const more = headings.length > 1 ? ` and ${headings.length - 1} more` : '';
   return {
-    file,
+    source: { file, ...(first.line !== undefined ? { line: first.line } : {}) },
     severity: 'warning',
     type: 'terminated',
     message: `Ignored heading "${first.title}"${more} below a horizontal rule (---).`,
-    ...(first.line !== undefined ? { line: first.line } : {}),
   };
 }
 
@@ -100,6 +99,8 @@ export async function readSpaceDirectory(
   const files = await fg('**/*.md', { cwd: directory, followSymbolicLinks: true });
   const nodes: BaseNode[] = [];
   const parseIssues: ParseIssue[] = [];
+  const excludedPages: NonNullable<ParseResult['excludedPages']> = [];
+  const exclude = (file: string) => excludedPages.push({ source: { file }, linkTargets: pathLinkTargets(file) });
 
   for (const file of files) {
     const absoluteFilePath = resolve(directory, file);
@@ -118,26 +119,23 @@ export async function readSpaceDirectory(
       const line = yamlErr.mark ? yamlErr.mark.line + 1 : undefined;
       const column = yamlErr.mark ? yamlErr.mark.column + 1 : undefined;
       parseIssues.push({
-        file,
+        source: { file, ...(line !== undefined ? { line } : {}), ...(column !== undefined ? { column } : {}) },
         severity: 'error',
         type: 'parse',
         message: err instanceof Error ? err.message : String(err),
-        linkTargets: pathLinkTargets(file),
-        ...(line !== undefined ? { line } : {}),
-        ...(column !== undefined ? { column } : {}),
       });
+      exclude(file);
       continue;
     }
 
     if (!parsed.data || Object.keys(parsed.data).length === 0) {
       parseIssues.push({
-        file,
+        source: { file, line: 1 },
         severity: 'warning',
         type: 'no-type',
         message: 'No front-matter or type specified',
-        line: 1,
-        linkTargets: pathLinkTargets(file),
       });
+      exclude(file);
       continue;
     }
 
@@ -148,11 +146,13 @@ export async function readSpaceDirectory(
     }
 
     if (!data.type) {
-      parseIssues.push({ file, severity: 'warning', type: 'no-type', line: 1, linkTargets: pathLinkTargets(file) });
+      parseIssues.push({ source: { file, line: 1 }, severity: 'warning', type: 'no-type' });
+      exclude(file);
       continue;
     }
 
     if (ON_A_PAGE_TYPES.includes(data.type as string) && !options?.includeOnAPageFiles) {
+      exclude(file);
       continue;
     }
 
@@ -209,5 +209,5 @@ export async function readSpaceDirectory(
     }
   }
 
-  return { nodes, parseIssues, diagnostics: { kind: 'directory' } };
+  return { nodes, parseIssues, excludedPages, diagnostics: { kind: 'directory' } };
 }

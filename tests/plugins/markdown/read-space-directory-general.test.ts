@@ -49,7 +49,7 @@ describe('readSpaceDirectory', () => {
     });
 
     it('reports no-frontmatter.md as a warning with type no-type', () => {
-      const issue = result.parseIssues.find((i) => i.file === 'no-frontmatter.md');
+      const issue = result.parseIssues.find((i) => i.source.file === 'no-frontmatter.md');
       expect(issue).toBeDefined();
       expect(issue?.severity).toBe('warning');
       expect(issue?.type).toBe('no-type');
@@ -57,7 +57,7 @@ describe('readSpaceDirectory', () => {
     });
 
     it('reports meeting-notes.md as a warning with type no-type', () => {
-      const issue = result.parseIssues.find((i) => i.file === 'meeting-notes.md');
+      const issue = result.parseIssues.find((i) => i.source.file === 'meeting-notes.md');
       expect(issue).toBeDefined();
       expect(issue?.severity).toBe('warning');
       expect(issue?.type).toBe('no-type');
@@ -84,7 +84,7 @@ describe('readSpaceDirectory', () => {
     });
 
     it('Community OST.md does not appear in parseIssues', () => {
-      expect(result.parseIssues.some((i) => i.file === 'Community OST.md')).toBe(false);
+      expect(result.parseIssues.some((i) => i.source.file === 'Community OST.md')).toBe(false);
     });
   });
 
@@ -207,13 +207,13 @@ describe('readSpaceDirectory', () => {
   describe('YAML parse errors', () => {
     it('reports bad-yaml.md as an error parse issue instead of crashing', async () => {
       const result = await readSpaceDirectory(makePluginContext(INVALID_DIR));
-      const issue = result.parseIssues.find((i) => i.file === 'bad-yaml.md');
+      const issue = result.parseIssues.find((i) => i.source.file === 'bad-yaml.md');
       expect(issue).toBeDefined();
       expect(issue?.severity).toBe('error');
       expect(issue?.type).toBe('parse');
       expect(issue?.message).toBeTruthy();
-      expect(issue?.line).toBe(2);
-      expect(issue?.column).toBe(8);
+      expect(issue?.source.line).toBe(2);
+      expect(issue?.source.column).toBe(8);
     });
 
     it('continues parsing other files after a YAML error', async () => {
@@ -234,11 +234,10 @@ describe('headings below a horizontal rule', () => {
       const { parseIssues } = await readSpaceDirectory(makePluginContext(dir));
       expect(parseIssues).toEqual([
         {
-          file: 'Goal.md',
+          source: { file: 'Goal.md', line: 11 },
           severity: 'warning',
           type: 'terminated',
           message: 'Ignored heading "A" and 1 more below a horizontal rule (---).',
-          line: 11,
         },
       ]);
     } finally {
