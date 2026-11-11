@@ -122,6 +122,7 @@ export async function readSpaceDirectory(
         severity: 'error',
         type: 'parse',
         message: err instanceof Error ? err.message : String(err),
+        linkTargets: pathLinkTargets(file),
         ...(line !== undefined ? { line } : {}),
         ...(column !== undefined ? { column } : {}),
       });
@@ -135,6 +136,7 @@ export async function readSpaceDirectory(
         type: 'no-type',
         message: 'No front-matter or type specified',
         line: 1,
+        linkTargets: pathLinkTargets(file),
       });
       continue;
     }
@@ -146,7 +148,7 @@ export async function readSpaceDirectory(
     }
 
     if (!data.type) {
-      parseIssues.push({ file, severity: 'warning', type: 'no-type', line: 1 });
+      parseIssues.push({ file, severity: 'warning', type: 'no-type', line: 1, linkTargets: pathLinkTargets(file) });
       continue;
     }
 

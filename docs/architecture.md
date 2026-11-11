@@ -67,7 +67,7 @@ flowchart LR
 |---|---|
 | Space → Read | Source files passed to the active plugin's `parse` hook |
 | Core → Plugin | `PluginContext` — `SpaceContext` + validated plugin config |
-| Plugin → Core | `ParseResult` — raw `BaseNode[]` (before graph resolution), diagnostics |
+| Plugin → Core | `ParseResult` — raw `BaseNode[]` (before graph resolution), parse issues (with the `linkTargets` of excluded files), diagnostics |
 | Core (Read) → Nodes | `SpaceNode[]` — id, title, schemaData (canonical fields), resolvedType, resolvedParents (`ResolvedParentRef[]`), linkTargets — after `resolveGraphEdges` |
 | Schema → Read | Hierarchy levels + relationships (type names, edge fields, direction, cardinality), type aliases |
 | Schema → Validate | `schemaValidator` (compiled AJV), `schemaRefRegistry` ($ref map), hierarchy rules, JSONata rule expressions |

@@ -184,6 +184,8 @@ export type ParseIssue = {
   line?: number;
   /** 1-indexed column number in source file, if available. */
   column?: number;
+  /** Link targets of an excluded file. A link to one resolves without a node, since this issue says why there is none. */
+  linkTargets?: string[];
 };
 
 /** Rule categories for organizing executable validation rules */

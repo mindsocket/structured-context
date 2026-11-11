@@ -4,7 +4,6 @@ import type { Config, SpaceConfig } from './config';
 import { judgeForRun } from './judge/factory';
 import type { TrimReport } from './judge/trim';
 import type { SemanticJudgeProvider } from './judge/types';
-import { pathLinkTargets } from './plugins/markdown/util';
 import { readSpace } from './read/read-space';
 import { computeHierarchyDepths, evaluateRulesWithGating, type GatingSeed } from './schema/gating';
 import { filterRules, parseRuleFilter, type RuleFilter } from './schema/rule-filter';
@@ -301,16 +300,6 @@ export function findDuplicateIds(nodes: SpaceNode[]): DuplicateId[] {
   return duplicates;
 }
 
-/** Link targets of the files a parse excluded but read, such as notes without a type. */
-function excludedFileTargets(parseIssues: ParseIssue[]): Set<string> {
-  const targets = new Set<string>();
-  for (const issue of parseIssues) {
-    if (issue.type !== 'no-type' && issue.type !== 'parse') continue;
-    for (const target of pathLinkTargets(issue.file)) targets.add(target);
-  }
-  return targets;
-}
-
 /**
  * The one validation pipeline: type and schema checks, duplicate titles, reference and hierarchy
  * checks, cascade-gated rules, and unresolved content links. Returns every entry; `validateSpace`
@@ -404,9 +393,8 @@ export async function validateNodes(
     result.contextTrimmed = summariseTrim(trimReport);
   }
 
-  // Collect unresolved content links (info — not errors). A link to a file the parser read but
-  // excluded (e.g. no type) resolves; that file's own parse issue already says why it is not a node.
-  const excludedTargets = excludedFileTargets(read.parseIssues);
+  // Collect unresolved content links (info — not errors).
+  const excludedTargets = new Set(read.parseIssues.flatMap((issue) => issue.linkTargets ?? []));
   const seen = new Set<string>();
   for (const node of nodes) {
     for (const link of node.resolvedLinks) {
