@@ -39,7 +39,7 @@ export interface OnStopResult {
 }
 
 function formatIssues(header: string, issues: ValidationIssue[], noun: string): string {
-  const lines = issues.map((issue) => `    [${issue.kind}] ${issue.message}`).join('\n');
+  const lines = issues.map((issue) => `    [${issue.key ?? issue.kind}] ${issue.message}`).join('\n');
   return `  ${header} — ${issues.length} new ${noun}(s):\n${lines}`;
 }
 

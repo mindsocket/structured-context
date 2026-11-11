@@ -114,29 +114,29 @@ describe('evaluate-rules (flat)', () => {
 
       it('passes validation when all rules are satisfied', async () => {
         const validNodes = mockNodes.filter((n) => n.id === 'Solution');
-        const violations = await evaluateFlat(validNodes, validationRules);
-        expect(violations).toHaveLength(0);
+        const issues = await evaluateFlat(validNodes, validationRules);
+        expect(issues).toHaveLength(0);
       });
 
       it('detects solution with non-opportunity parent', async () => {
         const badSolutionNode = mockNodes.find((n) => n.id === 'Bad Solution');
         const parentNode = mockNodes.find((n) => n.id === 'Solution');
         // Pass both nodes so the parent can be found in the index
-        const violations = await evaluateFlat([badSolutionNode!, parentNode!], validationRules);
-        expect(violations).toHaveLength(1);
-        expect(violations[0]?.ruleId).toBe('solution-parent-type');
-        expect(violations[0]?.category).toBe('validation');
-        expect(violations[0]?.nodeId as string | undefined).toBe('Bad Solution');
+        const issues = await evaluateFlat([badSolutionNode!, parentNode!], validationRules);
+        expect(issues).toHaveLength(1);
+        expect(issues[0]?.ruleId).toBe('solution-parent-type');
+        expect(issues[0]?.category).toBe('validation');
+        expect(issues[0]?.nodeId as string | undefined).toBe('Bad Solution');
       });
 
       it('detects experiment with non-solution parent', async () => {
         const badExperimentNode = mockNodes.find((n) => n.id === 'Bad Experiment');
         const parentNode = mockNodes.find((n) => n.id === 'Opportunity');
         // Pass both nodes so the parent can be found in the index
-        const violations = await evaluateFlat([badExperimentNode!, parentNode!], validationRules);
-        expect(violations).toHaveLength(1);
-        expect(violations[0]?.ruleId).toBe('experiment-parent-type');
-        expect(violations[0]?.category).toBe('validation');
+        const issues = await evaluateFlat([badExperimentNode!, parentNode!], validationRules);
+        expect(issues).toHaveLength(1);
+        expect(issues[0]?.ruleId).toBe('experiment-parent-type');
+        expect(issues[0]?.category).toBe('validation');
       });
 
       it('detects outcome with parent', async () => {
@@ -161,9 +161,9 @@ describe('evaluate-rules (flat)', () => {
           resolvedType: 'vision',
         };
         // Pass both nodes so the parent can be found in the index
-        const violations = await evaluateFlat([outcomeWithParent, visionNode], validationRules);
-        expect(violations).toHaveLength(1);
-        expect(violations[0]?.ruleId).toBe('outcome-no-parent');
+        const issues = await evaluateFlat([outcomeWithParent, visionNode], validationRules);
+        expect(issues).toHaveLength(1);
+        expect(issues[0]?.ruleId).toBe('outcome-no-parent');
       });
     });
 
@@ -213,8 +213,8 @@ describe('evaluate-rules (flat)', () => {
         }));
 
         const nodes = [opportunityNode, ...solutions];
-        const violations = await evaluateFlat(nodes, bestPracticeRules);
-        expect(violations).toHaveLength(0);
+        const issues = await evaluateFlat(nodes, bestPracticeRules);
+        expect(issues).toHaveLength(0);
       });
 
       it('detects opportunity with too few solutions', async () => {
@@ -247,10 +247,10 @@ describe('evaluate-rules (flat)', () => {
         };
 
         const nodes = [opportunityNode, singleSolution];
-        const violations = await evaluateFlat(nodes, bestPracticeRules);
-        expect(violations).toHaveLength(1);
-        expect(violations[0]?.ruleId).toBe('solution-quantity');
-        expect(violations[0]?.category).toBe('best-practice');
+        const issues = await evaluateFlat(nodes, bestPracticeRules);
+        expect(issues).toHaveLength(1);
+        expect(issues[0]?.ruleId).toBe('solution-quantity');
+        expect(issues[0]?.category).toBe('best-practice');
       });
     });
 
@@ -273,8 +273,8 @@ describe('evaluate-rules (flat)', () => {
 
       it('passes when only one outcome is active', async () => {
         const nodes = mockNodes.filter((n) => n.schemaData.type === 'outcome');
-        const violations = await evaluateFlat(nodes, workflowRules);
-        expect(violations).toHaveLength(0);
+        const issues = await evaluateFlat(nodes, workflowRules);
+        expect(issues).toHaveLength(0);
       });
 
       it('detects multiple active outcomes (global scope)', async () => {
@@ -344,11 +344,11 @@ describe('evaluate-rules (flat)', () => {
           resolvedLinks: [],
           resolvedType: 'opportunity',
         };
-        const violations = await evaluateFlat([parentNode, childNode], [workflowRules[1]!]);
-        expect(violations).toHaveLength(1);
-        expect(violations[0]?.ruleId).toBe('active-node-parent-active');
-        expect(violations[0]?.category).toBe('workflow');
-        expect(violations[0]?.nodeId as string | undefined).toBe('Opportunity');
+        const issues = await evaluateFlat([parentNode, childNode], [workflowRules[1]!]);
+        expect(issues).toHaveLength(1);
+        expect(issues[0]?.ruleId).toBe('active-node-parent-active');
+        expect(issues[0]?.category).toBe('workflow');
+        expect(issues[0]?.nodeId as string | undefined).toBe('Opportunity');
       });
 
       it('passes active node when parent is also active', async () => {
@@ -378,8 +378,8 @@ describe('evaluate-rules (flat)', () => {
           resolvedLinks: [],
           resolvedType: 'opportunity',
         };
-        const violations = await evaluateFlat([parentNode, childNode], [workflowRules[1]!]);
-        expect(violations).toHaveLength(0);
+        const issues = await evaluateFlat([parentNode, childNode], [workflowRules[1]!]);
+        expect(issues).toHaveLength(0);
       });
     });
 
@@ -402,7 +402,7 @@ describe('evaluate-rules (flat)', () => {
         },
       ];
 
-      it('collects violations from multiple categories', async () => {
+      it('collects issues from multiple categories', async () => {
         const nodes: SpaceNode[] = [
           {
             id: 'Outcome 1' as NodeId,
@@ -446,11 +446,11 @@ describe('evaluate-rules (flat)', () => {
           },
         ];
 
-        const violations = await evaluateFlat(nodes, mixedRules);
-        expect(violations.length).toBeGreaterThan(0);
+        const issues = await evaluateFlat(nodes, mixedRules);
+        expect(issues.length).toBeGreaterThan(0);
 
-        const validationViolations = violations.filter((v) => v.category === 'validation');
-        const workflowViolations = violations.filter((v) => v.category === 'workflow');
+        const validationViolations = issues.filter((v) => v.category === 'validation');
+        const workflowViolations = issues.filter((v) => v.category === 'workflow');
 
         expect(validationViolations.length).toBeGreaterThan(0);
         expect(workflowViolations.length).toBeGreaterThan(0);
@@ -482,16 +482,16 @@ describe('evaluate-rules (flat)', () => {
         expect(ruleSeverity(failingRule({ category: 'best-practice', severity: 'error' }))).toBe('error');
       });
 
-      it('attaches effective severity to node and global violations', async () => {
+      it('attaches effective severity to node and global issues', async () => {
         const node = mockNodes[0]!;
-        const violations = await evaluateFlat(
+        const issues = await evaluateFlat(
           [node],
           [
             failingRule({ id: 'node-default', category: 'coherence' }),
             failingRule({ id: 'global-override', global: true, severity: 'error' }),
           ],
         );
-        expect(violations.map((v) => [v.ruleId, v.severity])).toEqual([
+        expect(issues.map((v) => [v.ruleId, v.severity])).toEqual([
           ['global-override', 'error'],
           ['node-default', 'warning'],
         ]);

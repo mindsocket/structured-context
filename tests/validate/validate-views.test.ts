@@ -98,7 +98,10 @@ describe('judging a node with an expression rule violation', () => {
     it(`skips the node's semantic rules after a gating violation, ${label} a hierarchy`, async () => {
       const { config, dir, file } = setup(hierarchy, 'error');
       const judge = new FakeJudgeProvider({ pass: true });
-      const result = (await validateFileWith(file, config, { judge, configDir: dir })) as FileValidationResult;
+      const result = (await validateFileWith(file, config, {
+        judge: { provider: judge },
+        configDir: dir,
+      })) as FileValidationResult;
       expect(result.issues.some((issue) => issue.key === 'rule:never-holds')).toBe(true);
       expect(judgedRules(judge)).toEqual([]);
     });
@@ -106,7 +109,10 @@ describe('judging a node with an expression rule violation', () => {
     it(`still judges the node after a non-gating violation, ${label} a hierarchy`, async () => {
       const { config, dir, file } = setup(hierarchy, 'info');
       const judge = new FakeJudgeProvider({ pass: true });
-      const result = (await validateFileWith(file, config, { judge, configDir: dir })) as FileValidationResult;
+      const result = (await validateFileWith(file, config, {
+        judge: { provider: judge },
+        configDir: dir,
+      })) as FileValidationResult;
       expect(result.issues.some((issue) => issue.key === 'rule:never-holds')).toBe(true);
       expect(judgedRules(judge)).toEqual(['sound']);
     });

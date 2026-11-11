@@ -95,7 +95,7 @@ describe('paneData', () => {
       ruleId: 'kept',
       category: 'coherence',
       severity: 'warning',
-      description: 'from the kept result',
+      evidence: 'from the kept result',
     } as PaneData['validation']['issues'][number];
     saveResult({ dir, hash: kept.hash }, 'test-space', { issues: [marker] });
 

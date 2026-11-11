@@ -61,12 +61,11 @@ describe('rule severity', () => {
       expect(failing.issues).toContainEqual({
         kind: 'rule',
         key: 'rule:not-blocked',
-        message: '[not-blocked] Goals must not be blocked (workflow rule overridden to error)',
+        message: 'Goals must not be blocked (workflow rule overridden to error)',
         nodeId: 'Blocked goal.md',
         ruleId: 'not-blocked',
         category: 'workflow',
         severity: 'error',
-        description: 'Goals must not be blocked (workflow rule overridden to error)',
       });
       expect(withKey(failing.issues, 'rule:always-warning')?.severity).toBe('warning');
     });
@@ -94,7 +93,7 @@ describe('rule severity', () => {
       expect(result.errorCount).toBe(1);
       expect(withKey(result.issues, 'rule:not-blocked')).toMatchObject({
         kind: 'rule',
-        message: '[not-blocked] Goals must not be blocked (workflow rule overridden to error)',
+        message: 'Goals must not be blocked (workflow rule overridden to error)',
         severity: 'error',
       });
     });

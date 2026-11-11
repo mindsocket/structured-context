@@ -215,7 +215,7 @@ The **per-node input cap** limits the input for one evaluated node and its relat
 
 - A **gate** is a node that failed schema validation or hierarchy structure, or that has a **gating violation** (by default, a rule violation at `error` severity).
 - A **gated** node is one below a gate. Its rules are not evaluated. A node that failed schema or hierarchy checks is gated by its own gate too.
-- A **coverage gate** is how a run reports a gate: the gate's node, its cause (`schema`, `hierarchy` or a rule `id`), and the nodes it gated.
+- Each gated node gets a `gated` validation issue at `info` severity, naming the gate and its cause (`schema`, `hierarchy` or a rule `id`).
 
 See [docs/rules.md](rules.md#cascade-gating) for the full model, including the per-rule `gatesDescendants` field and the `--include-gated` and `--depth` options.
 

@@ -8,7 +8,7 @@ import { bundledSchemasDir } from '../../src/schema/schema';
 import { createSpaceContext } from '../../src/space-context';
 import type { FileValidationResult } from '../../src/types';
 import { validateFile, validateSpace } from '../../src/validate';
-import { ofKind, withKey } from '../helpers/issues';
+import { ofKind, schemaFailures, withKey } from '../helpers/issues';
 import { makeTempSpace, type TempSpace } from '../helpers/temp-space';
 import { validateFileWith, validateSpaceWith } from '../helpers/validate-run';
 
@@ -42,7 +42,7 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       });
 
       const result = await validateSpaceWith(validContext, {
-        judge: fakeProvider,
+        judge: { provider: fakeProvider },
       });
 
       expect(fakeProvider.callHistory.some((c) => c.rules.some((r) => r.id === 'opportunity-customer-voice'))).toBe(
@@ -50,12 +50,12 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       );
 
       // No violation when the verdict has no severity
-      expect(result.ruleViolations.some((v) => v.ruleId === 'opportunity-customer-voice')).toBe(false);
+      expect(ofKind(result.issues, 'rule').some((v) => v.ruleId === 'opportunity-customer-voice')).toBe(false);
     });
 
     it("sends the schema's descriptions of each judged node type", async () => {
       const fakeProvider = new FakeJudgeProvider({ pass: true });
-      await validateSpaceWith(validContext, { judge: fakeProvider });
+      await validateSpaceWith(validContext, { judge: { provider: fakeProvider } });
       const call = fakeProvider.callHistory.find((c) => c.rules.some((r) => r.id === 'opportunity-customer-voice'));
       expect(call?.schemaDescriptions?.opportunity?.fields?.source).toContain('Customer research source');
     });
@@ -67,10 +67,10 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       });
 
       const result = await validateSpaceWith(validContext, {
-        judge: fakeProvider,
+        judge: { provider: fakeProvider },
       });
 
-      const violation = result.ruleViolations.find((v) => v.ruleId === 'opportunity-customer-voice');
+      const violation = ofKind(result.issues, 'rule').find((v) => v.ruleId === 'opportunity-customer-voice');
       expect(violation).toBeDefined();
       expect(violation?.category).toBe('best-practice');
       expect(violation?.evidence).toBe('The opportunity reads like a feature request rather than a problem statement.');
@@ -91,16 +91,14 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       const fakeProvider = new FakeJudgeProvider();
 
       const result = await validateSpaceWith(invalidContext, {
-        judge: fakeProvider,
+        judge: { provider: fakeProvider },
       });
 
       // opportunity-no-source.md fails schema validation (missing required 'source' field)
-      expect(result.nodeFailures.some((e) => e.node.id === 'opportunity-no-source.md')).toBe(true);
+      expect(schemaFailures(result.issues) > 0).toBe(true);
 
       // Therefore it must be gated and never evaluated by the judge
-      expect(result.coverageGates.some((g) => g.nodeId === 'opportunity-no-source.md' && g.reason === 'schema')).toBe(
-        true,
-      );
+      expect(ofKind(result.issues, 'gated').some((i) => i.nodeId === 'opportunity-no-source.md')).toBe(true);
       // Judge was never called for opportunity-no-source.md
       expect(fakeProvider.callHistory.some((c) => c.node.id === 'opportunity-no-source.md')).toBe(false);
     });
@@ -125,7 +123,7 @@ describe('Semantic rule evaluation integration (validateSpace & validateFile)', 
       });
 
       const result = (await validateFileWith(targetFile, validConfig, {
-        judge: failingProvider,
+        judge: { provider: failingProvider },
         configDir: import.meta.dir,
       })) as FileValidationResult;
 
@@ -161,7 +159,7 @@ describe('validateFile judges only the target and its gate-capable ancestor rule
 
   const run = (judge: FakeJudgeProvider, file: string, extra = {}) =>
     validateFileWith(space.file(file), space.config, {
-      judge: judge,
+      judge: { provider: judge },
       configDir: space.dir,
       ...extra,
     }) as Promise<FileValidationResult>;
@@ -203,7 +201,7 @@ describe('Semantic rules: verdicts, batching and rule filter', () => {
 
   it('judges each node once with all of its semantic rules', async () => {
     const fake = new FakeJudgeProvider();
-    await validateSpaceWith(context, { judge: fake });
+    await validateSpaceWith(context, { judge: { provider: fake } });
     const labels = fake.callHistory.map((c) => c.node.id);
     expect(new Set(labels).size).toBe(labels.length);
     expect(fake.callHistory.every((c) => c.rules.length >= 1)).toBe(true);
@@ -211,33 +209,33 @@ describe('Semantic rules: verdicts, batching and rule filter', () => {
 
   it('reports a verdict that has a severity as a violation carrying the verdict and evidence', async () => {
     const fake = new FakeJudgeProvider({ verdict: 'fail', confidence: 0.7, evidence: 'solution in disguise' });
-    const result = await validateSpaceWith(context, { judge: fake });
-    const violation = result.ruleViolations.find((v) => v.ruleId === 'opportunity-customer-voice');
+    const result = await validateSpaceWith(context, { judge: { provider: fake } });
+    const violation = ofKind(result.issues, 'rule').find((v) => v.ruleId === 'opportunity-customer-voice');
     expect(violation).toMatchObject({ verdict: 'fail', evidence: 'solution in disguise' });
   });
 
   it('reports a per-rule judge error as a violation without gating the subtree', async () => {
     const fake = new FakeJudgeProvider({ error: 'rate limited' });
-    const result = await validateSpaceWith(context, { judge: fake });
-    const violation = result.ruleViolations.find((v) => v.ruleId === 'opportunity-customer-voice');
-    expect(violation?.description).toContain('Semantic evaluation error: rate limited');
-    expect(result.coverageGates.filter((g) => g.ruleId === 'opportunity-customer-voice')).toEqual([]);
+    const result = await validateSpaceWith(context, { judge: { provider: fake } });
+    const violation = ofKind(result.issues, 'rule').find((v) => v.ruleId === 'opportunity-customer-voice');
+    expect(violation?.message).toContain('Semantic evaluation error: rate limited');
+    expect(ofKind(result.issues, 'gated')).toEqual([]);
   });
 
   it('--rule-filter narrows evaluation: filtering to the semantic rule runs no expression rules, filtering it out runs no judge', async () => {
     const semanticOnly = await validateSpaceWith(context, {
-      judge: new FakeJudgeProvider({ pass: false }),
+      judge: { provider: new FakeJudgeProvider({ pass: false }) },
       ruleFilter: { id: ['opportunity-customer-voice'] },
     });
-    expect(semanticOnly.ruleViolations.every((v) => v.ruleId === 'opportunity-customer-voice')).toBe(true);
+    expect(ofKind(semanticOnly.issues, 'rule').every((v) => v.ruleId === 'opportunity-customer-voice')).toBe(true);
 
     const fake = new FakeJudgeProvider();
     const expressionOnly = await validateSpaceWith(context, {
-      judge: fake,
+      judge: { provider: fake },
       ruleFilter: { category: ['workflow'] },
     });
     expect(fake.callHistory).toHaveLength(0);
-    expect(expressionOnly.ruleViolations.some((v) => v.verdict !== undefined)).toBe(false);
+    expect(ofKind(expressionOnly.issues, 'rule').some((v) => v.verdict !== undefined)).toBe(false);
   });
 });
 
@@ -258,7 +256,7 @@ describe('context trimming in a run', () => {
 
   it('reports how many nodes were trimmed and for which rules', async () => {
     const context = createSpaceContext('ts', space.config, { configDir: space.dir });
-    const result = await validateSpaceWith(context, { judge: new FakeJudgeProvider({ pass: true }) });
+    const result = await validateSpaceWith(context, { judge: { provider: new FakeJudgeProvider({ pass: true }) } });
     expect(result.contextTrimmed).toEqual({ nodeCount: 1, ruleIds: ['task-fits-goal'] });
   });
 

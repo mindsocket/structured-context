@@ -23,10 +23,9 @@ describe('validateSpace cascade gating', () => {
     // but its rule evaluation is gated by the ancestor's schema failure.
     expect(ofKind(result.issues, 'rule').some((v) => v.nodeId === 'Child Opportunity.md')).toBe(false);
 
-    const gate = result.coverageGates.find((g) => g.nodeId === 'Bad Outcome.md');
-    expect(gate).toBeDefined();
-    expect(gate!.reason).toBe('schema');
-    expect(gate!.gatedNodeIds as string[]).toEqual(
+    const gated = ofKind(result.issues, 'gated').filter((i) => i.gatedBy === 'Bad Outcome.md');
+    expect(gated.length).toBeGreaterThan(0);
+    expect(gated.map((i) => i.nodeId)).toEqual(
       expect.arrayContaining(['Bad Outcome.md', 'Child Opportunity.md', 'Only Solution.md']),
     );
   });
@@ -41,9 +40,7 @@ describe('validateSpace cascade gating', () => {
       ),
     ).toBe(true);
 
-    const gate = result.coverageGates.find((g) => g.nodeId === 'Bad Outcome.md');
-    expect(gate).toBeDefined();
-    expect(gate!.gatedNodeIds as string[]).toContain('Child Opportunity.md');
+    expect(ofKind(result.issues, 'gated').some((i) => i.nodeId === 'Child Opportunity.md')).toBe(true);
   });
 
   it('does not gate on a non-error rule violation by default (solution-quantity is best-practice)', async () => {
@@ -54,7 +51,7 @@ describe('validateSpace cascade gating', () => {
 
     expect(schemaFailures(result.issues)).toBe(0);
     expect(ofKind(result.issues, 'rule').some((v) => v.ruleId === 'solution-quantity')).toBe(true);
-    expect(result.coverageGates).toEqual([]);
+    expect(ofKind(result.issues, 'gated')).toEqual([]);
   });
 });
 
@@ -119,7 +116,7 @@ describe('validateFile matches validateSpace', () => {
           expect(fileRules).toEqual(spaceRules);
 
           const fileGated = result.issues.some((issue) => issue.kind === 'gated');
-          const spaceGated = space.coverageGates.some((g) => g.gatedNodeIds.some((id) => id === file));
+          const spaceGated = space.issues.some((issue) => issue.kind === 'gated' && issue.nodeId === file);
           expect(fileGated).toBe(spaceGated);
         }
       });

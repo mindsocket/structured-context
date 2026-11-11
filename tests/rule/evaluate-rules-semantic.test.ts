@@ -154,15 +154,14 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     // bad-opp.md fails the expression: reported at the rule severity, never sent to the judge.
     expect(fake.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
     expect(violations).toEqual([
-      expect.objectContaining({ nodeId: 'valid-opp.md', evidence: 'Not customer voice' }),
-      {
+      expect.objectContaining({ nodeId: 'valid-opp.md', evidence: 'Not customer voice', verdict: 'fail' }),
+      expect.objectContaining({
         nodeId: 'bad-opp.md',
         ruleId: 'opportunity-customer-voice',
         category: 'best-practice',
         severity: 'info',
-        description: 'Must be in customer voice',
         evidence: 'expression failed: current.source = "User interview with Jane"',
-      },
+      }),
     ]);
   });
 
@@ -195,7 +194,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
       });
       expect(fake.callHistory).toHaveLength(0);
       expect(violations.map((v) => v.severity)).toEqual(['error', 'error']);
-      expect(violations[0]?.description).toContain('Rule error');
+      expect(violations[0]?.message).toContain('Rule error');
     });
 
     it('evaluates when before check, and judges only nodes whose check passes', async () => {

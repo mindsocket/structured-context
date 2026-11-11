@@ -43,3 +43,4 @@ lefthook-local.yml
 .gitleaks-priv.toml
 
 hook-test/fixtures/.state/
+plan-validation-issues-unification.md

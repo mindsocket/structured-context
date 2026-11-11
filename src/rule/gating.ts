@@ -1,40 +1,26 @@
-import type { JudgeRun } from '../judge/judge-node';
+import type { JudgeSession } from '../judge/judge-node';
+import type { TrimReport } from '../judge/trim';
 import type { SpaceGraph } from '../space-graph';
-import type { NodeId, Rule, RuleViolation, SpaceNode } from '../types';
+import type { NodeId, Rule, SpaceNode, ValidationIssue, ValidationIssueKind } from '../types';
 import { createRuleEvaluator } from './rule-evaluator';
 
-/** A node that failed schema validation or hierarchy structure. Within the hierarchy, it is a gate. */
-export type GatingSeed = {
-  /** Id of the failed node. */
-  id: NodeId;
-  /** Which check it failed. */
-  reason: 'schema' | 'hierarchy';
-};
-
 /**
- * A gate, as a run reports it: a node whose schema or hierarchy failure, or gating violation, stopped rule
- * evaluation below it, and for the node itself after a failure.
+ * Nodes that failed a check before rule evaluation, by issue kind: a node whose schema check or hierarchy
+ * structure failed. Gating treats such a node as a gate: its own rules and its subtree's are suppressed.
  */
-export type CoverageGate = {
-  /** Id of the gate node. */
-  nodeId: NodeId;
-  /** What made the node a gate. */
-  reason: 'schema' | 'hierarchy' | 'rule';
-  /** Id of the rule with the gating violation, when `reason` is `'rule'`. */
-  ruleId?: string;
-  /** Ids of the nodes it gated. */
-  gatedNodeIds: NodeId[];
-};
+export type FailedNodes = Map<NodeId, ValidationIssueKind>;
 
-export type RuleEvaluation = {
-  violations: RuleViolation[];
-  gates: CoverageGate[];
+/** The result of evaluating a space's rules: its issues, and the judge inputs trimmed to fit the per-node input cap. */
+export type RuleEvaluationResult = {
+  issues: ValidationIssue[];
+  /** Present when semantic rules ran: the inputs trimmed to fit the per-node input cap. */
+  trimReport?: TrimReport;
 };
 
 export interface RuleEvaluationOptions {
   /** Evaluates `semantic` rules. Without it, a rule runs only its `expression`, and a semantic-only rule is skipped. */
-  judge?: JudgeRun;
-  /** Evaluate rules on gated nodes anyway. Gates are still reported. */
+  judge?: JudgeSession;
+  /** Evaluate rules on gated nodes anyway. Gated nodes are still reported with `gated` issues. */
   includeGated?: boolean;
 }
 
@@ -44,8 +30,9 @@ export interface RuleEvaluationOptions {
  *
  * Global rules run once. Non-hierarchy nodes are one set and are never gated. Hierarchy nodes are evaluated one
  * breadth-first level at a time, from roots and orphans, because a node's verdicts decide whether its children
- * are evaluated. A failed node (`failures`) or a node with a gating violation becomes a gate, and every node below
- * it is gated by it. A failed node is gated by its own gate too.
+ * are evaluated. A failed node (`failedNodes`) or a node with a gating violation becomes a gate, and every node
+ * below it is gated by it, reported as a `gated` issue. A failed node is gated by its own gate too; a node that
+ * becomes a gate through its own gating violation is not.
  *
  * Without a hierarchy, every node in `graph` is a non-hierarchy node, so nothing is gated.
  */
@@ -53,49 +40,83 @@ export async function evaluateRules(
   nodes: SpaceNode[],
   rules: Rule[],
   graph: SpaceGraph,
-  failures: GatingSeed[],
+  failedNodes: FailedNodes = new Map(),
   options: RuleEvaluationOptions = {},
-): Promise<RuleEvaluation> {
+): Promise<RuleEvaluationResult> {
   const evaluator = createRuleEvaluator(nodes, rules, graph, options.judge);
-  const violations = await evaluator.evaluateGlobalRules();
-  violations.push(...(await evaluator.evaluateNodeSet(graph.nonHierarchy)).violations);
+  const issues = await evaluator.evaluateGlobalRules();
+  const nonHierarchy = await evaluator.evaluateNodeSet(graph.nonHierarchy);
+  issues.push(...nonHierarchy.issues);
+  let trimReport = nonHierarchy.trimReport;
 
-  const failureOf = new Map<NodeId, GatingSeed['reason']>();
-  for (const { id, reason } of failures) {
+  const failureOf = new Map<NodeId, ValidationIssueKind>();
+  for (const [id, kind] of failedNodes) {
     // A node with both failures reports schema.
-    if (reason === 'schema' || !failureOf.has(id)) failureOf.set(id, reason);
+    if (kind === 'schema' || !failureOf.has(id)) failureOf.set(id, kind);
   }
 
-  const gates: CoverageGate[] = [];
+  // Each gate, as first reached: what made it a gate, and the nodes it gated.
+  type Gate = { nodeId: NodeId; cause: string; gatedNodeIds: NodeId[] };
+  const gates = new Map<NodeId, Gate>();
   const visited = new Set<NodeId>();
   // Each hierarchy node, with the gate it inherits from above.
-  type Entry = { node: SpaceNode; gate?: CoverageGate };
+  type Entry = { node: SpaceNode; gate?: Gate };
   let level: Entry[] = [...graph.hierarchyRoots, ...graph.orphans].map((node) => ({ node }));
   while (level.length > 0) {
     // A node reached twice (a DAG) keeps the gate of the first path.
     const current = level.filter(({ node }) => !visited.has(node.id) && visited.add(node.id));
     const isGated = ({ node, gate }: Entry) => gate !== undefined || failureOf.has(node.id);
-    const { violations: found, gatingRules } = await evaluator.evaluateNodeSet(
-      current.filter((e) => options.includeGated || !isGated(e)).map((e) => e.node),
-    );
-
-    violations.push(...found);
+    const {
+      issues: found,
+      gatingRules,
+      trimReport: levelTrim,
+    } = await evaluator.evaluateNodeSet(current.filter((e) => options.includeGated || !isGated(e)).map((e) => e.node));
+    issues.push(...found);
+    if (levelTrim) {
+      trimReport ??= { nodes: new Set(), ruleIds: new Set() };
+      for (const nodeId of levelTrim.nodes) trimReport.nodes.add(nodeId);
+      for (const ruleId of levelTrim.ruleIds) trimReport.ruleIds.add(ruleId);
+    }
 
     level = [];
     for (const { node, gate: inherited } of current) {
       let gate = inherited;
-      const failure = failureOf.get(node.id);
-      if (!gate && failure) {
-        gate = { nodeId: node.id, reason: failure, gatedNodeIds: [] };
-        gates.push(gate);
-      } else if (!gate && gatingRules.has(node.id)) {
-        gate = { nodeId: node.id, reason: 'rule', ruleId: gatingRules.get(node.id), gatedNodeIds: [] };
-        gates.push(gate);
+      let failed = false;
+      if (!gate) {
+        const failure = failureOf.get(node.id);
+        const gatingRule = gatingRules.get(node.id);
+        if (failure) {
+          gate = { nodeId: node.id, cause: `${failure} failure`, gatedNodeIds: [] };
+        } else if (gatingRule !== undefined) {
+          gate = { nodeId: node.id, cause: `rule "${gatingRule}"`, gatedNodeIds: [] };
+        }
+        if (gate) gates.set(node.id, gate);
+        failed = failure !== undefined;
       }
-      if (inherited || failure) gate!.gatedNodeIds.push(node.id);
+      if (inherited || failed) gate!.gatedNodeIds.push(node.id);
       for (const child of graph.hierarchyChildren.get(node.id) ?? []) level.push({ node: child, gate });
     }
   }
 
-  return { violations, gates: gates.filter((g) => g.gatedNodeIds.length > 0) };
+  const gateIssues: ValidationIssue[] = [];
+  for (const gate of gates.values()) {
+    for (const nodeId of gate.gatedNodeIds) gateIssues.push(gatedIssue(nodeId, gate, options.includeGated === true));
+  }
+  return { issues: issues.concat(gateIssues), trimReport };
+}
+
+/** The `gated` issue naming the gate and what caused it, worded by whether the node's rules ran anyway. */
+function gatedIssue(
+  nodeId: NodeId,
+  gate: { nodeId: NodeId; cause: string },
+  evaluatedAnyway: boolean,
+): ValidationIssue {
+  return {
+    kind: 'gated',
+    key: `gated:${gate.nodeId}`,
+    severity: 'info',
+    nodeId,
+    gatedBy: gate.nodeId,
+    message: `Rule checks ${evaluatedAnyway ? 'evaluated anyway' : 'not evaluated'}: gated by ${gate.cause} on ${gate.nodeId}`,
+  };
 }

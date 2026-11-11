@@ -1,6 +1,28 @@
 import jsonata from 'jsonata';
-import type { NodeId, Rule, RuleViolation, SpaceNode } from '../types';
+import type { NodeId, Rule, RuleSeverity, SpaceNode, ValidationIssue } from '../types';
 import { ruleSeverity } from './rule-severity';
+
+/** The rule issue for a violation of the rule at a node: the message carries the finding, evidence and guidance. */
+export function ruleIssue(
+  rule: Rule,
+  severity: RuleSeverity,
+  nodeId: NodeId | null,
+  message: string,
+  extra?: Pick<ValidationIssue & { kind: 'rule' }, 'evidence' | 'verdict' | 'guidance'>,
+): ValidationIssue {
+  const evidence = extra?.evidence ? ` (Evidence: ${extra.evidence})` : '';
+  const guidance = extra?.guidance ? ` Guidance: ${extra.guidance}` : '';
+  return {
+    kind: 'rule',
+    key: `rule:${rule.id}`,
+    severity,
+    message: `${message}${evidence}${guidance}`,
+    ...(nodeId !== null && { nodeId }),
+    ruleId: rule.id,
+    category: rule.category,
+    ...extra,
+  };
+}
 
 const expressionCache = new Map<string, ReturnType<typeof jsonata>>();
 
@@ -134,27 +156,21 @@ export function buildEvalContext(
   };
 }
 
-/** The violation reported when a rule's `expression` or `when` cannot be evaluated: an authoring error, so always `error`. */
-export function expressionErrorViolation(rule: Rule, nodeId: NodeId | null, error: string): RuleViolation {
-  return {
-    ...(nodeId !== null && { nodeId }),
-    ruleId: rule.id,
-    category: rule.category,
-    severity: 'error',
-    description: `${rule.description} (Rule error: ${error})`,
-  };
+/** The issue for a rule's `expression` or `when` that cannot be evaluated: an authoring error, so always `error`. */
+export function expressionErrorIssue(rule: Rule, nodeId: NodeId | null, error: string): ValidationIssue {
+  return ruleIssue(rule, 'error', nodeId, `${rule.description} (Rule error: ${error})`);
 }
 
 /** The outcome of a rule's `expression` on one node. */
 export type ExpressionRuleResult =
   | { passed: true }
   /** `failed` is the expression returning something other than true; otherwise it could not be evaluated. */
-  | { passed: false; violation: RuleViolation; failed: boolean };
+  | { passed: false; issue: ValidationIssue; failed: boolean };
 
 /**
  * Evaluate a rule's `expression` against a node (`nodeId` null and `node` any node, for a global rule). A failure
  * reports the rule's severity; a rule with a semantic part names the expression in the evidence, so the
- * violation is not mistaken for a verdict. An evaluation error reports `error` and is not a `failed` result.
+ * issue is not mistaken for a verdict. An evaluation error reports `error` and is not a `failed` result.
  */
 export async function evaluateRuleExpression(
   rule: Rule,
@@ -166,19 +182,14 @@ export async function evaluateRuleExpression(
   const expression = rule.expression as string;
   const outcome = await tryEvaluateExpression(expression, buildEvalContext(node, allNodes, nodeIndex));
   if ('error' in outcome) {
-    return { passed: false, failed: false, violation: expressionErrorViolation(rule, nodeId, outcome.error) };
+    return { passed: false, failed: false, issue: expressionErrorIssue(rule, nodeId, outcome.error) };
   }
   if (outcome.value === true) return { passed: true };
   return {
     passed: false,
     failed: true,
-    violation: {
-      ...(nodeId !== null && { nodeId }),
-      ruleId: rule.id,
-      category: rule.category,
-      severity: ruleSeverity(rule),
-      description: rule.description,
+    issue: ruleIssue(rule, ruleSeverity(rule), nodeId, rule.description, {
       ...(rule.semantic !== undefined && { evidence: `expression failed: ${expression}` }),
-    },
+    }),
   };
 }
