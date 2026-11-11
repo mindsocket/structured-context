@@ -4,43 +4,33 @@ import { dirname, join, relative } from 'node:path';
 
 const srcDir = join(import.meta.dir, '../src');
 
-/**
- * The layers in Module Boundaries in docs/architecture.md, from the bottom up. A file belongs to the longest
- * entry that prefixes its path, so a new file joins its directory's layer.
- */
+/** The layers in Module Boundaries in docs/architecture.md, from the bottom up, by top-level module. */
 const LAYERS: string[][] = [
   ['types', 'constants', 'errors'],
-  [
-    'space-graph',
-    'schema/metadata-contract',
-    'schema/rule-severity',
-    'schema/schema-refs',
-    'schema/meta-schemas',
-    'plugins/util',
-    'plugins/builtin-names',
-    'judge/types',
-    'read/wikilink-utils',
-  ],
-  ['schema/schema', 'judge', 'filter', 'space-graph-data'],
-  ['config'],
-  ['plugins', 'space-context', 'schema/list-schemas'],
-  ['read'],
-  ['schema'],
-  ['validate', 'load-space-graph'],
-  ['render'],
+  ['schema', 'config', 'space-context', 'space-graph', 'space-graph-data'],
+  ['filter', 'judge', 'plugins'],
+  ['read', 'render', 'validate', 'load-space-graph'],
   ['index', 'commands', 'api', 'browser', 'testing'],
 ];
 
-/** Remove each entry when its fix lands. */
-const KNOWN_VIOLATIONS = ['validate -> plugins/markdown/util'];
+/**
+ * Imports that break a rule today, each with the change that would remove it.
+ * The test fails when an entry no longer applies, so remove it with its fix.
+ */
+const EXCEPTIONS: Record<string, string> = {
+  'validate -> plugins/markdown/util': 'the markdown plugin reports the link targets of files it excludes',
+  'schema/gating -> judge/judge-node': 'rule evaluation moves from schema/ into a validate/ area',
+  'schema/validate-rules -> judge/judge-node': 'rule evaluation moves from schema/ into a validate/ area',
+  'config/index -> judge/types': 'the model provider APIs move to a concept the judge and config share',
+  'config/index -> plugins/util': 'plugin name and path helpers move out of plugins/',
+  'schema/schema -> plugins/util': 'plugin name and path helpers move out of plugins/',
+  'schema/list-schemas -> plugins/util': 'plugin name and path helpers move out of plugins/',
+  'space-context -> plugins/util': 'plugin name and path helpers move out of plugins/',
+  'plugins/markdown/extract-content-links -> read/wikilink-utils':
+    'wikilink helpers move to a concept that read/ and plugins share',
+};
 
-const entries = LAYERS.flatMap((layer, rank) => layer.map((prefix) => ({ prefix, rank })));
-
-function entryOf(path: string) {
-  return entries
-    .filter(({ prefix }) => path === prefix || path.startsWith(`${prefix}/`))
-    .sort((a, b) => b.prefix.length - a.prefix.length)[0];
-}
+const rank = (path: string) => LAYERS.findIndex((layer) => layer.includes(path.split('/')[0]!));
 
 const builtinPlugins = readdirSync(join(srcDir, 'plugins'), { withFileTypes: true })
   .filter((d) => d.isDirectory())
@@ -52,38 +42,37 @@ const files = readdirSync(srcDir, { recursive: true, encoding: 'utf8' })
 
 // The transpiler drops type-only imports, which are erased at build time, and keeps dynamic imports.
 const transpiler = new Bun.Transpiler({ loader: 'ts' });
-const runtimeImports = files.flatMap((file) =>
+const imports = files.flatMap((file) =>
   transpiler
     .scanImports(readFileSync(join(srcDir, `${file}.ts`), 'utf8').replace(/^#!.*/, ''))
     .filter(({ path }) => path.startsWith('.'))
-    .map(({ path }) => ({ file, target: relative(srcDir, join(srcDir, dirname(file), path)).replace(/\.ts$/, '') }))
+    .map(({ path }) => {
+      const target = relative(srcDir, join(srcDir, dirname(file), path)).replace(/\.ts$/, '');
+      return { file, target, label: `${file} -> ${target}` };
+    })
     .filter(({ target }) => !target.startsWith('..')),
 );
-
-const label = ({ file, target }: { file: string; target: string }) => `${file} -> ${target}`;
+const unexcepted = imports.filter(({ label }) => !(label in EXCEPTIONS));
 
 describe('module boundaries', () => {
-  test('every module has a layer', () => {
-    expect(files.filter((f) => !entryOf(f))).toEqual([]);
+  test('every top-level module has a layer', () => {
+    expect(files.filter((f) => rank(f) < 0)).toEqual([]);
   });
 
-  test('imports point down', () => {
-    const upward = runtimeImports.filter(({ file, target }) => entryOf(target)!.rank > entryOf(file)!.rank);
-    expect(upward.map(label)).toEqual([]);
+  test('imports stay in their layer or point down', () => {
+    expect(unexcepted.filter(({ file, target }) => rank(target) > rank(file)).map((i) => i.label)).toEqual([]);
   });
 
-  test('only the plugin registry reaches a built-in plugin', () => {
-    const reachIns = runtimeImports.filter(
-      (i) =>
-        builtinPlugins.some((p) => i.target === p || i.target.startsWith(`${p}/`)) &&
-        !i.file.startsWith('plugins/') &&
-        !KNOWN_VIOLATIONS.includes(label(i)),
+  test('only plugins/ reaches into a built-in plugin', () => {
+    const reachIns = unexcepted.filter(
+      ({ file, target }) =>
+        !file.startsWith('plugins/') && builtinPlugins.some((p) => target === p || target.startsWith(`${p}/`)),
     );
-    expect(reachIns.map(label)).toEqual([]);
+    expect(reachIns.map((i) => i.label)).toEqual([]);
   });
 
-  test('known violations are still present', () => {
-    const labels = runtimeImports.map(label);
-    expect(KNOWN_VIOLATIONS.filter((v) => !labels.includes(v))).toEqual([]);
+  test('every exception still applies', () => {
+    const labels = new Set(imports.map((i) => i.label));
+    expect(Object.keys(EXCEPTIONS).filter((e) => !labels.has(e))).toEqual([]);
   });
 });
