@@ -148,3 +148,14 @@ describe('scope under gating', () => {
     ]);
   });
 });
+
+describe('judgeContext types', () => {
+  it('gives the judge only canonical types, never an alias in the fields', () => {
+    const aliased = { ...child('Aliased', 'opp', 'Goal', { owner: 'team' }), resolvedType: 'opportunity' };
+    const g = buildSpaceGraph([goal, aliased], hierarchy);
+    const input = judgeContext(g, aliased, ctx(['parent']));
+    expect(input.node.resolvedType).toBe('opportunity');
+    expect(input.node.schemaData).toEqual({ owner: 'team' });
+    expect(input.related?.[0]?.data).not.toHaveProperty('type');
+  });
+});

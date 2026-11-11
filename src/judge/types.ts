@@ -28,8 +28,11 @@ export interface RelatedNode {
  * bodies. Judges may answer all rules in a single call.
  */
 export interface SemanticJudgeInput {
-  /** The evaluated node. Its body is in `schemaData.content` only when the rules' `includeContent` asks for it. */
-  node: Pick<SpaceNode, 'id' | 'title' | 'type' | 'resolvedType' | 'schemaData'> & {
+  /**
+   * The evaluated node, with its canonical type only. `schemaData` holds neither `title` nor `type`. Its body is in
+   * `schemaData.content` only when the rules' `includeContent` asks for it.
+   */
+  node: Pick<SpaceNode, 'id' | 'title' | 'resolvedType' | 'schemaData'> & {
     /** Display titles of the node's parents. */
     parentTitles: string[];
   };

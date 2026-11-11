@@ -74,7 +74,7 @@ describe('related nodes in the chat prompt', () => {
     );
     expect(prompt).toContain('<related_items>');
     expect(prompt).toContain('Faster Tax Filing');
-    expect(prompt).toContain('relation="parent, ancestor"');
+    expect(prompt).toContain('"relation": "parent, ancestor"');
     expect(prompt).toContain('finance');
   });
 

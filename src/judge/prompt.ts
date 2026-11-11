@@ -9,8 +9,8 @@ function attr(value: string): string {
 export function buildJudgeSystemPrompt(): string {
   return [
     'You are a strict, objective judge. You decide whether an item meets a rule.',
-    'An item is one entry in a structured collection. It has a type, a title and fields, and it can sit under parent items.',
-    'The user message holds the rule in <rule>, the item in <item>, any related items in <related_items>, and what each item type means in <item_types>.',
+    'An item is one entry in a structured collection. It has a type, a title and fields, and it can sit under parent items. `content` is its body text.',
+    'The user message holds the rule in <rule>, the item in <item>, any related items in <related_items> (each with how it relates to the item), and what each item type means in <item_types>. Items are JSON.',
     'Choose the one verdict that best describes whether the item meets the rule.',
     '',
     'You must respond ONLY with a JSON object in this exact format:',
@@ -44,28 +44,32 @@ export function buildJudgeUserPrompt(
     '</verdicts>',
     '</rule>',
     '',
-    `<item id="${attr(node.id)}" type="${attr(node.resolvedType)}">`,
-    `<title>${node.title}</title>`,
-    ...(node.parentTitles.length > 0 ? [`<parents>${node.parentTitles.join(', ')}</parents>`] : []),
-    "<fields>The item's fields as JSON. `content` is its body text.",
-    JSON.stringify(node.schemaData, null, 2),
-    '</fields>',
+    '<item>',
+    JSON.stringify(
+      {
+        id: node.id,
+        title: node.title,
+        type: node.resolvedType,
+        ...(node.parentTitles.length > 0 && { parents: node.parentTitles }),
+        ...node.schemaData,
+      },
+      null,
+      2,
+    ),
     '</item>',
   ];
 
   if (related.length > 0) {
-    lines.push('', '<related_items>');
-    for (const r of related) {
-      lines.push(
-        `<related_item relation="${attr(r.relations.join(', '))}" type="${attr(r.type)}">`,
-        `<title>${r.title}</title>`,
-        '<fields>',
-        JSON.stringify(r.data, null, 2),
-        '</fields>',
-        '</related_item>',
-      );
-    }
-    lines.push('</related_items>');
+    lines.push(
+      '',
+      '<related_items>',
+      JSON.stringify(
+        related.map((r) => ({ relation: r.relations.join(', '), title: r.title, type: r.type, ...r.data })),
+        null,
+        2,
+      ),
+      '</related_items>',
+    );
   }
   if (schemaDescriptions) {
     lines.push(

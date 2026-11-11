@@ -37,14 +37,19 @@ function dataWithBody(node: SpaceNode, withBody: boolean): Record<string, unknow
   return data;
 }
 
+/** Title and type travel separately, the type as the canonical one, so a judge never sees an alias. */
+function withoutTitleAndType(data: Record<string, unknown>): Record<string, unknown> {
+  const { title: _title, type: _type, ...rest } = data;
+  return rest;
+}
+
 /** The evaluated node as a judge sees it. */
 function judgeNodeView(node: SpaceNode, withBody: boolean, graph: SpaceGraph): SemanticJudgeInput['node'] {
   return {
     id: node.id,
     title: node.title,
-    type: node.type,
     resolvedType: node.resolvedType,
-    schemaData: dataWithBody(node, withBody),
+    schemaData: withoutTitleAndType(dataWithBody(node, withBody)),
     parentTitles: node.resolvedParents.map((p) => graph.nodes.get(p.id)?.title ?? p.id),
   };
 }
@@ -52,8 +57,12 @@ function judgeNodeView(node: SpaceNode, withBody: boolean, graph: SpaceGraph): S
 type Relation = RelatedNode['relations'][number];
 
 function relatedView(node: SpaceNode, relation: Relation, withBody: boolean): RelatedNode {
-  const { title: _title, type: _type, ...data } = dataWithBody(node, withBody);
-  return { relations: [relation], title: node.title, type: node.resolvedType, data };
+  return {
+    relations: [relation],
+    title: node.title,
+    type: node.resolvedType,
+    data: withoutTitleAndType(dataWithBody(node, withBody)),
+  };
 }
 
 /**

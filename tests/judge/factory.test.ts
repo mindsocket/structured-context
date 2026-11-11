@@ -57,7 +57,6 @@ describe('createModelProvider', () => {
           node: {
             id: 'n' as NodeId,
             title: 't',
-            type: 'opportunity',
             resolvedType: 'opportunity',
             schemaData: {},
             parentTitles: [],
