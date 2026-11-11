@@ -118,7 +118,7 @@ describe('judgeNodes with scope', () => {
       },
     };
     const rules = [scoped('a', { scope: ['parent'] }), scoped('b', {}), scoped('c', { scope: ['parent'] })];
-    const out = await judgeNodes(judge, [{ node: opp, rules }], graph);
+    const out = await judgeNodes({ provider: judge }, [{ node: opp, rules }], graph);
     expect(inputs.map((i) => i.rules.map((r) => r.id))).toEqual([['a', 'c'], ['b']]);
     expect(inputs[0]?.related?.map((r) => r.title)).toEqual(['Goal']);
     expect(inputs[1]?.related).toBeUndefined();
@@ -140,7 +140,7 @@ describe('scope under gating', () => {
       },
     ] as unknown as Rule[];
     const fake = new FakeJudgeProvider();
-    await evaluateRules(nodes, rules, graph, [], { judge: fake, includeGated: true });
+    await evaluateRules(nodes, rules, graph, [], { judge: { provider: fake }, includeGated: true });
     const call = fake.callHistory.find((c) => c.node.title === 'Sol');
     expect(call?.related?.map((r) => [r.title, r.relations])).toEqual([
       ['Opp', ['parent', 'ancestor']],

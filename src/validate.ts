@@ -2,10 +2,10 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from './config';
 import { judgeForRun } from './judge/factory';
+import type { JudgeRun } from './judge/judge-node';
 import type { TrimReport } from './judge/trim';
-import type { SemanticJudgeProvider } from './judge/types';
 import { readSpace } from './read/read-space';
-import { evaluateRules, type GatingSeed, type RuleEvaluation, type RuleEvaluationOptions } from './schema/gating';
+import { evaluateRules, type GatingSeed, type RuleEvaluation } from './schema/gating';
 import { filterRules, parseRuleFilter, type RuleFilter } from './schema/rule-filter';
 import { extractEntityInfo, typeValidatorFor } from './schema/schema';
 import { validateGraph } from './schema/validate-graph';
@@ -174,9 +174,9 @@ interface CommonValidateOptions {
 export interface RunOptions {
   includeGated?: boolean;
   ruleFilter?: RuleFilter;
-  judge?: SemanticJudgeProvider;
+  judge?: JudgeRun['provider'];
   /** Limit judging to one file (and the ancestors that can gate it). */
-  judgeTarget?: string;
+  judgeTarget?: JudgeRun['target'];
 }
 
 /** Throws `SctxError` `E_MODEL_PROVIDER_INVALID` when `semantic` names a provider that cannot be built. */
@@ -221,13 +221,17 @@ async function evaluateSpaceRules(
   nodes: SpaceNode[],
   schemaContext: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>,
   failures: GatingSeed[],
-  options: Omit<RuleEvaluationOptions, 'schemaContext'> & { ruleFilter?: RuleFilter } = {},
+  options: RunOptions & Pick<JudgeRun, 'trimReport'> = {},
 ): Promise<RuleEvaluation> {
   const { metadata } = schemaContext.schema;
   const rules = metadata.rules && filterRules(metadata.rules, options.ruleFilter);
   if (!rules) return { violations: [], gates: [] };
   const graph = buildSpaceGraph(nodes, metadata.hierarchy);
-  return evaluateRules(nodes, rules, graph, failures, { ...options, schemaContext });
+  const { judge: provider, judgeTarget: target, trimReport, includeGated } = options;
+  return evaluateRules(nodes, rules, graph, failures, {
+    includeGated,
+    judge: provider && { provider, target, trimReport, schemaContext },
+  });
 }
 
 /** A node that failed type or schema validation. */

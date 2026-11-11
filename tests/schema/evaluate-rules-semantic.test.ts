@@ -88,7 +88,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     );
 
     const violations = await evaluateFlat(sampleNodes, rules, {
-      judge: fake,
+      judge: { provider: fake },
     });
 
     expect(violations).toHaveLength(1);
@@ -122,7 +122,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     const fake = new FakeJudgeProvider();
 
     const violations = await evaluateFlat(sampleNodes, strictRules, {
-      judge: fake,
+      judge: { provider: fake },
     });
 
     // bad-opp.md source is "Engineering suggestion", so it failed require-interviews-source
@@ -149,7 +149,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     ];
     const fake = new FakeJudgeProvider({ pass: false, evidence: 'Not customer voice' });
 
-    const violations = await evaluateFlat(sampleNodes, checked, { judge: fake });
+    const violations = await evaluateFlat(sampleNodes, checked, { judge: { provider: fake } });
 
     // bad-opp.md fails the expression: reported at the rule severity, never sent to the judge.
     expect(fake.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
@@ -191,7 +191,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     it('reports an unevaluable check as an error', async () => {
       const fake = new FakeJudgeProvider();
       const violations = await evaluateFlat(sampleNodes, [{ ...checked, expression: '$notAFunction(' }], {
-        judge: fake,
+        judge: { provider: fake },
       });
       expect(fake.callHistory).toHaveLength(0);
       expect(violations.map((v) => v.severity)).toEqual(['error', 'error']);
@@ -200,11 +200,11 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
 
     it('evaluates when before check, and judges only nodes whose check passes', async () => {
       const fake = new FakeJudgeProvider();
-      const whenFalse = await evaluateFlat(sampleNodes, [{ ...checked, when: 'false' }], { judge: fake });
+      const whenFalse = await evaluateFlat(sampleNodes, [{ ...checked, when: 'false' }], { judge: { provider: fake } });
       expect(whenFalse).toEqual([]);
       expect(fake.callHistory).toHaveLength(0);
 
-      await evaluateFlat(sampleNodes, [checked], { judge: fake });
+      await evaluateFlat(sampleNodes, [checked], { judge: { provider: fake } });
       expect(fake.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
     });
   });

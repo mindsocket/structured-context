@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import type { SemanticJudgeProvider } from '../../src/judge/types';
-import { evaluateRules, type GatingSeed, ruleGatesDescendants } from '../../src/schema/gating';
+import { evaluateRules, type GatingSeed } from '../../src/schema/gating';
+import { ruleGatesDescendants } from '../../src/schema/rule-evaluator';
 import { buildSpaceGraph, computeHierarchyDepths } from '../../src/space-graph';
 import type { NodeId, Rule, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef } from '../test-helpers';
@@ -211,7 +212,7 @@ describe('evaluateRules', () => {
         },
       };
 
-      const { violations, gates } = await evaluateRules(nodes, [semanticRule], graph, [], { judge: provider });
+      const { violations, gates } = await evaluateRules(nodes, [semanticRule], graph, [], { judge: { provider } });
       expect(calls).toEqual([['Goal'], ['Opp A', 'Opp B'], ['Sol B']]);
       expect(violations.map((v) => v.nodeId as string | undefined)).toEqual(['Opp A']);
       expect(gates).toHaveLength(1);
