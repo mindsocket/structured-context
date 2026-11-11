@@ -275,8 +275,7 @@ export interface SpaceValidationResult {
   ruleViolations: RuleViolation[];
   hierarchyViolations: GraphViolation[];
   orphans: SpaceNode[];
-  /** Content links that could not be resolved to a space node. */
-  unresolvedContentLinks: Array<{ nodeId: NodeId; target: string }>;
+  unresolvedContentLinks: ReadSpaceResult['unresolvedContentLinks'];
   coverageGates: CoverageGate[];
   contextTrimmed: ValidationResult['contextTrimmed'];
 }
@@ -309,7 +308,7 @@ export function findDuplicateIds(nodes: SpaceNode[]): DuplicateId[] {
 export async function validateNodes(
   context: SpaceContext,
   nodes: SpaceNode[],
-  read: Pick<ReadSpaceResult, 'unresolvedRefs' | 'parseIssues'>,
+  read: Pick<ReadSpaceResult, 'unresolvedRefs' | 'unresolvedContentLinks'>,
   options: RunOptions = {},
 ): Promise<SpaceValidationResult> {
   const { unresolvedRefs } = read;
@@ -393,20 +392,8 @@ export async function validateNodes(
     result.contextTrimmed = summariseTrim(trimReport);
   }
 
-  // Collect unresolved content links (info — not errors).
-  const excludedTargets = new Set(read.parseIssues.flatMap((issue) => issue.linkTargets ?? []));
-  const seen = new Set<string>();
-  for (const node of nodes) {
-    for (const link of node.resolvedLinks) {
-      if (link.location === 'internal' && !excludedTargets.has(link.target)) {
-        const key = `${node.id}::${link.target}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          result.unresolvedContentLinks.push({ nodeId: node.id, target: link.target });
-        }
-      }
-    }
-  }
+  const ids = new Set(nodes.map((node) => node.id));
+  result.unresolvedContentLinks = read.unresolvedContentLinks.filter((link) => ids.has(link.nodeId));
 
   return result;
 }
@@ -491,14 +478,13 @@ export function issuesOf(
   };
   const at = (source: SourceLocation | undefined) => (source ? { source } : {});
 
-  for (const { file, severity, type, message, line, column } of parseIssues) {
+  for (const { message, ...issue } of parseIssues) {
+    const { type } = issue;
     add({
       kind: 'parse',
       key: `parse:${type}`,
-      severity,
       message: message ?? (type === 'no-type' ? 'No type field' : `Excluded during parsing (${type})`),
-      source: { file, ...(line !== undefined && { line }), ...(column !== undefined && { column }) },
-      type,
+      ...issue,
     });
   }
   for (const { node, issues: problems } of result.nodeFailures) {

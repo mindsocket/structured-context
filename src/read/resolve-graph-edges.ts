@@ -4,6 +4,7 @@ import type {
   ContentLink,
   EdgeDefinition,
   NodeId,
+  ReadSpaceResult,
   ResolvedContentLink,
   ResolvedParentRef,
   SchemaMetadata,
@@ -194,12 +195,14 @@ function classifyContentLink(link: ContentLink, targetIndex: Map<string, SpaceNo
  * Enrich parsed nodes into SpaceNodes by applying type alias resolution and resolving
  * parent links using the levels of every hierarchy and the relationships from schema metadata.
  *
- * Returns the enriched nodes and any unresolved refs (broken/invalid wikilinks).
+ * Returns the enriched nodes, any unresolved refs (broken/invalid wikilinks), and the content links that
+ * reach neither a node nor one of `excludedPages`.
  */
 export function resolveGraphEdges(
   nodes: BaseNode[],
   metadata: SchemaMetadata,
-): { nodes: SpaceNode[]; unresolvedRefs: UnresolvedRef[] } {
+  excludedPages: Pick<BaseNode, 'linkTargets'>[] = [],
+): Pick<ReadSpaceResult, 'nodes' | 'unresolvedRefs' | 'unresolvedContentLinks'> {
   const hierarchies = metadata.hierarchies ?? [];
   const relationships = metadata.relationships ?? [];
   const typeAliases = metadata.typeAliases;
@@ -308,8 +311,16 @@ export function resolveGraphEdges(
   }
 
   // 3. Resolve content links — classify each raw ContentLink into a ResolvedContentLink.
+  const excludedTargets = new Set(excludedPages.flatMap((page) => page.linkTargets));
+  const unresolvedContentLinks: ReadSpaceResult['unresolvedContentLinks'] = [];
   for (const node of spaceNodes) {
     node.resolvedLinks = (node.contentLinks ?? []).map((link) => classifyContentLink(link, targetIndex));
+    const targets = new Set(
+      node.resolvedLinks
+        .filter((l) => l.location === 'internal' && !excludedTargets.has(l.target))
+        .map((l) => l.target),
+    );
+    for (const target of targets) unresolvedContentLinks.push({ nodeId: node.id, target });
   }
 
   // Deduplicate by (id, field, ref) — the same broken link may be encountered across
@@ -323,5 +334,5 @@ export function resolveGraphEdges(
       deduped.push(u);
     }
   }
-  return { nodes: spaceNodes, unresolvedRefs: deduped };
+  return { nodes: spaceNodes, unresolvedRefs: deduped, unresolvedContentLinks };
 }

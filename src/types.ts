@@ -169,9 +169,10 @@ export type SpaceNode = BaseNode & {
   resolvedLinks: ResolvedContentLink[];
 };
 
+/** A problem a plugin found reading the source, such as a file it could not make a node from. */
 export type ParseIssue = {
-  /** Source identifier of the file or item (filename or heading title). */
-  file: string;
+  /** The file (or item) and, if known, where in it. */
+  source: SourceLocation;
   /** error: prevented the file from producing nodes; warning: file was silently excluded. */
   severity: 'error' | 'warning';
   /** no-type: no type field;
@@ -180,12 +181,6 @@ export type ParseIssue = {
   type: 'no-type' | 'parse' | string;
   /** Human-readable detail. */
   message?: string;
-  /** 1-indexed line number in source file, if available. */
-  line?: number;
-  /** 1-indexed column number in source file, if available. */
-  column?: number;
-  /** Link targets of an excluded file. A link to one resolves without a node, since this issue says why there is none. */
-  linkTargets?: string[];
 };
 
 /** Rule categories for organizing executable validation rules */
@@ -258,6 +253,8 @@ export type ReadSpaceResult = {
   source: string;
   /** Broken/invalid wikilink refs collected during graph edge resolution. */
   unresolvedRefs: UnresolvedRef[];
+  /** Content links that reach neither a node nor an excluded page. */
+  unresolvedContentLinks: Array<{ nodeId: NodeId; target: string }>;
 };
 
 export type SpaceContext = {
@@ -309,7 +306,7 @@ type IssueBase<K extends ValidationIssueKind> = {
 /** One finding of a validation run. `kind` also selects the fields the issue carries. */
 export type ValidationIssue =
   /** A file that produced no nodes; `type` is the plugin's reason, such as `no-type` or `parse`. */
-  | (IssueBase<'parse'> & { source: SourceLocation; type: ParseIssue['type'] })
+  | (IssueBase<'parse'> & Pick<ParseIssue, 'source' | 'type'>)
   /** A node that failed its type or its schema, one issue per field problem. */
   | (IssueBase<'schema'> & { nodeId: NodeId })
   /** An id used by more than one node; `sources` lists where each is defined. */

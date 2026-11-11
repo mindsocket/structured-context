@@ -117,9 +117,9 @@ describe('readSpaceOnAPage - on-a-page-valid.md (space_on_a_page)', () => {
     it('records one terminated warning for the file, at Archived Vision', () => {
       const issues = parseIssues.filter((i) => i.type === 'terminated');
       expect(issues).toHaveLength(1);
-      expect(issues[0]?.file).toBe('on-a-page-valid.md');
+      expect(issues[0]?.source.file).toBe('on-a-page-valid.md');
       expect(issues[0]?.severity).toBe('warning');
-      expect(issues[0]?.line).toBe(38);
+      expect(issues[0]?.source.line).toBe(38);
       expect(issues[0]?.message).toContain('"Archived Vision"');
     });
 

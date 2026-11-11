@@ -153,11 +153,11 @@ describe('validation', () => {
       readResult: await (async () => {
         const read = await readSpaceDirectory(makePluginContext(DIR));
         const page = read.nodes.find((n) => n.id === 'alpha/Overview.md')!;
-        const { nodes, unresolvedRefs } = resolveGraphEdges(
+        const { nodes, unresolvedRefs, unresolvedContentLinks } = resolveGraphEdges(
           [...read.nodes, { ...page, id: page.id as NodeId }],
           metadata,
         );
-        return { nodes, parseIssues: [], diagnostics: {}, source: 'test', unresolvedRefs };
+        return { nodes, parseIssues: [], diagnostics: {}, source: 'test', unresolvedRefs, unresolvedContentLinks };
       })(),
     });
     expect(ofKind(result.issues, 'duplicate').map((d) => d.nodeId as string)).toEqual(['alpha/Overview.md']);

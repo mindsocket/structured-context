@@ -36,6 +36,8 @@ export type ParseResult = {
   nodes: BaseNode[];
   /** Issues encountered while parsing files — excluded files with reason and severity. */
   parseIssues: ParseIssue[];
+  /** Pages read but not made nodes, such as files without a type. Content links to them resolve. */
+  excludedPages?: Array<Required<Pick<BaseNode, 'source' | 'linkTargets'>>>;
   /** Plugin diagnostics: keyed scalar or list values. */
   diagnostics: Record<string, number | string | string[]>;
 };

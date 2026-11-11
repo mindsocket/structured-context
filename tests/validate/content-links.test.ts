@@ -33,12 +33,13 @@ describe('unresolved content links', () => {
       '---',
       'type: item',
       '---',
-      '[[B]] [[Untyped]] [[notes/Untyped#Heading]] [[No frontmatter]] [[Missing]] [gone](gone.md)',
+      '[[B]] [[Untyped]] [[notes/Untyped#Heading]] [[No frontmatter]] [[Overview]] [[Missing]] [gone](gone.md)',
     ].join('\n'),
   );
   writeFileSync(join(space, 'B.md'), '---\ntype: item\n---\n');
   writeFileSync(join(space, 'notes/Untyped.md'), '---\ntags: [x]\n---\n');
   writeFileSync(join(space, 'No frontmatter.md'), 'Just text.\n');
+  writeFileSync(join(space, 'Overview.md'), '---\ntype: space_on_a_page\n---\n');
   const config: Config = { spaces: [{ name: 'links', path: space, schema: schemaPath }] };
 
   it('resolves links to files the space read but excluded, and reports missing targets', async () => {

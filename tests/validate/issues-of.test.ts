@@ -35,7 +35,7 @@ describe('issuesOf', () => {
         ],
         unresolvedContentLinks: [{ nodeId: id('b.md'), target: 'Missing' }],
       },
-      [{ file: 'x.md', severity: 'warning', type: 'no-type', line: 1 }],
+      [{ source: { file: 'x.md', line: 1 }, severity: 'warning', type: 'no-type' }],
       {},
     );
 
