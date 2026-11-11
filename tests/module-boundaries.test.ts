@@ -18,7 +18,6 @@ const LAYERS: string[][] = [
  * The test fails when an entry no longer applies, so remove it with its fix.
  */
 const EXCEPTIONS: Record<string, string> = {
-  'validate -> plugins/markdown/util': 'the markdown plugin reports the link targets of files it excludes',
   'schema/gating -> judge/judge-node': 'rule evaluation moves from schema/ into a validate/ area',
   'schema/validate-rules -> judge/judge-node': 'rule evaluation moves from schema/ into a validate/ area',
   'config/index -> judge/types': 'the model provider APIs move to a concept the judge and config share',
