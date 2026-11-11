@@ -1,8 +1,8 @@
 import { judgeNodes } from '../judge/judge-node';
 import type { TrimReport } from '../judge/trim';
-import type { JudgeTypeDefinition, SemanticJudgeProvider } from '../judge/types';
+import type { SemanticJudgeProvider } from '../judge/types';
 import { buildSpaceGraph } from '../space-graph';
-import type { NodeId, Rule, RuleViolation, SpaceNode } from '../types';
+import type { NodeId, Rule, RuleViolation, SpaceContext, SpaceNode } from '../types';
 import {
   buildEvalContext,
   evaluateRuleExpression,
@@ -22,8 +22,8 @@ export interface ValidateRulesOptions {
   /** Set of node ids that have already failed upstream structural checks. */
   gatedNodeIds?: Set<NodeId>;
   trimReport?: TrimReport;
-  /** What the schema says about each type, sent to the judge with the nodes of that type. */
-  typeDefinitions?: ReadonlyMap<string, JudgeTypeDefinition>;
+  /** The space's schema. The judge gets its descriptions of the node types it evaluates. */
+  schema?: Pick<SpaceContext, 'schema' | 'schemaRefRegistry'>;
 }
 
 /**
@@ -117,7 +117,7 @@ export async function validateRules(
       pending,
       buildSpaceGraph(nodes, undefined),
       options.trimReport,
-      options.typeDefinitions,
+      options.schema,
     );
     pending.forEach(({ node, found }, i) => {
       for (const j of judged[i] ?? []) {
