@@ -95,9 +95,9 @@ Each module owns one concern.
 
 Dependencies point one way: the CLI calls the run, the run calls rule evaluation, and rule evaluation calls the judge. A caller passes what it has, and the module that owns a concern derives what it needs. For example, `validate.ts` builds the run's judge from config and passes the schema to rule evaluation. Only `judge/` builds model input from them.
 
-Only plugins know a source format, such as markdown paths or frontmatter. The rest of core works with what a plugin's parse result reports.
+Only plugins know a source format, such as markdown paths or frontmatter. The rest of core works with what a plugin's parse result reports, and reaches a built-in plugin only through the plugin registry.
 
-`tests/module-boundaries.test.ts` checks these import directions. `tests/space-graph-data.test.ts` checks that `browser.ts` bundles without Node built-ins.
+`tests/module-boundaries.test.ts` holds the layer order and fails on an import that points up a layer, an import into a built-in plugin from outside `plugins/`, or a top-level module with no layer. It cannot see a module that builds another's data without importing it, so that stays a review check. `tests/space-graph-data.test.ts` checks that `browser.ts` bundles without Node built-ins.
 
 ---
 
