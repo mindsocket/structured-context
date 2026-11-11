@@ -270,16 +270,6 @@ export function findDuplicateIds(nodes: SpaceNode[]): Extract<ValidationIssue, {
   return issues;
 }
 
-/** The outcome of validating a set of nodes: every finding is an issue; the counters summarise the set. */
-export interface SpaceValidationResult {
-  issues: ValidationIssue[];
-  validCount: number;
-  /** Hierarchy nodes without a parent: informational, not issues. */
-  orphans: SpaceNode[];
-  /** Semantic rule input that had content trimmed to fit the per-node input cap. */
-  contextTrimmed: ValidationResult['contextTrimmed'];
-}
-
 /**
  * The one validation pipeline: type and schema checks, duplicate titles, reference and hierarchy
  * checks, cascade-gated rules, and unresolved content links. Returns every entry; `validateSpace`
@@ -291,7 +281,7 @@ export async function validateNodes(
   nodes: SpaceNode[],
   read: Pick<ReadSpaceResult, 'unresolvedRefs' | 'unresolvedContentLinks'>,
   options: ValidationOptions = {},
-): Promise<SpaceValidationResult> {
+): Promise<ValidationResult> {
   const { unresolvedRefs } = read;
   const { schema, schemaRefRegistry, schemaValidator } = context;
   const metadata = schema.metadata;
@@ -403,8 +393,9 @@ export async function validateNodes(
   return {
     issues: collected.issues,
     validCount,
-    orphans,
+    orphans: orphans.map((node) => ({ nodeId: node.id, title: node.title })),
     contextTrimmed,
+    skippedByDepth: [],
   };
 }
 
@@ -441,15 +432,10 @@ export async function validateSpace(
   }
 
   const result = await validateNodes(context, nodes, readResult, runOptions);
-
-  return {
-    issues: [...parseIssuesOf(readResult.parseIssues), ...result.issues],
-    validCount: result.validCount,
-    orphans: result.orphans.map((node) => ({ nodeId: node.id, title: node.title })),
-    contextTrimmed: result.contextTrimmed,
-    skippedByDepth,
-    depthLimit: options.depth,
-  };
+  result.issues.unshift(...parseIssuesOf(readResult.parseIssues));
+  result.skippedByDepth = skippedByDepth;
+  result.depthLimit = options.depth;
+  return result;
 }
 
 /** The issues for the files a plugin excluded or could not parse. */
