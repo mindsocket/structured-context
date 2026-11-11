@@ -4,7 +4,7 @@ import { ruleSemantic } from '../schema/rule-severity';
 import { mergeVariantProperties } from '../schema/schema-refs';
 import type { SpaceGraph } from '../space-graph';
 import type { NodeId, Rule, SpaceContext, SpaceNode } from '../types';
-import type { RelatedNode, SemanticJudgeInput } from './types';
+import type { RelatedNode, SchemaDescriptions, SemanticJudgeInput } from './types';
 
 export type SemanticScope = Exclude<(typeof SEMANTIC_SCOPES)[number], 'branch'>;
 export type ContentMode = 'none' | 'nodeOnly' | 'fullScope';
@@ -107,8 +107,6 @@ export function relatedNodes(graph: SpaceGraph, node: SpaceNode, context: RuleCo
   if (scope.has('descendants')) reach(childrenOf, 'descendant');
   return [...found.values()];
 }
-
-type SchemaDescriptions = NonNullable<SemanticJudgeInput['schemaDescriptions']>;
 
 /** Fields every node has, which the prompt already explains. */
 const SELF_EXPLAINED_FIELDS = new Set(['type', 'title', 'content']);

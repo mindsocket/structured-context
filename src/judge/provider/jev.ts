@@ -2,6 +2,7 @@ import { estimateTokens } from '../trim';
 import type {
   HydratedProvider,
   RelatedNode,
+  SchemaDescriptions,
   SemanticJudgeInput,
   SemanticJudgeProvider,
   SemanticJudgeResult,
@@ -108,7 +109,7 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
     results: Array<Record<string, SemanticJudgeResult>>,
   ): Promise<void> {
     const nodes: Record<string, unknown> = {};
-    const descriptions: SemanticJudgeInput['schemaDescriptions'] = {};
+    const descriptions: SchemaDescriptions = {};
     const questions: Record<string, unknown> = {};
     requestInputs.forEach((inputIndex, k) => {
       const input = inputs[inputIndex]!;
@@ -163,7 +164,7 @@ function nodeState(node: SemanticJudgeInput['node'], related: RelatedNode[] = []
 }
 
 /** The state with the schema's descriptions of the node types beside the nodes, when there are any. */
-function withDescriptions(state: Record<string, unknown>, descriptions: SemanticJudgeInput['schemaDescriptions']) {
+function withDescriptions(state: Record<string, unknown>, descriptions: SchemaDescriptions | undefined) {
   return descriptions && Object.keys(descriptions).length > 0 ? { ...state, schemaDescriptions: descriptions } : state;
 }
 

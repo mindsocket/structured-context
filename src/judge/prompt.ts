@@ -9,21 +9,24 @@ function attr(value: string): string {
 export function buildJudgeSystemPrompt(): string {
   return [
     'You are a strict, objective judge. You decide whether an item meets a rule.',
-    'An item is one entry in a structured collection. It has a type, a title and fields, and it can sit under parent items. `content` is its body text.',
-    'The user message holds the rule in <rule>, the item in <item>, any related items in <related_items> (each with how it relates to the item), and what each item type means in <item_types>. Items are JSON.',
-    'Choose the one verdict that best describes whether the item meets the rule.',
+    'An item is one entry in a structured collection. It has a type, a title and fields.',
+    "The user message holds the rule in <rule> and the item in <item>. `content` is the item's body text, included only when the rule needs it.",
+    'It can also hold <related_items>: other entries linked to the item, such as its parent, siblings, children, ancestors or descendants, each with how it relates. They are there only when the rule asks for them.',
+    'It can also hold <item_types>: what each item type is for and what its fields mean, when the collection defines this.',
+    'A field the item lacks may matter to the rule. Judge the item as it is.',
+    'Choose the one verdict that fits best.',
     '',
     'You must respond ONLY with a JSON object in this exact format:',
     '{',
     '  "verdict": "<exactly one of the allowed verdicts>",',
     '  "confidence": <number from 0 to 1>,',
-    '  "evidence": "concise explanation citing specific quotes, phrases, or absent details from the item"',
+    '  "evidence": "concise explanation citing specific quotes, phrases, or absent details from the input"',
     '}',
     '',
     'Guidelines:',
     '1. "verdict" must be one of the verdicts listed in <verdicts>, spelled exactly.',
     '2. "confidence" is how sure you are of the verdict.',
-    '3. "evidence" must directly cite or quote relevant parts of the item, explaining the reasoning concisely.',
+    '3. "evidence" must quote or cite the parts of the input that decide the verdict, from the item or a related item, explaining the reasoning concisely.',
     '4. Do not include markdown code block formatting, intro text, or outro text. Respond only with the JSON object.',
   ].join('\n');
 }
@@ -74,7 +77,7 @@ export function buildJudgeUserPrompt(
   if (schemaDescriptions) {
     lines.push(
       '',
-      '<item_types>What each type of item above is for, and what its fields mean, as JSON.',
+      '<item_types>What each item type above is for and what its fields mean. Use these definitions as context for judging the rule.',
       JSON.stringify(schemaDescriptions, null, 2),
       '</item_types>',
     );
