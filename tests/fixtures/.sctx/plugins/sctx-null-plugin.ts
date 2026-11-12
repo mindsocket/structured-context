@@ -1,4 +1,4 @@
-import type { StructuredContextPlugin } from '../../../src/plugins/util';
+import type { StructuredContextPlugin } from '../../../../src/plugins/util';
 
 /** A plugin that always returns null (never handles any space). */
 const nullPlugin: StructuredContextPlugin = {

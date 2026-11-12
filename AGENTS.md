@@ -14,7 +14,7 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 - see `package.json` 
 - Releases go through the `/release` skill. Its tag push runs `.github/workflows/release.yml`, which publishes to npm.
 
-Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or the nearest `.sctx.json` walking up from the working directory
+Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or the nearest `.sctx.json` or `.sctx/config.json` walking up from the working directory. Relative paths resolve from the config root, and local plugins, schemas and map views sit in `.sctx/` (`src/config/layout.ts`)
 
 The lefthook pre-commit hook syncs the plugin version (below), then runs biome (`--write`, re-staged) and the typecheck.
 

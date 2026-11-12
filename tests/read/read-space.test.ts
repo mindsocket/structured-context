@@ -7,7 +7,7 @@ import { makeSpaceContext } from '../helpers/context';
 
 const VALID_DIR = join(import.meta.dir, '../fixtures/general/valid-ost');
 const VALID_PAGE = join(import.meta.dir, '../fixtures/general/on-a-page-valid.md');
-// Config written here so configDir = tests/fixtures/, resolving plugins from tests/fixtures/plugins/
+// Config written here so configDir = tests/fixtures/, resolving plugins from tests/fixtures/.sctx/plugins/
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
 const TMP_CONFIG = join(FIXTURES_DIR, '_tmp-orchestrate-config.json');
 

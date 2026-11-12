@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
 import type { Config, SpaceConfig } from '../config';
+import { resourceDir } from '../config/layout';
 import { PLUGIN_PREFIX as _PLUGIN_PREFIX } from '../constants';
 import type { PluginSchemaSource } from '../schema/schema';
 import type { SpaceGraph } from '../space-graph';
@@ -119,15 +120,16 @@ export type StructuredContextPlugin = {
 /**
  * Synchronously locate the root directory of an external plugin.
  * Resolution order:
- * 1. Config-adjacent: {configDir}/plugins/{name} or {configDir}/plugins/sctx-{name}
+ * 1. The config root's plugins folder: <plugins>/{name} or <plugins>/sctx-{name}
  * 2. Node module: resolve from configDir using standard module resolution
  */
 export function resolvePluginDir(pluginName: string, configDir: string): string | undefined {
   const normalized = normalizePluginName(pluginName);
   const short = shortenPluginName(pluginName);
 
-  for (const candidate of [normalized, short]) {
-    const localDir = resolve(configDir, CONFIG_PLUGINS_DIR, candidate);
+  const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
+  for (const candidate of pluginsDir ? [normalized, short] : []) {
+    const localDir = resolve(pluginsDir!, candidate);
     if (existsSync(localDir)) {
       try {
         if (statSync(localDir).isDirectory()) {
@@ -163,7 +165,7 @@ export function resolvePluginDir(pluginName: string, configDir: string): string 
  * Convention:
  * 1. package.json "sctx": { "schemas": "..." }
  * 2. Convention: <pluginDir>/schemas
- * 3. Fallback for test fixtures: {configDir}/plugins/schemas
+ * 3. Fallback for test fixtures: <plugins>/schemas
  */
 export function resolvePluginSchemasDir(pluginName: string, configDir: string): string | undefined {
   const dir = resolvePluginDir(pluginName, configDir);
@@ -193,9 +195,10 @@ export function resolvePluginSchemasDir(pluginName: string, configDir: string): 
     }
   }
 
-  // 3. Check config-adjacent plugins/schemas as fallback (e.g. test fixtures)
-  const fallbackSchemas = resolve(configDir, CONFIG_PLUGINS_DIR, 'schemas');
-  if (existsSync(fallbackSchemas)) {
+  // 3. Check the plugins folder's schemas as fallback (e.g. test fixtures)
+  const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
+  const fallbackSchemas = pluginsDir && resolve(pluginsDir, 'schemas');
+  if (fallbackSchemas && existsSync(fallbackSchemas)) {
     try {
       if (statSync(fallbackSchemas).isDirectory()) {
         return fallbackSchemas;

@@ -10,12 +10,26 @@ structured-context uses the first config file it finds, in this order:
 
 1. `--config <path>`
 2. `$SCTX_CONFIG`
-3. The nearest `.sctx.json`, looking in the working directory and then each parent folder
+3. The nearest `.sctx.json` or `.sctx/config.json`, looking in the working directory and then each parent folder
 4. `~/.config/structured-context/config.json` (or `$XDG_CONFIG_HOME/structured-context/config.json`)
 
-It is recommended to keep a `.sctx.json` at the base of the notes it describes (for example the root of an Obsidian vault), or to use the global config. The CLI and agent sessions look in parent folders only, so run commands from inside the folder that holds the config. To use the spaces from another config file too, list it in `includeSpacesFrom`.
+It is recommended to keep a local config at the base of the notes it describes (for example the root of an Obsidian vault), or to use the global config. A local config is either `.sctx.json` or `config.json` inside a `.sctx/` folder. A folder can't hold both. The CLI and agent sessions look in parent folders only, so run commands from inside the folder that holds the config. To use the spaces from another config file too, list it in `includeSpacesFrom`.
 
-Paths in a config file are relative to the folder that holds that file. In a `.sctx.json` at a vault root, `"path": "."` is the whole vault and `"path": "notes"` is one folder.
+The **config root** is the folder that holds `.sctx.json` or `.sctx/`, or the global config's folder. Relative paths in a config file resolve from its root. In a vault-root config, `"path": "."` is the whole vault and `"path": "notes"` is one folder, whichever of the two file names it uses.
+
+### Resources folder
+
+Files that structured-context reads besides the config go in the root's `.sctx/` folder, one subfolder each:
+
+| Folder | Holds |
+|---|---|
+| `.sctx/plugins/` | Local [plugins](#plugins) |
+| `.sctx/schemas/` | Custom schemas, found by file name (`"schema": "my_wiki.json"`) |
+| `.sctx/map-views/` | Map view definitions, read by `structured-context-map-views` |
+
+`.sctx/` is a hidden folder, so editors such as Obsidian don't show or index it. The global config keeps these subfolders directly beside `config.json`, in `~/.config/structured-context/`.
+
+`plugins/` and `map-views/` folders directly in a local root still work, with a warning. They stop working in 1.0. Move them into `.sctx/`.
 
 `sctx spaces` shows which config file is used and reports problems with it. `sctx spaces --json` returns the same information for tools and hooks.
 
@@ -27,7 +41,7 @@ sctx spaces add wiki notes --schema knowledge_wiki.json
 
 This adds the space to the config file found from the working directory, or to the one named with `--config`. When no `.sctx.json` is found, or only the global config exists, pass `--config <folder>/.sctx.json` (creates the file) or `--global`. If the config file has comments or trailing commas, the command prints the entry to add by hand.
 
-Custom schemas can sit anywhere. Reference them by relative path, for example `./.sctx/schemas/my_wiki.json`; `.sctx/schemas/` is the suggested folder.
+Custom schemas can sit anywhere. A schema in `.sctx/schemas/` is found by its file name; reference others by relative path, for example `./schemas/my_wiki.json`.
 
 See `config.example.json` for the full structure.
 
@@ -78,7 +92,7 @@ Use `plugins` to load parse plugins that read spaces from non-markdown sources. 
 }
 ```
 
-All plugin names must start with `sctx-` (the prefix is optional in config and normalised on load). The special name `markdown` refers to the built-in markdown plugin. External plugins are resolved in order: config-adjacent (`{configDir}/plugins/{name}`), then npm. Each plugin must export a `configSchema` JSON Schema; config is validated against it on load. Fields annotated `format: 'path'` in a plugin's `configSchema` are resolved relative to the config file directory.
+All plugin names must start with `sctx-` (the prefix is optional in config and normalised on load). The special name `markdown` refers to the built-in markdown plugin. External plugins are resolved in order: the root's plugins folder (`.sctx/plugins/{name}`, see [Resources folder](#resources-folder)), then npm. Each plugin must export a `configSchema` JSON Schema; config is validated against it on load. Fields annotated `format: 'path'` in a plugin's `configSchema` are resolved relative to the config root.
 
 Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` directory (or `"sctx": { "schemas": "..." }` in `package.json`). If a space specifies a plugin-prefixed schema (e.g. `"sctx-wardley-mapping/wardley_map.json"`), schemas are resolved statically without executing plugin code, and the plugin's code hooks are loaded when parsing or rendering.
 

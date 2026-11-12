@@ -1,8 +1,8 @@
 import { existsSync, readdirSync } from 'node:fs';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
 import Ajv2020 from 'ajv/dist/2020';
-import { getConfigSourceFiles } from '../config';
+import { configRoot, getConfigSourceFiles, resourceDir } from '../config';
 import { builtinPlugins } from '.';
 import { isBuiltinPluginName } from './builtin-names';
 import {
@@ -43,11 +43,13 @@ function resolveConfigPaths(
 
 /**
  * Resolve an external plugin by canonical name.
- * Resolution order: config-adjacent ({configDir}/plugins/{name}) → npm (import(name)).
+ * Resolution order: the config root's plugins folder → npm (import(name)).
  */
 async function resolveExternalPlugin(name: string, configDir: string): Promise<StructuredContextPlugin> {
-  const localPath = resolve(join(configDir, CONFIG_PLUGINS_DIR, name));
-  const module = existsSync(localPath) || existsSync(`${localPath}.ts`) ? await import(localPath) : await import(name);
+  const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
+  const localPath = pluginsDir && resolve(join(pluginsDir, name));
+  const local = localPath && (existsSync(localPath) || existsSync(`${localPath}.ts`));
+  const module = local ? await import(localPath) : await import(name);
   const plugin = (module as { default?: StructuredContextPlugin }).default ?? (module as StructuredContextPlugin);
   if (!plugin || typeof plugin.name !== 'string') {
     throw new Error(`Plugin "${name}" must export a StructuredContextPlugin as its default export`);
@@ -56,20 +58,19 @@ async function resolveExternalPlugin(name: string, configDir: string): Promise<S
 }
 
 /**
- * Discover all available plugins: built-ins first, then any config-adjacent plugins found
- * in {configDir}/plugins/ across all loaded config files. Does not load npm plugins
+ * Discover all available plugins: built-ins first, then any found in the plugins folder of
+ * each loaded config file's root. Does not load npm plugins
  * (those are only declared in space configs).
  */
 export async function discoverPlugins(): Promise<StructuredContextPlugin[]> {
-  // Convert the Set of files into a Set of dirs
-  const configDirs = [...new Set(Array.from(getConfigSourceFiles()).map((f) => dirname(f)))];
+  const configDirs = [...new Set(Array.from(getConfigSourceFiles()).map((f) => configRoot(f)))];
 
   const plugins: StructuredContextPlugin[] = [...builtinPlugins];
   const seenNames = new Set(builtinPlugins.map((p) => p.name));
 
   for (const configDir of configDirs) {
-    const pluginsDir = join(configDir, CONFIG_PLUGINS_DIR);
-    if (existsSync(pluginsDir)) {
+    const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
+    if (pluginsDir) {
       const entries = readdirSync(pluginsDir).filter((e) => e.startsWith(PLUGIN_PREFIX));
       for (const entry of entries) {
         if (!seenNames.has(entry)) {

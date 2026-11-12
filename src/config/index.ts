@@ -1,9 +1,9 @@
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020';
 import JSON5 from 'json5';
-import { ENV_CONFIG_VAR, LOCAL_CONFIG_FILE, XDG_CONFIG_DIR } from '../constants';
+import { ENV_CONFIG_VAR, LOCAL_CONFIG_FILE, RESOURCES_DIR } from '../constants';
 import { SctxError } from '../errors';
 import { type JudgeConfig, MODEL_PROVIDER_APIS, type ModelProviderConfig } from '../judge/types';
 import {
@@ -13,6 +13,9 @@ import {
   shortenPluginName,
 } from '../plugins/util';
 import { bundledSchemasDir } from '../schema/schema';
+import { configFileIn, configRoot, globalConfigPath, resourceDir, SCHEMAS_RESOURCE } from './layout';
+
+export { configRoot, globalConfigPath, resourceDir } from './layout';
 
 const MODEL_PROVIDER_SCHEMA = {
   type: 'object',
@@ -82,8 +85,8 @@ export type SpaceConfig = {
   /** Model provider for this space's semantic rules; overrides the top-level `semantic`. */
   semantic?: JudgeConfig;
   /**
-   * Directory of the config file that defined this space, used to anchor relative plugin-config
-   * paths. Set by loadConfig; absent for a hand-assembled Config, whose callers must pass an
+   * Root of the config file that defined this space (see `configRoot`), used to anchor relative
+   * plugin-config paths and find plugins. Set by loadConfig; absent for a hand-assembled Config, whose callers must pass an
    * explicit configDir to createSpaceContext. Not persisted by updateSpaceField.
    */
   sourceDir?: string;
@@ -119,19 +122,21 @@ export function getConfigSourceFiles(): Set<string> {
 /** How the config file was found. `none` means nothing exists and `path` is where the global file would go. */
 export type ConfigSource = 'override' | 'env' | 'local' | 'global' | 'none';
 
-export type ResolvedConfigPath = { path: string; source: ConfigSource };
+export type ResolvedConfigPath = {
+  path: string;
+  source: ConfigSource;
+  /** The folder the config's relative paths resolve from, and where its resources are found (see `configRoot`). */
+  root: string;
+};
 
-/** Path of the global config file, whether or not it exists. */
-export function globalConfigPath(): string {
-  const xdgBase = process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config');
-  return join(xdgBase, XDG_CONFIG_DIR, 'config.json');
-}
+/** How messages name a local config file. */
+export const LOCAL_CONFIG_DESCRIPTION = `${LOCAL_CONFIG_FILE} or ${RESOURCES_DIR}/config.json`;
 
 function findLocalConfig(startDir: string): string | undefined {
   let dir = resolve(startDir);
   for (;;) {
-    const candidate = join(dir, LOCAL_CONFIG_FILE);
-    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
+    const found = configFileIn(dir);
+    if (found) return found;
     const parent = dirname(dir);
     if (parent === dir) return undefined;
     dir = parent;
@@ -140,15 +145,16 @@ function findLocalConfig(startDir: string): string | undefined {
 
 /**
  * Find the config file. Precedence: explicit override (`--config`), `$SCTX_CONFIG`, the nearest
- * `.sctx.json` walking up from `startDir` (default: the working directory), then the global file.
+ * `.sctx.json` or `.sctx/config.json` walking up from `startDir` (default: the working directory), then the global file.
  */
 export function resolveConfigPath(startDir: string = process.cwd()): ResolvedConfigPath {
-  if (_configPathOverride) return { path: _configPathOverride, source: 'override' };
-  if (process.env[ENV_CONFIG_VAR]) return { path: process.env[ENV_CONFIG_VAR]!, source: 'env' };
+  const found = (path: string, source: ConfigSource) => ({ path, source, root: configRoot(path) });
+  if (_configPathOverride) return found(_configPathOverride, 'override');
+  if (process.env[ENV_CONFIG_VAR]) return found(process.env[ENV_CONFIG_VAR]!, 'env');
   const local = findLocalConfig(startDir);
-  if (local) return { path: local, source: 'local' };
+  if (local) return found(local, 'local');
   const global = globalConfigPath();
-  return { path: global, source: existsSync(global) ? 'global' : 'none' };
+  return found(global, existsSync(global) ? 'global' : 'none');
 }
 
 export function configPath(startDir?: string): string {
@@ -231,7 +237,7 @@ function loadConfigFile(startDir: string | undefined, warnIfMissing: boolean): C
     if (warnIfMissing) {
       const where =
         source === 'none'
-          ? `no ${LOCAL_CONFIG_FILE} found from ${resolve(startDir ?? process.cwd())} upward, and none at ${path}`
+          ? `no ${LOCAL_CONFIG_DESCRIPTION} found from ${resolve(startDir ?? process.cwd())} upward, and none at ${path}`
           : path;
       console.warn(`E_CONFIG_NOT_FOUND: Config file not found (${where})`);
     }
@@ -240,7 +246,7 @@ function loadConfigFile(startDir: string | undefined, warnIfMissing: boolean): C
   const config = _loadConfig(path);
   _spaceSourceFiles.clear();
   // Track which spaces come from the main config file
-  const mainSourceDir = dirname(resolve(path));
+  const mainSourceDir = configRoot(path);
   const ownNames = new Set(config.spaces.map((s) => s.name));
   for (const space of config.spaces) {
     _spaceSourceFiles.set(space.name, path);
@@ -252,15 +258,15 @@ function loadConfigFile(startDir: string | undefined, warnIfMissing: boolean): C
     for (const includePath of config.includeSpacesFrom) {
       // Resolve relative to the main config file
       const expanded = expandHome(includePath);
-      const resolvedIncludePath = isAbsolute(expanded) ? expanded : resolve(dirname(path), expanded);
+      const resolvedIncludePath = isAbsolute(expanded) ? expanded : resolve(mainSourceDir, expanded);
       if (!existsSync(resolvedIncludePath)) {
         throw new SctxError(
           'E_INCLUDE_NOT_FOUND',
           `Config ${path} includes ${resolvedIncludePath}, which does not exist`,
         );
       }
-      const includedConfig = resolveRelativePaths(_loadConfig(resolvedIncludePath), dirname(resolvedIncludePath));
-      const includeSourceDir = dirname(resolvedIncludePath);
+      const includeSourceDir = configRoot(resolvedIncludePath);
+      const includedConfig = resolveRelativePaths(_loadConfig(resolvedIncludePath), includeSourceDir);
       for (const space of includedConfig.spaces) {
         if (ownNames.has(space.name)) continue;
         space.sourceDir = includeSourceDir;
@@ -271,7 +277,7 @@ function loadConfigFile(startDir: string | undefined, warnIfMissing: boolean): C
       }
     }
   }
-  return resolveRelativePaths(config, dirname(resolve(path)));
+  return resolveRelativePaths(config, mainSourceDir);
 }
 
 /** Get the full space config entry by name. Throws if not found. */
@@ -293,6 +299,7 @@ export function getSpaceConfig(name: string, config: Config): SpaceConfig {
  *    resolved against the matching loaded plugin's schemasDir.
  * 4. Simple filename without directory (e.g. "wardley_map.json" or "strategy_general.json"):
  *    - configDir/filename if it exists
+ *    - <schemas resource folder>/filename if it exists
  *    - plugin.schemasDir/filename for any loaded plugin with schemasDir
  *    - bundledSchemasDir/filename if it exists
  *    - fallback: configDir/filename
@@ -344,10 +351,14 @@ export function resolveSchemaPath(
   }
 
   // Simple filename without directory:
-  // 1. configDir/filename
+  // 1. configDir/filename, then the config root's schemas folder
   const localCandidate = resolve(configDir, rawSchema);
   if (existsSync(localCandidate)) {
     return localCandidate;
+  }
+  const schemasDir = resourceDir(configDir, SCHEMAS_RESOURCE);
+  if (schemasDir && existsSync(join(schemasDir, rawSchema))) {
+    return join(schemasDir, rawSchema);
   }
 
   // 2. Plugin schemas from declared space / config plugins

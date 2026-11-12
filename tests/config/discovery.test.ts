@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { loadConfig, resolveConfigPath, setConfigPath } from '../../src/config';
 import { LOCAL_CONFIG_FILE } from '../../src/constants';
 import { useConfigEnv, writeJson as write } from '../helpers/config-env';
@@ -12,7 +12,7 @@ describe('resolveConfigPath', () => {
 
     const resolved = resolveConfigPath(join(env.vault, 'notes', 'deep'));
 
-    expect(resolved).toEqual({ path: join(env.vault, LOCAL_CONFIG_FILE), source: 'local' });
+    expect(resolved).toEqual({ path: join(env.vault, LOCAL_CONFIG_FILE), source: 'local', root: env.vault });
   });
 
   it('uses the nearest of two ancestor configs without merging', () => {
@@ -30,11 +30,32 @@ describe('resolveConfigPath', () => {
   });
 
   it('falls back to the global config, then to none', () => {
-    expect(resolveConfigPath(env.vault)).toEqual({ path: env.globalFile, source: 'none' });
+    expect(resolveConfigPath(env.vault)).toMatchObject({ path: env.globalFile, source: 'none' });
 
     write(env.globalFile, { spaces: [] });
 
-    expect(resolveConfigPath(env.vault)).toEqual({ path: env.globalFile, source: 'global' });
+    expect(resolveConfigPath(env.vault)).toEqual({
+      path: env.globalFile,
+      source: 'global',
+      root: dirname(env.globalFile),
+    });
+  });
+
+  it('finds .sctx/config.json, rooted at the folder holding .sctx', () => {
+    write(join(env.vault, '.sctx', 'config.json'), { spaces: [] });
+
+    expect(resolveConfigPath(join(env.vault, 'notes'))).toEqual({
+      path: join(env.vault, '.sctx', 'config.json'),
+      source: 'local',
+      root: env.vault,
+    });
+  });
+
+  it('refuses a folder holding both .sctx.json and .sctx/config.json', () => {
+    write(join(env.vault, LOCAL_CONFIG_FILE), { spaces: [] });
+    write(join(env.vault, '.sctx', 'config.json'), { spaces: [] });
+
+    expect(() => resolveConfigPath(env.vault)).toThrow(expect.objectContaining({ code: 'E_CONFIG_AMBIGUOUS' }));
   });
 
   it('does not walk down into folders below the start', () => {
@@ -47,11 +68,15 @@ describe('resolveConfigPath', () => {
     write(join(env.vault, LOCAL_CONFIG_FILE), { spaces: [] });
     process.env.SCTX_CONFIG = join(env.root, 'env.json');
 
-    expect(resolveConfigPath(env.vault)).toEqual({ path: join(env.root, 'env.json'), source: 'env' });
+    expect(resolveConfigPath(env.vault)).toEqual({ path: join(env.root, 'env.json'), source: 'env', root: env.root });
 
     setConfigPath(join(env.root, 'flag.json'));
 
-    expect(resolveConfigPath(env.vault)).toEqual({ path: join(env.root, 'flag.json'), source: 'override' });
+    expect(resolveConfigPath(env.vault)).toEqual({
+      path: join(env.root, 'flag.json'),
+      source: 'override',
+      root: env.root,
+    });
   });
 });
 
@@ -62,6 +87,21 @@ describe('loadConfig with discovery', () => {
     const config = loadConfig({ startDir: join(env.vault, 'notes') });
 
     expect(config.spaces[0]?.path).toBe(env.vault);
+  });
+
+  it('resolves .sctx/config.json paths from the root, not from .sctx', () => {
+    write(join(env.vault, 'shared.json'), { spaces: [{ name: 'shared', path: 'shared' }] });
+    write(join(env.vault, '.sctx', 'config.json'), {
+      spaces: [{ name: 'wiki', path: '.' }],
+      includeSpacesFrom: ['shared.json'],
+    });
+
+    const config = loadConfig({ startDir: env.vault });
+
+    expect(config.spaces.map((s) => [s.path, s.sourceDir])).toEqual([
+      [env.vault, env.vault],
+      [join(env.vault, 'shared'), env.vault],
+    ]);
   });
 
   it('expands ~ in includeSpacesFrom', () => {

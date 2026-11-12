@@ -22,7 +22,7 @@
 export type { AnySchemaObject, SchemaObject, ValidateFunction } from 'ajv';
 export { type SpaceGraph, type SpaceNode, spaceGraphFrom } from './browser';
 export type { Config, SpaceConfig } from './config';
-export { loadConfig, resolveConfigPath, resolveSchema, resolveSchemaPath, setConfigPath } from './config';
+export { loadConfig, resolveConfigPath, resolveSchema, resolveSchemaPath, resourceDir, setConfigPath } from './config';
 export { addSpace } from './config/write';
 export { LOCAL_CONFIG_FILE, PLUGIN_PREFIX } from './constants';
 export { SctxError, type SctxErrorCode } from './errors';

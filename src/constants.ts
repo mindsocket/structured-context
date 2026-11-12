@@ -6,3 +6,5 @@ export const ENV_CONFIG_VAR = 'SCTX_CONFIG';
 export const SCHEMA_URI_SCHEME = CLI_NAME;
 /** Name of the config file discovered by walking up from the working directory. */
 export const LOCAL_CONFIG_FILE = '.sctx.json';
+/** Folder beside the content holding structured-context's resources (plugins, map views) and optionally its config. */
+export const RESOURCES_DIR = '.sctx';

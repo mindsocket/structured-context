@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import { type Config, loadConfigOrEmpty, resolveConfigPath, resolveSchemaPath } from '../config';
+import { basename, isAbsolute, join, resolve } from 'node:path';
+import { type Config, loadConfigOrEmpty, resolveConfigPath, resolveSchemaPath, resourceDir } from '../config';
+import { SCHEMAS_RESOURCE } from '../config/layout';
 import { PLUGIN_PREFIX } from '../constants';
 import {
   CONFIG_PLUGINS_DIR,
@@ -15,7 +16,7 @@ type SchemaListing = {
   schema: string;
   /** Absolute location or URL. Omitted for bundled schemas. */
   path?: string;
-  /** `core`, a plugin's short name, or `configured`. */
+  /** `core`, a plugin's short name, or `configured` (named by the config, or in its schemas folder). */
   source: string;
   /** Names of the spaces that use it, and `global` when the top-level `schema` does. */
   usedBy: string[];
@@ -80,7 +81,7 @@ export async function listSchemas(
   }
 
   // Relative schema references are anchored at the folder of the config that holds them
-  const fallbackDir = dirname(resolveConfigPath(options.startDir).path);
+  const fallbackDir = resolveConfigPath(options.startDir).root;
   const configDirs = [...new Set([fallbackDir, ...config.spaces.map((s) => s.sourceDir ?? fallbackDir)])];
 
   // Plugins are found the way schema references resolve them, without loading their code: those declared by a
@@ -96,8 +97,8 @@ export async function listSchemas(
     }
   }
   for (const dir of configDirs) {
-    const pluginsDir = join(dir, CONFIG_PLUGINS_DIR);
-    if (!existsSync(pluginsDir)) continue;
+    const pluginsDir = resourceDir(dir, CONFIG_PLUGINS_DIR);
+    if (!pluginsDir) continue;
     for (const entry of readdirSync(pluginsDir).filter((e) => e.startsWith(PLUGIN_PREFIX))) {
       const schemasDir = resolvePluginSchemasDir(entry, dir);
       if (schemasDir && !pluginSchemaDirs.has(shortenPluginName(entry))) {
@@ -113,6 +114,25 @@ export async function listSchemas(
           schema: `${source}/${file}`,
           path: location,
           source,
+          usedBy: [],
+          partial: file.startsWith('_'),
+          ...describeSchema(location),
+        },
+        location,
+      );
+    }
+  }
+
+  for (const dir of configDirs) {
+    const schemasDir = resourceDir(dir, SCHEMAS_RESOURCE);
+    for (const file of schemasDir ? jsonFiles(schemasDir) : []) {
+      const location = join(schemasDir!, file);
+      if (byPath.has(location)) continue;
+      add(
+        {
+          schema: file,
+          path: location,
+          source: 'configured',
           usedBy: [],
           partial: file.startsWith('_'),
           ...describeSchema(location),
