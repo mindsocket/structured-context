@@ -7,8 +7,8 @@ import { render } from '../../src/commands/render';
 import { renderMarkdownDirectory, sanitizeFilename } from '../../src/plugins/markdown/render-directory';
 import type { PluginContext } from '../../src/plugins/util';
 import { buildSpaceGraph } from '../../src/space-graph';
-import { makeHierarchy, makeLevel, makeSpaceNode } from '../../src/testing';
 import type { SpaceNode } from '../../src/types';
+import { makeHierarchy, makeLevel, makeSpaceNode } from '../helpers/builders';
 import { makePluginContext, makeSpaceContext } from '../helpers/context';
 
 describe('sanitizeFilename', () => {
