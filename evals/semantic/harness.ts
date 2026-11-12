@@ -7,15 +7,16 @@ import type { SemanticJudgeProvider, SemanticJudgeResult } from '../../src/judge
 import { resolveSemanticRule } from '../../src/judge/verdicts';
 import { resolvePluginDir } from '../../src/plugins/util';
 import { readSpace } from '../../src/read/read-space';
+import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { RESERVED_VERDICTS } from '../../src/schema/metadata-contract';
 import { createSpaceContext } from '../../src/space-context';
-import type { SpaceContext } from '../../src/types';
+import type { BaseNode, ReadSpaceResult, SpaceContext } from '../../src/types';
 import { validateNodes } from '../../src/validate';
 
 /** Core's eval spaces, for the bundled schemas. */
 export const CORE_EVALS_DIR = import.meta.dir;
 
-/** Where eval spaces live, relative to a plugin's root or a config file's directory. */
+/** Where a plugin keeps its eval spaces. */
 export const EVALS_SUBDIR = join('evals', 'semantic');
 
 /** Rule id → node id → the verdicts that count as agreeing. */
@@ -29,6 +30,8 @@ export interface EvalSpace {
   fixture: boolean;
   context: SpaceContext;
   expected: Expected;
+  /** The space's nodes, as validation reads them. */
+  read: () => Promise<Pick<ReadSpaceResult, 'nodes' | 'unresolvedRefs' | 'unresolvedContentLinks'>>;
 }
 
 /** One verdict (or error) the judge gave for a node and rule. */
@@ -46,17 +49,11 @@ export interface EvalSource {
 }
 
 /**
- * Find a source: `core`; `config` (an `evals/semantic/` directory beside each loaded config file); a plugin name
- * (its `evals/semantic/`); or a path to a directory of eval spaces. A plugin's and a config's schema names
- * resolve as they would in that config.
+ * Find a source: `core`, a plugin name (its `evals/semantic/`), or a path to a directory of eval spaces. A
+ * plugin's schema names resolve as they would in the config that finds the plugin.
  */
 export function resolveEvalSources(source: string, configDirs: string[]): EvalSource[] {
   if (source === 'core') return [{ label: 'core', dir: CORE_EVALS_DIR, configDir: CORE_EVALS_DIR }];
-  if (source === 'config') {
-    return configDirs
-      .map((configDir) => ({ label: 'config', dir: join(configDir, EVALS_SUBDIR), configDir }))
-      .filter(({ dir }) => existsSync(dir));
-  }
   if (source.includes('/') || source.includes('\\') || source.startsWith('.')) {
     const dir = resolve(source);
     if (!existsSync(dir)) throw new Error(`Eval source "${source}": no directory at ${dir}`);
@@ -70,13 +67,13 @@ export function resolveEvalSources(source: string, configDirs: string[]): EvalSo
       return [{ label: source, dir, configDir }];
     }
   }
-  throw new Error(`Eval source "${source}" is not core, config, a path, or a plugin found from the config.`);
+  throw new Error(`Eval source "${source}" is not core, a path, or a plugin found from the config.`);
 }
 
 /**
  * An eval space's `eval.json5`. A fixture eval space names a `schema` (and optional `plugins`), as a space config
- * does, and keeps its nodes in `space/` beside the file. An eval space on a configured space names the `space`
- * instead, and labels its nodes.
+ * does, and keeps its nodes in `nodes.jsonl` beside the file, one parsed node per line. An eval space on a
+ * configured space names the `space` instead, and labels some of its nodes.
  */
 type EvalFile = Pick<SpaceConfig, 'schema' | 'plugins'> & {
   space?: string;
@@ -95,7 +92,7 @@ export function loadEvalSpaces(sources: EvalSource[], config: Config): EvalSpace
         const dir = join(source.dir, dirName);
         const file = JSON5.parse(readFileSync(join(dir, 'eval.json5'), 'utf8')) as EvalFile;
         if ((file.space === undefined) === (file.schema === undefined)) {
-          throw new Error(`Eval space ${name}: eval.json5 needs either "schema" (with a space/ directory) or "space".`);
+          throw new Error(`Eval space ${name}: eval.json5 needs either "schema" (with nodes.jsonl) or "space".`);
         }
         let context: SpaceContext;
         try {
@@ -104,7 +101,7 @@ export function loadEvalSpaces(sources: EvalSource[], config: Config): EvalSpace
               ? createSpaceContext(file.space, config)
               : createSpaceContext(
                   name,
-                  { spaces: [{ name, path: join(dir, 'space'), schema: file.schema, plugins: file.plugins }] },
+                  { spaces: [{ name, path: dir, schema: file.schema, plugins: file.plugins }] },
                   { configDir: source.configDir },
                 );
         } catch (err) {
@@ -116,9 +113,27 @@ export function loadEvalSpaces(sources: EvalSource[], config: Config): EvalSpace
             Object.entries(nodes).map(([id, v]) => [id, typeof v === 'string' ? [v] : v]),
           );
         }
-        return { name, fixture: file.space === undefined, context, expected };
+        const read =
+          file.space !== undefined
+            ? () => readSpace(context)
+            : async () => resolveGraphEdges(readNodes(join(dir, 'nodes.jsonl')), context.schema.metadata);
+        return { name, fixture: file.space === undefined, context, expected, read };
       }),
   );
+}
+
+/** Parsed nodes, one JSON object per line: the nodes a plugin's parse hook returns. */
+function readNodes(path: string): BaseNode[] {
+  return readFileSync(path, 'utf8')
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line, i) => {
+      const node = JSON.parse(line) as BaseNode;
+      for (const key of ['id', 'title', 'type', 'linkTargets', 'schemaData'] as const) {
+        if (node[key] === undefined) throw new Error(`${path}:${i + 1}: node has no "${key}"`);
+      }
+      return node;
+    });
 }
 
 /**
@@ -128,7 +143,7 @@ export function loadEvalSpaces(sources: EvalSource[], config: Config): EvalSpace
  */
 export async function checkEvalSpace(space: EvalSpace): Promise<string[]> {
   const problems: string[] = [];
-  const read = await readSpace(space.context);
+  const read = await space.read();
   const ids = new Set(read.nodes.map((n) => n.id as string));
   const labelled = new Set(Object.values(space.expected).flatMap((labels) => Object.keys(labels)));
   const result = await validateNodes(space.context, read.nodes, read);
@@ -216,7 +231,7 @@ export async function judgeEvalSpace(
       });
     };
   }
-  const read = await readSpace(space.context);
+  const read = await space.read();
   await validateNodes(space.context, read.nodes, read, {
     includeGated: true,
     ruleFilter: { id: Object.keys(space.expected) },

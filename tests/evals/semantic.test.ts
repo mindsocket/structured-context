@@ -3,7 +3,6 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import {
-  CORE_EVALS_DIR,
   checkEvalSpace,
   type EvalSpace,
   type Judgement,
@@ -25,7 +24,14 @@ describe.each(spaces.map((s) => [s.name, s] as const))('eval space %s', (_name, 
 
 describe('eval spaces on a configured space', () => {
   const dir = mkdtempSync(join(tmpdir(), 'sctx-evals-'));
-  const fixture = join(CORE_EVALS_DIR, 'strict-ost', 'space');
+  const fixture = join(dir, 'space');
+  const note = (title: string, frontmatter: string) =>
+    writeFileSync(join(fixture, `${title}.md`), `---\nstatus: identified\n${frontmatter}\n---\n`);
+  mkdirSync(fixture);
+  note('Grow usage', 'type: outcome\nmetric: Weekly active teams');
+  for (const title of ['Onboarding', 'Build a Slack integration', 'I lose track of changes']) {
+    note(title, 'type: opportunity\nparent: "[[Grow usage]]"\nsource: Interviews');
+  }
   mkdirSync(join(dir, 'mine'));
   writeFileSync(
     join(dir, 'mine', 'eval.json5'),
