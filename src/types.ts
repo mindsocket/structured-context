@@ -191,16 +191,6 @@ export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-pract
  */
 export type RuleSeverity = 'error' | 'warning' | 'info';
 
-export type GraphViolation = {
-  /** Id of the node whose parent link breaks the hierarchy. */
-  nodeId: NodeId;
-  nodeType: string;
-  nodeTitle: string;
-  parentType: string;
-  parentTitle: string;
-  description: string;
-};
-
 /** A named hierarchy, normalized from a schema's `$metadata.hierarchy`. */
 export type Hierarchy = {
   /** Declared short name, defaulting to the declaring schema's file stem. */
@@ -294,8 +284,14 @@ export type ValidationIssue =
   | (IssueBase<'duplicate'> & { nodeId: NodeId; sources: SourceLocation[] })
   /** A link in a field that does not resolve to a node; `ref` is the link as written. */
   | (IssueBase<'broken-link'> & { nodeId: NodeId; ref: string; reason: string })
-  /** A parent link that breaks the hierarchy. */
-  | (IssueBase<'hierarchy'> & Omit<GraphViolation, 'description'>)
+  /** A parent link that breaks the hierarchy or a relationship's type constraint. */
+  | (IssueBase<'hierarchy'> & {
+      nodeId: NodeId;
+      nodeType: string;
+      nodeTitle: string;
+      parentType: string;
+      parentTitle: string;
+    })
   /** A rule violation; `nodeId` is absent for a global rule. */
   | (IssueBase<'rule'> & {
       /** Id of the violated rule. Absent `nodeId` means a global rule. */

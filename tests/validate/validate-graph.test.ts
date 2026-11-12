@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { resolveNodeType } from '../../src/schema/schema';
-import { validateGraph, validateHierarchyStructure } from '../../src/schema/validate-graph';
 import type { BaseNode, NodeId, SchemaMetadata, SpaceNode } from '../../src/types';
+import { validateGraph, validateHierarchyStructure } from '../../src/validate/validate-graph';
 import { makeHierarchy, makeLevel, makeNode, makeParentRef, withHierarchy } from '../test-helpers';
 
 describe('validateGraph - selfRef field reference validation', () => {
@@ -21,9 +21,8 @@ describe('validateGraph - selfRef field reference validation', () => {
         makeNode('Sub Goal', 'goal', { parent: '[[Goal 1]]' }),
       ];
       const { nodes, unresolvedRefs } = resolveGraphEdges(baseNodes, metaSelfRef);
-      const { violations, refErrors } = validateGraph(nodes, metaSelfRef, unresolvedRefs);
-      expect(refErrors).toHaveLength(0);
-      expect(violations).toHaveLength(0);
+      const issues = validateGraph(nodes, metaSelfRef, unresolvedRefs);
+      expect(issues).toHaveLength(0);
     });
 
     it('reports violation for goal.parent pointing to a goal when selfRef is false', () => {
@@ -32,10 +31,9 @@ describe('validateGraph - selfRef field reference validation', () => {
         makeNode('Sub Goal', 'goal', { parent: '[[Goal 1]]' }),
       ];
       const { nodes, unresolvedRefs } = resolveGraphEdges(baseNodes, metaNoSelfRef);
-      const { violations, refErrors } = validateGraph(nodes, metaNoSelfRef, unresolvedRefs);
-      expect(refErrors).toHaveLength(0);
-      expect(violations).toHaveLength(1);
-      expect(violations[0]?.description).toContain('goal "Sub Goal" cannot have goal "Goal 1" as parent');
+      const issues = validateGraph(nodes, metaNoSelfRef, unresolvedRefs);
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.message).toContain('goal "Sub Goal" cannot have goal "Goal 1" as parent');
     });
   });
 
@@ -57,9 +55,8 @@ describe('validateGraph - selfRef field reference validation', () => {
         makeNode('Goal 2', 'goal'),
       ];
       const { nodes, unresolvedRefs } = resolveGraphEdges(baseNodes, meta);
-      const { violations, refErrors } = validateGraph(nodes, meta, unresolvedRefs);
-      expect(refErrors).toHaveLength(0);
-      expect(violations).toHaveLength(0);
+      const issues = validateGraph(nodes, meta, unresolvedRefs);
+      expect(issues).toHaveLength(0);
     });
 
     it('reports violation for goal.subgoals pointing to a non-goal', () => {
@@ -68,10 +65,9 @@ describe('validateGraph - selfRef field reference validation', () => {
         makeNode('Goal 1', 'goal', { subgoals: ['[[Mission 1]]'] }),
       ];
       const { nodes, unresolvedRefs } = resolveGraphEdges(baseNodes, meta);
-      const { violations, refErrors } = validateGraph(nodes, meta, unresolvedRefs);
-      expect(refErrors).toHaveLength(0);
-      expect(violations).toHaveLength(1);
-      expect(violations[0]?.description).toContain('expected goal');
+      const issues = validateGraph(nodes, meta, unresolvedRefs);
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.message).toContain('expected goal');
     });
   });
 });
@@ -107,8 +103,8 @@ describe('validate-graph', () => {
         buildNode('My Goal', 'goal', 'My Mission'),
       ];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(0);
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(0);
     });
 
     it('passes when node has same-type parent if selfRef is true for that type', () => {
@@ -119,18 +115,18 @@ describe('validate-graph', () => {
         buildNode('Opportunity 1', 'opportunity', 'My Outcome'),
       ];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(0);
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(0);
     });
 
     it('fails when node has same-type parent if selfRef is false for that type', () => {
       const nodes: SpaceNode[] = [buildNode('Mission 1', 'mission'), buildNode('Mission 2', 'mission', 'Mission 1')];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(1);
-      expect(violations[0]?.nodeType).toBe('mission');
-      expect(violations[0]?.parentType).toBe('mission');
-      expect(violations[0]?.description).toContain('mission "Mission 2" cannot have mission "Mission 1" as parent');
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.nodeType).toBe('mission');
+      expect(issues[0]?.parentType).toBe('mission');
+      expect(issues[0]?.message).toContain('mission "Mission 2" cannot have mission "Mission 1" as parent');
     });
 
     it('fails when node skips hierarchy level', () => {
@@ -139,20 +135,20 @@ describe('validate-graph', () => {
         buildNode('My Goal', 'goal', 'My Vision'), // Skips mission
       ];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(1);
-      expect(violations[0]?.nodeType).toBe('goal');
-      expect(violations[0]?.parentType).toBe('vision');
-      expect(violations[0]?.description).toContain('goal "My Goal" cannot have vision "My Vision" as parent');
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.nodeType).toBe('goal');
+      expect(issues[0]?.parentType).toBe('vision');
+      expect(issues[0]?.message).toContain('goal "My Goal" cannot have vision "My Vision" as parent');
     });
 
     it('fails when solution has goal as parent', () => {
       const nodes: SpaceNode[] = [buildNode('My Goal', 'goal'), buildNode('My Solution', 'solution', 'My Goal')];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(1);
-      expect(violations[0]?.nodeType).toBe('solution');
-      expect(violations[0]?.parentType).toBe('goal');
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.nodeType).toBe('solution');
+      expect(issues[0]?.parentType).toBe('goal');
     });
   });
 
@@ -172,8 +168,8 @@ describe('validate-graph', () => {
         buildNode('My Solution', 'solution', 'My Vision'), // Skips mission, goal, outcome, opportunity
       ];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(0);
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(0);
     });
 
     it('still requires parent to be above child in hierarchy', () => {
@@ -182,10 +178,10 @@ describe('validate-graph', () => {
         buildNode('My Vision', 'vision', 'My Goal'), // Vision under goal - backwards
       ];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(1);
-      expect(violations[0]?.nodeType).toBe('vision');
-      expect(violations[0]?.parentType).toBe('goal');
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.nodeType).toBe('vision');
+      expect(issues[0]?.parentType).toBe('goal');
     });
   });
 
@@ -202,15 +198,15 @@ describe('validate-graph', () => {
     it('skips nodes not in hierarchy', () => {
       const nodes: SpaceNode[] = [buildNode('Dashboard', 'dashboard'), buildNode('Some Node', 'custom_type')];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(0);
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(0);
     });
 
     it('skips nodes without a parent', () => {
       const nodes: SpaceNode[] = [buildNode('My Vision', 'vision'), buildNode('Orphan Goal', 'goal')];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(0);
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(0);
     });
 
     it('skips nodes when parent node is not found', () => {
@@ -219,13 +215,13 @@ describe('validate-graph', () => {
       // whose parent cannot be found to avoid double-reporting.
       const nodes: SpaceNode[] = [buildNode('My Goal', 'goal', 'Nonexistent Parent')];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(0);
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(0);
     });
 
     it('handles empty nodes array', () => {
-      const violations = validateHierarchyStructure([], metadata);
-      expect(violations).toHaveLength(0);
+      const issues = validateHierarchyStructure([], metadata);
+      expect(issues).toHaveLength(0);
     });
   });
 
@@ -242,16 +238,16 @@ describe('validate-graph', () => {
     it('includes all required fields in violation', () => {
       const nodes: SpaceNode[] = [buildNode('My Vision', 'vision'), buildNode('My Goal', 'goal', 'My Vision')];
 
-      const violations = validateHierarchyStructure(nodes, metadata);
-      expect(violations).toHaveLength(1);
+      const issues = validateHierarchyStructure(nodes, metadata);
+      expect(issues).toHaveLength(1);
 
-      const v = violations[0]!;
+      const v = issues[0]!;
       expect(v.nodeId as string).toBe('My Goal');
       expect(v.nodeType).toBe('goal');
       expect(v.nodeTitle).toBe('My Goal');
       expect(v.parentType).toBe('vision');
       expect(v.parentTitle).toBe('My Vision');
-      expect(v.description).toBe('Invalid parent: goal "My Goal" cannot have vision "My Vision" as parent');
+      expect(v.message).toBe('Invalid parent: goal "My Goal" cannot have vision "My Vision" as parent');
     });
   });
 });
@@ -267,7 +263,7 @@ describe('validateHierarchyStructure - multiple hierarchies', () => {
 
   const validate = (baseNodes: BaseNode[]) => {
     const { nodes } = resolveGraphEdges(baseNodes, metadata);
-    return { nodes, violations: validateHierarchyStructure(nodes, metadata) };
+    return { nodes, issues: validateHierarchyStructure(nodes, metadata) };
   };
 
   it('tags each hierarchy edge with its hierarchy name', () => {
@@ -285,23 +281,23 @@ describe('validateHierarchyStructure - multiple hierarchies', () => {
   });
 
   it("checks skip levels against each hierarchy's own setting", () => {
-    const { violations } = validate([
+    const { issues } = validate([
       makeNode('Ship', 'goal'),
       makeNode('Write docs', 'task', { parent: '[[Ship]]' }),
       makeNode('Engineering', 'area'),
       makeNode('Mocking', 'technique', { parent: '[[Engineering]]' }),
     ]);
-    expect(violations.map((v) => v.description)).toEqual([
+    expect(issues.map((v) => v.message)).toEqual([
       'Invalid parent: task "Write docs" cannot have goal "Ship" as parent',
     ]);
   });
 
   it('rejects a parent from another hierarchy', () => {
-    const { violations } = validate([
+    const { issues } = validate([
       makeNode('Engineering', 'area'),
       makeNode('Launch', 'project', { parent: '[[Engineering]]' }),
     ]);
-    expect(violations.map((v) => v.description)).toEqual([
+    expect(issues.map((v) => v.message)).toEqual([
       'Invalid parent: project "Launch" cannot have area "Engineering" as parent',
     ]);
   });

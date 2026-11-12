@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
-import { validateGraph } from '../../src/schema/validate-graph';
 import type { SchemaMetadata } from '../../src/types';
+import { validateGraph } from '../../src/validate/validate-graph';
 import { makeLevel, makeNode, makeRelationship, withHierarchy } from '../test-helpers';
 
 describe('validateGraph - Relationships', () => {
@@ -15,21 +15,19 @@ describe('validateGraph - Relationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { parent: '[[Opp 1]]' });
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([opp, assumption], metadata);
-    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
+    const issues = validateGraph(nodes, metadata, unresolvedRefs);
 
-    expect(violations).toBeEmpty();
-    expect(refErrors).toBeEmpty();
+    expect(issues).toBeEmpty();
   });
 
   it('fails when child linked to missing parent', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { parent: '[[Missing Opp]]' });
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([assumption], metadata);
-    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
+    const issues = validateGraph(nodes, metadata, unresolvedRefs);
 
-    expect(violations).toBeEmpty();
-    expect(refErrors).toHaveLength(1);
-    expect(refErrors[0]?.error).toContain('not found');
+    expect(issues.filter((i) => i.kind === 'broken-link')).toHaveLength(1);
+    expect(issues.find((i) => i.kind === 'broken-link')?.message).toContain('not found');
   });
 
   it('fails (type mismatch) when child linked to node of incorrect type', () => {
@@ -38,22 +36,20 @@ describe('validateGraph - Relationships', () => {
 
     // resolveGraphEdges resolves permissively; validateFieldReferences catches the type mismatch
     const { nodes, unresolvedRefs } = resolveGraphEdges([someOtherNode, assumption], metadata);
-    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
+    const issues = validateGraph(nodes, metadata, unresolvedRefs);
 
     // Field validation catches it now
-    expect(refErrors).toBeEmpty();
-    expect(violations).toHaveLength(1);
-    expect(violations[0]?.description).toContain('expected opportunity');
+    expect(issues).toHaveLength(1);
+    expect(issues.find((i) => i.kind === 'hierarchy')?.message).toContain('expected opportunity');
   });
 
   it('skips child nodes with no parent field (no false errors)', () => {
     const assumption = makeNode('Assumption 1', 'assumption');
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([assumption], metadata);
-    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
+    const issues = validateGraph(nodes, metadata, unresolvedRefs);
 
-    expect(violations).toBeEmpty();
-    expect(refErrors).toBeEmpty();
+    expect(issues).toBeEmpty();
   });
 
   it('uses custom field name when fieldOn is child', () => {
@@ -66,10 +62,9 @@ describe('validateGraph - Relationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { linked_opportunity: '[[Opp 1]]' });
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([opp, assumption], metaWithCustomField);
-    const { violations, refErrors } = validateGraph(nodes, metaWithCustomField, unresolvedRefs);
+    const issues = validateGraph(nodes, metaWithCustomField, unresolvedRefs);
 
-    expect(violations).toBeEmpty();
-    expect(refErrors).toBeEmpty();
+    expect(issues).toBeEmpty();
   });
 
   it('reports error for custom field pointing to wrong type', () => {
@@ -82,11 +77,10 @@ describe('validateGraph - Relationships', () => {
     const assumption = makeNode('Assumption 1', 'assumption', { linked_opportunity: '[[Solution 1]]' });
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([solution, assumption], metaWithCustomField);
-    const { violations, refErrors } = validateGraph(nodes, metaWithCustomField, unresolvedRefs);
+    const issues = validateGraph(nodes, metaWithCustomField, unresolvedRefs);
 
-    expect(refErrors).toBeEmpty();
-    expect(violations).toHaveLength(1);
-    expect(violations[0]?.description).toContain('expected opportunity');
+    expect(issues).toHaveLength(1);
+    expect(issues.find((i) => i.kind === 'hierarchy')?.message).toContain('expected opportunity');
   });
 });
 
@@ -102,21 +96,19 @@ describe('validateGraph — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: ['[[Task 1]]', '[[Task 2]]'] });
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([activity, task1, task2], metadata);
-    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
+    const issues = validateGraph(nodes, metadata, unresolvedRefs);
 
-    expect(violations).toBeEmpty();
-    expect(refErrors).toBeEmpty();
+    expect(issues).toBeEmpty();
   });
 
   it('fails when parent field array contains a missing link', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: ['[[Missing Task]]'] });
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([activity], metadata);
-    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
+    const issues = validateGraph(nodes, metadata, unresolvedRefs);
 
-    expect(violations).toBeEmpty();
-    expect(refErrors).toHaveLength(1);
-    expect(refErrors[0]?.error).toContain('not found');
+    expect(issues.filter((i) => i.kind === 'broken-link')).toHaveLength(1);
+    expect(issues.find((i) => i.kind === 'broken-link')?.message).toContain('not found');
   });
 
   it('fails (type mismatch) when parent field array entry is wrong type', () => {
@@ -124,31 +116,28 @@ describe('validateGraph — fieldOn: parent', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: ['[[Some Solution]]'] });
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([activity, wrong], metadata);
-    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
+    const issues = validateGraph(nodes, metadata, unresolvedRefs);
 
-    expect(refErrors).toBeEmpty();
-    expect(violations).toHaveLength(1);
-    expect(violations[0]?.description).toContain('expected task');
+    expect(issues).toHaveLength(1);
+    expect(issues.find((i) => i.kind === 'hierarchy')?.message).toContain('expected task');
   });
 
   it('skips parent nodes with no field value (no false errors)', () => {
     const activity = makeNode('Activity 1', 'activity');
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([activity], metadata);
-    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
+    const issues = validateGraph(nodes, metadata, unresolvedRefs);
 
-    expect(violations).toBeEmpty();
-    expect(refErrors).toBeEmpty();
+    expect(issues).toBeEmpty();
   });
 
   it('reports error when field is not an array', () => {
     const activity = makeNode('Activity 1', 'activity', { tasks: '[[Task 1]]' });
 
     const { nodes, unresolvedRefs } = resolveGraphEdges([activity], metadata);
-    const { violations, refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
+    const issues = validateGraph(nodes, metadata, unresolvedRefs);
 
-    expect(violations).toBeEmpty();
-    expect(refErrors).toHaveLength(1);
-    expect(refErrors[0]?.error).toContain('must be an array');
+    expect(issues.filter((i) => i.kind === 'broken-link')).toHaveLength(1);
+    expect(issues.find((i) => i.kind === 'broken-link')?.message).toContain('must be an array');
   });
 });

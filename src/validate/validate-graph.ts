@@ -1,17 +1,22 @@
 import { resolveNodeType } from '../schema/schema';
-import type {
-  GraphViolation,
-  Hierarchy,
-  NodeId,
-  SchemaMetadata,
-  SourceLocation,
-  SpaceNode,
-  UnresolvedRef,
-} from '../types';
+import type { Hierarchy, NodeId, SchemaMetadata, SpaceNode, UnresolvedRef, ValidationIssue } from '../types';
 
-export interface GraphValidationResult {
-  violations: GraphViolation[];
-  refErrors: Array<{ nodeId: NodeId; source?: SourceLocation; parent: string; error: string }>;
+/** A hierarchy issue's per-variant fields, keyed off the node and its parent. */
+type HierarchyFields = Extract<ValidationIssue, { kind: 'hierarchy' }>;
+
+function hierarchyIssue(
+  at: { nodeId: NodeId; nodeType: string; nodeTitle: string },
+  via: { parentType: string; parentTitle: string },
+  description: string,
+): HierarchyFields {
+  return {
+    kind: 'hierarchy',
+    key: `hierarchy:${description}`,
+    severity: 'error',
+    message: description,
+    ...at,
+    ...via,
+  };
 }
 
 /**
@@ -22,15 +27,18 @@ export function validateGraph(
   nodes: SpaceNode[],
   metadata: SchemaMetadata,
   unresolvedRefs: UnresolvedRef[] = [],
-): GraphValidationResult {
-  const refErrors = unresolvedRefs.map((u) => ({
+): ValidationIssue[] {
+  const brokenLinks: ValidationIssue[] = unresolvedRefs.map((u) => ({
+    kind: 'broken-link' as const,
+    key: `broken-link:${u.ref}`,
+    severity: 'error',
+    message: `${u.ref} → ${u.message}`,
     nodeId: u.id,
     ...(u.source !== undefined && { source: u.source }),
-    parent: u.ref,
-    error: u.message,
+    ref: u.ref,
+    reason: u.message,
   }));
-  const violations = validateHierarchyStructure(nodes, metadata);
-  return { violations, refErrors };
+  return [...brokenLinks, ...validateHierarchyStructure(nodes, metadata)];
 }
 
 /**
@@ -42,8 +50,8 @@ export function validateGraph(
  *
  * Assumes resolveGraphEdges has already been called to populate node.resolvedParents.
  */
-export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaMetadata): GraphViolation[] {
-  const violations: GraphViolation[] = [];
+export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaMetadata): HierarchyFields[] {
+  const violations: HierarchyFields[] = [];
   const hierarchies = metadata.hierarchies ?? [];
   const relationships = metadata.relationships ?? [];
   const typeAliases = metadata.typeAliases;
@@ -110,28 +118,26 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
         const allowedChildTypes = typeRules.get(parentType)?.get(parentRef.field);
         if (allowedChildTypes && !allowedChildTypes.has(nodeType)) {
           const expected = [...allowedChildTypes].join(' or ');
-          violations.push({
-            nodeId: parentNode.id,
-            nodeType: parentType,
-            nodeTitle: parentTitle,
-            parentType: nodeType,
-            parentTitle: nodeTitle,
-            description: `Invalid relationship: ${parentType} "${parentTitle}" has "${nodeTitle}" in field "${parentRef.field}" which is of type ${nodeType}, expected ${expected}`,
-          });
+          violations.push(
+            hierarchyIssue(
+              { nodeId: parentNode.id, nodeType: parentType, nodeTitle: parentTitle },
+              { parentType: nodeType, parentTitle: nodeTitle },
+              `Invalid relationship: ${parentType} "${parentTitle}" has "${nodeTitle}" in field "${parentRef.field}" which is of type ${nodeType}, expected ${expected}`,
+            ),
+          );
         }
       } else if (parentRef.kind === 'relationship') {
         // Relationship edge (fieldOn:'child'): validate parent type matches relationship definition.
         const allowedTypes = typeRules.get(nodeType)?.get(parentRef.field);
         if (allowedTypes && !allowedTypes.has(parentType)) {
           const expected = [...allowedTypes].join(' or ');
-          violations.push({
-            nodeId: node.id,
-            nodeType,
-            nodeTitle,
-            parentType,
-            parentTitle,
-            description: `Invalid relationship: ${nodeType} "${nodeTitle}" has "${parentTitle}" in field "${parentRef.field}" which is of type ${parentType}, expected ${expected}`,
-          });
+          violations.push(
+            hierarchyIssue(
+              { nodeId: node.id, nodeType, nodeTitle },
+              { parentType, parentTitle },
+              `Invalid relationship: ${nodeType} "${nodeTitle}" has "${parentTitle}" in field "${parentRef.field}" which is of type ${parentType}, expected ${expected}`,
+            ),
+          );
         }
       } else {
         // Hierarchy edge (fieldOn:'child', kind:'hierarchy'): validate level ordering within its hierarchy.
@@ -161,14 +167,13 @@ export function validateHierarchyStructure(nodes: SpaceNode[], metadata: SchemaM
         }
 
         if (!isValidHierarchy) {
-          violations.push({
-            nodeId: node.id,
-            nodeType,
-            nodeTitle,
-            parentType,
-            parentTitle,
-            description: `Invalid parent: ${nodeType} "${nodeTitle}" cannot have ${parentType} "${parentTitle}" as parent`,
-          });
+          violations.push(
+            hierarchyIssue(
+              { nodeId: node.id, nodeType, nodeTitle },
+              { parentType, parentTitle },
+              `Invalid parent: ${nodeType} "${nodeTitle}" cannot have ${parentType} "${parentTitle}" as parent`,
+            ),
+          );
         }
       }
     }

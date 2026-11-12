@@ -85,7 +85,7 @@ Core's top-level modules fall into layers. Each layer uses the ones below it.
 | Layer | Modules | Role |
 |---|---|---|
 | CLI and entry points | `index.ts`, `commands/`, `api.ts`, `browser.ts` | Commands call the API functions of the functional areas. The entry points export them. |
-| Functional areas | `read/`, `render/`, `validate.ts`, `load-space-graph.ts` | Reading, rendering and validating a space. Each provides API functions. |
+| Functional areas | `read/`, `render/`, `validate/`, `load-space-graph.ts` | Reading, rendering and validating a space. Each provides API functions. |
 | Supporting areas and plugins | `filter/`, `judge/`, `plugins/` | Filtering nodes and semantic evaluation, which the functional areas use. Plugins are hook points that the functional areas call. |
 | Concepts | `schema/`, `config/`, `space-context.ts`, `space-graph.ts`, `space-graph-data.ts` | What the other layers work with: schemas, config, a space and its graph. |
 | Base | `types.ts`, `constants.ts`, `errors.ts` | Types, constants and errors that any module can use. |
@@ -94,7 +94,7 @@ These rules keep the boundaries:
 
 1. **Imports stay in their layer or point down.** A module can always import from its own folder.
 2. **Only plugins know a source format,** such as markdown paths or frontmatter. Other modules reach a built-in plugin only through the plugin registry in `plugins/`.
-3. **One owner per concern.** Only the owning module builds a concern's data. A caller passes what it has, and the owner derives what it needs. For example, `validate.ts` passes the schema to rule evaluation, and only `judge/` turns it into model input.
+3. **One owner per concern.** Only the owning module builds a concern's data. A caller passes what it has, and the owner derives what it needs. For example, `validate/` passes the schema to rule evaluation, and only `judge/` turns it into model input.
 4. **One finding shape.** A check creates a `ValidationIssue` when it finds a problem. Later stages consume those issues instead of translating parallel result shapes.
 5. **Data flows outward.** A function returns the data it produced. Consumers derive their own views instead of the pipeline carrying mutable accumulators or denormalised summaries for them.
 6. **Gating owns gate policy.** `rule/gating.ts` decides which node sets run, which rule violations make gates, and which nodes are gated. `rule/rule-evaluator.ts` evaluates a supplied node set and reports its outcomes; `judge/` prepares and sends model input.

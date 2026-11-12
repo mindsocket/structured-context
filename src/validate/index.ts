@@ -1,15 +1,14 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import type { ErrorObject } from 'ajv';
-import type { Config, SpaceConfig } from './config';
-import { createJudgeProvider } from './judge/factory';
-import type { JudgeSession } from './judge/judge-node';
-import { readSpace } from './read/read-space';
-import { evaluateRules, type FailedNodes, type RuleEvaluationResult } from './rule/gating';
-import { filterRules, parseRuleFilter, type RuleFilter } from './rule/rule-filter';
-import { extractEntityInfo, typeValidatorFor } from './schema/schema';
-import { validateGraph } from './schema/validate-graph';
-import { createSpaceContext } from './space-context';
-import { buildSpaceGraph, computeHierarchyDepths } from './space-graph';
+import type { Config, SpaceConfig } from '../config';
+import { createJudgeProvider } from '../judge/factory';
+import type { JudgeSession } from '../judge/judge-node';
+import { readSpace } from '../read/read-space';
+import { evaluateRules, type FailedNodes, type RuleEvaluationResult } from '../rule/gating';
+import { filterRules, parseRuleFilter, type RuleFilter } from '../rule/rule-filter';
+import { extractEntityInfo, typeValidatorFor } from '../schema/schema';
+import { createSpaceContext } from '../space-context';
+import { buildSpaceGraph, computeHierarchyDepths } from '../space-graph';
 import type {
   FileNotInSpaceResult,
   FileValidationResult,
@@ -22,7 +21,8 @@ import type {
   SpaceNode,
   ValidateFileOutput,
   ValidationIssue,
-} from './types';
+} from '../types';
+import { validateGraph } from './validate-graph';
 
 export interface FormattedError {
   message: string;
@@ -328,29 +328,11 @@ export async function validateNodes(
   collected.addAll(findDuplicateIds(nodes));
 
   // Validate all hierarchy constraints (field references and structure)
-  const hierarchyValidation = validateGraph(nodes, metadata, unresolvedRefs);
-  for (const { description, ...violation } of hierarchyValidation.violations) {
-    collected.add({
-      kind: 'hierarchy',
-      key: `hierarchy:${description}`,
-      severity: 'error',
-      message: description,
-      ...violation,
-    });
-  }
-  const hierarchyFailureNodes = hierarchyValidation.violations.map((v) => v.nodeId);
-  for (const { nodeId, source, parent, error } of hierarchyValidation.refErrors) {
-    collected.add({
-      kind: 'broken-link',
-      key: `broken-link:${parent}`,
-      severity: 'error',
-      message: `${parent} → ${error}`,
-      nodeId,
-      ...(source && { source }),
-      ref: parent,
-      reason: error,
-    });
-  }
+  const hierarchyIssues = validateGraph(nodes, metadata, unresolvedRefs);
+  collected.addAll(hierarchyIssues);
+  const hierarchyFailureNodes = hierarchyIssues
+    .filter((issue) => issue.kind === 'hierarchy')
+    .map((issue) => issue.nodeId);
 
   // Calculate orphans across every hierarchy (informational, not a validation error)
   const orphans: SpaceNode[] = [];
