@@ -11,6 +11,7 @@
     "hook-test",
     "plugin/scripts",
     "scripts",
+    "evals",
     "**/*.test.ts",
     "**/*.spec.ts"
   ]
