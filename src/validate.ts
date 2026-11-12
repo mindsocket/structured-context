@@ -425,7 +425,11 @@ export async function validateSpace(
   }
 
   const result = await validateNodes(context, nodes, readResult, runOptions);
-  result.issues.unshift(...parseIssuesOf(readResult.parseIssues));
+  // Parse issues enter after node validation, but share the same run-wide dedupe contract.
+  const allIssues = new IssueCollector();
+  allIssues.addAll(parseIssuesOf(readResult.parseIssues));
+  allIssues.addAll(result.issues);
+  result.issues = allIssues.issues;
   result.skippedByDepth = skippedByDepth;
   result.depthLimit = options.depth;
   return result;

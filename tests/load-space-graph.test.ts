@@ -92,6 +92,23 @@ describe('validateSpace with shared readResult', () => {
     expect(shared.validCount).toBe(fresh.validCount);
     expect(shared.issues).toEqual(fresh.issues);
   });
+
+  it('deduplicates repeated parse issues from a plugin', async () => {
+    const context = makeSpaceContext(VALID_DIR, SCHEMA_PATH);
+    const readResult = await readSpace(context);
+    const issue = {
+      source: { file: 'excluded.md' },
+      severity: 'error' as const,
+      type: 'parse',
+      message: 'Could not parse file',
+    };
+    readResult.parseIssues.push(issue, issue);
+
+    const result = await validateSpace(context, { readResult });
+    expect(ofKind(result.issues, 'parse').filter((parsed) => parsed.source.file === 'excluded.md')).toEqual([
+      expect.objectContaining({ key: 'parse:parse', source: { file: 'excluded.md' } }),
+    ]);
+  });
 });
 
 describe('loadSpaceGraph (end-to-end via config)', () => {
