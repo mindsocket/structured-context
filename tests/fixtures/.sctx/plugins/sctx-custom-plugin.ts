@@ -1,4 +1,4 @@
-import type { ParseResult, StructuredContextPlugin } from '../../../src/plugins/util';
+import type { ParseResult, StructuredContextPlugin } from '../../../../src/plugins/util';
 
 /** A plugin that returns a fixed set of nodes (for testing first-match-wins). */
 const customPlugin: StructuredContextPlugin = {

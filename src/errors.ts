@@ -5,6 +5,7 @@
 export type SctxErrorCode =
   | 'E_CONFIG_NOT_FOUND'
   | 'E_CONFIG_INVALID'
+  | 'E_CONFIG_AMBIGUOUS'
   | 'E_INCLUDE_NOT_FOUND'
   | 'E_NO_SPACES'
   | 'E_SPACE_PATH_MISSING'

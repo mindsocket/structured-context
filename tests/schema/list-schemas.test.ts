@@ -99,13 +99,13 @@ describe('listSchemas', () => {
   });
 
   it('lists schemas contributed by a plugin in the config folder, named by the plugin', async () => {
-    write(join(env.vault, 'plugins', 'sctx-demo', 'package.json'), { name: 'sctx-demo' });
+    write(join(env.vault, '.sctx', 'plugins', 'sctx-demo', 'package.json'), { name: 'sctx-demo' });
     write(
-      join(env.vault, 'plugins', 'sctx-demo', 'index.js'),
+      join(env.vault, '.sctx', 'plugins', 'sctx-demo', 'index.js'),
       'module.exports = { name: "sctx-demo", configSchema: {} };',
     );
-    write(join(env.vault, 'plugins', 'sctx-demo', 'schemas', 'demo.json'), { $id: 'sctx://demo/demo' });
-    write(join(env.vault, 'plugins', 'sctx-demo', 'schemas', '_part.json'), { $id: 'sctx://demo/_part' });
+    write(join(env.vault, '.sctx', 'plugins', 'sctx-demo', 'schemas', 'demo.json'), { $id: 'sctx://demo/demo' });
+    write(join(env.vault, '.sctx', 'plugins', 'sctx-demo', 'schemas', '_part.json'), { $id: 'sctx://demo/_part' });
     vaultConfig([{ name: 'a', path: 'a', schema: 'sctx-demo/demo.json' }]);
 
     const plugin = (await listSchemas({ startDir: env.vault })).filter((l) => l.source === 'demo');
@@ -114,7 +114,20 @@ describe('listSchemas', () => {
       ['demo/_part.json', true, []],
       ['demo/demo.json', false, ['a']],
     ]);
-    expect(plugin[0]?.path).toBe(join(env.vault, 'plugins', 'sctx-demo', 'schemas', '_part.json'));
+    expect(plugin[0]?.path).toBe(join(env.vault, '.sctx', 'plugins', 'sctx-demo', 'schemas', '_part.json'));
+  });
+
+  it('lists the schemas in the .sctx/schemas folder, and resolves them by file name', async () => {
+    write(join(env.vault, '.sctx', 'schemas', 'mine.json'), { title: 'Mine' });
+    write(join(env.vault, '.sctx', 'schemas', 'spare.json'), { title: 'Spare' });
+    vaultConfig([{ name: 'a', path: 'a', schema: 'mine.json' }]);
+
+    const configured = (await listSchemas({ startDir: env.vault })).filter((l) => l.source === 'configured');
+
+    expect(configured.map((l) => [l.schema, l.path, l.usedBy])).toEqual([
+      ['mine.json', join(env.vault, '.sctx', 'schemas', 'mine.json'), ['a']],
+      ['spare.json', join(env.vault, '.sctx', 'schemas', 'spare.json'), []],
+    ]);
   });
 
   it('uses a config passed in instead of discovering one', async () => {

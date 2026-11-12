@@ -1,8 +1,14 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
-import { LOCAL_CONFIG_FILE } from '../constants';
 import { SctxError } from '../errors';
-import { globalConfigPath, resolveConfigPath, resolveSchemaPath, type SpaceConfig } from '.';
+import {
+  configRoot,
+  globalConfigPath,
+  LOCAL_CONFIG_DESCRIPTION,
+  resolveConfigPath,
+  resolveSchemaPath,
+  type SpaceConfig,
+} from '.';
 
 type AddSpaceOptions = Pick<SpaceConfig, 'name' | 'path' | 'schema'> & {
   /** Write to the global config file. */
@@ -39,7 +45,7 @@ export function resolveWriteTarget(options: { global?: boolean; configFile?: str
   const found = resolved.source === 'global' ? `only the global config (${resolved.path}) exists` : 'no config exists';
   throw new SctxError(
     'E_TARGET_REQUIRED',
-    `No ${LOCAL_CONFIG_FILE} found from ${resolve(options.startDir ?? process.cwd())} upward; ${found}. ` +
+    `No ${LOCAL_CONFIG_DESCRIPTION} found from ${resolve(options.startDir ?? process.cwd())} upward; ${found}. ` +
       `Specify the config file location or global option.`,
   );
 }
@@ -55,7 +61,7 @@ function realOrSelf(p: string): string {
 /** The path as written in the config: relative to the config's folder when inside it, else absolute. */
 function storedPath(configFile: string, absolutePath: string): string {
   // Compare real paths so a symlinked folder (such as macOS's /var -> /private/var) does not look like it escapes
-  const rel = relative(realOrSelf(dirname(resolve(configFile))), realOrSelf(absolutePath));
+  const rel = relative(realOrSelf(configRoot(configFile)), realOrSelf(absolutePath));
   if (rel === '') return '.';
   return rel.startsWith('..') || isAbsolute(rel) ? absolutePath : rel;
 }
@@ -96,7 +102,7 @@ export function addSpace(options: AddSpaceOptions): AddSpaceResult {
     );
   }
   if (options.schema && !/^https?:\/\//i.test(options.schema)) {
-    if (!existsSync(resolveSchemaPath(options.schema, dirname(target)))) {
+    if (!existsSync(resolveSchemaPath(options.schema, configRoot(target)))) {
       const hint = options.schema.startsWith('sctx://')
         ? 'Name the schema by file, such as strategy_general.json, not by sctx:// URI.'
         : '`sctx schemas list` shows the bundled schemas; a file name needs its extension.';

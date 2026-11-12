@@ -1,7 +1,14 @@
 import { existsSync } from 'node:fs';
 import { LOCAL_CONFIG_FILE } from '../constants';
 import { SctxError, type SctxErrorCode } from '../errors';
-import { type Config, getConfigSourceFiles, loadConfig, type ResolvedConfigPath, resolveConfigPath } from '.';
+import {
+  type Config,
+  getConfigSourceFiles,
+  LOCAL_CONFIG_DESCRIPTION,
+  loadConfig,
+  type ResolvedConfigPath,
+  resolveConfigPath,
+} from '.';
 
 export type ConfigProblem = {
   code: SctxErrorCode;
@@ -21,6 +28,7 @@ export type ConfigHealth = {
 const FIXES: Partial<Record<SctxErrorCode, string>> = {
   E_CONFIG_NOT_FOUND: `Create a config with \`sctx spaces add <name> <path> --schema <schema> --config <folder>/${LOCAL_CONFIG_FILE}\`, or use the setup-space skill.`,
   E_CONFIG_INVALID: 'Fix the JSON in the config file named in the message; `sctx docs config` describes the shape.',
+  E_CONFIG_AMBIGUOUS: 'Merge the two config files into one and delete the other.',
   E_INCLUDE_NOT_FOUND: 'Correct or remove the missing path in `includeSpacesFrom`.',
   E_NO_SPACES: 'Add a space with `sctx spaces add`.',
   E_SPACE_PATH_MISSING: 'The folder or file was moved or deleted. Correct `path` in the config, or remove the space.',
@@ -56,7 +64,7 @@ export function inspectConfig(options: { startDir?: string } = {}): { health: Co
   if (!exists) {
     const detail =
       resolved.source === 'none'
-        ? `No ${LOCAL_CONFIG_FILE} found from the working directory upward, and no global config at ${resolved.path}`
+        ? `No ${LOCAL_CONFIG_DESCRIPTION} found from the working directory upward, and no global config at ${resolved.path}`
         : `Config file not found: ${resolved.path}`;
     health.problems.push(problem('E_CONFIG_NOT_FOUND', resolved.source === 'none' ? 'info' : 'error', detail));
     return { health };

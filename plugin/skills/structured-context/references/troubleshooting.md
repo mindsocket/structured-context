@@ -11,6 +11,7 @@ empty or `info` only. Hooks pick up a fixed config on the next prompt. A missing
 | `E_SCTX_OUTDATED` | The major.minor of `sctx --version` should match the plugin's version in `plugin/.claude-plugin/plugin.json` |
 | `E_CONFIG_NOT_FOUND` | At `info` level, nothing is set up: use the setup-space skill. As an error, `--config` or `$SCTX_CONFIG` points at a missing file: correct the path or unset the variable |
 | `E_TARGET_REQUIRED` | Ask where the config belongs. Usually `--config <folder holding the files>/.sctx.json`; `--global` only if the user asks |
+| `E_CONFIG_AMBIGUOUS` | Ask the user which of the two config files to keep, then merge the other's spaces into it |
 | `E_HOOK_FAILED` | A hook crashed and was skipped. Set `SCTX_DEBUG=1` for the session, or run the same `sctx` command by hand. Usually a problem with its own code above |
 
 Other codes (`E_CONFIG_INVALID`, `E_INCLUDE_NOT_FOUND`, `E_SPACE_PATH_MISSING`, `E_SCHEMA_*`,

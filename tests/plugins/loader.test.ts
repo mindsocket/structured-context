@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 import { loadPlugins } from '../../src/plugins/loader';
 
-// configDir points at tests/fixtures/ so convention resolution looks in tests/fixtures/plugins/
+// configDir points at tests/fixtures/ so convention resolution looks in tests/fixtures/.sctx/plugins/
 const CONFIG_DIR = join(import.meta.dir, '../fixtures');
 
 describe('loadPlugins', () => {

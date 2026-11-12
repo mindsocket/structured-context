@@ -109,11 +109,18 @@ const config: Config = {
 const graph = await loadSpaceGraph('my-space', config, { configDir: process.cwd() });
 ```
 
-Relative paths in a space's plugin config are resolved against the directory of the config file that
-defined the space. A hand-assembled `Config` has no such file, so you must pass an explicit
+Relative paths in a space's plugin config are resolved against the [config root](config.md#config-file-location)
+of the file that defined the space. A hand-assembled `Config` has no such file, so you must pass an explicit
 `configDir` to anchor them (`createSpaceContext`, `loadSpaceGraph`, and `validateFile` all accept it).
 Omitting it throws rather than silently guessing the working directory — prefer absolute paths so the
 anchor never matters.
+
+## Resources
+
+`resolveConfigPath()` returns the config's `root` along with its path. `resourceDir(root, name)` returns the
+folder holding one kind of resource for that root (such as `plugins` or `map-views`), or `undefined` when
+there is none. It follows the [resources folder](config.md#resources-folder) layout, so a tool that adds its
+own kind of resource finds it the same way.
 
 ## Plugin render hooks
 

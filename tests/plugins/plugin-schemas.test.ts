@@ -9,7 +9,7 @@ import { buildFullRegistry, createValidator, readRawSchema } from '../../src/sch
 import { createSpaceContext } from '../../src/space-context';
 
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
-const PLUGIN_SCHEMAS_DIR = join(FIXTURES_DIR, 'plugins/schemas');
+const PLUGIN_SCHEMAS_DIR = join(FIXTURES_DIR, '.sctx/plugins/schemas');
 
 describe('Plugin-contributed schemas', () => {
   describe('buildFullRegistry with pluginSchemas', () => {
@@ -283,7 +283,7 @@ describe('Plugin-contributed schemas', () => {
       const configDir = mkdtempSync(join(tmpdir(), 'sctx-plugin-schemas-'));
       try {
         for (const name of ['sctx-markdown', 'sctx-mermaid', 'sctx-miro', 'sctx-extra']) {
-          mkdirSync(join(configDir, 'plugins', name, 'schemas'), { recursive: true });
+          mkdirSync(join(configDir, '.sctx', 'plugins', name, 'schemas'), { recursive: true });
         }
         const space = {
           name: 'space',
@@ -293,7 +293,7 @@ describe('Plugin-contributed schemas', () => {
         };
         const sources = resolveSpacePluginSchemas(space, { spaces: [space] }, configDir);
         expect(sources).toEqual([
-          { pluginName: 'extra', schemasDir: join(configDir, 'plugins', 'sctx-extra', 'schemas') },
+          { pluginName: 'extra', schemasDir: join(configDir, '.sctx', 'plugins', 'sctx-extra', 'schemas') },
         ]);
       } finally {
         rmSync(configDir, { recursive: true, force: true });

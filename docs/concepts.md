@@ -10,7 +10,7 @@ This document is the canonical reference for concepts and terminology used in th
 
 ## Space
 
-A **space** is a named collection of nodes organised according to a schema. Spaces are the primary unit of organisation — a space has a backing format (a `space directory` or a `space on a page` file) and may be registered in a config file (`.sctx.json` or the global `config.json`) with a name for convenient access.
+A **space** is a named collection of nodes organised according to a schema. Spaces are the primary unit of organisation — a space has a backing format (a `space directory` or a `space on a page` file) and may be registered in a config file (`.sctx.json`, `.sctx/config.json` or the global `config.json`) with a name for convenient access.
 
 ```mermaid
 flowchart TD
@@ -478,10 +478,14 @@ Plugins that support parsing produce raw `SpaceNode[]` results given a suitable 
 
 The `plugins` field in config is a **map** from plugin name to plugin config object. All plugin names must start with `sctx-`, but the prefix is optional in config and normalised on load. Built-in plugins take precedence and all are loaded by default. External plugin names specified in config are then resolved in order:
 
-1. Config-adjacent: `{configDir}/plugins/{sctx-name}`
+1. The config root's plugins folder: `.sctx/plugins/{sctx-name}`
 2. npm: a package matching `sctx-*`
 
-Each plugin declares a `configSchema` JSON Schema; the loader validates the config block against it before invoking the plugin. Config fields annotated with `format: 'path'` are resolved relative to `configDir` by the loader.
+Each plugin declares a `configSchema` JSON Schema; the loader validates the config block against it before invoking the plugin. Config fields annotated with `format: 'path'` are resolved relative to the config root by the loader.
+
+### Config root
+
+The **config root** is the folder a config file's relative paths resolve from: the folder holding `.sctx.json` or `.sctx/`, or the global config's folder. Its **resources folder** (`.sctx/`, or the global config's folder) holds plugins, schemas and map view definitions. In code, `configDir` and `SpaceConfig.sourceDir` hold a config root. See [Resources folder](config.md#resources-folder).
 
 ### Dispatch contract
 
