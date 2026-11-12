@@ -10,7 +10,7 @@ import { readSpace } from '../../src/read/read-space';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { RESERVED_VERDICTS } from '../../src/schema/metadata-contract';
 import { createSpaceContext } from '../../src/space-context';
-import type { BaseNode, ReadSpaceResult, SpaceContext } from '../../src/types';
+import type { BaseNode, NodeId, ReadSpaceResult, SpaceContext } from '../../src/types';
 import { validateNodes } from '../../src/validate';
 
 /** Core's eval spaces, for the bundled schemas. */
@@ -72,7 +72,7 @@ export function resolveEvalSources(source: string, configDirs: string[]): EvalSo
 
 /**
  * An eval space's `eval.json5`. A fixture eval space names a `schema` (and optional `plugins`), as a space config
- * does, and keeps its nodes in `nodes.jsonl` beside the file, one parsed node per line. An eval space on a
+ * does, and keeps its nodes in `nodes.jsonl` beside the file, one schema object per line. An eval space on a
  * configured space names the `space` instead, and labels some of its nodes.
  */
 type EvalFile = Pick<SpaceConfig, 'schema' | 'plugins'> & {
@@ -122,17 +122,20 @@ export function loadEvalSpaces(sources: EvalSource[], config: Config): EvalSpace
   );
 }
 
-/** Parsed nodes, one JSON object per line: the nodes a plugin's parse hook returns. */
+/**
+ * Fixture nodes: one schema object per line, as frontmatter would hold it, with its `title` as the node id and
+ * link target.
+ */
 function readNodes(path: string): BaseNode[] {
   return readFileSync(path, 'utf8')
     .split('\n')
-    .filter((line) => line.trim() !== '')
-    .map((line, i) => {
-      const node = JSON.parse(line) as BaseNode;
-      for (const key of ['id', 'title', 'type', 'linkTargets', 'schemaData'] as const) {
-        if (node[key] === undefined) throw new Error(`${path}:${i + 1}: node has no "${key}"`);
-      }
-      return node;
+    .map((line, i) => ({ line, at: `${path}:${i + 1}` }))
+    .filter(({ line }) => line.trim() !== '')
+    .map(({ line, at }) => {
+      const schemaData = JSON.parse(line) as Record<string, unknown>;
+      const { title, type } = schemaData;
+      if (typeof title !== 'string' || typeof type !== 'string') throw new Error(`${at}: needs a "title" and a "type"`);
+      return { id: title as NodeId, title, type, linkTargets: [title], schemaData };
     });
 }
 

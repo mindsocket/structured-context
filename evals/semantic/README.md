@@ -48,7 +48,7 @@ Each source is a directory of eval spaces:
 
 An eval space is a directory with an `eval.json5`. It is one of two kinds.
 
-A **fixture** eval space has its own nodes in a `nodes.jsonl` beside `eval.json5`: one parsed node per line, as a plugin's parse hook returns it (`id`, `title`, `type`, `linkTargets` and `schemaData`). JSON keeps fixtures out of the markdown that editors and spaces read. To start from markdown notes, `sctx dump <space> | jq -c '.nodes[]'` prints nodes in this shape. The eval space names its `schema`, and optionally `plugins`, as a space config does:
+A **fixture** eval space has its own nodes in a `nodes.jsonl` beside `eval.json5`: one JSON object per line, with the fields frontmatter would hold. Each needs a `title`, which is also its node id, and a `type`. A body goes in `content`. JSON keeps fixtures out of the markdown that editors and spaces read. To start from markdown notes, `sctx dump <space> | jq -c '.nodes[].schemaData'` prints them in this shape. The eval space names its `schema`, and optionally `plugins`, as a space config does:
 
 ```json5
 {
