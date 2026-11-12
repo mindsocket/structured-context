@@ -6,7 +6,7 @@ export {
   makeRelationship,
   makeSpaceNode,
   withHierarchy,
-} from '../src/testing';
+} from './helpers/builders';
 
 import { evaluateRules, type RuleEvaluationOptions } from '../src/rule/gating';
 import type { Rule } from '../src/schema/metadata-contract';

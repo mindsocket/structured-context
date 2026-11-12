@@ -1,4 +1,12 @@
-import type { BaseNode, Hierarchy, HierarchyLevel, NodeId, Relationship, ResolvedParentRef, SpaceNode } from './types';
+import type {
+  BaseNode,
+  Hierarchy,
+  HierarchyLevel,
+  NodeId,
+  Relationship,
+  ResolvedParentRef,
+  SpaceNode,
+} from '../../src/types';
 
 /**
  * Creates a ResolvedParentRef with sensible defaults for use in tests.

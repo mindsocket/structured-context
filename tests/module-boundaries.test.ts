@@ -10,7 +10,7 @@ const LAYERS: string[][] = [
   ['schema', 'config', 'space-context', 'space-graph', 'space-graph-data'],
   ['filter', 'judge', 'rule', 'plugins'],
   ['read', 'render', 'validate', 'load-space-graph'],
-  ['index', 'commands', 'api', 'browser', 'testing'],
+  ['index', 'commands', 'api', 'browser'],
 ];
 
 /**

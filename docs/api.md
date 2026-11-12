@@ -61,21 +61,6 @@ const graph = spaceGraphFrom(data, { hierarchy: 'work' });
 `sctx dump <space> --graph` prints the same data. The JSON Schema for each released
 `formatVersion` ships in `schemas/generated/space-graph/`, named by version, and `latest.json` is the newest.
 
-## Testing utilities
-
-Test fixture builders are available via `structured-context/testing` for plugin and integration tests:
-
-```ts
-import {
-  makeNode,
-  makeSpaceNode,
-  makeHierarchy,
-  makeLevel,
-  makeRelationship,
-  makeParentRef,
-} from 'structured-context/testing';
-```
-
 ## Usage
 
 ```ts
