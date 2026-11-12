@@ -1,32 +1,59 @@
-import { describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
 import {
+  CORE_EVALS_DIR,
   checkEvalSpace,
   type EvalSpace,
   type Judgement,
   judgeEvalSpace,
   loadEvalSpaces,
+  resolveEvalSources,
   scoreEvalSpace,
 } from '../../evals/semantic/harness';
+import type { Config } from '../../src/config';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 
-const spaces = loadEvalSpaces();
-
-/** A judge that gives every labelled case its first expected verdict. */
-const labelJudge = (space: EvalSpace) =>
-  new FakeJudgeProvider(({ node, rule }) => ({ verdict: space.expected[rule.id]?.[node.id]?.[0] ?? 'unlabelled' }));
+const spaces = loadEvalSpaces(resolveEvalSources('core', []), { spaces: [] });
 
 describe.each(spaces.map((s) => [s.name, s] as const))('eval space %s', (_name, space) => {
-  test('is valid and its labels name real nodes, semantic rules and verdicts', async () => {
+  test('passes its checks: labels name real nodes, semantic rules and verdicts, and cover every judged node', async () => {
     expect(await checkEvalSpace(space)).toEqual([]);
   });
+});
 
-  test('every judged node is labelled, and every label is judged', async () => {
-    const scores = scoreEvalSpace(space, [await judgeEvalSpace(space, labelJudge(space))]);
-    for (const score of scores) {
-      expect(score.unlabelled).toEqual([]);
-      expect(score.misses).toEqual([]);
-      expect(score.agreement).toBe(1);
-    }
+describe('eval spaces on a configured space', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sctx-evals-'));
+  const fixture = join(CORE_EVALS_DIR, 'strict-ost', 'space');
+  mkdirSync(join(dir, 'mine'));
+  writeFileSync(
+    join(dir, 'mine', 'eval.json5'),
+    JSON.stringify({
+      space: 'work',
+      expected: { 'opportunity-customer-voice': { 'Onboarding.md': 'fail', 'Build a Slack integration.md': 'fail' } },
+    }),
+  );
+  const config: Config = { spaces: [{ name: 'work', path: fixture, schema: 'strict_ost.json', sourceDir: dir }] };
+  const [space] = loadEvalSpaces(resolveEvalSources(dir, []), config);
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  test('loads the configured space, named by its source directory', () => {
+    expect(space).toMatchObject({ name: `${basename(dir)}/mine`, fixture: false });
+    expect(space!.context.space.name).toBe('work');
+  });
+
+  test('passes its checks without labelling every node', async () => {
+    expect(await checkEvalSpace(space!)).toEqual([]);
+  });
+
+  test('sends only labelled nodes to the provider', async () => {
+    const judge = new FakeJudgeProvider({ verdict: 'fail' });
+    const judged = await judgeEvalSpace(space!, judge);
+    expect(judged.map((j) => j.nodeId).sort()).toEqual(['Build a Slack integration.md', 'Onboarding.md']);
+    expect(judge.callHistory.map((input) => input.node.id as string).sort()).toEqual(
+      judged.map((j) => j.nodeId).sort(),
+    );
   });
 });
 

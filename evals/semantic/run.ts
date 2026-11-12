@@ -1,9 +1,11 @@
 /**
- * Live semantic evals: judge the eval spaces with real providers and report agreement with the labels.
- * Costs money. See README.md.
+ * Semantic evals: judge eval spaces with real providers and report agreement with the labels. Costs money,
+ * except with `--check`. See README.md.
  */
+import { existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
-import { loadConfigOrEmpty } from '../../src/config';
+import { configPath, getConfigSourceFiles, loadConfigOrEmpty } from '../../src/config';
 import { createJudgeProvider } from '../../src/judge/factory';
 import {
   checkEvalSpace,
@@ -11,32 +13,52 @@ import {
   judgeEvalSpace,
   loadEvalSpaces,
   type RuleScore,
+  resolveEvalSources,
   scoreEvalSpace,
 } from './harness';
 
 const { values } = parseArgs({
   options: {
+    from: { type: 'string', multiple: true },
     provider: { type: 'string', multiple: true },
     space: { type: 'string', multiple: true },
     runs: { type: 'string', default: '3' },
     'per-node': { type: 'boolean', default: false },
     json: { type: 'boolean', default: false },
+    check: { type: 'boolean', default: false },
   },
 });
 
-const providerNames = (values.provider ?? []).flatMap((p) => p.split(',')).filter(Boolean);
+const list = (values: string[] | undefined) => (values ?? []).flatMap((v) => v.split(',')).filter(Boolean);
+const providerNames = list(values.provider);
 const runs = Number(values.runs);
-if (providerNames.length === 0) throw new Error('Name at least one model provider with --provider <name>.');
+if (providerNames.length === 0 && !values.check) {
+  throw new Error('Name at least one model provider with --provider <name>, or pass --check.');
+}
 if (!Number.isInteger(runs) || runs < 1) {
   throw new Error(`--runs must be a positive whole number, not "${values.runs}".`);
 }
 
 // Build every provider and check every space before the first paid call.
 const config = loadConfigOrEmpty();
+// The main config file and every file it includes.
+const configFiles = [configPath(), ...getConfigSourceFiles()].filter((file) => existsSync(file));
+const configDirs = [...new Set(configFiles.map((file) => dirname(file)))];
 const providers = providerNames.map((name) => createJudgeProvider(config, {}, name)!);
-const spaces = loadEvalSpaces(undefined, values.space);
+const sources = (list(values.from).length > 0 ? list(values.from) : ['core']).flatMap((source) =>
+  resolveEvalSources(source, configDirs),
+);
+const only = list(values.space);
+const spaces = loadEvalSpaces(sources, config).filter(
+  (space) => only.length === 0 || only.some((name) => space.name === name || space.name.endsWith(`/${name}`)),
+);
+if (spaces.length === 0) throw new Error('No eval spaces found.');
 const problems = (await Promise.all(spaces.map(checkEvalSpace))).flat();
 if (problems.length > 0) throw new Error(`Eval spaces have problems:\n${problems.join('\n')}`);
+if (values.check) {
+  console.log(`Checked ${spaces.length} eval space(s): ${spaces.map((s) => s.name).join(', ')}`);
+  process.exit(0);
+}
 
 const results: Array<{ space: string; provider: string; scores: RuleScore[]; runs: Judgement[][] }> = [];
 for (const space of spaces) {
@@ -80,8 +102,6 @@ if (values.json) {
         );
         if (m.evidence) notes.push(`  ${m.evidence}`);
       }
-      if (s.unlabelled.length > 0)
-        notes.push(`- ${space} · ${provider} · ${s.ruleId}: judged with no label: ${s.unlabelled.join(', ')}`);
     }
   }
   if (notes.length > 0) lines.push('', 'Misses:', ...notes);
