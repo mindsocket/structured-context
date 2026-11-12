@@ -1,7 +1,7 @@
 import { describe, expect, it, spyOn } from 'bun:test';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { configRoot, resourceDir } from '../../src/config';
+import { configRoot, resolveSchemaPath, resourceDir } from '../../src/config';
 import { useConfigEnv } from '../helpers/config-env';
 
 const env = useConfigEnv();
@@ -45,5 +45,15 @@ describe('resourceDir', () => {
     mkdirSync(join(env.vault, '.sctx', 'plugins'), { recursive: true });
 
     expect(resourceDir(env.vault, 'plugins')).toBe(join(env.vault, '.sctx', 'plugins'));
+  });
+});
+
+describe('resolveSchemaPath by file name', () => {
+  it('prefers .sctx/schemas over a file of the same name in the root', () => {
+    mkdirSync(join(env.vault, '.sctx', 'schemas'), { recursive: true });
+    writeFileSync(join(env.vault, 'mine.json'), '{}');
+    writeFileSync(join(env.vault, '.sctx', 'schemas', 'mine.json'), '{}');
+
+    expect(resolveSchemaPath('mine.json', env.vault)).toBe(join(env.vault, '.sctx', 'schemas', 'mine.json'));
   });
 });

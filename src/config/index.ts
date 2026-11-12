@@ -298,8 +298,8 @@ export function getSpaceConfig(name: string, config: Config): SpaceConfig {
  * 3. Plugin-qualified path (e.g. "sctx-wardley-mapping/wardley_map.json" or "wardley-mapping/wardley_map.json"):
  *    resolved against the matching loaded plugin's schemasDir.
  * 4. Simple filename without directory (e.g. "wardley_map.json" or "strategy_general.json"):
- *    - configDir/filename if it exists
  *    - <schemas resource folder>/filename if it exists
+ *    - configDir/filename if it exists
  *    - plugin.schemasDir/filename for any loaded plugin with schemasDir
  *    - bundledSchemasDir/filename if it exists
  *    - fallback: configDir/filename
@@ -351,14 +351,14 @@ export function resolveSchemaPath(
   }
 
   // Simple filename without directory:
-  // 1. configDir/filename, then the config root's schemas folder
-  const localCandidate = resolve(configDir, rawSchema);
-  if (existsSync(localCandidate)) {
-    return localCandidate;
-  }
+  // 1. The config root's schemas folder, then configDir/filename
   const schemasDir = resourceDir(configDir, SCHEMAS_RESOURCE);
   if (schemasDir && existsSync(join(schemasDir, rawSchema))) {
     return join(schemasDir, rawSchema);
+  }
+  const localCandidate = resolve(configDir, rawSchema);
+  if (existsSync(localCandidate)) {
+    return localCandidate;
   }
 
   // 2. Plugin schemas from declared space / config plugins

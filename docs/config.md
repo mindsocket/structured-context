@@ -41,7 +41,7 @@ sctx spaces add wiki notes --schema knowledge_wiki.json
 
 This adds the space to the config file found from the working directory, or to the one named with `--config`. When no `.sctx.json` is found, or only the global config exists, pass `--config <folder>/.sctx.json` (creates the file) or `--global`. If the config file has comments or trailing commas, the command prints the entry to add by hand.
 
-Custom schemas can sit anywhere. A schema in `.sctx/schemas/` is found by its file name; reference others by relative path, for example `./schemas/my_wiki.json`.
+Custom schemas can sit anywhere. A schema in `.sctx/schemas/` is found by its file name, before one of the same name in the root; reference others by relative path, for example `./schemas/my_wiki.json`.
 
 See `config.example.json` for the full structure.
 
