@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
-import { validateGraph } from '../../src/schema/validate-graph';
 import type { NodeId, SpaceNode, UnresolvedRef, ValidationIssue } from '../../src/types';
 import { findDuplicateIds } from '../../src/validate';
+import { validateGraph } from '../../src/validate/validate-graph';
 
 // A result entry names its node by `nodeId` and, separately, where it is defined by `source`,
 // so a consumer indexing a SpaceGraph by node id never has to guess what a `file` field holds.
@@ -16,16 +16,16 @@ describe('result entries separate node id from source location', () => {
     source: { file: 'goals/okr-1.md', line: 3 },
   };
 
-  it('refErrors carry the node id and the source location', () => {
-    const { refErrors } = validateGraph([], { hierarchies: [] } as never, [ref]);
-    expect(refErrors[0]!.nodeId).toBe(id);
-    expect(refErrors[0]!.source).toEqual({ file: 'goals/okr-1.md', line: 3 });
+  it('broken-link issues carry the node id and the source location', () => {
+    const [issue] = validateGraph([], { hierarchies: [] } as never, [ref]);
+    expect(issue?.nodeId).toBe(id);
+    expect(issue?.source).toEqual({ file: 'goals/okr-1.md', line: 3 });
   });
 
-  it('refErrors for a node without a source carry only the node id', () => {
-    const { refErrors } = validateGraph([], { hierarchies: [] } as never, [{ ...ref, source: undefined }]);
-    expect(refErrors[0]!.nodeId).toBe(id);
-    expect('source' in refErrors[0]!).toBe(false);
+  it('broken-link issues for a node without a source carry only the node id', () => {
+    const [issue] = validateGraph([], { hierarchies: [] } as never, [{ ...ref, source: undefined }]);
+    expect(issue?.nodeId).toBe(id);
+    expect('source' in issue!).toBe(false);
   });
 });
 

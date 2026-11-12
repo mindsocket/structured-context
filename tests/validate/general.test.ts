@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { readSpaceDirectory, readSpaceOnAPage } from '../../src/plugins/markdown/read-space';
 import { resolveGraphEdges } from '../../src/read/resolve-graph-edges';
 import { bundledSchemasDir, createValidator, loadMetadata } from '../../src/schema/schema';
-import { validateGraph } from '../../src/schema/validate-graph';
 import type { BaseNode, NodeId, SpaceNode, UnresolvedRef } from '../../src/types';
+import { validateGraph } from '../../src/validate/validate-graph';
 import { makePluginContext } from '../helpers/context';
 import { makeLevel, withHierarchy } from '../test-helpers';
 
@@ -34,8 +34,8 @@ describe('Schema validation', () => {
     });
 
     it('has zero ref errors', () => {
-      const { refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
-      expect(refErrors).toHaveLength(0);
+      const issues = validateGraph(nodes, metadata, unresolvedRefs);
+      expect(issues.filter((i) => i.kind === 'broken-link')).toHaveLength(0);
     });
   });
 
@@ -82,8 +82,8 @@ describe('Schema validation', () => {
     });
 
     it('detects dangling parent ref error for Nonexistent Node', () => {
-      const { refErrors } = validateGraph(nodes, metadata, unresolvedRefs);
-      expect(refErrors.some((e) => e.parent === '[[Nonexistent Node]]')).toBe(true);
+      const issues = validateGraph(nodes, metadata, unresolvedRefs);
+      expect(issues.some((e) => e.kind === 'broken-link' && e.ref === '[[Nonexistent Node]]')).toBe(true);
     });
   });
 
@@ -144,8 +144,8 @@ describe('Schema validation', () => {
       expect(nodes1.find((n) => n.id === 'solution_page.md')?.schemaData.parent).toBe('[[anchor_vision#^goal1]]');
       expect(nodes1.find((n) => n.id === 'solution_page.md')?.resolvedParents[0]?.id as string).toBe('Another Goal');
 
-      const { refErrors } = validateGraph(nodes1, metadata, refs1);
-      expect(refErrors).toHaveLength(0);
+      const issues1 = validateGraph(nodes1, metadata, refs1);
+      expect(issues1.filter((i) => i.kind === 'broken-link')).toHaveLength(0);
     });
 
     it('keeps unresolved parent links untouched when no link target matches', () => {
@@ -175,9 +175,9 @@ describe('Schema validation', () => {
         ...withHierarchy([makeLevel('vision'), makeLevel('mission'), makeLevel('goal'), makeLevel('solution')]),
       });
 
-      const { refErrors } = validateGraph(nodes2, metadata, refs2);
-      expect(refErrors).toHaveLength(1);
-      expect(refErrors[0]?.parent).toBe('[[anchor_vision#^noanchor]]');
+      const issues2 = validateGraph(nodes2, metadata, refs2);
+      expect(issues2.filter((i) => i.kind === 'broken-link')).toHaveLength(1);
+      expect(issues2.find((i) => i.kind === 'broken-link')?.ref).toBe('[[anchor_vision#^noanchor]]');
     });
 
     it('does not resolve bare embedded-node title links when no page exists', () => {
@@ -220,9 +220,9 @@ describe('Schema validation', () => {
       });
 
       expect(nodes3.find((n) => n.id === 'solution_page.md')?.resolvedParents).toHaveLength(0);
-      const { refErrors } = validateGraph(nodes3, metadata, refs3);
-      expect(refErrors).toHaveLength(1);
-      expect(refErrors[0]?.parent).toBe('[[Embedded Goal]]');
+      const issues3 = validateGraph(nodes3, metadata, refs3);
+      expect(issues3.filter((i) => i.kind === 'broken-link')).toHaveLength(1);
+      expect(issues3.find((i) => i.kind === 'broken-link')?.ref).toBe('[[Embedded Goal]]');
     });
   });
 
