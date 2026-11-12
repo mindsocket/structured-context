@@ -2,8 +2,27 @@ import type { JudgeSession } from '../judge/judge-node';
 import type { TrimReport } from '../judge/trim';
 import type { Rule } from '../schema/metadata-contract';
 import type { SpaceGraph } from '../space-graph';
-import type { NodeId, SpaceNode, ValidationIssue, ValidationIssueKind } from '../types';
+import type { NodeId, RuleSeverity, SpaceNode, ValidationIssue, ValidationIssueKind } from '../types';
 import { createRuleEvaluator } from './rule-evaluator';
+import { ruleSeverities, ruleSeverity } from './rule-severity';
+
+/** The gate policy: whether a rule violation can stop evaluation below its node. */
+export type GatePolicy = {
+  ruleGatesDescendants(rule: Rule, severity?: RuleSeverity): boolean;
+  ruleMayGate(rule: Rule): boolean;
+};
+
+/** Whether a violation of this rule gates its subtree: explicit `gatesDescendants`, else only `error`. */
+export function ruleGatesDescendants(rule: Rule, severity: RuleSeverity = ruleSeverity(rule)): boolean {
+  return rule.gatesDescendants ?? severity === 'error';
+}
+
+/** Whether any violation this rule can report is a gating violation. */
+export function ruleMayGate(rule: Rule): boolean {
+  return rule.gatesDescendants ?? ruleSeverities(rule).includes('error');
+}
+
+const gatePolicy: GatePolicy = { ruleGatesDescendants, ruleMayGate };
 
 /**
  * Nodes that failed a check before rule evaluation, by issue kind: a node whose schema check or hierarchy
@@ -44,7 +63,7 @@ export async function evaluateRules(
   failedNodes: FailedNodes = new Map(),
   options: RuleEvaluationOptions = {},
 ): Promise<RuleEvaluationResult> {
-  const evaluator = createRuleEvaluator(nodes, rules, graph, options.judge);
+  const evaluator = createRuleEvaluator(nodes, rules, graph, options.judge, gatePolicy);
   const issues = await evaluator.evaluateGlobalRules();
   const nonHierarchy = await evaluator.evaluateNodeSet(graph.nonHierarchy);
   issues.push(...nonHierarchy.issues);

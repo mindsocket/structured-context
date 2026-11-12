@@ -95,6 +95,9 @@ These rules keep the boundaries:
 1. **Imports stay in their layer or point down.** A module can always import from its own folder.
 2. **Only plugins know a source format,** such as markdown paths or frontmatter. Other modules reach a built-in plugin only through the plugin registry in `plugins/`.
 3. **One owner per concern.** Only the owning module builds a concern's data. A caller passes what it has, and the owner derives what it needs. For example, `validate.ts` passes the schema to rule evaluation, and only `judge/` turns it into model input.
+4. **One finding shape.** A check creates a `ValidationIssue` when it finds a problem. Later stages consume those issues instead of translating parallel result shapes.
+5. **Data flows outward.** A function returns the data it produced. Consumers derive their own views instead of the pipeline carrying mutable accumulators or denormalised summaries for them.
+6. **Gating owns gate policy.** `rule/gating.ts` decides which node sets run, which rule violations make gates, and which nodes are gated. `rule/rule-evaluator.ts` evaluates a supplied node set and reports its outcomes; `judge/` prepares and sends model input.
 
 `tests/module-boundaries.test.ts` checks rules 1 and 2 on runtime imports, and fails on a top-level module with no layer. It lists the imports that break a rule today, each with the change that would remove it. Rule 3 needs review, because a module can build another's data without importing it. `tests/space-graph-data.test.ts` checks that `browser.ts` bundles without Node built-ins.
 

@@ -2,7 +2,7 @@ import { type JudgeSession, judgeNodes, type NodeJudgement } from '../judge/judg
 import type { TrimReport } from '../judge/trim';
 import type { Rule } from '../schema/metadata-contract';
 import type { SpaceGraph } from '../space-graph';
-import type { NodeId, RuleSeverity, SpaceNode, ValidationIssue } from '../types';
+import type { NodeId, SpaceNode, ValidationIssue } from '../types';
 import {
   buildEvalContext,
   evaluateRuleExpression,
@@ -10,18 +10,8 @@ import {
   ruleIssue,
   tryEvaluateExpression,
 } from './expression';
+import type { GatePolicy } from './gating';
 import { ruleSeverities, ruleSeverity } from './rule-severity';
-
-/** Whether a violation of this rule is a gating violation: explicit `gatesDescendants`, else true only for `error`.
- * `severity` is that of the finding: the rule's own for an expression, the verdict's for a semantic part. */
-export function ruleGatesDescendants(rule: Rule, severity: RuleSeverity = ruleSeverity(rule)): boolean {
-  return rule.gatesDescendants ?? severity === 'error';
-}
-
-/** Whether any violation this rule can report is a gating violation. */
-export function ruleMayGate(rule: Rule): boolean {
-  return rule.gatesDescendants ?? ruleSeverities(rule).includes('error');
-}
 
 /** The outcome of evaluating a node set: its issues, and each node's first rule with a gating violation. */
 export type NodeSetEvaluation = {
@@ -37,7 +27,13 @@ export type NodeSetEvaluation = {
  * evaluates their expressions, and sends the remaining semantic parts to the judge. It does not decide order
  * or suppression. Without a `judge`, a rule runs only its `expression`, and a semantic-only rule is skipped.
  */
-export function createRuleEvaluator(nodes: SpaceNode[], rules: Rule[], graph: SpaceGraph, judge?: JudgeSession) {
+export function createRuleEvaluator(
+  nodes: SpaceNode[],
+  rules: Rule[],
+  graph: SpaceGraph,
+  judge: JudgeSession | undefined,
+  gatePolicy: GatePolicy,
+) {
   const nodeIndex = new Map(nodes.map((node) => [node.id, node]));
   const nodeRules = rules.filter(
     (r) => !r.global && (r.expression !== undefined || (r.semantic !== undefined && judge)),
@@ -52,7 +48,7 @@ export function createRuleEvaluator(nodes: SpaceNode[], rules: Rule[], graph: Sp
       if (rule.type && rule.type !== node.resolvedType) continue;
       if (judge && rule.semantic !== undefined && target !== undefined && node.id !== target) {
         // An ancestor matters only through the gates it could raise.
-        if (!(targetAncestors.has(node.id) && ruleMayGate(rule))) continue;
+        if (!(targetAncestors.has(node.id) && gatePolicy.ruleMayGate(rule))) continue;
       }
       if (rule.when) {
         const outcome = await tryEvaluateExpression(rule.when, buildEvalContext(node, nodes, nodeIndex));
@@ -98,7 +94,11 @@ export function createRuleEvaluator(nodes: SpaceNode[], rules: Rule[], graph: Sp
             const result = await evaluateRuleExpression(rule, node, nodes, nodeIndex);
             if (!result.passed) {
               found.push(result.issue);
-              if (result.failed && ruleGatesDescendants(rule, result.issue.severity) && !gatingRules.has(node.id)) {
+              if (
+                result.failed &&
+                gatePolicy.ruleGatesDescendants(rule, result.issue.severity) &&
+                !gatingRules.has(node.id)
+              ) {
                 gatingRules.set(node.id, rule.id);
               }
               // A semantic part runs only when its own expression passes.
@@ -121,7 +121,7 @@ export function createRuleEvaluator(nodes: SpaceNode[], rules: Rule[], graph: Sp
             const issue = judgementIssue(node.id, j);
             found.push(issue);
             // An evaluation error says nothing about the node, so it never gates.
-            if (!j.error && ruleGatesDescendants(j.rule, issue.severity) && !gatingRules.has(node.id)) {
+            if (!j.error && gatePolicy.ruleGatesDescendants(j.rule, issue.severity) && !gatingRules.has(node.id)) {
               gatingRules.set(node.id, j.rule.id);
             }
           }

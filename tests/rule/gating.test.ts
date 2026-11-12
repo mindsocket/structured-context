@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import type { SemanticJudgeProvider } from '../../src/judge/types';
-import { evaluateRules, type FailedNodes, type RuleEvaluationResult } from '../../src/rule/gating';
-import { ruleGatesDescendants } from '../../src/rule/rule-evaluator';
+import {
+  evaluateRules,
+  type FailedNodes,
+  type RuleEvaluationResult,
+  ruleGatesDescendants,
+} from '../../src/rule/gating';
 
 type Gate = { nodeId: string; gatedNodeIds: string[]; message: string };
 
