@@ -59,7 +59,7 @@ Each `.md` file with a `type` frontmatter field is a **typed page** — it repre
 Parsing behaviour for a space directory:
 - Files declaring a `space node` type via frontmatter are included as nodes.
 - Such files may also contain `embedded nodes` in their body, which are extracted and included.
-- Files declaring a `tooling type` (e.g. `space_on_a_page`, `dashboard`) are excluded from the node set.
+- A `space on a page` file in a space directory is excluded from the node set.
 - Files without frontmatter, or without a `type` field, are excluded from the node set (unless **type inference** is configured — see below).
 - Non-markdown files are not scanned.
 
@@ -102,8 +102,6 @@ Each node has an `id` (its unique key), a `title` (its display name) and `linkTa
 Each node retains its physical `source` location (`file`, and `line` / `column` where available) so that validation diagnostics, edge errors, and downstream tooling pinpoint the exact location in the vault.
 
 A node's `content` is the markdown source of its body; see [Node content](#node-content).
-
-> `space_on_a_page` and `dashboard` are not `space node` types — they are `tooling types`.
 
 ### Node key
 
@@ -218,15 +216,6 @@ The **per-node input cap** limits the input for one evaluated node and its relat
 - Each gated node gets a `gated` validation issue at `info` severity, naming the gate and its cause (`schema`, `hierarchy` or a rule `id`).
 
 See [docs/rules.md](rules.md#cascade-gating) for the full model, including the per-rule `gatesDescendants` field and the `--include-gated` and `--depth` options.
-
----
-
-## Tooling types
-
-**Tooling types** are `type` values recognised by the schema and tooling but not treated as `space nodes`. They serve organisational or display purposes:
-
-- **`space_on_a_page`** — a container file for a `space on a page`. Not itself a node.
-- **`dashboard`** — a summary view for a `space directory`. Conceptually similar to `space on a page` in that it presents a high-level, single-document view of a space — but rather than defining the space, it reflects it, querying and assembling information from the space's node files. Useful after a space has "graduated" from a single `space on a page` file to a `space directory`, as a way to preserve that top-level overview. The dashboard concept may evolve to surface more operational information over time, but there is no concrete design for that yet.
 
 ---
 
