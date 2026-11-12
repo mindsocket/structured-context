@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
-import type { NodeId, Rule, SpaceNode } from '../../src/types';
+import type { Rule } from '../../src/schema/metadata-contract';
+import type { NodeId, SpaceNode } from '../../src/types';
 import { evaluateFlat, makeParentRef } from '../test-helpers';
 
 describe('evaluateRules without a hierarchy - semantic evaluation', () => {
@@ -74,7 +75,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
   });
 
   it('evaluates semantic rules with a judge', async () => {
-    const fake = new FakeJudgeProvider(
+    const provider = new FakeJudgeProvider(
       new Map([
         [
           'opportunity-customer-voice:I struggle to finish signup on mobile',
@@ -88,7 +89,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     );
 
     const violations = await evaluateFlat(sampleNodes, rules, {
-      judge: { provider: fake },
+      judge: { provider },
     });
 
     expect(violations).toHaveLength(1);
@@ -98,7 +99,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     expect(violations[0]?.evidence).toBe(
       'Stated as a solution feature ("Build social login") rather than a customer need',
     );
-    expect(fake.callHistory.map((c) => c.node.id as string).sort()).toEqual(['bad-opp.md', 'valid-opp.md']);
+    expect(provider.callHistory.map((c) => c.node.id as string).sort()).toEqual(['bad-opp.md', 'valid-opp.md']);
   });
 
   it('gates semantic rules when node fails an upstream expression rule', async () => {
@@ -119,10 +120,10 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
       },
     ];
 
-    const fake = new FakeJudgeProvider();
+    const provider = new FakeJudgeProvider();
 
     const violations = await evaluateFlat(sampleNodes, strictRules, {
-      judge: { provider: fake },
+      judge: { provider },
     });
 
     // bad-opp.md source is "Engineering suggestion", so it failed require-interviews-source
@@ -132,8 +133,8 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     expect(badOppViolations[0]?.ruleId).toBe('require-interviews-source');
 
     // Only valid-opp.md was evaluated by the semantic judge
-    expect(fake.callHistory).toHaveLength(1);
-    expect(fake.callHistory[0]?.node.id as string).toBe('valid-opp.md');
+    expect(provider.callHistory).toHaveLength(1);
+    expect(provider.callHistory[0]?.node.id as string).toBe('valid-opp.md');
   });
 
   it('applies a semantic rule check before the judge', async () => {
@@ -147,12 +148,12 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
         description: 'Must be in customer voice',
       },
     ];
-    const fake = new FakeJudgeProvider({ pass: false, evidence: 'Not customer voice' });
+    const provider = new FakeJudgeProvider({ pass: false, evidence: 'Not customer voice' });
 
-    const violations = await evaluateFlat(sampleNodes, checked, { judge: { provider: fake } });
+    const violations = await evaluateFlat(sampleNodes, checked, { judge: { provider } });
 
     // bad-opp.md fails the expression: reported at the rule severity, never sent to the judge.
-    expect(fake.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
+    expect(provider.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
     expect(violations).toEqual([
       expect.objectContaining({ nodeId: 'valid-opp.md', evidence: 'Not customer voice', verdict: 'fail' }),
       expect.objectContaining({
@@ -188,23 +189,23 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     });
 
     it('reports an unevaluable check as an error', async () => {
-      const fake = new FakeJudgeProvider();
+      const provider = new FakeJudgeProvider();
       const violations = await evaluateFlat(sampleNodes, [{ ...checked, expression: '$notAFunction(' }], {
-        judge: { provider: fake },
+        judge: { provider },
       });
-      expect(fake.callHistory).toHaveLength(0);
+      expect(provider.callHistory).toHaveLength(0);
       expect(violations.map((v) => v.severity)).toEqual(['error', 'error']);
       expect(violations[0]?.message).toContain('Rule error');
     });
 
     it('evaluates when before check, and judges only nodes whose check passes', async () => {
-      const fake = new FakeJudgeProvider();
-      const whenFalse = await evaluateFlat(sampleNodes, [{ ...checked, when: 'false' }], { judge: { provider: fake } });
+      const provider = new FakeJudgeProvider();
+      const whenFalse = await evaluateFlat(sampleNodes, [{ ...checked, when: 'false' }], { judge: { provider } });
       expect(whenFalse).toEqual([]);
-      expect(fake.callHistory).toHaveLength(0);
+      expect(provider.callHistory).toHaveLength(0);
 
-      await evaluateFlat(sampleNodes, [checked], { judge: { provider: fake } });
-      expect(fake.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
+      await evaluateFlat(sampleNodes, [checked], { judge: { provider } });
+      expect(provider.callHistory.map((c) => c.node.id as string)).toEqual(['valid-opp.md']);
     });
   });
 });

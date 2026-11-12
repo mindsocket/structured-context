@@ -21,8 +21,9 @@ function gatesOf(result: RuleEvaluationResult): Gate[] {
   }));
 }
 
+import type { Rule } from '../../src/schema/metadata-contract';
 import { buildSpaceGraph, computeHierarchyDepths } from '../../src/space-graph';
-import type { NodeId, Rule, SpaceNode } from '../../src/types';
+import type { NodeId, SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef } from '../test-helpers';
 
 const hierarchy = makeHierarchy([makeLevel('goal'), makeLevel('opportunity'), makeLevel('solution')]);

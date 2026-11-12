@@ -1,7 +1,8 @@
 import { type JudgeSession, judgeNodes, type NodeJudgement } from '../judge/judge-node';
 import type { TrimReport } from '../judge/trim';
+import type { Rule } from '../schema/metadata-contract';
 import type { SpaceGraph } from '../space-graph';
-import type { NodeId, Rule, RuleSeverity, SpaceNode, ValidationIssue } from '../types';
+import type { NodeId, RuleSeverity, SpaceNode, ValidationIssue } from '../types';
 import {
   buildEvalContext,
   evaluateRuleExpression,

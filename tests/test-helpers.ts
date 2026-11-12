@@ -9,8 +9,9 @@ export {
 } from '../src/testing';
 
 import { evaluateRules, type RuleEvaluationOptions } from '../src/rule/gating';
+import type { Rule } from '../src/schema/metadata-contract';
 import { buildSpaceGraph } from '../src/space-graph';
-import type { Rule, SpaceNode, ValidationIssue } from '../src/types';
+import type { SpaceNode, ValidationIssue } from '../src/types';
 
 /** The fields every rule issue carries. */
 export type RuleIssue = Extract<ValidationIssue, { kind: 'rule' }>;

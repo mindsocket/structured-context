@@ -178,7 +178,7 @@ A node becomes a gate when it has one of these:
 - **A hierarchy structure violation**, such as an invalid parent. The node's own rules are gated too.
 - **A gating violation**: a rule violation with `error` severity, or any violation of a rule with `gatesDescendants: true`. The node's other expressions still run, but none of its semantic parts do.
 
-Gating keeps costly checks, such as [semantic rules](semantic-rules.md), from running below a node that is already known to be bad. It also keeps the actionable violation from being lost in noise. A gated node does not start a new gate: everything below a gate is gated by that one node. Gating applies only to hierarchy nodes. Global rules and nodes outside the hierarchy are always evaluated.
+Gating keeps costly checks, such as [semantic rules](semantic-rules.md), from running below a node that has errors. It also keeps the actionable violation from being lost in noise. A gated node does not start a new gate: everything below a gate is gated by that one node. Gating applies only to hierarchy nodes. Global rules and nodes outside the hierarchy are always evaluated.
 
 A rule has one `gatesDescendants` setting. It applies to whichever part reported the violation, the `expression` or the `semantic` part. Its default comes from the severity of that violation: `true` for `error`, and `false` for `warning` and `info`. Set it explicitly when that default doesn't fit.
 

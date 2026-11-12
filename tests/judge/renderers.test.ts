@@ -5,7 +5,7 @@ import { OpenAIDecisionsJudgeProvider } from '../../src/judge/provider/openai-de
 import { trimMarker } from '../../src/judge/trim';
 import type { SemanticJudgeInput } from '../../src/judge/types';
 import { resolveSemanticRule } from '../../src/judge/verdicts';
-import type { Rule } from '../../src/types';
+import type { Rule } from '../../src/schema/metadata-contract';
 import { node } from './helpers';
 
 const realFetch = globalThis.fetch;

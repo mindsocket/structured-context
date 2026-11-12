@@ -211,7 +211,7 @@ The **per-node input cap** limits the input for one evaluated node and its relat
 
 ### Cascade gating
 
-**Cascade gating** stops rule evaluation below a node that is already known to be bad, so costly checks such as semantic rules don't run against invalid input. It applies within the main hierarchy.
+**Cascade gating** stops rule evaluation below a node that has errors, so costly checks such as semantic rules don't run against invalid input. It applies within the main hierarchy.
 
 - A **gate** is a node that failed schema validation or hierarchy structure, or that has a **gating violation** (by default, a rule violation at `error` severity).
 - A **gated** node is one below a gate. Its rules are not evaluated. A node that failed schema or hierarchy checks is gated by its own gate too.

@@ -53,14 +53,14 @@ describe('judgeNodes', () => {
 
   it('calls a judge without evaluateNodes once per node', async () => {
     const seen: string[] = [];
-    const judge: SemanticJudgeProvider = {
+    const provider: SemanticJudgeProvider = {
       name: 'single',
       evaluate: (input) => {
         seen.push(input.node.title);
         return Promise.resolve({ [passFailRule.id]: { verdict: 'pass' } });
       },
     };
-    const out = await judgeNodes(judge, [
+    const out = await judgeNodes(provider, [
       { node: node as unknown as SpaceNode, rules: [rule] },
       { node: other, rules: [rule] },
     ]);
@@ -70,7 +70,7 @@ describe('judgeNodes', () => {
 
   it('sends every node to evaluateNodes at once and maps results back by position', async () => {
     let calls = 0;
-    const judge: SemanticJudgeProvider = {
+    const provider: SemanticJudgeProvider = {
       name: 'multi-node',
       evaluate: () => Promise.reject(new Error('unused')),
       evaluateNodes: (inputs) => {
@@ -82,7 +82,7 @@ describe('judgeNodes', () => {
         );
       },
     };
-    const out = await judgeNodes(judge, [
+    const out = await judgeNodes(provider, [
       { node: node as unknown as SpaceNode, rules: [rule] },
       { node: other, rules: [] },
       { node: other, rules: [rule] },
@@ -94,12 +94,12 @@ describe('judgeNodes', () => {
   });
 
   it('marks every rule as an error, not a pass, when the evaluateNodes call throws', async () => {
-    const judge: SemanticJudgeProvider = {
+    const provider: SemanticJudgeProvider = {
       name: 'multi-node',
       evaluate: () => Promise.reject(new Error('unused')),
       evaluateNodes: () => Promise.reject(new Error('boom')),
     };
-    const out = await judgeNodes(judge, [
+    const out = await judgeNodes(provider, [
       { node: node as unknown as SpaceNode, rules: [rule] },
       { node: other, rules: [rule] },
     ]);

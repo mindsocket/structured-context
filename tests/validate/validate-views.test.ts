@@ -90,31 +90,31 @@ describe('judging a node with an expression rule violation', () => {
     return { config, dir, file: join(space, 'A.md') };
   }
 
-  const judgedRules = (judge: FakeJudgeProvider) => judge.callHistory.flatMap((c) => c.rules.map((r) => r.id));
+  const judgedRules = (provider: FakeJudgeProvider) => provider.callHistory.flatMap((c) => c.rules.map((r) => r.id));
 
   for (const hierarchy of [false, true]) {
     const label = hierarchy ? 'with' : 'without';
 
     it(`skips the node's semantic rules after a gating violation, ${label} a hierarchy`, async () => {
       const { config, dir, file } = setup(hierarchy, 'error');
-      const judge = new FakeJudgeProvider({ pass: true });
+      const provider = new FakeJudgeProvider({ pass: true });
       const result = (await validateFileWith(file, config, {
-        judge: { provider: judge },
+        judge: { provider },
         configDir: dir,
       })) as FileValidationResult;
       expect(result.issues.some((issue) => issue.key === 'rule:never-holds')).toBe(true);
-      expect(judgedRules(judge)).toEqual([]);
+      expect(judgedRules(provider)).toEqual([]);
     });
 
     it(`still judges the node after a non-gating violation, ${label} a hierarchy`, async () => {
       const { config, dir, file } = setup(hierarchy, 'info');
-      const judge = new FakeJudgeProvider({ pass: true });
+      const provider = new FakeJudgeProvider({ pass: true });
       const result = (await validateFileWith(file, config, {
-        judge: { provider: judge },
+        judge: { provider },
         configDir: dir,
       })) as FileValidationResult;
       expect(result.issues.some((issue) => issue.key === 'rule:never-holds')).toBe(true);
-      expect(judgedRules(judge)).toEqual(['sound']);
+      expect(judgedRules(provider)).toEqual(['sound']);
     });
   }
 });

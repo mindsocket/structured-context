@@ -2,7 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { PerRuleJudgeProvider } from '../../src/judge/provider/per-rule';
 import type { SemanticJudgeResult } from '../../src/judge/types';
 import { resolveSemanticRule } from '../../src/judge/verdicts';
-import type { Rule } from '../../src/types';
+import type { Rule } from '../../src/schema/metadata-contract';
+import type {} from '../../src/types';
 import { graded, node, passFailRule } from './helpers';
 
 const base: Rule = { id: 'r', category: 'best-practice', description: 'd', semantic: {} };

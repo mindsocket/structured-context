@@ -1,5 +1,6 @@
+import type { Rule } from '../schema/metadata-contract';
 import type { SpaceGraph } from '../space-graph';
-import type { Rule, RuleSeverity, SpaceContext, SpaceNode } from '../types';
+import type { RuleSeverity, SpaceContext, SpaceNode } from '../types';
 import { describeSchema, judgeContext, type RuleContext, ruleContext, schemaDescriptionsFor } from './context';
 import { type TrimReport, trimToCap } from './trim';
 import type { SemanticJudgeInput, SemanticJudgeProvider } from './types';

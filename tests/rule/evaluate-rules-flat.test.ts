@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { DEFAULT_SEVERITY_BY_CATEGORY, ruleSeverity } from '../../src/rule/rule-severity';
-import type { NodeId, Rule, SpaceNode } from '../../src/types';
+import type { Rule } from '../../src/schema/metadata-contract';
+import type { NodeId, SpaceNode } from '../../src/types';
 import { evaluateFlat, makeParentRef } from '../test-helpers';
 
 describe('evaluate-rules (flat)', () => {

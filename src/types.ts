@@ -191,8 +191,6 @@ export type RuleCategory = 'validation' | 'coherence' | 'workflow' | 'best-pract
  */
 export type RuleSeverity = 'error' | 'warning' | 'info';
 
-export type { Rule } from './schema/metadata-contract';
-
 export type GraphViolation = {
   /** Id of the node whose parent link breaks the hierarchy. */
   nodeId: NodeId;

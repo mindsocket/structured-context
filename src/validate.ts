@@ -190,13 +190,6 @@ export function formatSource({ file, line, column }: SourceLocation): string {
   return line === undefined ? file : `${file}:${line}${column === undefined ? '' : `:${column}`}`;
 }
 
-/** One-line text for a rule issue: rule, message, and any evidence and verdict guidance. */
-export function ruleIssueMessage(issue: Extract<ValidationIssue, { kind: 'rule' }>): string {
-  const evidence = issue.evidence ? ` (Evidence: ${issue.evidence})` : '';
-  const guidance = issue.guidance ? ` Guidance: ${issue.guidance}` : '';
-  return `[${issue.ruleId}] ${issue.message}${evidence}${guidance}`;
-}
-
 const summariseTrim = (
   report: NonNullable<RuleEvaluationResult['trimReport']>,
 ): ValidationResult['contextTrimmed'] => ({
