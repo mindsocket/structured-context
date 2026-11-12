@@ -1,6 +1,7 @@
 import { ruleSemantic, ruleSeverity } from '../rule/rule-severity';
+import type { Rule } from '../schema/metadata-contract';
 import { RESERVED_VERDICTS } from '../schema/metadata-contract';
-import type { Rule, RuleSeverity } from '../types';
+import type { RuleSeverity } from '../types';
 import { ruleContext } from './context';
 import type { SemanticJudgeResult, SemanticRuleSpec } from './types';
 

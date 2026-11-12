@@ -1,4 +1,4 @@
-import type { Rule } from '../types';
+import type { Rule } from '../schema/metadata-contract';
 import { ruleSeverities } from './rule-severity';
 
 export const RULE_FILTER_DIMENSIONS = ['category', 'severity', 'type', 'id'] as const;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { filterRules, parseRuleFilter } from '../../src/rule/rule-filter';
-import type { Rule } from '../../src/types';
+import type { Rule } from '../../src/schema/metadata-contract';
+import type {} from '../../src/types';
 
 const rules: Rule[] = [
   { id: 'a', category: 'validation', description: 'a', expression: 'true', type: 'goal' },

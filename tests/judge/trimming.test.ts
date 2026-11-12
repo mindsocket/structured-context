@@ -3,8 +3,9 @@ import { judgeNodes } from '../../src/judge/judge-node';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import { PER_NODE_INPUT_CAP_TOKENS, type TrimReport } from '../../src/judge/trim';
 import { resolveSemanticRule } from '../../src/judge/verdicts';
+import type { Rule } from '../../src/schema/metadata-contract';
 import { buildSpaceGraph } from '../../src/space-graph';
-import type { Rule } from '../../src/types';
+import type {} from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef, makeSpaceNode } from '../test-helpers';
 
 const hierarchy = makeHierarchy([makeLevel('goal'), makeLevel('opportunity')]);
@@ -19,19 +20,19 @@ const report = (): TrimReport => ({ nodes: new Set(), ruleIds: new Set() });
 describe('per-node input cap in judgeNodes', () => {
   it('trims related bodies, still calls the provider, and records the node and rule', async () => {
     const nodes = [goal(text(PER_NODE_INPUT_CAP_TOKENS * 2)), opp('short own body')];
-    const fake = new FakeJudgeProvider();
+    const provider = new FakeJudgeProvider();
     const trimmed = report();
     const rules = [rule('r', { scope: ['parent'], includeContent: 'fullScope' })];
     const out = await judgeNodes(
-      { provider: fake },
+      { provider },
       [{ node: nodes[1]!, rules }],
       buildSpaceGraph(nodes, hierarchy),
       trimmed,
     );
     expect(out[0]?.[0]?.violated).toBe(false);
-    expect(fake.callHistory).toHaveLength(1);
-    expect(String(fake.callHistory[0]?.related?.[0]?.data.content)).toContain('[RULE_EVALUATION_CONTENT_TRIMMED');
-    expect(fake.callHistory[0]?.node.schemaData.content).toBe('short own body');
+    expect(provider.callHistory).toHaveLength(1);
+    expect(String(provider.callHistory[0]?.related?.[0]?.data.content)).toContain('[RULE_EVALUATION_CONTENT_TRIMMED');
+    expect(provider.callHistory[0]?.node.schemaData.content).toBe('short own body');
     expect([...trimmed.nodes]).toEqual(['Opp']);
     expect([...trimmed.ruleIds]).toEqual(['r']);
   });
@@ -51,13 +52,13 @@ describe('per-node input cap in judgeNodes', () => {
 
   it('reports an error under the rule id, without calling the provider, when fields alone exceed the cap', async () => {
     const huge = makeSpaceNode('Huge', 'opportunity', { notes: text(PER_NODE_INPUT_CAP_TOKENS * 2) });
-    const fake = new FakeJudgeProvider();
+    const provider = new FakeJudgeProvider();
     const out = await judgeNodes(
-      { provider: fake },
+      { provider },
       [{ node: huge, rules: [rule('r', {})] }],
       buildSpaceGraph([huge], hierarchy),
     );
-    expect(fake.callHistory).toHaveLength(0);
+    expect(provider.callHistory).toHaveLength(0);
     expect(out[0]?.[0]).toMatchObject({
       violated: true,
       error: 'input over the per-node cap after trimming content',
@@ -66,9 +67,9 @@ describe('per-node input cap in judgeNodes', () => {
 
   it('judges the other rules of a node whose scoped input is over the cap', async () => {
     const huge = makeSpaceNode('Huge', 'opportunity', { notes: text(PER_NODE_INPUT_CAP_TOKENS * 2) });
-    const fake = new FakeJudgeProvider();
+    const provider = new FakeJudgeProvider();
     const rules = [rule('a', { scope: ['parent'] }), rule('b', {})];
-    const out = await judgeNodes({ provider: fake }, [{ node: huge, rules }], buildSpaceGraph([huge], hierarchy));
+    const out = await judgeNodes({ provider }, [{ node: huge, rules }], buildSpaceGraph([huge], hierarchy));
     expect(out[0]?.every((j) => j.error?.includes('per-node cap'))).toBe(true);
   });
 });
@@ -99,13 +100,13 @@ describe('missing-context verdict', () => {
 
   it('is told to the provider as a verdict about trim markers and resolves to a violation', async () => {
     const nodes = [goal('g'), opp('o')];
-    const fake = new FakeJudgeProvider({ verdict: 'missing-context', evidence: 'cut' });
+    const provider = new FakeJudgeProvider({ verdict: 'missing-context', evidence: 'cut' });
     const out = await judgeNodes(
-      { provider: fake },
+      { provider },
       [{ node: nodes[1]!, rules: [rule('r', { scope: ['parent'] })] }],
       buildSpaceGraph(nodes, hierarchy),
     );
-    expect(fake.callHistory[0]?.rules[0]?.verdicts['missing-context']).toContain('RULE_EVALUATION_CONTENT_TRIMMED');
+    expect(provider.callHistory[0]?.rules[0]?.verdicts['missing-context']).toContain('RULE_EVALUATION_CONTENT_TRIMMED');
     expect(out[0]?.[0]).toMatchObject({ violated: true, verdict: 'missing-context', severity: 'warning' });
   });
 });

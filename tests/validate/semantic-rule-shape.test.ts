@@ -61,9 +61,9 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
 
   it('judges an ignored verdict without reporting it', async () => {
     const { context } = setup([stepRule]);
-    const fake = new FakeJudgeProvider({ 'step-fit': { verdict: 'unsure' } });
-    const result = await validateSpaceWith(context(), { judge: { provider: fake } });
-    expect(fake.callHistory).toHaveLength(1);
+    const provider = new FakeJudgeProvider({ 'step-fit': { verdict: 'unsure' } });
+    const result = await validateSpaceWith(context(), { judge: { provider } });
+    expect(provider.callHistory).toHaveLength(1);
     expect(ofKind(result.issues, 'rule')).toEqual([]);
   });
 
@@ -93,9 +93,9 @@ describe('semantic rules: verdict severity, ignore and guidance', () => {
 
   it('--rule-filter severity matches any severity a verdict map can report', async () => {
     const { context } = setup([stepRule]);
-    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
-    await validateSpaceWith(context(), { judge: { provider: judge }, ruleFilter: { severity: ['warning'] } });
-    expect(judge.callHistory.length).toBeGreaterThan(0);
+    const provider = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+    await validateSpaceWith(context(), { judge: { provider }, ruleFilter: { severity: ['warning'] } });
+    expect(provider.callHistory.length).toBeGreaterThan(0);
     const none = new FakeJudgeProvider();
     await validateSpaceWith(context(), { judge: { provider: none }, ruleFilter: { severity: ['info'] } });
     expect(none.callHistory).toHaveLength(0);
@@ -125,9 +125,9 @@ describe('rule `when` precondition', () => {
   it('does not call the judge for nodes where `when` is not true', async () => {
     const rule = { ...stepRule, id: 'task-fit', type: 'task', when };
     const { context } = setup([rule], { frontmatter: { T: 'status: ready' } });
-    const judge = new FakeJudgeProvider();
-    await validateSpaceWith(context(), { judge: { provider: judge } });
-    expect(judge.callHistory.map((c) => c.node.id as string)).toEqual(['T.md']);
+    const provider = new FakeJudgeProvider();
+    await validateSpaceWith(context(), { judge: { provider } });
+    expect(provider.callHistory.map((c) => c.node.id as string)).toEqual(['T.md']);
 
     const none = setup([rule]);
     const idle = new FakeJudgeProvider();
@@ -146,9 +146,9 @@ describe('judge option', () => {
 
   it('judges with the judge it is given', async () => {
     const { context } = setup([stepRule]);
-    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
-    const result = await validateSpaceWith(context(), { judge: { provider: judge } });
-    expect(judge.callHistory.length).toBeGreaterThan(0);
+    const provider = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+    const result = await validateSpaceWith(context(), { judge: { provider } });
+    expect(provider.callHistory.length).toBeGreaterThan(0);
     expect(ofKind(result.issues, 'rule')[0]).toMatchObject({ verdict: 'minor' });
   });
 });
@@ -185,21 +185,21 @@ describe('semantic rule check precondition', () => {
     expression: '$exists(current.owner)',
     gatesDescendants: true,
   };
-  const judgedLabels = (judge: FakeJudgeProvider) => judge.callHistory.map((c) => c.node.id as string);
+  const judgedLabels = (provider: FakeJudgeProvider) => provider.callHistory.map((c) => c.node.id as string);
 
   it('judges when the check passes', async () => {
     const { context } = setup([gated], { frontmatter: { S: 'owner: sam' } });
-    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'fail' } });
-    const result = await validateSpaceWith(context(), { judge: { provider: judge } });
-    expect(judgedLabels(judge)).toEqual(['S.md']);
+    const provider = new FakeJudgeProvider({ 'step-fit': { verdict: 'fail' } });
+    const result = await validateSpaceWith(context(), { judge: { provider } });
+    expect(judgedLabels(provider)).toEqual(['S.md']);
     expect(ofKind(result.issues, 'rule')).toEqual([expect.objectContaining({ ruleId: 'step-fit', verdict: 'fail' })]);
   });
 
   it('reports a failing check at the rule severity without calling the judge', async () => {
     const { context } = setup([gated]);
-    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'fail' } });
-    const result = await validateSpaceWith(context(), { judge: { provider: judge } });
-    expect(judge.callHistory).toHaveLength(0);
+    const provider = new FakeJudgeProvider({ 'step-fit': { verdict: 'fail' } });
+    const result = await validateSpaceWith(context(), { judge: { provider } });
+    expect(provider.callHistory).toHaveLength(0);
     expect(ofKind(result.issues, 'rule')).toEqual([
       {
         kind: 'rule',
@@ -218,9 +218,9 @@ describe('semantic rule check precondition', () => {
     const rule = { ...stepRule, expression: '$exists(current.owner)' };
     const run = async (r: object) => {
       const { context } = setup([r]);
-      const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
-      const result = await validateSpaceWith(context(), { judge: { provider: judge } });
-      expect(judge.callHistory).toHaveLength(0);
+      const provider = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+      const result = await validateSpaceWith(context(), { judge: { provider } });
+      expect(provider.callHistory).toHaveLength(0);
       return ofKind(result.issues, 'rule');
     };
     const byCategory = await run(rule);
@@ -232,9 +232,9 @@ describe('semantic rule check precondition', () => {
   it('gates descendants of a failing check like an expression rule: by severity, unless overridden', async () => {
     const taskRule = { ...gated, id: 'task-fit', type: 'task', gatesDescendants: undefined };
     const run = async (rule: Record<string, unknown>) => {
-      const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
-      const result = await validateSpaceWith(setup([rule, stepRule]).context(), { judge: { provider: judge } });
-      return { result, judged: judgedLabels(judge) };
+      const provider = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+      const result = await validateSpaceWith(setup([rule, stepRule]).context(), { judge: { provider } });
+      return { result, judged: judgedLabels(provider) };
     };
 
     // error severity gates by default
@@ -266,13 +266,13 @@ describe('semantic rule check precondition', () => {
 
   it('gates the file when an ancestor check fails (single-file validation)', async () => {
     const { space } = setup([{ ...gated, id: 'task-fit', type: 'task' }, stepRule]);
-    const judge = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
+    const provider = new FakeJudgeProvider({ 'step-fit': { verdict: 'minor' } });
     const result = (await validateFileWith(space.file('S.md'), space.config, {
-      judge: { provider: judge },
+      judge: { provider },
       configDir: space.dir,
     })) as FileValidationResult;
     // T.md's failing check gates S.md, so S.md is not judged and only reports the gate.
-    expect(judgedLabels(judge)).toEqual([]);
+    expect(judgedLabels(provider)).toEqual([]);
     expect(result.issues.map((issue) => issue.key)).toEqual(['gated:T.md']);
     expect(withKey(result.issues, 'gated:T.md')?.message).toContain('task-fit');
   });
@@ -325,17 +325,17 @@ describe('semantic rule check precondition', () => {
 
   it('evaluates when before check', async () => {
     const { context } = setup([{ ...gated, when: 'false' }]);
-    const judge = new FakeJudgeProvider();
-    const result = await validateSpaceWith(context(), { judge: { provider: judge } });
-    expect(judge.callHistory).toHaveLength(0);
+    const provider = new FakeJudgeProvider();
+    const result = await validateSpaceWith(context(), { judge: { provider } });
+    expect(provider.callHistory).toHaveLength(0);
     expect(ofKind(result.issues, 'rule')).toEqual([]);
   });
 
   it('reports a check that cannot be evaluated as an error without judging', async () => {
     const { context } = setup([{ ...gated, expression: '$notAFunction(' }]);
-    const judge = new FakeJudgeProvider();
-    const result = await validateSpaceWith(context(), { judge: { provider: judge } });
-    expect(judge.callHistory).toHaveLength(0);
+    const provider = new FakeJudgeProvider();
+    const result = await validateSpaceWith(context(), { judge: { provider } });
+    expect(provider.callHistory).toHaveLength(0);
     expect(ofKind(result.issues, 'rule')[0]).toMatchObject({ nodeId: 'S.md', severity: 'error' });
     expect(ofKind(result.issues, 'rule')[0]?.message).toContain('Rule error');
   });

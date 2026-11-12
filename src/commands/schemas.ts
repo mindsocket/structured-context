@@ -11,6 +11,7 @@ import {
 } from '../plugins/util';
 import { DEFAULT_SEVERITY_BY_CATEGORY, ruleSemantic } from '../rule/rule-severity';
 import { listSchemas } from '../schema/list-schemas';
+import type { Rule } from '../schema/metadata-contract';
 import {
   bundledSchemasDir,
   type EntityInfo,
@@ -21,7 +22,7 @@ import {
 } from '../schema/schema';
 import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
 import { createSpaceContext } from '../space-context';
-import type { Rule, RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
+import type { RuleCategory, SchemaMetadata, SchemaWithMetadata } from '../types';
 
 function extractRefs(obj: unknown, refs: Set<string>): void {
   if (typeof obj !== 'object' || obj === null) return;

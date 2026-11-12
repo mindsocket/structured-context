@@ -4,8 +4,9 @@ import { judgeNodes } from '../../src/judge/judge-node';
 import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import type { SemanticJudgeInput, SemanticJudgeProvider } from '../../src/judge/types';
 import { evaluateRules } from '../../src/rule/gating';
+import type { Rule } from '../../src/schema/metadata-contract';
 import { buildSpaceGraph } from '../../src/space-graph';
-import type { Rule, SpaceNode } from '../../src/types';
+import type { SpaceNode } from '../../src/types';
 import { makeHierarchy, makeLevel, makeParentRef, makeSpaceNode } from '../test-helpers';
 
 const hierarchy = makeHierarchy([makeLevel('goal'), makeLevel('opportunity'), makeLevel('solution')]);
@@ -110,7 +111,7 @@ describe('judgeNodes with scope', () => {
 
   it('shares one input between rules with the same context and splits the rest, keeping rule order', async () => {
     const inputs: SemanticJudgeInput[] = [];
-    const judge: SemanticJudgeProvider = {
+    const provider: SemanticJudgeProvider = {
       name: 'spy',
       evaluate: (input) => {
         inputs.push(input);
@@ -118,7 +119,7 @@ describe('judgeNodes with scope', () => {
       },
     };
     const rules = [scoped('a', { scope: ['parent'] }), scoped('b', {}), scoped('c', { scope: ['parent'] })];
-    const out = await judgeNodes({ provider: judge }, [{ node: opp, rules }], graph);
+    const out = await judgeNodes({ provider }, [{ node: opp, rules }], graph);
     expect(inputs.map((i) => i.rules.map((r) => r.id))).toEqual([['a', 'c'], ['b']]);
     expect(inputs[0]?.related?.map((r) => r.title)).toEqual(['Goal']);
     expect(inputs[1]?.related).toBeUndefined();
@@ -139,9 +140,9 @@ describe('scope under gating', () => {
         semantic: { scope: ['parent', 'ancestors'] },
       },
     ] as unknown as Rule[];
-    const fake = new FakeJudgeProvider();
-    await evaluateRules(nodes, rules, graph, new Map(), { judge: { provider: fake }, includeGated: true });
-    const call = fake.callHistory.find((c) => c.node.title === 'Sol');
+    const provider = new FakeJudgeProvider();
+    await evaluateRules(nodes, rules, graph, new Map(), { judge: { provider }, includeGated: true });
+    const call = provider.callHistory.find((c) => c.node.title === 'Sol');
     expect(call?.related?.map((r) => [r.title, r.relations])).toEqual([
       ['Opp', ['parent', 'ancestor']],
       ['Goal', ['ancestor']],

@@ -1,5 +1,6 @@
 import jsonata from 'jsonata';
-import type { NodeId, Rule, RuleSeverity, SpaceNode, ValidationIssue } from '../types';
+import type { Rule } from '../schema/metadata-contract';
+import type { NodeId, RuleSeverity, SpaceNode, ValidationIssue } from '../types';
 import { ruleSeverity } from './rule-severity';
 
 /** The rule issue for a violation of the rule at a node: the message carries the finding, evidence and guidance. */

@@ -1,7 +1,8 @@
 import type { JudgeSession } from '../judge/judge-node';
 import type { TrimReport } from '../judge/trim';
+import type { Rule } from '../schema/metadata-contract';
 import type { SpaceGraph } from '../space-graph';
-import type { NodeId, Rule, SpaceNode, ValidationIssue, ValidationIssueKind } from '../types';
+import type { NodeId, SpaceNode, ValidationIssue, ValidationIssueKind } from '../types';
 import { createRuleEvaluator } from './rule-evaluator';
 
 /**
@@ -55,8 +56,8 @@ export async function evaluateRules(
     if (kind === 'schema' || !failureOf.has(id)) failureOf.set(id, kind);
   }
 
-  // Each gate, as first reached: what made it a gate, and the nodes it gated.
-  type Gate = { nodeId: NodeId; cause: string; gatedNodeIds: NodeId[] };
+  // Each gate, as first reached: the issue kind that made it a gate, and the nodes it gated.
+  type Gate = { nodeId: NodeId; kind: ValidationIssueKind; ruleId?: string; gatedNodeIds: NodeId[] };
   const gates = new Map<NodeId, Gate>();
   const visited = new Set<NodeId>();
   // Each hierarchy node, with the gate it inherits from above.
@@ -86,9 +87,9 @@ export async function evaluateRules(
         const failure = failureOf.get(node.id);
         const gatingRule = gatingRules.get(node.id);
         if (failure) {
-          gate = { nodeId: node.id, cause: `${failure} failure`, gatedNodeIds: [] };
+          gate = { nodeId: node.id, kind: failure, gatedNodeIds: [] };
         } else if (gatingRule !== undefined) {
-          gate = { nodeId: node.id, cause: `rule "${gatingRule}"`, gatedNodeIds: [] };
+          gate = { nodeId: node.id, kind: 'rule', ruleId: gatingRule, gatedNodeIds: [] };
         }
         if (gate) gates.set(node.id, gate);
         failed = failure !== undefined;
@@ -105,18 +106,19 @@ export async function evaluateRules(
   return { issues: issues.concat(gateIssues), trimReport };
 }
 
-/** The `gated` issue naming the gate and what caused it, worded by whether the node's rules ran anyway. */
+/** The `gated` issue naming the gate and the issue kind that made it, worded by whether the node's rules ran anyway. */
 function gatedIssue(
   nodeId: NodeId,
-  gate: { nodeId: NodeId; cause: string },
+  gate: { nodeId: NodeId; kind: ValidationIssueKind; ruleId?: string },
   evaluatedAnyway: boolean,
 ): ValidationIssue {
+  const cause = gate.kind === 'rule' ? `rule "${gate.ruleId}"` : `${gate.kind} failure`;
   return {
     kind: 'gated',
     key: `gated:${gate.nodeId}`,
     severity: 'info',
     nodeId,
     gatedBy: gate.nodeId,
-    message: `Rule checks ${evaluatedAnyway ? 'evaluated anyway' : 'not evaluated'}: gated by ${gate.cause} on ${gate.nodeId}`,
+    message: `Rule checks ${evaluatedAnyway ? 'evaluated anyway' : 'not evaluated'}: gated by ${cause} on ${gate.nodeId}`,
   };
 }
