@@ -1,23 +1,32 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import JSON5 from 'json5';
-import type { Config } from '../../src/config';
+import type { Config, SpaceConfig } from '../../src/config';
+import { FakeJudgeProvider } from '../../src/judge/provider/fake';
 import type { SemanticJudgeProvider, SemanticJudgeResult } from '../../src/judge/types';
 import { resolveSemanticRule } from '../../src/judge/verdicts';
+import { resolvePluginDir } from '../../src/plugins/util';
 import { readSpace } from '../../src/read/read-space';
 import { RESERVED_VERDICTS } from '../../src/schema/metadata-contract';
 import { createSpaceContext } from '../../src/space-context';
 import type { SpaceContext } from '../../src/types';
 import { validateNodes } from '../../src/validate';
 
-export const EVALS_DIR = import.meta.dir;
+/** Core's eval spaces, for the bundled schemas. */
+export const CORE_EVALS_DIR = import.meta.dir;
+
+/** Where eval spaces live, relative to a plugin's root or a config file's directory. */
+export const EVALS_SUBDIR = join('evals', 'semantic');
 
 /** Rule id → node id → the verdicts that count as agreeing. */
 export type Expected = Record<string, Record<string, string[]>>;
 
-/** A fixture space and the verdict each of its nodes should get per rule. */
+/** A space and the verdict each of its nodes should get per rule. */
 export interface EvalSpace {
+  /** `<source>/<directory>`, e.g. `core/strict-ost`. */
   name: string;
+  /** A fixture space has its own nodes, so every node a labelled rule judges must have a label. */
+  fixture: boolean;
   context: SpaceContext;
   expected: Expected;
 }
@@ -29,43 +38,105 @@ export interface Judgement {
   result: SemanticJudgeResult;
 }
 
-type EvalFile = { schema: string; expected: Record<string, Record<string, string | string[]>> };
-
-/** The eval spaces under `root`: each directory with an `eval.json5` beside a `space/` directory. */
-export function loadEvalSpaces(root: string = EVALS_DIR, only?: string[]): EvalSpace[] {
-  const names = readdirSync(root, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && (!only || only.includes(d.name)))
-    .map((d) => d.name)
-    .sort();
-  const unknown = only?.filter((name) => !names.includes(name)) ?? [];
-  if (unknown.length > 0) throw new Error(`Unknown eval space: ${unknown.join(', ')}. Known: ${names.join(', ')}`);
-  return names.map((name) => {
-    const dir = join(root, name);
-    const file = JSON5.parse(readFileSync(join(dir, 'eval.json5'), 'utf8')) as EvalFile;
-    const config: Config = { spaces: [{ name, path: join(dir, 'space'), schema: file.schema }] };
-    const expected: Expected = {};
-    for (const [ruleId, nodes] of Object.entries(file.expected)) {
-      expected[ruleId] = Object.fromEntries(
-        Object.entries(nodes).map(([id, v]) => [id, typeof v === 'string' ? [v] : v]),
-      );
-    }
-    return { name, context: createSpaceContext(name, config, { configDir: dir }), expected };
-  });
+/** A directory of eval spaces, and the directory their schema names resolve from. */
+export interface EvalSource {
+  label: string;
+  dir: string;
+  configDir: string;
 }
 
 /**
- * Problems that would make an eval space's scores meaningless: an invalid space (gating and schema failures
- * change what is judged), or a label naming an unknown node, a rule with no semantic part, or a verdict the
- * rule cannot return. Checked before any judge call.
+ * Find a source: `core`; `config` (an `evals/semantic/` directory beside each loaded config file); a plugin name
+ * (its `evals/semantic/`); or a path to a directory of eval spaces. A plugin's and a config's schema names
+ * resolve as they would in that config.
+ */
+export function resolveEvalSources(source: string, configDirs: string[]): EvalSource[] {
+  if (source === 'core') return [{ label: 'core', dir: CORE_EVALS_DIR, configDir: CORE_EVALS_DIR }];
+  if (source === 'config') {
+    return configDirs
+      .map((configDir) => ({ label: 'config', dir: join(configDir, EVALS_SUBDIR), configDir }))
+      .filter(({ dir }) => existsSync(dir));
+  }
+  if (source.includes('/') || source.includes('\\') || source.startsWith('.')) {
+    const dir = resolve(source);
+    if (!existsSync(dir)) throw new Error(`Eval source "${source}": no directory at ${dir}`);
+    return [{ label: basename(dir), dir, configDir: dir }];
+  }
+  for (const configDir of configDirs) {
+    const pluginDir = resolvePluginDir(source, configDir);
+    if (pluginDir) {
+      const dir = join(pluginDir, EVALS_SUBDIR);
+      if (!existsSync(dir)) throw new Error(`Plugin "${source}" has no ${EVALS_SUBDIR}/ directory (${pluginDir})`);
+      return [{ label: source, dir, configDir }];
+    }
+  }
+  throw new Error(`Eval source "${source}" is not core, config, a path, or a plugin found from the config.`);
+}
+
+/**
+ * An eval space's `eval.json5`. A fixture eval space names a `schema` (and optional `plugins`), as a space config
+ * does, and keeps its nodes in `space/` beside the file. An eval space on a configured space names the `space`
+ * instead, and labels its nodes.
+ */
+type EvalFile = Pick<SpaceConfig, 'schema' | 'plugins'> & {
+  space?: string;
+  expected: Record<string, Record<string, string | string[]>>;
+};
+
+/** The eval spaces in each source: every directory with an `eval.json5`. `config` holds configured spaces. */
+export function loadEvalSpaces(sources: EvalSource[], config: Config): EvalSpace[] {
+  return sources.flatMap((source) =>
+    readdirSync(source.dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && existsSync(join(source.dir, d.name, 'eval.json5')))
+      .map((d) => d.name)
+      .sort()
+      .map((dirName) => {
+        const name = `${source.label}/${dirName}`;
+        const dir = join(source.dir, dirName);
+        const file = JSON5.parse(readFileSync(join(dir, 'eval.json5'), 'utf8')) as EvalFile;
+        if ((file.space === undefined) === (file.schema === undefined)) {
+          throw new Error(`Eval space ${name}: eval.json5 needs either "schema" (with a space/ directory) or "space".`);
+        }
+        let context: SpaceContext;
+        try {
+          context =
+            file.space !== undefined
+              ? createSpaceContext(file.space, config)
+              : createSpaceContext(
+                  name,
+                  { spaces: [{ name, path: join(dir, 'space'), schema: file.schema, plugins: file.plugins }] },
+                  { configDir: source.configDir },
+                );
+        } catch (err) {
+          throw new Error(`Eval space ${name}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+        const expected: Expected = {};
+        for (const [ruleId, nodes] of Object.entries(file.expected)) {
+          expected[ruleId] = Object.fromEntries(
+            Object.entries(nodes).map(([id, v]) => [id, typeof v === 'string' ? [v] : v]),
+          );
+        }
+        return { name, fixture: file.space === undefined, context, expected };
+      }),
+  );
+}
+
+/**
+ * Problems that would make an eval space's scores meaningless, checked before any judge call: a label naming an
+ * unknown node, a rule with no semantic part, or a verdict the rule cannot return; a labelled node that fails
+ * validation; and, in a fixture space, a node a labelled rule judges with no label, or a label never judged.
  */
 export async function checkEvalSpace(space: EvalSpace): Promise<string[]> {
   const problems: string[] = [];
   const read = await readSpace(space.context);
+  const ids = new Set(read.nodes.map((n) => n.id as string));
+  const labelled = new Set(Object.values(space.expected).flatMap((labels) => Object.keys(labels)));
   const result = await validateNodes(space.context, read.nodes, read);
   for (const issue of result.issues) {
-    if (issue.severity === 'error') problems.push(`${issue.nodeId ?? ''}: ${issue.message}`);
+    if (issue.severity === 'error' && issue.nodeId && labelled.has(issue.nodeId)) {
+      problems.push(`${issue.nodeId}: ${issue.message}`);
+    }
   }
-  const ids = new Set(read.nodes.map((n) => n.id as string));
   const rules = space.context.schema.metadata.rules ?? [];
   for (const [ruleId, labels] of Object.entries(space.expected)) {
     const rule = rules.find((r) => r.id === ruleId);
@@ -83,24 +154,38 @@ export async function checkEvalSpace(space: EvalSpace): Promise<string[]> {
       }
     }
   }
+  if (space.fixture && problems.length === 0) {
+    const judge = new FakeJudgeProvider(({ node, rule }) => ({
+      verdict: space.expected[rule.id]?.[node.id]?.[0] ?? Object.keys(rule.verdicts)[0]!,
+    }));
+    for (const score of scoreEvalSpace(space, [await judgeEvalSpace(space, judge, { unlabelled: true })])) {
+      for (const nodeId of score.unlabelled) problems.push(`rule "${score.ruleId}": node "${nodeId}" has no label`);
+      for (const { nodeId } of score.misses) problems.push(`rule "${score.ruleId}": node "${nodeId}" is not judged`);
+    }
+  }
   return problems.map((p) => `${space.name}: ${p}`);
 }
 
+type JudgeInput = Parameters<SemanticJudgeProvider['evaluate']>[0];
+
 /**
  * Validate the space with its labelled rules through the real pipeline, recording every result the provider
- * returns, passing verdicts included. Gated nodes are judged too. `perNode` hides `evaluateNodes`, so a
- * provider that packs nodes into one request gets one request per node instead.
+ * returns, passing verdicts included. Gated nodes are judged too. Only labelled nodes reach the provider, unless
+ * `unlabelled` is set. `perNode` hides `evaluateNodes`, so a provider that packs nodes into one request gets one
+ * request per node instead.
  */
 export async function judgeEvalSpace(
   space: EvalSpace,
   provider: SemanticJudgeProvider,
-  options: { perNode?: boolean } = {},
+  options: { perNode?: boolean; unlabelled?: boolean } = {},
 ): Promise<Judgement[]> {
   const judgements: Judgement[] = [];
-  const record = (
-    input: Parameters<SemanticJudgeProvider['evaluate']>[0],
-    results: Record<string, SemanticJudgeResult>,
-  ) => {
+  const toJudge = (input: JudgeInput): JudgeInput | undefined => {
+    if (options.unlabelled) return input;
+    const rules = input.rules.filter((rule) => space.expected[rule.id]?.[input.node.id] !== undefined);
+    return rules.length > 0 ? { ...input, rules } : undefined;
+  };
+  const record = (input: JudgeInput, results: Record<string, SemanticJudgeResult>) => {
     for (const rule of input.rules) {
       const result = results[rule.id] ?? { error: 'no result for this rule' };
       judgements.push({ nodeId: input.node.id, ruleId: rule.id, result });
@@ -109,17 +194,26 @@ export async function judgeEvalSpace(
   const recording: SemanticJudgeProvider = {
     name: provider.name,
     async evaluate(input) {
-      const results = await provider.evaluate(input);
-      record(input, results);
+      const sent = toJudge(input);
+      if (!sent) return {};
+      const results = await provider.evaluate(sent);
+      record(sent, results);
       return results;
     },
   };
   const { evaluateNodes } = provider;
   if (evaluateNodes && !options.perNode) {
     recording.evaluateNodes = async (inputs) => {
-      const results = await evaluateNodes.call(provider, inputs);
-      for (const [i, input] of inputs.entries()) record(input, results[i] ?? {});
-      return results;
+      const sent = inputs.map(toJudge);
+      const kept = sent.filter((input) => input !== undefined);
+      const results = kept.length > 0 ? await evaluateNodes.call(provider, kept) : [];
+      let k = 0;
+      return sent.map((input) => {
+        if (!input) return {};
+        const result = results[k++] ?? {};
+        record(input, result);
+        return result;
+      });
     };
   }
   const read = await readSpace(space.context);
