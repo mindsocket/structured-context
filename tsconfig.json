@@ -29,6 +29,14 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["src/**/*", "tests/**/*", "smoke/**/*", "hook-test/**/*", "plugin/scripts/**/*", "scripts/**/*"],
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "smoke/**/*",
+    "hook-test/**/*",
+    "plugin/scripts/**/*",
+    "scripts/**/*",
+    "evals/**/*"
+  ],
   "exclude": ["node_modules", "dist"]
 }

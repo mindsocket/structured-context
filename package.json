@@ -48,6 +48,7 @@
     "test:smoke": "bun test smoke/",
     "test:package": "bash scripts/test-package.sh",
     "test:judge": "SCTX_LIVE_JUDGE_TESTS=1 bun test tests/judge/live.test.ts",
+    "eval:semantic": "bun run evals/semantic/run.ts",
     "test:models": "SCTX_MODEL_VALIDATION=1 bun test tests/judge/model-validation.test.ts",
     "test:hook": "bun test hook-test/unit/",
     "test:mod": "claude plugin test plugin",
