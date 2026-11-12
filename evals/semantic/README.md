@@ -1,6 +1,6 @@
 # Semantic evals
 
-Semantic evals measure how well model providers judge semantic rules. An eval space is a space with a label per node and rule: the verdict the node should get. Core's eval spaces here cover the bundled schemas. A plugin, or a local config, can keep its own eval spaces for its schemas and spaces.
+Semantic evals measure how well model providers judge semantic rules. An eval space is a space with a label per node and rule: the verdict the node should get. Core's eval spaces here cover the bundled schemas. A plugin can keep its own eval spaces for its schemas, and an eval space can label nodes of a configured space.
 
 ## Run the evals
 
@@ -42,23 +42,22 @@ Each source is a directory of eval spaces:
 |---|---|---|
 | `core` | `evals/semantic/` in this repo | the bundled schemas |
 | `<plugin name>` | `evals/semantic/` in the plugin, found as the config finds plugins | the config that finds the plugin |
-| `config` | `evals/semantic/` beside the config file, and beside each file it includes | that config |
 | a path | that directory | that directory |
 
 ## Add an eval space
 
 An eval space is a directory with an `eval.json5`. It is one of two kinds.
 
-A **fixture** eval space has its own nodes in a `space/` directory beside `eval.json5`. It names its `schema`, and optionally `plugins`, as a space config does:
+A **fixture** eval space has its own nodes in a `nodes.jsonl` beside `eval.json5`: one parsed node per line, as a plugin's parse hook returns it (`id`, `title`, `type`, `linkTargets` and `schemaData`). JSON keeps fixtures out of the markdown that editors and spaces read. To start from markdown notes, `sctx dump <space> | jq -c '.nodes[]'` prints nodes in this shape. The eval space names its `schema`, and optionally `plugins`, as a space config does:
 
 ```json5
 {
   schema: 'strict_ost.json',
   expected: {
     'opportunity-customer-voice': {
-      'Build a Slack integration.md': 'fail',
+      'Build a Slack integration': 'fail',
       // A list accepts any of its verdicts.
-      'New users find the editor toolbar confusing.md': ['pass', 'fail'],
+      'New users find the editor toolbar confusing': ['pass', 'fail'],
     },
   },
 }
@@ -70,6 +69,6 @@ An eval space on a **configured space** names a space from the config instead, a
 { space: 'work', expected: { 'opportunity-customer-voice': { 'Onboarding.md': 'fail' } } }
 ```
 
-`expected` maps a rule id to node ids (as `sctx dump` shows them) and their verdicts. In a fixture, label every node a labelled rule judges. Write a comment on a case whose label is not obvious.
+`expected` maps a rule id to node ids and their verdicts. In a fixture, label every node a labelled rule judges. Write a comment on a case whose label is not obvious.
 
 `--check` finds the problems that would make scores meaningless: a label that names an unknown node, rule or verdict; a labelled node that fails validation; and, in a fixture, a judged node with no label. A run checks this before its first provider call. `bun run test` checks core's eval spaces.

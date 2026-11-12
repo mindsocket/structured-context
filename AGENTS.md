@@ -100,7 +100,7 @@ For most development only the main unit tests need re-running regularly.
 - `bun run test:package` — builds and packs the package, installs the tarball, and runs the installed CLI. Runs in CI and before every version bump; run it after changing the build, `tsconfig*.json` or `files`.
 - `bun run test:judge` — live judge tests (`tests/judge/live.test.ts`): one real provider call per provider whose API key is set. Costs money; use sparingly when changing judges or semantic rule behaviour.
 - `bun run test:models` — check that every bundled provider's configured model exists (no API keys)
-- `bun run eval:semantic --provider <name>` — semantic evals (`evals/semantic/`): how often a provider's verdicts match labelled eval spaces, and how stable they are. Core's cover the bundled schemas; `--from` runs a plugin's or a local config's. Costs money (`--check` doesn't); run it when changing a bundled semantic rule, the schema descriptions it draws on, or a judge.
+- `bun run eval:semantic --provider <name>` — semantic evals (`evals/semantic/`): how often a provider's verdicts match labelled eval spaces, and how stable they are. Core's cover the bundled schemas; `--from` runs a plugin's, or a directory's. Costs money (`--check` doesn't); run it when changing a bundled semantic rule, the schema descriptions it draws on, or a judge.
 
 ## Debugging
 
