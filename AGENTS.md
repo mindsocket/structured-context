@@ -45,6 +45,7 @@ There are several places that need reviewing and updating with any new feature o
 |---|---|
 | CLI command, flag or output | `docs/*` for the command; `plugin/skills/structured-context/references/commands.md`; the command list in `plugin/skills/structured-context/SKILL.md`; `plugin/commands/*` |
 | Rule, schema or `$metadata` shape | `docs/schemas.md`, `docs/rules.md`, `docs/semantic-rules.md`; `references/schema-authoring.md`, `references/schema-design.md`; bundled `schemas/` |
+| Bundled semantic rule | its eval cases in `evals/semantic/` |
 | User-visible error or warning message | the troubleshooting table in `SKILL.md` |
 | Config key or space config | `docs/config.md`; the config example in `references/commands.md` |
 | `validate --json` output | `plugin/scripts/state.ts` (the hooks parse it), `scripts/mod-contract.ts` and `bun run test:hook` |
@@ -99,6 +100,7 @@ For most development only the main unit tests need re-running regularly.
 - `bun run test:package` — builds and packs the package, installs the tarball, and runs the installed CLI. Runs in CI and before every version bump; run it after changing the build, `tsconfig*.json` or `files`.
 - `bun run test:judge` — live judge tests (`tests/judge/live.test.ts`): one real provider call per provider whose API key is set. Costs money; use sparingly when changing judges or semantic rule behaviour.
 - `bun run test:models` — check that every bundled provider's configured model exists (no API keys)
+- `bun run eval:semantic --provider <name>` — semantic evals (`evals/semantic/`): how often a provider's verdicts match labelled fixture spaces for the bundled schemas' semantic rules, and how stable they are. Costs money; run it when changing a bundled semantic rule, the schema descriptions it draws on, or a judge.
 
 ## Debugging
 

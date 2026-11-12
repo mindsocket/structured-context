@@ -1,0 +1,24 @@
+{
+  schema: 'strict_ost.json',
+  // Rule id → node id → the verdict the node should get. A list accepts any of its verdicts.
+  expected: {
+    'opportunity-customer-voice': {
+      'Setting up a workspace takes so long that I give up.md': 'pass',
+      "I can't tell which plan fits a team of my size.md": 'pass',
+      "I'm afraid I'll lose my work if my browser crashes.md": 'pass',
+      "I don't know whether my changes have been saved.md": 'pass',
+      'I want to see what my teammates changed while I was away.md': 'pass',
+      // A solution in disguise.
+      'Add a progress bar to workspace setup.md': 'fail',
+      'Build a Slack integration.md': 'fail',
+      'Offer a discount on annual plans.md': 'fail',
+      // A business metric.
+      'Increase trial-to-paid conversion by 10%.md': 'fail',
+      'Reduce churn among small teams.md': 'fail',
+      // A topic, not a need.
+      'Onboarding.md': 'fail',
+      // A real pain point, but in the third person rather than the customer's own words.
+      'New users find the editor toolbar confusing.md': ['pass', 'fail'],
+    },
+  },
+}
