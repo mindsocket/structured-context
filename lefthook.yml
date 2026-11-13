@@ -29,3 +29,5 @@ pre-push:
       run: bash scripts/sync-plugin-version.sh --check
     pushed-tree:
       run: bash scripts/git-hooks/check-pushed-tree.sh
+    prose-check:
+      run: bash scripts/prose-check.sh
