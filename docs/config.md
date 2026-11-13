@@ -19,17 +19,13 @@ The **config root** is the folder that holds `.sctx.json` or `.sctx/`, or the gl
 
 ### Resources folder
 
-Files that structured-context reads besides the config go in the root's `.sctx/` folder, one subfolder each:
+Files that structured-context reads besides the config go in the root's `.sctx/` folder (for the global config, its own folder), one subfolder each:
 
 | Folder | Holds |
 |---|---|
 | `.sctx/plugins/` | Local [plugins](#plugins) |
 | `.sctx/schemas/` | Custom schemas, found by file name (`"schema": "my_wiki.json"`) |
 | `.sctx/map-views/` | Map view definitions, read by `structured-context-map-views` |
-
-`.sctx/` is a hidden folder, so editors such as Obsidian don't show or index it. The global config keeps these subfolders directly beside `config.json`, in `~/.config/structured-context/`.
-
-`plugins/` and `map-views/` folders directly in a local root still work, with a warning. They stop working in 1.0. Move them into `.sctx/`.
 
 `sctx spaces` shows which config file is used and reports problems with it. `sctx spaces --json` returns the same information for tools and hooks.
 

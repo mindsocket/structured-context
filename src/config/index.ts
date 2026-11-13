@@ -15,8 +15,6 @@ import {
 import { bundledSchemasDir } from '../schema/schema';
 import { configFileIn, configRoot, globalConfigPath, resourceDir, SCHEMAS_RESOURCE } from './layout';
 
-export { configRoot, globalConfigPath, resourceDir } from './layout';
-
 const MODEL_PROVIDER_SCHEMA = {
   type: 'object',
   properties: {

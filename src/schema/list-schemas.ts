@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { basename, isAbsolute, join, resolve } from 'node:path';
-import { type Config, loadConfigOrEmpty, resolveConfigPath, resolveSchemaPath, resourceDir } from '../config';
-import { SCHEMAS_RESOURCE } from '../config/layout';
+import { type Config, loadConfigOrEmpty, resolveConfigPath, resolveSchemaPath } from '../config';
+import { resourceDir, SCHEMAS_RESOURCE } from '../config/layout';
 import { PLUGIN_PREFIX } from '../constants';
 import {
   CONFIG_PLUGINS_DIR,
