@@ -1,6 +1,5 @@
 {
-  schema: 'strict_ost.json',
-  // Rule id → node id → the verdict the node should get. A list accepts any of its verdicts.
+  fixture: 'strict-ost',
   expected: {
     'opportunity-customer-voice': {
       'Setting up a workspace takes so long that I give up': 'pass',
@@ -17,8 +16,6 @@
       'Reduce churn among small teams': 'fail',
       // A topic, not a need.
       'Onboarding': 'fail',
-      // A real pain point, but in the third person rather than the customer's own words.
-      'New users find the editor toolbar confusing': ['pass', 'fail'],
     },
   },
 }
