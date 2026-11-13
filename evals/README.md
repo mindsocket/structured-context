@@ -1,6 +1,6 @@
 # Semantic evals
 
-Semantic evals measure how well model providers judge semantic rules. A case is a node, a rule, and the verdict the node should get. An eval holds the cases on one set of nodes: a fixture, or a configured space.
+Semantic evals measure how well model providers judge semantic rules. A case is a node, a rule, and the verdict the node should get. An eval holds the cases on the nodes of one space. That space is a fixture, which keeps its nodes in the suite, or a configured space.
 
 ## Run the evals
 
@@ -38,13 +38,13 @@ Each run validates through the same pipeline as `sctx validate --semantic`, with
 
 ## Suites
 
-A suite is a directory of evals, with their fixtures in `fixtures/`:
+A suite is a directory of evals and the fixtures they use:
 
 ```
 evals/semantic/
-  opportunity-customer-voice.json5
-  fixtures/
-    strict-ost.json5
+  opportunity-customer-voice.json5   an eval
+  fixtures.json5                     the fixtures, as space configs
+  fixtures/strict-ost.jsonl          a fixture's nodes
 ```
 
 | `--from` | Directory | Schema names resolve from |
@@ -55,30 +55,30 @@ evals/semantic/
 
 ## Add an eval
 
-An eval is a `.json5` file in the suite. It names a `fixture` in the suite, or a configured `space`. `expected` maps a rule id to node ids and their verdicts:
+An eval is a `.json5` file in the suite. It names a `space`: one of the suite's fixtures, or else a space in the config. `expected` maps a rule id to node ids and their verdicts:
 
 ```json5
 {
-  fixture: 'strict-ost',
+  space: 'strict-ost',
   expected: {
     'opportunity-customer-voice': {
-      'Build a Slack integration': 'fail',
+      'Build a Slack integration.md': 'fail',
       // A solution in disguise.
-      'Add a progress bar to workspace setup': 'fail',
+      'Add a progress bar to workspace setup.md': 'fail',
     },
   },
 }
 ```
 
-A list of verdicts accepts any of them. On a configured space, node ids are file paths: `{ space: 'work', expected: { 'opportunity-customer-voice': { 'Onboarding.md': 'fail' } } }`.
-
-Write a comment on a case whose label is not obvious. We recommend one eval per rule, so each rule's cases are easy to find and to run alone.
+A list of verdicts accepts any of them. Write a comment on a case whose label is not obvious. We recommend one eval per rule, so each rule's cases are easy to find and to run alone.
 
 ## Add a fixture
 
-A fixture is `fixtures/<name>.json5`: a `schema`, optional `plugins` as in a space config, and `nodes`. Each node holds the fields its frontmatter would, with a body in `content`. Its `title` is its node id and link target. `sctx dump <space> | jq '.nodes | map(.schemaData)'` prints notes in this shape.
+A fixture is a space whose nodes are in a JSONL file in the suite. `fixtures.json5` lists the fixtures as a config lists spaces: a `name`, the `path` to the nodes file, a `schema`, and optional `plugins`. Several fixtures can share a schema, and several evals can share a fixture.
 
-Several evals can share a fixture. For a rule whose `scope` sends related nodes, such as siblings, give each scenario its own small tree, so that one case's related nodes do not change another's.
+The nodes file holds one parsed node per line, as `sctx dump` prints them. To make one from markdown notes, configure them as a space and run `sctx dump <space> | jq -c '.nodes[]'`.
+
+For a rule whose `scope` sends related nodes, such as siblings, give each scenario its own small tree, so that one case's related nodes do not change another's.
 
 ## Checks
 
