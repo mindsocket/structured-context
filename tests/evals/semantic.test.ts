@@ -24,42 +24,48 @@ describe('a suite directory', () => {
     mkdirSync(join(dir, path, '..'), { recursive: true });
     writeFileSync(join(dir, path), JSON.stringify(value));
   };
-  const opportunity = (title: string) => ({
-    title,
-    type: 'opportunity',
-    status: 'identified',
-    parent: '[[Grow usage]]',
-    source: 'Interviews',
-  });
-  write('fixtures/tree.json5', {
-    schema: 'strict_ost.json',
-    nodes: [
-      { title: 'Grow usage', type: 'outcome', status: 'identified', metric: 'Weekly active teams' },
+  const node = (title: string, type: string, fields: Record<string, unknown>) =>
+    JSON.stringify({
+      id: `${title}.md`,
+      title,
+      type,
+      linkTargets: [title],
+      schemaData: { title, type, status: 'identified', ...fields },
+    });
+  const opportunity = (title: string) => node(title, 'opportunity', { parent: '[[Grow usage]]', source: 'Interviews' });
+  mkdirSync(join(dir, 'nodes'));
+  writeFileSync(
+    join(dir, 'nodes', 'tree.jsonl'),
+    [
+      node('Grow usage', 'outcome', { metric: 'Weekly active teams' }),
       opportunity('Onboarding'),
       opportunity('Build a Slack integration'),
-    ],
-  });
-  write('a.json5', { fixture: 'tree', expected: { 'opportunity-customer-voice': { Onboarding: 'fail' } } });
+    ].join('\n'),
+  );
+  write('fixtures.json5', { spaces: [{ name: 'tree', path: 'nodes/tree.jsonl', schema: 'strict_ost.json' }] });
+  write('a.json5', { space: 'tree', expected: { 'opportunity-customer-voice': { 'Onboarding.md': 'fail' } } });
   write('b.json5', {
-    fixture: 'tree',
-    expected: { 'opportunity-customer-voice': { 'Grow usage': 'fail', 'Build a Slack integration': ['pass', 'fail'] } },
+    space: 'tree',
+    expected: {
+      'opportunity-customer-voice': { 'Grow usage.md': 'fail', 'Build a Slack integration.md': ['pass', 'fail'] },
+    },
   });
-  for (const title of ['Grow usage', 'Onboarding']) {
-    const type =
-      title === 'Grow usage' ? 'outcome\nmetric: Weekly active teams' : 'opportunity\nparent: "[[Grow usage]]"';
-    mkdirSync(join(dir, 'space'), { recursive: true });
-    writeFileSync(
-      join(dir, 'space', `${title}.md`),
-      `---\nstatus: identified\nsource: Interviews\ntype: ${type}\n---\n`,
-    );
-  }
+  mkdirSync(join(dir, 'space'));
+  writeFileSync(
+    join(dir, 'space', 'Grow usage.md'),
+    '---\nstatus: identified\ntype: outcome\nmetric: Weekly active teams\n---\n',
+  );
+  writeFileSync(
+    join(dir, 'space', 'Onboarding.md'),
+    '---\nstatus: identified\ntype: opportunity\nparent: "[[Grow usage]]"\nsource: Interviews\n---\n',
+  );
   write('mine.json5', { space: 'work', expected: { 'opportunity-customer-voice': { 'Onboarding.md': 'fail' } } });
   const config: Config = {
     spaces: [{ name: 'work', path: join(dir, 'space'), schema: 'strict_ost.json', sourceDir: dir }],
   };
   const [a, b, mine] = loadEvals([resolveSuite(dir, [])], config);
 
-  test('loads each eval file, sharing a fixture between evals', () => {
+  test('loads each eval file, with evals sharing a fixture', () => {
     expect([a, b, mine].map((e) => e!.name)).toEqual(['a', 'b', 'mine'].map((n) => `${basename(dir)}/${n}`));
     expect(a!.context).toBe(b!.context);
     expect(mine!.context.space.name).toBe('work');
@@ -72,16 +78,16 @@ describe('a suite directory', () => {
 
   test('reports labels the rule never judges, and labels that accept every verdict', async () => {
     expect(await checkEval(b!)).toEqual([
-      `${b!.name}: rule "opportunity-customer-voice", node "Grow usage": not judged (unknown node, or the rule skips it)`,
-      `${b!.name}: rule "opportunity-customer-voice", node "Build a Slack integration": accepts every verdict`,
+      `${b!.name}: rule "opportunity-customer-voice", node "Grow usage.md": not judged (unknown node, or the rule skips it)`,
+      `${b!.name}: rule "opportunity-customer-voice", node "Build a Slack integration.md": accepts every verdict`,
     ]);
   });
 
   test('sends only labelled nodes to the provider', async () => {
     const judge = new FakeJudgeProvider({ verdict: 'fail' });
     const judged = await judgeEval(a!, judge);
-    expect(judged.map((j) => j.nodeId)).toEqual(['Onboarding']);
-    expect(judge.callHistory.map((input) => input.node.id as string)).toEqual(['Onboarding']);
+    expect(judged.map((j) => j.nodeId)).toEqual(['Onboarding.md']);
+    expect(judge.callHistory.map((input) => input.node.id as string)).toEqual(['Onboarding.md']);
   });
 });
 

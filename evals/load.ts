@@ -6,10 +6,13 @@ import { resolvePluginDir } from '../src/plugins/util';
 import { readSpace } from '../src/read/read-space';
 import { resolveGraphEdges } from '../src/read/resolve-graph-edges';
 import { createSpaceContext } from '../src/space-context';
-import type { BaseNode, NodeId, SpaceContext } from '../src/types';
+import type { BaseNode, SpaceContext } from '../src/types';
 
 /** Where core and each plugin keep their semantic suite. */
 export const SUITE_SUBDIR = join('evals', 'semantic');
+
+/** The suite's fixtures: spaces whose nodes are in a JSONL file. */
+const FIXTURES_FILE = 'fixtures.json5';
 
 const CORE_SUITE_DIR = join(import.meta.dir, 'semantic');
 
@@ -23,7 +26,7 @@ export interface Suite {
 /** Rule id → node id → the verdicts that count as agreeing. */
 export type Expected = Record<string, Record<string, string[]>>;
 
-/** Labelled cases on the nodes of one fixture or configured space. */
+/** Labelled cases on the nodes of one space: a fixture, or a configured space. */
 export interface Eval {
   /** `<suite>/<file name>`, e.g. `core/opportunity-customer-voice`. */
   name: string;
@@ -50,34 +53,30 @@ export function resolveSuite(source: string, configDirs: string[]): Suite {
   throw new Error(`Suite "${source}" is not core, a path, or a plugin found from the config.`);
 }
 
-type EvalFile = { fixture?: string; space?: string; expected: Record<string, Record<string, string | string[]>> };
-type FixtureFile = Pick<SpaceConfig, 'schema' | 'plugins'> & { nodes: Record<string, unknown>[] };
+type EvalFile = { space: string; expected: Record<string, Record<string, string | string[]>> };
+type FixturesFile = { spaces: Pick<SpaceConfig, 'name' | 'path' | 'schema' | 'plugins'>[] };
+type Space = Pick<Eval, 'context' | 'read'>;
 
-/** Every `*.json5` at the top of each suite is an eval. `config` holds the spaces evals name. */
+/**
+ * Every `*.json5` at the top of each suite, except `fixtures.json5`, is an eval. An eval's `space` names one of
+ * the suite's fixtures, or else a space in `config`.
+ */
 export function loadEvals(suites: Suite[], config: Config): Eval[] {
   return suites.flatMap((suite) => {
-    const fixtures = new Map<string, Pick<Eval, 'context' | 'read'>>();
-    const fixture = (name: string) => {
-      if (!fixtures.has(name)) fixtures.set(name, loadFixture(suite, name));
-      return fixtures.get(name)!;
-    };
+    const fixtures = loadFixtures(suite);
     return readdirSync(suite.dir)
-      .filter((file) => file.endsWith('.json5'))
+      .filter((file) => file.endsWith('.json5') && file !== FIXTURES_FILE)
       .sort()
       .map((file) => {
         const name = `${suite.name}/${basename(file, '.json5')}`;
         try {
-          const evalFile = JSON5.parse(readFileSync(join(suite.dir, file), 'utf8')) as EvalFile;
-          if ((evalFile.fixture === undefined) === (evalFile.space === undefined)) {
-            throw new Error('needs either "fixture" or "space"');
-          }
+          const { space, expected: labels } = JSON5.parse(readFileSync(join(suite.dir, file), 'utf8')) as EvalFile;
+          if (typeof space !== 'string') throw new Error('needs a "space"');
           const expected: Expected = {};
-          for (const [ruleId, labels] of Object.entries(evalFile.expected)) {
-            expected[ruleId] = Object.fromEntries(Object.entries(labels).map(([id, v]) => [id, [v].flat()]));
+          for (const [ruleId, verdicts] of Object.entries(labels)) {
+            expected[ruleId] = Object.fromEntries(Object.entries(verdicts).map(([id, v]) => [id, [v].flat()]));
           }
-          if (evalFile.fixture !== undefined) return { name, expected, ...fixture(evalFile.fixture) };
-          const context = createSpaceContext(evalFile.space!, config);
-          return { name, expected, context, read: () => readSpace(context) };
+          return { name, expected, ...(fixtures.get(space) ?? configuredSpace(space, config)) };
         } catch (err) {
           throw new Error(`Eval ${name}: ${err instanceof Error ? err.message : String(err)}`);
         }
@@ -85,23 +84,35 @@ export function loadEvals(suites: Suite[], config: Config): Eval[] {
   });
 }
 
-/** `fixtures/<name>.json5`: a schema and the nodes' schema data, each with its `title` as node id and link target. */
-function loadFixture(suite: Suite, name: string): Pick<Eval, 'context' | 'read'> {
-  const path = join(suite.dir, 'fixtures', `${name}.json5`);
-  if (!existsSync(path)) throw new Error(`no fixture at ${path}`);
-  const file = JSON5.parse(readFileSync(path, 'utf8')) as FixtureFile;
-  const spaceName = `${suite.name}/fixtures/${name}`;
-  const context = createSpaceContext(
-    spaceName,
-    { spaces: [{ name: spaceName, path: suite.dir, schema: file.schema, plugins: file.plugins }] },
-    { configDir: suite.configDir },
+function configuredSpace(name: string, config: Config): Space {
+  const context = createSpaceContext(name, config);
+  return { context, read: () => readSpace(context) };
+}
+
+/** A fixture's nodes file holds one parsed node per line, as `sctx dump` prints them. Resolved fields are dropped, since resolution runs again. */
+function loadFixtures(suite: Suite): Map<string, Space> {
+  const path = join(suite.dir, FIXTURES_FILE);
+  if (!existsSync(path)) return new Map();
+  const { spaces } = JSON5.parse(readFileSync(path, 'utf8')) as FixturesFile;
+  const config: Config = { spaces: spaces.map((s) => ({ ...s, path: resolve(suite.dir, s.path) })) };
+  return new Map(
+    config.spaces.map(({ name, path: nodesPath }) => {
+      const context = createSpaceContext(name, config, { configDir: suite.configDir });
+      const nodes = readNodes(nodesPath);
+      return [name, { context, read: async () => resolveGraphEdges(nodes, context.schema.metadata) }];
+    }),
   );
-  const nodes: BaseNode[] = file.nodes.map((schemaData, i) => {
-    const { title, type } = schemaData;
-    if (typeof title !== 'string' || typeof type !== 'string') {
-      throw new Error(`${path}: node ${i + 1} needs a "title" and a "type"`);
-    }
-    return { id: title as NodeId, title, type, linkTargets: [title], schemaData };
-  });
-  return { context, read: async () => resolveGraphEdges(nodes, context.schema.metadata) };
+}
+
+function readNodes(path: string): BaseNode[] {
+  return readFileSync(path, 'utf8')
+    .split('\n')
+    .flatMap((line, i) => {
+      if (line.trim() === '') return [];
+      const { id, title, type, schemaData, linkTargets, content, contentLinks } = JSON.parse(line) as BaseNode;
+      if (!id || typeof title !== 'string' || typeof type !== 'string' || !schemaData || !linkTargets) {
+        throw new Error(`${path}:${i + 1}: not a parsed node (needs id, title, type, schemaData and linkTargets)`);
+      }
+      return [{ id, title, type, schemaData, linkTargets, content, contentLinks }];
+    });
 }

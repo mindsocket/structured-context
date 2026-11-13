@@ -1,0 +1,6 @@
+{
+  spaces: [
+    // A small product's opportunity solution tree.
+    { name: 'strict-ost', path: 'fixtures/strict-ost.jsonl', schema: 'strict_ost.json' },
+  ],
+}
