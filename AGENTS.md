@@ -108,3 +108,4 @@ For most development only the main unit tests need re-running regularly.
 
 ## Hooks
 Address issues related to change you made if a Stop hook reports them.
+The Stop hook and pre-push block while the branch adds docs or code comments that `doc-review` has not seen (`scripts/prose-check.sh`).
