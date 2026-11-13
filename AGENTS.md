@@ -79,16 +79,12 @@ There are several places that need reviewing and updating with any new feature o
 
 ## Key Files
 
-- `src/api.ts` — Public library entry point (`structured-context/api`). Re-exports the supported programmatic surface. Keep CLI-only concerns out of it. Do not extend it without agreement (see **Public API surface** above).
-- `src/browser.ts` — Browser-safe entry point (`structured-context/browser`): rebuilding a graph from the space graph format. Nothing it imports may use Node built-ins; `/api` re-exports all of it.
-- `src/space-graph-data.ts` — The space graph format: `SPACE_GRAPH_DATA_SCHEMA`, `SpaceGraphData` (a typecheck fails if the two drift), `exportSpaceGraph`, `spaceGraphFrom`. Bump `SPACE_GRAPH_FORMAT_VERSION` when the shape changes. It is generated to `schemas/generated/space-graph/` (`latest.json`, plus a frozen `<formatVersion>.json` per release); generation fails if a released version's schema no longer matches.
-- `schemas/` — Bundled default schema files (JSON5) using the structured-context schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`).
-- `src/schema/metadata-contract.ts` — Single source of truth for the `$metadata` contract
-- `schemas/generated/latest/_structured_context_schema_meta.json` — Generated metaschema for the newest dialect (generated on build or with `bun run generate:schema-meta`). `schemas/generated/<version>/` folders are frozen copies, created by the `version` script (`generate:schema-meta --release`) only when a release changes the dialect; never edit them. `src/schema/meta-schemas.ts` loads them at runtime.
-- `src/rule/gating.ts` — Cascade gating and the entry point for rule evaluation (`evaluateRules`). It decides which node sets are evaluated, in what order, and which nodes are gated: a node that fails schema or hierarchy checks, or has a gating violation, is a gate, and the nodes below it are gated, reported as `gated` issues. A schema without a hierarchy takes the same path with nothing gated. See [docs/rules.md](docs/rules.md#cascade-gating).
-- `src/rule/rule-evaluator.ts` — Evaluates rules on one node set: applicability (`type`, `when`), expressions, and one judge call for the remaining semantic parts. It reports rule issues and gate-causing violations; gating owns order and suppression. The judge gets one `JudgeSession` (`src/judge/judge-node.ts`).
-- `src/judge/` — Semantic rule evaluation (the "judge" is its internal name): provider interface and types (`types.ts`), verdict resolution (`verdicts.ts`), per-node and grouped dispatch (`judge-node.ts`), related-node selection for `semantic.scope` (`context.ts`), the per-node input cap and body trimming (`trim.ts`), and providers (`provider/anthropic.ts`, `provider/openai.ts`, `provider/jev.ts`, `provider/fake.ts`), provider hydration and the bundled catalogue (`factory.ts`), and `sctx providers` (`src/commands/providers.ts`). See [docs/semantic-rules.md](docs/semantic-rules.md).
-- `src/rule/rule-filter.ts` — `--rule-filter` parsing and rule filtering by category, severity, type or id.
+- `src/api.ts`, `src/browser.ts`, `src/types.ts` — the public entry points (see **Public API surface** above). Nothing `browser.ts` imports may use Node built-ins.
+- `src/space-graph-data.ts` — the space graph format.
+- `src/schema/metadata-contract.ts` — the `$metadata` contract.
+- `schemas/` — bundled schemas; `_` files are partials. Never edit the frozen `schemas/generated/<version>/` folders.
+- `src/rule/gating.ts` — rule evaluation and cascade gating ([docs/rules.md](docs/rules.md#cascade-gating)).
+- `src/judge/` — semantic rules ([docs/semantic-rules.md](docs/semantic-rules.md)).
 
 ## Testing
 For most development only the main unit tests need re-running regularly.
