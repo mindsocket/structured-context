@@ -58,18 +58,21 @@ async function resolveExternalPlugin(name: string, configDir: string): Promise<S
   return plugin;
 }
 
+/** The roots of the loaded config files. */
+function configRoots(): string[] {
+  return Array.from(getConfigSourceFiles()).map((f) => configRoot(f));
+}
+
 /**
  * Discover all available plugins: built-ins first, then any found in the plugins folder of
- * each loaded config file's root. Does not load npm plugins
+ * each config root (by default, the roots of the loaded config files). Does not load npm plugins
  * (those are only declared in space configs).
  */
-export async function discoverPlugins(): Promise<StructuredContextPlugin[]> {
-  const configDirs = [...new Set(Array.from(getConfigSourceFiles()).map((f) => configRoot(f)))];
-
+export async function discoverPlugins(configDirs: string[] = configRoots()): Promise<StructuredContextPlugin[]> {
   const plugins: StructuredContextPlugin[] = [...builtinPlugins];
   const seenNames = new Set(builtinPlugins.map((p) => p.name));
 
-  for (const configDir of configDirs) {
+  for (const configDir of new Set(configDirs)) {
     const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
     if (pluginsDir) {
       const entries = readdirSync(pluginsDir).filter((e) => e.startsWith(PLUGIN_PREFIX));
@@ -84,49 +87,75 @@ export async function discoverPlugins(): Promise<StructuredContextPlugin[]> {
   return plugins;
 }
 
-/**
- * Load plugins for a space.
- *
- * Built-in plugins are always included (with config from the map if declared, else {}).
- * External plugins are loaded from the map and prepended in declaration order.
- * Resolution order for external plugins: config-adjacent → npm.
- * Fields annotated with format:'path' in a plugin's configSchema are resolved
- * relative to configDir.
- */
-export async function loadPlugins(
+/** A plugin with the config block a space declares for it, not yet validated. */
+export type DeclaredPlugin = {
+  plugin: StructuredContextPlugin;
+  rawConfig: Record<string, unknown>;
+};
+
+/** The space's plugins: external ones from the map in declaration order, then the built-ins. */
+async function declaredPlugins(
   pluginMap: Record<string, Record<string, unknown>>,
   configDir: string,
-): Promise<LoadedPlugin[]> {
-  const ajv = new Ajv2020();
-  ajv.addFormat('path', (value: string) => value.length > 0 && !value.includes('\0'));
-  const loaded: LoadedPlugin[] = [];
-
-  // External plugins: entries in the map that are not built-in names
+): Promise<DeclaredPlugin[]> {
+  const declared: DeclaredPlugin[] = [];
   for (const [rawName, rawConfig] of Object.entries(pluginMap)) {
     const name = normalizePluginName(rawName);
     if (isBuiltinPluginName(name)) continue;
     if (!name.startsWith(PLUGIN_PREFIX)) {
       throw new Error(`Plugin name must start with "${PLUGIN_PREFIX}" (got "${rawName}")`);
     }
-    const plugin = await resolveExternalPlugin(name, configDir);
-    const pluginConfig = resolveConfigPaths(plugin.configSchema, rawConfig, configDir);
-    const validate = ajv.compile(plugin.configSchema);
-    if (!validate(pluginConfig)) {
-      throw new Error(`Invalid config for plugin "${name}": ${JSON.stringify(validate.errors)}`);
-    }
-    loaded.push({ plugin, pluginConfig });
+    declared.push({ plugin: await resolveExternalPlugin(name, configDir), rawConfig });
   }
-
-  // Built-in plugins: always loaded, config taken from map if declared (with or without prefix)
   for (const builtin of builtinPlugins) {
     const rawConfig = pluginMap[builtin.name] ?? pluginMap[shortenPluginName(builtin.name)] ?? {};
-    const pluginConfig = resolveConfigPaths(builtin.configSchema, rawConfig, configDir);
-    const validate = ajv.compile(builtin.configSchema);
-    if (!validate(pluginConfig)) {
-      throw new Error(`Invalid config for plugin "${builtin.name}": ${JSON.stringify(validate.errors)}`);
-    }
-    loaded.push({ plugin: builtin, pluginConfig });
+    declared.push({ plugin: builtin, rawConfig });
   }
+  return declared;
+}
 
-  return loaded;
+/**
+ * Validate a plugin's config block against its configSchema. Fields annotated with
+ * format:'path' are resolved relative to configDir first.
+ */
+export function configurePlugin({ plugin, rawConfig }: DeclaredPlugin, configDir: string): LoadedPlugin {
+  const ajv = new Ajv2020();
+  ajv.addFormat('path', (value: string) => value.length > 0 && !value.includes('\0'));
+  const pluginConfig = resolveConfigPaths(plugin.configSchema, rawConfig, configDir);
+  const validate = ajv.compile(plugin.configSchema);
+  if (!validate(pluginConfig)) {
+    throw new Error(`Invalid config for plugin "${plugin.name}": ${JSON.stringify(validate.errors)}`);
+  }
+  return { plugin, pluginConfig };
+}
+
+/**
+ * Load plugins for a space, with their config validated.
+ *
+ * Built-in plugins are always included (with config from the map if declared, else {}).
+ * External plugins are loaded from the map and come first, in declaration order.
+ * Resolution order for external plugins: config-adjacent → npm.
+ */
+export async function loadPlugins(
+  pluginMap: Record<string, Record<string, unknown>>,
+  configDir: string,
+): Promise<LoadedPlugin[]> {
+  return (await declaredPlugins(pluginMap, configDir)).map((declared) => configurePlugin(declared, configDir));
+}
+
+/**
+ * Every plugin a space can use: the ones it declares, then any other discovered plugin with
+ * an empty config. Config is not validated, so a plugin with invalid config fails only when
+ * it is used (see {@link configurePlugin}).
+ */
+export async function availablePlugins(
+  pluginMap: Record<string, Record<string, unknown>>,
+  configDir: string,
+): Promise<DeclaredPlugin[]> {
+  const available = await declaredPlugins(pluginMap, configDir);
+  const names = new Set(available.map(({ plugin }) => plugin.name));
+  for (const plugin of await discoverPlugins([configDir, ...configRoots()])) {
+    if (!names.has(plugin.name)) available.push({ plugin, rawConfig: {} });
+  }
+  return available;
 }

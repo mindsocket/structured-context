@@ -7,7 +7,9 @@ import { resourceDir } from '../config/layout';
 import { PLUGIN_PREFIX as _PLUGIN_PREFIX } from '../constants';
 import type { PluginSchemaSource } from '../schema/schema';
 import type { SpaceGraph } from '../space-graph';
-import type { BaseNode, ParseIssue, SpaceContext } from '../types';
+import type { SpaceGraphData } from '../space-graph-data';
+import type { BaseNode, ParseIssue, SpaceContext, ValidationIssue } from '../types';
+import type { ValidateSpaceOptions } from '../validate';
 import { isBuiltinPluginName } from './builtin-names';
 
 export const PLUGIN_PREFIX = _PLUGIN_PREFIX;
@@ -30,6 +32,12 @@ export type PluginContext = SpaceContext & {
   callbacks?: {
     /** Persist plugin config updates to the config file. */
     persistConfig?: (updates: Record<string, string>) => void;
+    /** Render only: validate the whole space and return every issue found, of every severity. */
+    validate?: (
+      options?: Pick<ValidateSpaceOptions, 'includeGated' | 'ruleFilter' | 'semantic' | 'depth'>,
+    ) => Promise<ValidationIssue[]>;
+    /** Render only: the graph being rendered, in the space graph format. */
+    exportGraph?: () => SpaceGraphData;
   };
 };
 
