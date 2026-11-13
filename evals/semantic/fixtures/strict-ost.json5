@@ -1,0 +1,26 @@
+// A small product's opportunity solution tree. Each node holds the fields its frontmatter would.
+{
+  schema: 'strict_ost.json',
+  nodes: [
+    { title: 'Increase weekly active teams', type: 'outcome', status: 'identified', metric: 'Increase % of trial teams active in their second week', content: 'Teams that use the product every week renew.' },
+
+    // Customer needs, in the customer's words.
+    { title: 'Setting up a workspace takes so long that I give up', type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Interview with Priya, 2026-09-02', content: 'Priya abandoned setup twice before her team lead finished it for her.' },
+    { title: "I can't tell which plan fits a team of my size", type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Sales call notes, 2026-09-10', content: 'Prospects asked which tier covers twelve seats with guest access.' },
+    { title: 'I want to see what my teammates changed while I was away', type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Interview with Tomas, 2026-09-15', content: 'Tomas reads every page again after a holiday to find what is new.' },
+    { title: "I'm afraid I'll lose my work if my browser crashes", type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Support tickets, September 2026', content: 'Several tickets describe retyping long notes after a crash.' },
+    { title: "I don't know whether my changes have been saved", type: 'opportunity', status: 'identified', parent: "[[I'm afraid I'll lose my work if my browser crashes]]", source: 'Usability test round 3', content: 'Four of six participants pressed the save shortcut repeatedly.' },
+    { title: 'Show unsaved-change indicator', type: 'solution', status: 'exploring', parent: "[[I don't know whether my changes have been saved]]", content: 'A dot on the tab while changes are pending.' },
+
+    // Solutions, metrics and topics posing as opportunities.
+    { title: 'Add a progress bar to workspace setup', type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Product team brainstorm', content: 'Show users how many setup steps remain.' },
+    { title: 'Build a Slack integration', type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Competitor review', content: 'Post page updates to a Slack channel.' },
+    { title: 'Offer a discount on annual plans', type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Pricing workshop', content: 'Ten percent off when paying yearly.' },
+    { title: 'Increase trial-to-paid conversion by 10%', type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Quarterly planning', content: 'The board wants conversion to rise this quarter.' },
+    { title: 'Reduce churn among small teams', type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Retention dashboard', content: 'Teams of fewer than five seats churn twice as often.' },
+    { title: 'Onboarding', type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Interview synthesis', content: 'Everything about how new users get started.' },
+
+    // A real pain point, but reported in the third person.
+    { title: 'New users find the editor toolbar confusing', type: 'opportunity', status: 'identified', parent: '[[Increase weekly active teams]]', source: 'Usability test round 2', content: 'Participants hovered over icons without knowing what they did.' },
+  ],
+}
