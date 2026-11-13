@@ -10,6 +10,7 @@
   "oneOf": [
     {
       "type": "object",
+      "description": "A product outcome: a change in what customers do in the product, which the team can influence and which drives business value. `metric` measures it. It is not a business outcome (such as revenue or market share), not a traction metric (the use of one feature), and not an output (a feature or project to ship).",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" },
@@ -31,6 +32,7 @@
     },
     {
       "type": "object",
+      "description": "A customer need, pain point or desire, found in customer research and stated as the customer would say it. Addressing it drives the outcome. A child opportunity is a subset of its parent opportunity. Sibling opportunities are distinct: the team can address one without addressing another. It is not a solution, and not a business goal.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -53,6 +55,7 @@
     },
     {
       "type": "object",
+      "description": "One way to address the parent opportunity. The team compares several solutions for the target opportunity before it commits to one.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -73,6 +76,7 @@
     },
     {
       "type": "object",
+      "description": "A small, fast test of one assumption that the parent solution depends on.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },

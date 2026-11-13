@@ -1,0 +1,35 @@
+{
+  space: 'ost-trees',
+  expected: {
+    'opportunity-refines-parent': {
+      "I don't know what to do after I create a workspace.md": 'refines',
+      'My teammates ignore my invitations.md': 'refines',
+      // Plan choice affects buying, and only indirectly whether a team is active.
+      "I can't tell which plan fits a team of my size.md": 'weak-link',
+      'I want cheaper invoices from my accountant.md': 'misplaced',
+      'I need to export my data when I leave.md': 'misplaced',
+      "I don't know which template to start from.md": 'refines',
+      // Restates the parent.
+      "I'm not sure what to do once my workspace is set up.md": 'weak-link',
+      'The pricing page is confusing.md': 'misplaced',
+      // One cause of the parent need.
+      "I don't understand what the sidebar icons mean.md": 'refines',
+      // It would drive the outcome, but it is not part of this parent.
+      'I want to see what my teammates changed while I was away.md': 'misplaced',
+      "Invitation emails land in my teammates' spam.md": 'refines',
+      "My teammates don't know why they should join.md": 'refines',
+      "People I invite can't join because of our single sign-on.md": 'refines',
+      // About seats, linked to invitations only through cost.
+      "I don't want to pay for seats nobody uses.md": 'weak-link',
+      // A different invitation need, not why invitations are ignored.
+      'I want to invite people outside my company as guests.md': 'weak-link',
+      "I can't remember what I named a document.md": 'refines',
+      "Search results show documents I don't have access to.md": 'refines',
+      'I want dark mode.md': 'misplaced',
+      // Folders help finding, but bypass the search the outcome measures.
+      'I want to organise documents into folders.md': 'weak-link',
+      // A solution in disguise, which another rule checks. It would still drive the outcome.
+      'Add filters to search.md': 'refines',
+    },
+  },
+}

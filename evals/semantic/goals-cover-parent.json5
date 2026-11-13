@@ -1,0 +1,29 @@
+{
+  space: 'strategy-trees',
+  expected: {
+    'goals-cover-parent': {
+      'Help small cafés run a profitable kitchen.md': 'pass',
+      // Nothing covers staying injury-free, which the body names.
+      'Get ready for the Six Foot Track ultra.md': 'fail',
+      // Editing is named, and no goal covers it.
+      'Launch the podcast.md': 'fail',
+      'Improve team health.md': 'pass',
+      'Grow the newsletter.md': 'pass',
+      // Heating is named, and no goal covers it. Contrast with the next scenario.
+      'Make our home run on renewable energy.md': 'fail',
+      // Contrast with the previous scenario.
+      'Make our flat run on renewable energy.md': 'pass',
+      'Help remote teams feel connected.md': 'pass',
+      'Renovate the bathroom.md': 'fail',
+      'Ship version 2 of the app.md': 'pass',
+      "Grow the bakery's revenue.md": 'pass',
+      "Grow the market stall's revenue.md": 'pass',
+      'Learn Japanese for the trip.md': 'pass',
+      // No goal covers handing the farm to the kids. Contrast with the next scenario.
+      'Run a sustainable family farm.md': 'fail',
+      // Contrast with the previous scenario.
+      'Run a sustainable market garden.md': 'pass',
+      'Be the go-to accountant for tradespeople.md': 'pass',
+    },
+  },
+}

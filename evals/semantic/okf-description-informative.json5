@@ -1,0 +1,27 @@
+{
+  space: 'okf',
+  expected: {
+    'okf-description-informative': {
+      'Weekly active teams.md': 'pass',
+      'orders.md': 'pass',
+      'Incident response.md': 'pass',
+      'Churn.md': 'pass',
+      'Monthly revenue.md': 'fail',
+      'customers.md': 'fail',
+      'Sales overview.md': 'fail',
+      'Database failover.md': 'fail',
+      'Cache warm-up.md': 'fail',
+      // Barely more than the title.
+      'events.md': 'fail',
+      'Activation rate.md': 'pass',
+      // Restates the table name in words.
+      'fct_orders_daily.md': 'fail',
+      'ARR.md': 'pass',
+      // Starts like the name, then says what it holds.
+      'dim_customers.md': 'pass',
+      // Restates the title.
+      'Quarterly planning.md': 'fail',
+      'Hiring loop.md': 'pass',
+    },
+  },
+}

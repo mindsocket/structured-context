@@ -1,0 +1,34 @@
+{
+  space: 'ost-trees',
+  expected: {
+    'solution-addresses-opportunity': {
+      'Autosave every few seconds.md': 'addresses',
+      'Restore unsaved drafts after a crash.md': 'addresses',
+      'Make the app load faster.md': 'misplaced',
+      // Eases the fear, but does not prevent the loss.
+      "Show a 'saved' indicator in the toolbar.md": ['addresses', 'tangential'],
+      'Write a help article on keyboard shortcuts.md': 'misplaced',
+      // Data loss, but a crash loses the work since the last backup.
+      'Back up workspaces nightly to cloud storage.md': 'tangential',
+      // Protects against closing a tab, not against a crash.
+      'Warn before closing a tab with unsaved changes.md': 'tangential',
+      'Plan picker that asks for team size and recommends a plan.md': 'addresses',
+      'Compare plans side by side by seat count.md': 'addresses',
+      // About plans and price, but not about which plan fits.
+      'Offer a discount on annual plans.md': 'tangential',
+      'Add more payment methods.md': 'misplaced',
+      'Chat with sales about plan options.md': 'addresses',
+      // The names hint at size, but do not say where the limits are.
+      'Rename the plans to Team, Business and Enterprise.md': ['addresses', 'tangential'],
+      'Send invitations from a verified domain with SPF and DKIM.md': 'addresses',
+      // Avoids email altogether.
+      'Let me share an invite link in chat instead.md': 'addresses',
+      // The same email still lands in spam.
+      'Redesign the invitation email to look friendlier.md': 'tangential',
+      // Invited teammates are not in the app yet.
+      'Remind teammates in the app to accept invites.md': ['tangential', 'misplaced'],
+      // Changes how invites are created, not where they land.
+      'Bulk import teammates from a spreadsheet.md': ['tangential', 'misplaced'],
+    },
+  },
+}

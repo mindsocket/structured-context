@@ -197,12 +197,13 @@ describe('Semantic rules: verdicts, batching and rule filter', () => {
   };
   const context = createSpaceContext('strict-valid', config, { configDir: import.meta.dir });
 
-  it('judges each node once with all of its semantic rules', async () => {
+  it('judges each rule once per node, with rules that share related nodes in one input', async () => {
     const provider = new FakeJudgeProvider();
     await validateSpaceWith(context, { judge: { provider } });
-    const labels = provider.callHistory.map((c) => c.node.id);
-    expect(new Set(labels).size).toBe(labels.length);
-    expect(provider.callHistory.every((c) => c.rules.length >= 1)).toBe(true);
+    const judged = provider.callHistory.flatMap((c) => c.rules.map((r) => `${c.node.id}:${r.id}`));
+    expect(new Set(judged).size).toBe(judged.length);
+    const inputs = provider.callHistory.map((c) => `${c.node.id}:${JSON.stringify(c.related ?? [])}`);
+    expect(new Set(inputs).size).toBe(inputs.length);
   });
 
   it('reports a verdict that has a severity as a violation carrying the verdict and evidence', async () => {

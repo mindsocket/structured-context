@@ -1,0 +1,30 @@
+{
+  space: 'knowledge-wiki',
+  expected: {
+    'synthesis-connects': {
+      'Affordances and feedback in interface design.md': 'pass',
+      'Opportunity solution trees and OKRs compared.md': 'pass',
+      'Why retrieval beats fine-tuning for fresh knowledge.md': 'pass',
+      'Lean and kanban share their roots.md': 'pass',
+      'Summary of The Design of Everyday Things.md': 'fail',
+      "Notes from Torres' talk at Mind the Product.md": 'fail',
+      // A list, with nothing connecting the items.
+      'Product discovery books.md': 'fail',
+      // Restates one source.
+      "Karpathy's LLM wiki post.md": 'fail',
+      // One main source, connected to a concept to form a thesis.
+      'Continuous discovery as jobs to be done.md': 'pass',
+      // Two sources, summarised one after the other, with nothing connecting them.
+      'Two articles on technical debt.md': 'fail',
+      // Mostly a table, but it compares and concludes.
+      'Which model to pick for coding.md': 'pass',
+      // One paper, with a link at the end that connects nothing.
+      'Attention Is All You Need.md': 'fail',
+      // Draws on several sources, but has no model or thesis.
+      'Open questions about context engineering.md': 'fail',
+      // Short, but it connects two concepts into a thesis.
+      'Technical debt is a cost of delay.md': 'pass',
+      'Why studies disagree on remote work productivity.md': 'pass',
+    },
+  },
+}

@@ -40,11 +40,87 @@
         "embeddedTemplateFields": ["assumption", "status", "confidence"],
         "multiple": true
       }
+    ],
+    "rules": [
+      {
+        "id": "goals-distinct",
+        "category": "coherence",
+        "description": "Sibling goals are distinct: progress on one is not progress on another",
+        "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'goal']) >= 2",
+        "semantic": {
+          "rubric": "Judge the item's child goals as a set, and ignore its other children. They are distinct when each is a different result, so that achieving one does not achieve another.",
+          "scope": ["children"],
+          "verdicts": {
+            "distinct": "Each child goal is a different result",
+            "overlapping": {
+              "description": "Two child goals partly cover the same result, or one contains another",
+              "guidance": "Sharpen the boundary between them, or nest the narrower one under the broader one."
+            },
+            "duplicate": {
+              "description": "Two child goals state the same result in different words",
+              "guidance": "Merge them."
+            }
+          },
+          "severity": { "overlapping": "warning", "duplicate": "warning" }
+        }
+      },
+      {
+        "id": "goals-cover-parent",
+        "category": "best-practice",
+        "description": "Together, a mission's or goal's child goals cover what it needs",
+        "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'goal']) >= 2",
+        "semantic": {
+          "rubric": "Judge the item's child goals as a set, and ignore its other children. Pass when achieving all of them would achieve the item as its title and body state it. Fail when a part that the item names or plainly needs has no goal.",
+          "scope": ["children"],
+          "includeContent": "fullScope"
+        }
+      },
+      {
+        "id": "goal-advances-parent",
+        "category": "coherence",
+        "type": "goal",
+        "description": "A goal advances its parent mission, or is one part of its parent goal",
+        "when": "$exists(parent)",
+        "semantic": {
+          "scope": ["parent"],
+          "verdicts": {
+            "advances": "Under a mission, achieving it moves the mission forward. Under a goal, it is one part of the parent goal, narrower than the parent",
+            "weak-link": {
+              "description": "Related to the parent, but the link is indirect, or it only restates the parent",
+              "guidance": "Say how it advances the parent, or narrow it to one part of the parent."
+            },
+            "misplaced": {
+              "description": "Achieving it would not advance the parent",
+              "guidance": "Move it under the mission or goal it advances."
+            }
+          },
+          "severity": { "weak-link": "info", "misplaced": "warning" }
+        }
+      },
+      {
+        "id": "opportunity-serves-ancestors",
+        "category": "coherence",
+        "type": "opportunity",
+        "description": "Pursuing the opportunity serves the mission and vision above it, not only its parent goal",
+        "semantic": {
+          "rubric": "Follow the chain from the opportunity through its goals to the mission and vision. Pass when pursuing it serves every level. Fail when it would advance its parent but work against, or ignore, the intent of a level above.",
+          "scope": ["ancestors"],
+          "includeContent": "fullScope"
+        }
+      },
+      {
+        "id": "problem-statement-names-no-solution",
+        "category": "best-practice",
+        "type": "problem_statement",
+        "description": "The problem statement states a problem, and does not name or presume a solution",
+        "semantic": { "includeContent": "nodeOnly" }
+      }
     ]
   },
   "$defs": {
     "dashboard": {
       "type": "object",
+      "description": "An overview page for the space. It is not part of the hierarchy.",
       "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "dashboard" }
@@ -54,6 +130,7 @@
     },
     "ost_on_a_page": {
       "type": "object",
+      "description": "A one-page view of the tree or the space. It is not part of the hierarchy.",
       "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "enum": ["ost_on_a_page", "space_on_a_page"] }
@@ -63,6 +140,7 @@
     },
     "vision": {
       "type": "object",
+      "description": "The future you want to exist: a lasting, aspirational state of the world, not a plan or an activity.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
@@ -82,6 +160,7 @@
     },
     "mission": {
       "type": "object",
+      "description": "What you do, and for whom, to move towards the vision. It lasts for years and guides which goals to pursue.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -102,6 +181,7 @@
     },
     "goal": {
       "type": "object",
+      "description": "A result to achieve, which advances the parent mission or goal. A child goal is one part of its parent goal. Together, a parent's goals should cover what it needs.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -124,6 +204,7 @@
     },
     "opportunity": {
       "type": "object",
+      "description": "A need, problem or opening that, if addressed, advances the parent goal. A child opportunity is one part of its parent opportunity.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -157,6 +238,7 @@
     },
     "solution": {
       "type": "object",
+      "description": "One way to address the parent opportunity.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -190,6 +272,7 @@
     },
     "experiment": {
       "type": "object",
+      "description": "A small test of an assumption behind the parent, whose result decides what to do next.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -215,6 +298,7 @@
     },
     "assumption": {
       "type": "object",
+      "description": "A belief that must hold for the parent opportunity to succeed, with how confident you are in it.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -241,6 +325,7 @@
     },
     "problem_statement": {
       "type": "object",
+      "description": "The problem that the parent opportunity addresses: who has it, what it is and why it matters. It names no solution.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },

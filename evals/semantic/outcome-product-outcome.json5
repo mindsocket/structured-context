@@ -1,0 +1,31 @@
+{
+  space: 'ost-trees',
+  expected: {
+    'outcome-product-outcome': {
+      'Help new teams reach their first shared document.md': 'product-outcome',
+      'Increase weekly active teams.md': 'product-outcome',
+      'Make it easier to find past work.md': 'product-outcome',
+      'Reduce time to first invoice sent.md': 'product-outcome',
+      'More customers set up recurring payments.md': 'product-outcome',
+      'Grow annual recurring revenue.md': 'business-outcome',
+      'Reduce churn.md': 'business-outcome',
+      'Win the mid-market segment.md': 'business-outcome',
+      'Get more people using the export button.md': 'traction-metric',
+      // The use of one feature, worded as adoption.
+      'Drive adoption of the new dashboard.md': 'traction-metric',
+      'Launch the mobile app.md': 'output',
+      'Ship single sign-on.md': 'output',
+      'Redesign onboarding.md': 'output',
+      // An output worded as an increase.
+      'Increase the number of integrations.md': 'output',
+      // A business title, but the metric is customer behaviour.
+      'Protect revenue from small teams.md': 'product-outcome',
+      // A behaviour title, but the metric is a release.
+      'Get teams using the new calendar view.md': 'output',
+      // A value title, but the metric is the use of one email.
+      'Help managers stay informed.md': 'traction-metric',
+      // Customer wording for a revenue metric.
+      'Customers stay with us longer.md': 'business-outcome',
+    },
+  },
+}
