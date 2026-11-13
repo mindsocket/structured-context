@@ -483,6 +483,8 @@ The `plugins` field in config is a **map** from plugin name to plugin config obj
 
 Each plugin declares a `configSchema` JSON Schema; the loader validates the config block against it before invoking the plugin. Config fields annotated with `format: 'path'` are resolved relative to the config root by the loader.
 
+Render formats come from every available plugin: the ones a space declares, and any other plugin in a config root's plugins folder. An undeclared plugin gets an empty config block. A plugin's config is validated when one of its formats is rendered.
+
 ### Config root
 
 The **config root** is the folder a config file's relative paths resolve from: the folder holding `.sctx.json` or `.sctx/`, or the global config's folder. Its **resources folder** (`.sctx/`, or the global config's folder) holds plugins, schemas and map view definitions. In code, `configDir` and `SpaceConfig.sourceDir` hold a config root. See [Resources folder](config.md#resources-folder).
