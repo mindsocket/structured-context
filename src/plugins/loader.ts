@@ -2,7 +2,8 @@ import { existsSync, readdirSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
 import Ajv2020 from 'ajv/dist/2020';
-import { configRoot, getConfigSourceFiles, resourceDir } from '../config';
+import { getConfigSourceFiles } from '../config';
+import { configRoot, resourceDir } from '../config/layout';
 import { builtinPlugins } from '.';
 import { isBuiltinPluginName } from './builtin-names';
 import {

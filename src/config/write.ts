@@ -1,14 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { SctxError } from '../errors';
-import {
-  configRoot,
-  globalConfigPath,
-  LOCAL_CONFIG_DESCRIPTION,
-  resolveConfigPath,
-  resolveSchemaPath,
-  type SpaceConfig,
-} from '.';
+import { LOCAL_CONFIG_DESCRIPTION, resolveConfigPath, resolveSchemaPath, type SpaceConfig } from '.';
+import { configRoot, globalConfigPath } from './layout';
 
 type AddSpaceOptions = Pick<SpaceConfig, 'name' | 'path' | 'schema'> & {
   /** Write to the global config file. */
