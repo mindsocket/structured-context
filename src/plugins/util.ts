@@ -32,11 +32,11 @@ export type PluginContext = SpaceContext & {
   callbacks?: {
     /** Persist plugin config updates to the config file. */
     persistConfig?: (updates: Record<string, string>) => void;
-    /** Render only: validate the whole space and return every issue found, of every severity. */
+    /** Validate the whole space and return every issue found, of every severity. */
     validate?: (
       options?: Pick<ValidateSpaceOptions, 'includeGated' | 'ruleFilter' | 'semantic' | 'depth'>,
     ) => Promise<ValidationIssue[]>;
-    /** Render only: the graph being rendered, in the space graph format. */
+    /** The graph being rendered, in the space graph format. */
     exportGraph?: () => SpaceGraphData;
     /** Every folder of one kind of resource (such as `map-views`), with the plugin providing it if any. */
     resourceDirs?: (kind: string) => Array<{ dir: string; plugin?: string }>;

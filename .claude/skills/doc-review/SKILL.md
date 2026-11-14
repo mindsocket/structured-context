@@ -40,6 +40,8 @@ Skills and references (`plugin/skills/**`), also:
 Code comments and messages:
 
 11. Flag comments that restate code or explain history, and library errors that mention CLI flags.
+12. Flag comments that state a fact another module decides, such as where a type is used ("render only") or a
+    rule enforced elsewhere. Name the owner, or leave it out.
 
 ## Output
 
