@@ -146,7 +146,7 @@ Scope sends node data only, never the verdicts of other rules, and [gating](rule
 
 A global rule cannot have a `semantic` part, so it has no scope.
 
-The bundled schemas use scope in three ways, which are good models for your own rules:
+The bundled schemas use scope in three ways. We recommend them as models for your own rules:
 
 | Check | Attach the rule to | Scope | Bundled example |
 |---|---|---|---|

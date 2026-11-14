@@ -33,7 +33,7 @@ Resolution order: space `schema` > global `schema`. Schema resolution fails if n
 
 ## Bundled schemas
 
-Each bundled schema has [semantic rules](semantic-rules.md), which run only with `--semantic`. `sctx schemas show <schema>` lists them.
+Each bundled schema has [semantic rules](semantic-rules.md). `sctx schemas show <schema>` lists them.
 
 ### `strategy_general.json`
 
