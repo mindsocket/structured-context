@@ -88,7 +88,15 @@ Use `plugins` to load parse plugins that read spaces from non-markdown sources. 
 }
 ```
 
-All plugin names must start with `sctx-` (the prefix is optional in config and normalised on load). The special name `markdown` refers to the built-in markdown plugin. External plugins are resolved in order: the root's plugins folder (`.sctx/plugins/{name}`, see [Resources folder](#resources-folder)), then npm. Each plugin must export a `configSchema` JSON Schema; config is validated against it on load. Fields annotated `format: 'path'` in a plugin's `configSchema` are resolved relative to the config root.
+All plugin names must start with `sctx-` (the prefix is optional in config and normalised on load). The special name `markdown` refers to the built-in markdown plugin. A plugin named in `plugins` is resolved in order: the root's plugins folder (`.sctx/plugins/{name}`, see [Resources folder](#resources-folder)), then npm. Each plugin must export a `configSchema` JSON Schema; config is validated against it on load. Fields annotated `format: 'path'` in a plugin's `configSchema` are resolved relative to the config root.
+
+A plugin comes from one of three places, and where it comes from decides when it is used:
+
+| Plugin | Parse and template sync | Render formats |
+|---|---|---|
+| Built-in | Every space | Every space |
+| In a plugins folder (`.sctx/plugins/sctx-*`) | Spaces that name it in `plugins` | Every space |
+| Installed package (`sctx-*`) | Spaces that name it in `plugins` | Spaces that name it in `plugins` |
 
 Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` directory (or `"sctx": { "schemas": "..." }` in `package.json`). If a space specifies a plugin-prefixed schema (e.g. `"sctx-wardley-mapping/wardley_map.json"`), schemas are resolved statically without executing plugin code, and the plugin's code hooks are loaded when parsing or rendering.
 

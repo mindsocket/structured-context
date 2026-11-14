@@ -42,11 +42,8 @@ function resolveConfigPaths(
   return result;
 }
 
-/**
- * Resolve an external plugin by canonical name.
- * Resolution order: the config root's plugins folder → npm (import(name)).
- */
-async function resolveExternalPlugin(name: string, configDir: string): Promise<StructuredContextPlugin> {
+/** Import a plugin by its `sctx-` name: from the config root's plugins folder if it is there, else as a package. */
+async function importPlugin(name: string, configDir: string): Promise<StructuredContextPlugin> {
   const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
   const localPath = pluginsDir && resolve(join(pluginsDir, name));
   const local = localPath && (existsSync(localPath) || existsSync(`${localPath}.ts`));
@@ -73,7 +70,7 @@ async function spacePlugins(
     if (!name.startsWith(PLUGIN_PREFIX)) {
       throw new Error(`Plugin name must start with "${PLUGIN_PREFIX}" (got "${rawName}")`);
     }
-    named.push(await resolveExternalPlugin(name, configDir));
+    named.push(await importPlugin(name, configDir));
   }
   return [...named, ...builtinPlugins];
 }
@@ -98,7 +95,7 @@ export async function discoverPlugins(space?: {
       const entries = readdirSync(pluginsDir).filter((e) => e.startsWith(PLUGIN_PREFIX));
       for (const entry of entries) {
         if (seenNames.has(entry)) continue;
-        const plugin = await resolveExternalPlugin(entry, configDir);
+        const plugin = await importPlugin(entry, configDir);
         if (seenNames.has(plugin.name)) continue;
         plugins.push(plugin);
         seenNames.add(plugin.name);
