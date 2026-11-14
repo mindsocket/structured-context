@@ -5,6 +5,7 @@
   // Provides a hierarchy, aliases, relationships, and entity type $defs.
   // Schemas that import this partial get its metadata; a $ref to its $defs alone brings none.
   "$metadata": {
+    "imports": ["sctx://core/_semantic_patterns"],
     "hierarchy": {
       "levels": [
         "vision",
@@ -44,65 +45,40 @@
     "rules": [
       {
         "id": "goals-distinct",
-        "category": "coherence",
+        "extends": "children-distinct",
         "description": "Sibling goals are distinct: progress on one is not progress on another",
         "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'goal']) >= 2",
         "semantic": {
-          "rubric": "Judge the item's child goals as a set, and ignore its other children. They are distinct when each is a different result, so that achieving one does not achieve another.",
-          "scope": ["children"],
-          "verdicts": {
-            "distinct": "Each child goal is a different result",
-            "overlapping": {
-              "description": "Two child goals state the same result, or partly cover the same result, or one contains another",
-              "guidance": "Merge them, sharpen the boundary between them, or nest the narrower one under the broader one."
-            }
-          },
-          "severity": { "overlapping": "warning" }
+          "criterion": "Judge the child goals. Each should be a different result, so that achieving one does not achieve another."
         }
       },
       {
         "id": "goals-cover-parent",
-        "category": "best-practice",
+        "extends": "children-cover-parent",
         "description": "Together, a mission's or goal's child goals cover what it needs",
         "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'goal']) >= 2",
         "semantic": {
-          "rubric": "Judge the item's child goals as a set, and ignore its other children. Pass when achieving all of them would achieve the item as its title and body state it. Fail when a part that the item names or plainly needs has no goal.",
-          "scope": ["children"],
-          "includeContent": "fullScope"
+          "criterion": "Judge the child goals."
         }
       },
       {
         "id": "goal-advances-parent",
-        "category": "coherence",
+        "extends": "refines-parent",
         "type": "goal",
         "description": "A goal advances its parent mission, or is one part of its parent goal",
         "when": "$exists(parent)",
         "semantic": {
-          "rubric": "Judge only how the goal relates to its parent. A worthwhile goal in the same area as the parent does not advance the parent unless it fits the verdict's test.",
-          "scope": ["parent"],
-          "verdicts": {
-            "advances": "Under a mission, achieving it moves the mission forward. Under a goal, it is one part of the parent goal, narrower than the parent",
-            "weak-link": {
-              "description": "Related to the parent, but the link is indirect, or it restates the parent in other words instead of naming one part of it",
-              "guidance": "Say how it advances the parent, or narrow it to one part of the parent."
-            },
-            "misplaced": {
-              "description": "Achieving it would not advance the parent",
-              "guidance": "Move it under the mission or goal it advances."
-            }
-          },
-          "severity": { "weak-link": "info", "misplaced": "warning" }
+          "criterion": "Under a mission, achieving the goal moves the mission forward. Under a goal, it is one part of the parent goal, narrower than the parent."
         }
       },
       {
         "id": "opportunity-serves-ancestors",
-        "category": "coherence",
+        "extends": "serves-ancestors",
         "type": "opportunity",
         "description": "Pursuing the opportunity serves the mission and vision above it, not only its parent goal",
         "semantic": {
-          "rubric": "Follow the chain from the opportunity through its goals to the mission and vision. Pass when pursuing it serves every level. Fail when it would advance its parent but work against, or ignore, the intent of a level above.",
-          "scope": ["ancestors"],
-          "includeContent": "fullScope"
+          "includeContent": "fullScope",
+          "criterion": "The levels above are goals, then the mission and vision."
         }
       },
       {

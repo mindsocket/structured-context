@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/0.13.0/_structured_context_schema_meta.json",
+  "$id": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/0.23.0/_structured_context_schema_meta.json",
   "title": "structured-context schema dialect",
   "description": "Extends JSON Schema 2020-12 with top-level $metadata for imports, hierarchy, relationships, aliases and rules.",
   "type": "object",
@@ -187,208 +187,330 @@
         "rules": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "category": {
-                "enum": ["validation", "coherence", "workflow", "best-practice"]
-              },
-              "severity": {
-                "enum": ["error", "warning", "info"]
-              },
-              "description": {
-                "type": "string",
-                "minLength": 1
-              },
-              "expression": {
-                "type": "string",
-                "minLength": 1
-              },
-              "when": {
-                "type": "string",
-                "minLength": 1
-              },
-              "semantic": {
-                "oneOf": [
-                  {
-                    "const": true
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
                   },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "rubric": {
-                        "type": "string",
-                        "minLength": 1
+                  "category": {
+                    "enum": ["validation", "coherence", "workflow", "best-practice"]
+                  },
+                  "severity": {
+                    "enum": ["error", "warning", "info"]
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expression": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "when": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "semantic": {
+                    "oneOf": [
+                      {
+                        "const": true
                       },
-                      "verdicts": {
+                      {
                         "type": "object",
-                        "additionalProperties": {
-                          "oneOf": [
-                            {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "description": {
+                        "properties": {
+                          "rubric": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "criterion": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "verdicts": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "oneOf": [
+                                {
                                   "type": "string",
                                   "minLength": 1
                                 },
-                                "guidance": {
-                                  "type": "string",
-                                  "minLength": 1
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "description": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "guidance": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "required": ["description"],
+                                  "additionalProperties": false
                                 }
-                              },
-                              "required": ["description"],
-                              "additionalProperties": false
-                            }
-                          ]
+                              ]
+                            },
+                            "minProperties": 2
+                          },
+                          "severity": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "enum": ["error", "warning", "info", "ignore"]
+                            },
+                            "minProperties": 1
+                          },
+                          "scope": {
+                            "type": "array",
+                            "items": {
+                              "enum": ["parent", "siblings", "children", "ancestors", "descendants", "branch"]
+                            },
+                            "uniqueItems": true
+                          },
+                          "includeContent": {
+                            "enum": ["nodeOnly", "fullScope", true]
+                          }
                         },
-                        "minProperties": 2
-                      },
-                      "severity": {
-                        "type": "object",
-                        "additionalProperties": {
-                          "enum": ["error", "warning", "info", "ignore"]
-                        },
-                        "minProperties": 1
-                      },
-                      "scope": {
-                        "type": "array",
-                        "items": {
-                          "enum": ["parent", "siblings", "children", "ancestors", "descendants", "branch"]
-                        },
-                        "uniqueItems": true
-                      },
-                      "includeContent": {
-                        "enum": ["nodeOnly", "fullScope", true]
+                        "additionalProperties": false
                       }
-                    },
-                    "additionalProperties": false
-                  }
-                ]
-              },
-              "type": {
-                "type": "string",
-                "minLength": 1
-              },
-              "global": {
-                "type": "boolean"
-              },
-              "override": {
-                "type": "boolean"
-              },
-              "gatesDescendants": {
-                "type": "boolean"
-              }
-            },
-            "required": ["id", "category", "description"],
-            "additionalProperties": false,
-            "allOf": [
-              {
-                "anyOf": [
-                  {
-                    "required": ["expression"]
+                    ]
                   },
-                  {
-                    "required": ["semantic"]
-                  }
-                ]
-              },
-              {
-                "if": {
-                  "required": ["global"],
-                  "properties": {
-                    "global": {
-                      "const": true
-                    }
+                  "type": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "global": {
+                    "type": "boolean"
+                  },
+                  "override": {
+                    "type": "boolean"
+                  },
+                  "gatesDescendants": {
+                    "type": "boolean"
+                  },
+                  "abstract": {
+                    "type": "boolean"
                   }
                 },
-                "then": {
-                  "not": {
+                "required": ["id", "category", "description"],
+                "additionalProperties": false,
+                "allOf": [
+                  {
                     "anyOf": [
                       {
-                        "required": ["when"]
-                      },
-                      {
-                        "required": ["type"]
+                        "required": ["expression"]
                       },
                       {
                         "required": ["semantic"]
                       }
                     ]
-                  }
-                }
-              },
-              {
-                "if": {
-                  "required": ["semantic"],
-                  "properties": {
-                    "semantic": {
-                      "type": "object",
-                      "required": ["verdicts"]
-                    }
-                  }
-                },
-                "then": {
-                  "properties": {
-                    "semantic": {
-                      "type": "object",
-                      "required": ["severity"]
-                    }
-                  }
-                }
-              },
-              {
-                "if": {
-                  "required": ["semantic"],
-                  "properties": {
-                    "semantic": {
-                      "type": "object",
+                  },
+                  {
+                    "if": {
+                      "required": ["global"],
+                      "properties": {
+                        "global": {
+                          "const": true
+                        }
+                      }
+                    },
+                    "then": {
                       "not": {
-                        "required": ["verdicts"]
+                        "anyOf": [
+                          {
+                            "required": ["when"]
+                          },
+                          {
+                            "required": ["type"]
+                          },
+                          {
+                            "required": ["semantic"]
+                          }
+                        ]
                       }
                     }
-                  }
-                },
-                "then": {
-                  "properties": {
-                    "semantic": {
-                      "type": "object",
+                  },
+                  {
+                    "if": {
+                      "required": ["semantic"],
                       "properties": {
-                        "severity": {
+                        "semantic": {
+                          "type": "object",
+                          "required": ["verdicts"]
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "semantic": {
+                          "type": "object",
+                          "required": ["severity"]
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "required": ["semantic"],
+                      "properties": {
+                        "semantic": {
                           "type": "object",
                           "not": {
-                            "required": ["fail"]
+                            "required": ["verdicts"]
+                          }
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "semantic": {
+                          "type": "object",
+                          "properties": {
+                            "severity": {
+                              "type": "object",
+                              "not": {
+                                "required": ["fail"]
+                              }
+                            }
                           }
                         }
                       }
                     }
+                  },
+                  {
+                    "if": {
+                      "required": ["semantic"],
+                      "properties": {
+                        "semantic": {
+                          "type": "object",
+                          "required": ["verdicts"]
+                        }
+                      },
+                      "not": {
+                        "required": ["expression"]
+                      }
+                    },
+                    "then": {
+                      "not": {
+                        "required": ["severity"]
+                      }
+                    }
                   }
-                }
+                ]
               },
               {
-                "if": {
-                  "required": ["semantic"],
-                  "properties": {
-                    "semantic": {
-                      "type": "object",
-                      "required": ["verdicts"]
-                    }
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
                   },
-                  "not": {
-                    "required": ["expression"]
+                  "category": {
+                    "enum": ["validation", "coherence", "workflow", "best-practice"]
+                  },
+                  "severity": {
+                    "enum": ["error", "warning", "info"]
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expression": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "when": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "semantic": {
+                    "oneOf": [
+                      {
+                        "const": true
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "rubric": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "criterion": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "verdicts": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "oneOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "description": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "guidance": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "required": ["description"],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "minProperties": 2
+                          },
+                          "severity": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "enum": ["error", "warning", "info", "ignore"]
+                            },
+                            "minProperties": 1
+                          },
+                          "scope": {
+                            "type": "array",
+                            "items": {
+                              "enum": ["parent", "siblings", "children", "ancestors", "descendants", "branch"]
+                            },
+                            "uniqueItems": true
+                          },
+                          "includeContent": {
+                            "enum": ["nodeOnly", "fullScope", true]
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "global": {
+                    "type": "boolean"
+                  },
+                  "override": {
+                    "type": "boolean"
+                  },
+                  "gatesDescendants": {
+                    "type": "boolean"
+                  },
+                  "extends": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
-                "then": {
-                  "not": {
-                    "required": ["severity"]
-                  }
-                }
+                "required": ["id", "extends"],
+                "additionalProperties": false
               }
             ]
           }

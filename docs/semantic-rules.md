@@ -44,6 +44,7 @@ A semantic rule has the [common rule fields](rules.md) and a `semantic` object. 
 | Field | Required | Description |
 |---|---|---|
 | `semantic.rubric` | no | Tells the model what to assess. Default: `description` |
+| `semantic.criterion` | no | Text the model reads after the rubric. A rule that extends a [template](#rule-templates) uses it to make the template's rubric specific |
 | `semantic.verdicts` | no | The answers the model can give. Default: `pass` and `fail`. See [Verdicts](#verdicts) |
 | `semantic.severity` | if `semantic.verdicts` is set | The severity of each verdict. See [Severity](#severity) |
 | `semantic.scope` | no | The related nodes to send with the evaluated node. Default: none. See [Related nodes and content](#related-nodes-and-content) |
@@ -146,15 +147,26 @@ Scope sends node data only, never the verdicts of other rules, and [gating](rule
 
 A global rule cannot have a `semantic` part, so it has no scope.
 
-The bundled schemas use scope in three ways. We recommend them as models for your own rules:
+## Rule templates
 
-| Check | Attach the rule to | Scope | Bundled example |
-|---|---|---|---|
-| The children are distinct, or cover the node | The parent, with a `when` that needs two or more children | `children` | `opportunities-distinct`, `goals-cover-parent` |
-| The node fits its parent | The child | `parent` | `opportunity-refines-parent`, `solution-addresses-opportunity` |
-| The node serves the intent of the levels above | The child | `ancestors` | `solution-serves-outcome`, `opportunity-serves-ancestors` |
+A **rule template** is a rule with `"abstract": true`, which never runs. A rule that names it in `extends` takes all of its fields, then sets its own. Top-level fields replace the template's. Fields inside `semantic` replace the template's one at a time, so a rule can add a `criterion` and keep the template's rubric, scope and verdicts.
 
-The rules are in the bundled partials, such as `schemas/_ost_strict.json`.
+The bundled partial `sctx://core/_semantic_patterns` holds four templates. To use one, add the partial to `$metadata.imports`:
+
+| Template | Checks | Attach the rule to | Scope | Bundled rules that extend it |
+|---|---|---|---|---|
+| `children-distinct` | The children are distinct | The parent, with a `when` that needs two or more children | `children` | `opportunities-distinct`, `goals-distinct` |
+| `children-cover-parent` | The children cover the parent | The parent, with the same `when` | `children` | `goals-cover-parent` |
+| `refines-parent` | The node is one part, cause, case or means of its parent | The child | `parent` | `opportunity-refines-parent`, `goal-advances-parent` |
+| `serves-ancestors` | The node serves the intent of the levels above | The child | `ancestors` | `solution-serves-outcome`, `opportunity-serves-ancestors` |
+
+```json
+{ "id": "goals-distinct", "extends": "children-distinct", "description": "Sibling goals are distinct",
+  "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'goal']) >= 2",
+  "semantic": { "criterion": "Judge the child goals. Each should be a different result." } }
+```
+
+A rule must extend a template, not another rule, and a template cannot extend a template. The rule is checked as a full rule once it takes the template's fields.
 
 ## Input size and trimming
 

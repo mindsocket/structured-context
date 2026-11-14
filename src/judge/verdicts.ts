@@ -84,7 +84,7 @@ export function resolveSemanticRule(rule: Rule): ResolvedSemanticRule {
     spec: {
       id: rule.id,
       description: rule.description,
-      rubric: semantic.rubric,
+      rubric: [semantic.rubric ?? rule.description, semantic.criterion].filter(Boolean).join('\n'),
       category: rule.category,
       verdicts,
     },

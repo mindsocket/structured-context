@@ -24,9 +24,10 @@ describe('resolveSemanticRule', () => {
     expect(resolveSemanticRule({ ...base, semantic: true }).severities).toEqual({ fail: 'info' });
   });
 
-  it('uses the semantic rubric, falling back to nothing so the prompt can use the description', () => {
+  it('uses the semantic rubric, falling back to the description, followed by the criterion', () => {
     expect(resolveSemanticRule({ ...base, semantic: { rubric: 'R' } }).spec.rubric).toBe('R');
-    expect(resolveSemanticRule(base).spec.rubric).toBeUndefined();
+    expect(resolveSemanticRule(base).spec.rubric).toBe(base.description);
+    expect(resolveSemanticRule({ ...base, semantic: { rubric: 'R', criterion: 'C' } }).spec.rubric).toBe('R\nC');
   });
 
   it('maps declared verdicts to severities; unmapped and ignored verdicts pass', () => {

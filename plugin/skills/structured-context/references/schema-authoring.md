@@ -101,7 +101,7 @@ Other rule fields:
 - `includeContent` — `nodeOnly` (the evaluated node's body) or `fullScope`/`true` (every body in scope). Without it, no body is sent.
 - A rule with `scope` or `includeContent` may return `missing-context` (default `warning`) when its input was trimmed to fit.
 - Semantic rules send the schema's type and field descriptions to the model with the rubric. Descriptions that say what a good node looks like save repeating that detail in each rubric, and let more general rules draw on the schema.
-- To check a set of children, a fit with the parent, or the intent of the levels above, copy a bundled rule (`opportunities-distinct`, `opportunity-refines-parent`, `solution-serves-outcome` in `_ost_strict.json`). `sctx docs semantic-rules` shows which scope each uses.
+- To check a set of children, a fit with the parent, or the intent of the levels above, import `sctx://core/_semantic_patterns` and extend one of its rule templates: `{ "id": "…", "extends": "children-distinct", "type": "…", "semantic": { "criterion": "…" } }`. `sctx docs semantic-rules` lists the templates.
 
 ## Metadata composition semantics
 

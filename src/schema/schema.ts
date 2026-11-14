@@ -9,6 +9,7 @@ import { shortenPluginName } from '../plugins/util';
 import type { Hierarchy, HierarchyLevel, SchemaMetadata, SchemaWithMetadata } from '../types';
 import { loadMetaSchemas } from './meta-schemas';
 import {
+  type DeclaredRule,
   METADATA_SCHEMA,
   type MetadataContract,
   type MetadataContractHierarchy,
@@ -16,6 +17,7 @@ import {
   type MetadataRef,
   type Rule,
 } from './metadata-contract';
+import { resolveRuleTemplates } from './rule-templates';
 import { isObject, mergeVariantProperties, resolveJsonPointer } from './schema-refs';
 
 const packageDir = import.meta.url ? dirname(fileURLToPath(import.meta.url)) : '';
@@ -504,7 +506,7 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
   let rootHierarchy: MetadataContractHierarchy | undefined;
   let mainSelection: MetadataRef | undefined;
   const mergedAliases: Merged<string> = new Map();
-  const mergedRules: Merged<Rule> = new Map();
+  const mergedRules: Merged<DeclaredRule> = new Map();
   const mergedRelationships: Merged<MetadataContractRelationship> = new Map();
 
   for (const provider of metadataProviders) {
@@ -569,7 +571,7 @@ function extractMetadata(schema: AnySchemaObject, schemaRefRegistry: Map<string,
   }
 
   const typeAliases = Object.fromEntries([...mergedAliases].map(([alias, { value }]) => [alias, value]));
-  const rules = values(mergedRules).map(({ override, ...rule }) => rule);
+  const rules = resolveRuleTemplates(values(mergedRules).map(({ override, ...rule }) => rule));
   const relationships = values(mergedRelationships);
 
   // Collect valid type names from the schema's oneOf list for validation
