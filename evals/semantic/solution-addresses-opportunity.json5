@@ -25,8 +25,8 @@
       'Let me share an invite link in chat instead.md': 'addresses',
       // The same email still lands in spam.
       'Redesign the invitation email to look friendlier.md': 'tangential',
-      // Invited teammates are not in the app yet.
-      'Remind teammates in the app to accept invites.md': ['tangential', 'misplaced'],
+      // Invited teammates are not in the app yet, so they never see the banner.
+      'Show invited teammates an in-app banner to accept their invite.md': ['tangential', 'misplaced'],
       // Changes how invites are created, not where they land.
       'Bulk import teammates from a spreadsheet.md': ['tangential', 'misplaced'],
     },

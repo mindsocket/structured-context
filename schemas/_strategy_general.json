@@ -83,7 +83,7 @@
           "verdicts": {
             "advances": "Under a mission, achieving it moves the mission forward. Under a goal, it is one part of the parent goal, narrower than the parent",
             "weak-link": {
-              "description": "Related to the parent, but the link is indirect, or it only restates the parent",
+              "description": "Related to the parent, but the link is indirect, or it restates the parent in other words instead of naming one part of it",
               "guidance": "Say how it advances the parent, or narrow it to one part of the parent."
             },
             "misplaced": {

@@ -11,8 +11,6 @@
       'Grow the newsletter.md': 'overlapping',
       'Make our home run on renewable energy.md': 'distinct',
       'Make our flat run on renewable energy.md': 'distinct',
-      // Super contributions count towards the 30% saved.
-      'Reach financial independence by 50.md': 'overlapping',
       // The first two are the same result in different words.
       'Help remote teams feel connected.md': 'overlapping',
       'Renovate the bathroom.md': 'distinct',

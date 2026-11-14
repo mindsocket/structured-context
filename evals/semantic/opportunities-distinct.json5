@@ -18,7 +18,7 @@
       // The second is broader wording of the first.
       'Grow plan upgrades.md': 'overlapping',
       'Increase repeat bookings.md': 'distinct',
-      // Stripped parts are a kind of theft. Contrast with the next scenario.
+      // Both children are the fear of theft, in other words. Contrast with the next scenario.
       "I don't feel safe leaving my bike at the station.md": 'overlapping',
       // Contrast with the previous scenario.
       "I don't feel safe parking my bike at work.md": 'distinct',
