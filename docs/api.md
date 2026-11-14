@@ -122,8 +122,6 @@ folder holding one kind of resource for that root (such as `plugins` or `map-vie
 there is none. It follows the [resources folder](config.md#resources-folder) layout, so a tool that adds its
 own kind of resource finds it the same way.
 
-A plugin hook finds these folders for its space, including other plugins' folders, with `context.callbacks.resourceDirs(kind)`.
-
 ## Plugin render hooks
 
 Plugins declare render formats via `render.formats` and implement `render(context, graph, options)`. The hook may return a single string or multi-file output:
@@ -144,5 +142,5 @@ const myRenderHook: RenderHook = {
 };
 ```
 
-A render hook can validate the space and export the rendered graph through `context.callbacks.validate()` and `exportGraph()`. Pass `semantic` to `validate` only when the render run asks for it, never from plugin config.
+A render hook can validate the space, export the rendered graph and find resource folders (including other plugins') through `context.callbacks.validate()`, `exportGraph()` and `resourceDirs()`. Pass `semantic` to `validate` only when the render run asks for it, never from plugin config.
 
