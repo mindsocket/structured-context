@@ -4,14 +4,18 @@ import type { AnySchemaObject } from 'ajv';
 import Ajv2020 from 'ajv/dist/2020';
 import { getConfigSourceFiles } from '../config';
 import { configRoot, resourceDir } from '../config/layout';
+import type { SpaceContext } from '../types';
 import { builtinPlugins } from '.';
 import { isBuiltinPluginName } from './builtin-names';
 import {
   CONFIG_PLUGINS_DIR,
   normalizePluginName,
   PLUGIN_PREFIX,
+  pluginResourceDir,
+  resolvePluginDir,
   type StructuredContextPlugin,
   shortenPluginName,
+  spacePluginNames,
 } from './util';
 
 export type LoadedPlugin = {
@@ -75,6 +79,18 @@ async function spacePlugins(
   return [...named, ...builtinPlugins];
 }
 
+/** The roots of the loaded config files (the main config and the configs it includes), after `configDir` if given. */
+function configRoots(configDir?: string): string[] {
+  const loaded = Array.from(getConfigSourceFiles()).map((f) => configRoot(f));
+  return [...new Set(configDir ? [configDir, ...loaded] : loaded)];
+}
+
+/** The names of the plugins in a config root's plugins folder. */
+function pluginsFolderEntries(configDir: string): string[] {
+  const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
+  return pluginsDir ? readdirSync(pluginsDir).filter((e) => e.startsWith(PLUGIN_PREFIX)) : [];
+}
+
 /**
  * Discover all available plugins: the built-ins, then any found in the plugins folder of
  * each loaded config file's root (the main config and the configs it includes).
@@ -88,18 +104,13 @@ export async function discoverPlugins(space?: {
   const plugins = space ? await spacePlugins(space.pluginMap, space.configDir) : [...builtinPlugins];
   const seenNames = new Set(plugins.map((p) => p.name));
 
-  const configDirs = Array.from(getConfigSourceFiles()).map((f) => configRoot(f));
-  for (const configDir of new Set(space ? [space.configDir, ...configDirs] : configDirs)) {
-    const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
-    if (pluginsDir) {
-      const entries = readdirSync(pluginsDir).filter((e) => e.startsWith(PLUGIN_PREFIX));
-      for (const entry of entries) {
-        if (seenNames.has(entry)) continue;
-        const plugin = await importPlugin(entry, configDir);
-        if (seenNames.has(plugin.name)) continue;
-        plugins.push(plugin);
-        seenNames.add(plugin.name);
-      }
+  for (const configDir of configRoots(space?.configDir)) {
+    for (const entry of pluginsFolderEntries(configDir)) {
+      if (seenNames.has(entry)) continue;
+      const plugin = await importPlugin(entry, configDir);
+      if (seenNames.has(plugin.name)) continue;
+      plugins.push(plugin);
+      seenNames.add(plugin.name);
     }
   }
   return plugins;
@@ -134,4 +145,28 @@ export async function loadPlugins(
     plugin,
     pluginConfig: validatePluginConfig(plugin, pluginMap, configDir),
   }));
+}
+
+/** Every folder of one kind of resource available to a space: config roots' first, then plugins' (named by the space or in a plugins folder). */
+export function resourceDirs(kind: string, context: SpaceContext): Array<{ dir: string; plugin?: string }> {
+  const roots = configRoots(context.configDir);
+  const pluginDirs = new Map<string, string>();
+  const addPlugin = (name: string, fromDir: string) => {
+    const short = shortenPluginName(name);
+    const dir = !pluginDirs.has(short) && resolvePluginDir(name, fromDir);
+    if (dir) pluginDirs.set(short, dir);
+  };
+  for (const root of roots) for (const entry of pluginsFolderEntries(root)) addPlugin(entry, root);
+  for (const name of spacePluginNames(context.space, context.config)) addPlugin(name, context.configDir);
+
+  return [
+    ...roots.flatMap((root) => {
+      const dir = resourceDir(root, kind);
+      return dir ? [{ dir }] : [];
+    }),
+    ...[...pluginDirs].flatMap(([plugin, pluginDir]) => {
+      const dir = pluginResourceDir(pluginDir, kind);
+      return dir ? [{ dir, plugin }] : [];
+    }),
+  ];
 }

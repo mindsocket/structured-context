@@ -1,6 +1,6 @@
 import { updateSpaceField } from '../config';
 import { assembleSpaceGraph } from '../load-space-graph';
-import { validatePluginConfig } from '../plugins/loader';
+import { resourceDirs, validatePluginConfig } from '../plugins/loader';
 import { type PluginContext, type RenderResult, shortenPluginName } from '../plugins/util';
 import { readSpace } from '../read/read-space';
 import { exportSpaceGraph } from '../space-graph-data';
@@ -44,6 +44,7 @@ export async function executeRender(
           hierarchy: graph.hierarchy,
           hierarchies: context.schema.metadata.hierarchies,
         }),
+      resourceDirs: (kind) => resourceDirs(kind, context),
     },
   };
   return plugin.render!.render(pluginContext, graph, { format: entry.format.name, data: options.data });

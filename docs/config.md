@@ -98,7 +98,7 @@ A plugin comes from one of three places, and where it comes from decides when it
 | In a plugins folder (`.sctx/plugins/sctx-*`) | Spaces that name it in `plugins` | Every space |
 | Installed package (`sctx-*`) | Spaces that name it in `plugins` | Spaces that name it in `plugins` |
 
-Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` directory (or `"sctx": { "schemas": "..." }` in `package.json`). If a space specifies a plugin-prefixed schema (e.g. `"sctx-wardley-mapping/wardley_map.json"`), schemas are resolved statically without executing plugin code, and the plugin's code hooks are loaded when parsing or rendering.
+Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` directory (or `"sctx": { "schemas": "..." }` in `package.json`). Other resources follow the same pattern. For example, map view definitions go in `<pluginRoot>/map-views/`, or the folder named by `"sctx": { "map-views": "..." }`. If a space specifies a plugin-prefixed schema (e.g. `"sctx-wardley-mapping/wardley_map.json"`), schemas are resolved statically without executing plugin code, and the plugin's code hooks are loaded when parsing or rendering.
 
 ## Model providers and semantic rules
 

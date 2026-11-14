@@ -142,5 +142,5 @@ const myRenderHook: RenderHook = {
 };
 ```
 
-A render hook can validate the space and export the rendered graph through `context.callbacks.validate()` and `exportGraph()`. Pass `semantic` to `validate` only when the render run asks for it, never from plugin config.
+A render hook can validate the space, export the rendered graph and find resource folders (such as `map-views`) through `context.callbacks.validate()`, `exportGraph()` and `resourceDirs()`. Pass `semantic` to `validate` only when the render run asks for it, never from plugin config.
 
