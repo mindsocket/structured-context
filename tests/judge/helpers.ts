@@ -29,6 +29,7 @@ export const passFailRule: SemanticRuleSpec = {
 export const graded: SemanticRuleSpec = {
   id: 'framing',
   description: 'Framing quality',
+  rubric: 'Framing quality',
   category: 'best-practice',
   verdicts: { good: 'Clear need', weak: 'Vague need', solution: 'A solution in disguise' },
 };

@@ -36,10 +36,9 @@ export function buildJudgeUserPrompt(
   { node, related = [], schemaDescriptions }: Pick<SemanticJudgeInput, 'node' | 'related' | 'schemaDescriptions'>,
   rule: SemanticRuleSpec,
 ): string {
-  const rubric = rule.rubric || rule.description;
   const lines: string[] = [
     `<rule id="${attr(rule.id)}" category="${attr(rule.category)}">`,
-    `<rubric>${rubric}</rubric>`,
+    `<rubric>${rule.rubric}</rubric>`,
     '<verdicts>',
     ...Object.entries(rule.verdicts).map(
       ([name, description]) => `<verdict name="${attr(name)}">${description}</verdict>`,

@@ -117,6 +117,7 @@ what the rule actually sees in the `current` object, then adjust the rule in the
 | `Link target "X" in field "parent" not found` | Broken wikilink | Fix the link, or ensure the target file exists and has that name |
 | `Link target "X" in field "parent" is ambiguous (matches multiple nodes)` | Several nodes share that name, for example `Overview.md` in different folders | Link with enough of the path to be unique, such as `[[alpha/Overview]]` |
 | `[rule-id] ... (Rule error: ...)` | A rule's `expression` failed to evaluate (syntax or runtime error) | Verify the expression with `dump` and a JSONata tester |
+| `Rule "X" extends "Y", but no rule template ... has that id` | `extends` names a rule that is missing or lacks `"abstract": true` | Import the partial that holds the template (bundled ones are in `sctx://core/_semantic_patterns`), or fix the id |
 | `[rule-id] ... (Semantic evaluation error: ...)` | The model provider call failed, or input is still over the per-node input cap after trimming | Check `sctx providers` and the API key; narrow `semantic.scope` or drop `includeContent` |
 
 ## Plugins

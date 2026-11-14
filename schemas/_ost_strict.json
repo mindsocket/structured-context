@@ -5,6 +5,7 @@
   // This schema follows Teresa Torres' canonical 4-level structure as described in
   // "Continuous Discovery Habits" (2021) and at producttalk.org.
   "$metadata": {
+    "imports": ["sctx://core/_semantic_patterns"],
     "hierarchy": {
       "levels": ["outcome", { "type": "opportunity", "selfRef": true }, "solution", "assumption_test"]
     },
@@ -71,42 +72,20 @@
       },
       {
         "id": "opportunity-refines-parent",
-        "category": "coherence",
+        "extends": "refines-parent",
         "type": "opportunity",
         "description": "A top-level opportunity drives its outcome, and a child opportunity is a subset of its parent opportunity",
         "semantic": {
-          "rubric": "Judge only how the opportunity relates to its parent. A real need in the same area as the parent does not refine the parent unless it fits the verdict's test.",
-          "scope": ["parent"],
-          "verdicts": {
-            "refines": "Under an outcome, addressing it would drive the outcome. Under an opportunity, it is one part, cause or case of the parent need, narrower than the parent",
-            "weak-link": {
-              "description": "Related to the parent, but the link is indirect, or it only restates the parent",
-              "guidance": "Name the narrower need it covers, or move it next to its parent."
-            },
-            "misplaced": {
-              "description": "It would not drive the outcome, or it is not part of the parent opportunity",
-              "guidance": "Move it under the outcome or opportunity it belongs to."
-            }
-          },
-          "severity": { "weak-link": "info", "misplaced": "warning" }
+          "criterion": "Under an outcome, addressing the opportunity would drive the outcome. Under an opportunity, it is one part, cause or case of the parent need, narrower than the parent."
         }
       },
       {
         "id": "opportunities-distinct",
-        "category": "coherence",
+        "extends": "children-distinct",
         "description": "Sibling opportunities are distinct: the team can address one without addressing another",
         "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'opportunity']) >= 2",
         "semantic": {
-          "rubric": "Judge the item's child opportunities as a set, and ignore its other children. They are distinct when each is a different need, so that addressing one does not address another.",
-          "scope": ["children"],
-          "verdicts": {
-            "distinct": "Each child opportunity is a different need",
-            "overlapping": {
-              "description": "Two child opportunities state the same need, or partly cover the same need, or one contains another",
-              "guidance": "Merge them, sharpen the boundary between them, or nest the narrower one under the broader one."
-            }
-          },
-          "severity": { "overlapping": "warning" }
+          "criterion": "Judge the child opportunities. Each should be a different customer need, so that addressing one does not address another."
         }
       },
       {
@@ -133,12 +112,11 @@
       },
       {
         "id": "solution-serves-outcome",
-        "category": "coherence",
+        "extends": "serves-ancestors",
         "type": "solution",
         "description": "The solution serves the outcome above it, not only its parent opportunity",
         "semantic": {
-          "rubric": "Follow the chain from the solution through its opportunities to the outcome. Pass when the solution, if it worked, would move the outcome's metric in the intended direction. Fail when it would not move the outcome, or would move it the wrong way, even if it addresses its parent opportunity.",
-          "scope": ["ancestors"]
+          "criterion": "The top level is an outcome with a metric. The solution serves it when, if it worked, it would move that metric in the intended direction."
         }
       },
       {

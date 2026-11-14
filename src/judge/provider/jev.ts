@@ -56,7 +56,7 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
     for (let start = 0; start < rules.length; start += JEV_REQUEST_PACKING_LIMIT_QUESTIONS) {
       const part = rules.slice(start, start + JEV_REQUEST_PACKING_LIMIT_QUESTIONS);
       const questions: Record<string, unknown> = {};
-      for (const rule of part) questions[rule.id] = decisionQuestion(rule, rule.rubric || rule.description);
+      for (const rule of part) questions[rule.id] = decisionQuestion(rule, rule.rubric);
       const data = await this.post(
         withDescriptions(nodeState(node, input.related), input.schemaDescriptions),
         questions,
@@ -116,10 +116,7 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
       nodes[`n${k}`] = nodeState(input.node, input.related);
       Object.assign(descriptions, input.schemaDescriptions);
       for (const rule of input.rules) {
-        questions[`${rule.id}__n${k}`] = decisionQuestion(
-          rule,
-          `For node \`nodes.n${k}\`: ${rule.rubric || rule.description}`,
-        );
+        questions[`${rule.id}__n${k}`] = decisionQuestion(rule, `For node \`nodes.n${k}\`: ${rule.rubric}`);
       }
     });
     const data = await this.post(withDescriptions({ nodes }, descriptions), questions);

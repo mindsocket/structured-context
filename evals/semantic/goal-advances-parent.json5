@@ -2,8 +2,8 @@
   space: 'strategy-trees',
   expected: {
     'goal-advances-parent': {
-      'Launch online ordering for 100 bookshops.md': 'advances',
-      'Help bookshops show live stock on their own websites.md': 'advances',
+      'Launch online ordering for 100 bookshops.md': 'refines',
+      'Help bookshops show live stock on their own websites.md': 'refines',
       // About bookshops, but not tools for them.
       'Open our own flagship bookshop.md': ['weak-link', 'misplaced'],
       'Grow our social media following.md': 'weak-link',
@@ -11,23 +11,23 @@
       'Give independent bookshops online tools.md': 'weak-link',
       // Sells through a rival of the bookshops, not for them.
       'Sell our own e-books on Kindle.md': ['weak-link', 'misplaced'],
-      'Sign 100 bookshops to the ordering pilot.md': 'advances',
-      'Build a checkout that works on phones.md': 'advances',
+      'Sign 100 bookshops to the ordering pilot.md': 'refines',
+      'Build a checkout that works on phones.md': 'refines',
       // Restates the parent goal.
       'Get 100 bookshops ordering online.md': 'weak-link',
       'Run a reading festival.md': 'misplaced',
       // Support could help the launch, but the goal does not say how.
       'Improve our customer support.md': 'weak-link',
-      'Cook dinner together three nights a week.md': 'advances',
+      'Cook dinner together three nights a week.md': 'refines',
       'Get a promotion this year.md': ['weak-link', 'misplaced'],
-      'Take the kids hiking every month.md': 'advances',
+      'Take the kids hiking every month.md': 'refines',
       // Restates half of the mission.
-      'Be healthier.md': ['advances', 'weak-link'],
-      'Build to 80 km weeks by January.md': 'advances',
+      'Be healthier.md': ['refines', 'weak-link'],
+      'Build to 80 km weeks by January.md': 'refines',
       // A means to the goal more than a part of it.
-      'Buy new trail shoes.md': ['advances', 'weak-link'],
+      'Buy new trail shoes.md': ['refines', 'weak-link'],
       // Supports the race more than it is part of it.
-      'Lose 5 kg before race day.md': ['advances', 'weak-link'],
+      'Lose 5 kg before race day.md': ['refines', 'weak-link'],
     },
   },
 }

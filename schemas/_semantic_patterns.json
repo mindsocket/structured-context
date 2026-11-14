@@ -1,0 +1,71 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mindsocket/structured-context/main/schemas/generated/latest/_structured_context_schema_meta.json",
+  "$id": "sctx://core/_semantic_patterns",
+  // Rule templates for common semantic checks on a hierarchy. A schema imports this partial and declares a rule
+  // that `extends` a template, adding its own `type`, `when`, `description` and `semantic.criterion`.
+  "$metadata": {
+    "rules": [
+      {
+        "id": "children-distinct",
+        "abstract": true,
+        "category": "coherence",
+        "description": "A node's children are distinct: achieving or addressing one does not achieve or address another",
+        "semantic": {
+          "rubric": "Judge the item's children as a set. If the criterion names a kind of child, judge only those and ignore the rest. The children are distinct when each is a different need, result or idea, so that achieving or addressing one does not achieve or address another.",
+          "scope": ["children"],
+          "verdicts": {
+            "distinct": "Each child is different",
+            "overlapping": {
+              "description": "Two children state the same thing, or partly cover the same ground, or one contains another",
+              "guidance": "Merge them, sharpen the boundary between them, or nest the narrower one under the broader one."
+            }
+          },
+          "severity": { "overlapping": "warning" }
+        }
+      },
+      {
+        "id": "children-cover-parent",
+        "abstract": true,
+        "category": "best-practice",
+        "description": "Together, a node's children cover what it needs",
+        "semantic": {
+          "rubric": "Judge the item's children as a set. If the criterion names a kind of child, judge only those and ignore the rest. Pass when achieving all of them would achieve the item as its title and body state it. Fail when a part that the item names or plainly needs has no child.",
+          "scope": ["children"],
+          "includeContent": "fullScope"
+        }
+      },
+      {
+        "id": "refines-parent",
+        "abstract": true,
+        "category": "coherence",
+        "description": "A node belongs under its parent: it is one part, cause, case or means of the parent",
+        "semantic": {
+          "rubric": "Judge only how the item relates to its parent. Something worthwhile in the same area as the parent does not refine the parent unless it passes the criterion's test.",
+          "scope": ["parent"],
+          "verdicts": {
+            "refines": "It passes the criterion's test: it is one part, cause, case or means of its parent, narrower than the parent",
+            "weak-link": {
+              "description": "Related to the parent, but the link is indirect, or it restates the parent in other words instead of naming one part of it",
+              "guidance": "Say how it serves the parent, or narrow it to one part of the parent."
+            },
+            "misplaced": {
+              "description": "It does not belong under its parent",
+              "guidance": "Move it under the node it belongs to."
+            }
+          },
+          "severity": { "weak-link": "info", "misplaced": "warning" }
+        }
+      },
+      {
+        "id": "serves-ancestors",
+        "abstract": true,
+        "category": "coherence",
+        "description": "A node serves every level above it, not only its parent",
+        "semantic": {
+          "rubric": "Follow the chain from the item through each ancestor to the top. Pass when the item, if achieved, serves every level as the criterion describes. Fail when it would serve its parent but ignore, or work against, the intent of a level above.",
+          "scope": ["ancestors"]
+        }
+      }
+    ]
+  }
+}
