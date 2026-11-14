@@ -38,7 +38,7 @@ export type PluginContext = SpaceContext & {
     ) => Promise<ValidationIssue[]>;
     /** Render only: the graph being rendered, in the space graph format. */
     exportGraph?: () => SpaceGraphData;
-    /** Render only: every folder of one kind of resource (such as `map-views`), with the plugin providing it if any. */
+    /** Every folder of one kind of resource (such as `map-views`), with the plugin providing it if any. */
     resourceDirs?: (kind: string) => Array<{ dir: string; plugin?: string }>;
   };
 };

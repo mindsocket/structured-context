@@ -1,4 +1,4 @@
-import { loadPlugins } from '../plugins/loader';
+import { loadPlugins, resourceDirs } from '../plugins/loader';
 import type { TemplateSyncOptions } from '../plugins/util';
 import type { SpaceContext } from '../types';
 
@@ -8,7 +8,10 @@ export async function templateSync(context: SpaceContext, options: TemplateSyncO
 
   for (const { plugin, pluginConfig } of loaded) {
     if (!plugin.templateSync) continue;
-    const result = await plugin.templateSync({ ...context, pluginConfig }, options);
+    const result = await plugin.templateSync(
+      { ...context, pluginConfig, callbacks: { resourceDirs: (kind) => resourceDirs(kind, context) } },
+      options,
+    );
     if (result !== null) return;
   }
 
