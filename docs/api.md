@@ -142,7 +142,5 @@ const myRenderHook: RenderHook = {
 };
 ```
 
-A plugin in a config root's plugins folder renders for every space, even one that doesn't list it in `plugins`.
-
 A render hook can validate the space and export the rendered graph through `context.callbacks.validate()` and `exportGraph()`. Pass `semantic` to `validate` only when the render run asks for it, never from plugin config.
 
