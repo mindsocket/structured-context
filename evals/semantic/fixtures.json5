@@ -2,5 +2,11 @@
   spaces: [
     // A small product's opportunity solution tree.
     { name: 'strict-ost', path: 'fixtures/strict-ost.jsonl', schema: 'strict_ost.json' },
+    // Trees for the strict_ost rules. A rule that judges a node's children gets one small tree per scenario.
+    { name: 'ost-trees', path: 'fixtures/ost-trees.jsonl', schema: 'strict_ost.json' },
+    // Trees for the strategy_general rules, built the same way.
+    { name: 'strategy-trees', path: 'fixtures/strategy-trees.jsonl', schema: 'strategy_general.json' },
+    { name: 'knowledge-wiki', path: 'fixtures/knowledge-wiki.jsonl', schema: 'knowledge_wiki.json' },
+    { name: 'okf', path: 'fixtures/okf.jsonl', schema: 'okf.json' },
   ],
 }

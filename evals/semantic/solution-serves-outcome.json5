@@ -1,0 +1,29 @@
+{
+  space: 'ost-trees',
+  expected: {
+    'solution-serves-outcome': {
+      'Send invitations from a verified domain.md': 'pass',
+      'Let invited teammates preview the workspace before signing up.md': 'pass',
+      'A checklist of first steps in a new workspace.md': 'pass',
+      // Resolves the need, but after the second week the outcome measures.
+      'A consultant sets up the workspace on a paid call two weeks after signup.md': 'fail',
+      "A 'since you were away' summary when I come back.md": 'pass',
+      // Resolves the need by keeping people out of the product.
+      'Email a daily digest of every change, so nobody needs to open the app.md': 'fail',
+      'Notify me in the app about changes on pages I follow.md': 'pass',
+      'Search matches words inside documents, not only titles.md': 'pass',
+      "Hide documents I can't open from search results.md": 'pass',
+      'Pre-fill tax rates from my business address.md': 'pass',
+      // Resolves the confusion, but delays the first invoice.
+      'Require a call with an accountant before the first invoice.md': 'fail',
+      // Sidesteps the need, and shortens the time to the first invoice.
+      'Let me send my first invoice now and set tax rates later.md': 'pass',
+      // Helps clients pay, which the outcome does not measure.
+      'Add card payments through a payment provider.md': 'fail',
+      "Text a reminder when it's been five weeks since my last cut.md": 'pass',
+      'One-tap rebook of my last appointment.md': 'pass',
+      // Works against repeat bookings.
+      'Charge a fee to rebook within a week.md': 'fail',
+    },
+  },
+}

@@ -1,0 +1,28 @@
+{
+  space: 'ost-trees',
+  expected: {
+    'assumption-category-fits': {
+      'Test 01: Teams want to see who edited a page.md': 'pass',
+      'Test 02: Storing every revision costs less than $0.10 per seat a month.md': 'pass',
+      'Test 03: We can diff rich-text documents in under 200 ms.md': 'pass',
+      'Test 04: Users can find the history panel without help.md': 'pass',
+      "Test 05: Showing who edited what won't be used to monitor employees.md": 'pass',
+      'Test 06: Our sync engine can merge offline edits without conflicts.md': 'pass',
+      'Test 07: Admins understand the retention settings on first read.md': 'pass',
+      'Test 08: Users can find the restore button without help.md': 'fail',
+      // Cost is viability, not whether the team can build it.
+      'Test 09: Keeping 90 days of revisions costs under $0.10 per seat a month.md': 'fail',
+      'Test 10: Teams want to restore old versions.md': 'fail',
+      'Test 11: Sales can sell version history as an enterprise add-on.md': 'fail',
+      'Test 12: We can build live cursors on our current websocket stack.md': 'fail',
+      "Test 13: Users will notice the 'restored' banner and understand what changed.md": 'pass',
+      // Legal constraints on the business are viability.
+      'Test 14: Legal will approve keeping deleted content for 90 days.md': 'pass',
+      'Test 15: Teams will keep using history after the first month.md': 'pass',
+      "Test 16: Managers won't use edit history to rank their staff.md": 'pass',
+      // Mentions a survey, but the assumption is ethical.
+      "Test 17: Managers won't use edit history to rank their staff, judged by a survey.md": 'fail',
+      'Test 18: Users will pay for longer history.md': 'fail',
+    },
+  },
+}

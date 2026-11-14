@@ -1,0 +1,31 @@
+{
+  space: 'knowledge-wiki',
+  expected: {
+    'concept-or-entity': {
+      'Affordance.md': 'pass',
+      'Retrieval-augmented generation.md': 'pass',
+      // A named method is still a concept.
+      'Opportunity solution tree.md': 'pass',
+      'Jobs to be done.md': 'pass',
+      'Anthropic.md': 'pass',
+      'GPT-4.md': 'pass',
+      // One specific book.
+      'Continuous Discovery Habits.md': 'pass',
+      'Teresa Torres.md': 'pass',
+      'Notion.md': 'fail',
+      'Don Norman.md': 'fail',
+      'Technical debt.md': 'fail',
+      // A generic design, despite the proper-sounding name.
+      'Transformer architecture.md': 'fail',
+      'Kanban.md': 'pass',
+      // One company's system, though it inspired a concept.
+      'Toyota Production System.md': 'pass',
+      'Claude.md': 'fail',
+      'Large language model.md': 'fail',
+      // One specific document.
+      'Agile Manifesto.md': 'fail',
+      // A method, though it has a proper name.
+      'Scrum.md': 'fail',
+    },
+  },
+}

@@ -58,6 +58,22 @@
         "description": "Concept pages should have a short summary for index discoverability",
         "type": "concept",
         "expression": "$exists(current.summary) and $length(current.summary) > 0"
+      },
+      {
+        "id": "concept-or-entity",
+        "category": "coherence",
+        "description": "A concept page frames an idea, mechanism or term, and an entity page is one specific, named thing",
+        "when": "current.resolvedType in ['concept', 'entity']",
+        "semantic": {
+          "rubric": "Pass when the page's type fits what the page is about. A concept is an idea, mechanism, method or term that many things can share. An entity is one identifiable person, organisation, product, model or other named thing."
+        }
+      },
+      {
+        "id": "synthesis-connects",
+        "category": "best-practice",
+        "type": "synthesis",
+        "description": "A synthesis connects several sources or concepts into a model, comparison or thesis, rather than summarising one source",
+        "semantic": { "includeContent": "nodeOnly" }
       }
     ]
   },

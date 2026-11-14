@@ -1,0 +1,32 @@
+{
+  space: 'strategy-trees',
+  expected: {
+    'opportunity-serves-ancestors': {
+      "Bookshops can't take online orders without a website.md": 'pass',
+      // Grows revenue, and undercuts the shops.
+      'Readers want to buy direct from us at lower prices than shops.md': 'fail',
+      // Grows revenue by bypassing bookshops.
+      'Publishers want to sell their backlist through us direct to readers.md': 'fail',
+      'Shops spend hours updating stock on each marketplace.md': 'pass',
+      // Grows revenue, and helps the chains that independents compete with.
+      'Big chains want to license our ordering software.md': 'fail',
+      'Shops want click-and-collect so readers come into the store.md': 'pass',
+      "New riders don't know the safe routes to work.md": 'pass',
+      'Drivers want cheaper parking near stations.md': 'fail',
+      // Could grow commuting, and rewards riding fast, against safety.
+      'Riders want a leaderboard that rewards the fastest commute times.md': 'fail',
+      'Riders have nowhere secure to leave bikes at work.md': 'pass',
+      // Earns the money by taking the weekends the mission keeps.
+      'Weekend freelance work pays well.md': 'fail',
+      'We could sell the second car we barely use.md': 'pass',
+      'My employer pays a bonus for overtime.md': 'fail',
+      // Earns money and is time with the kids.
+      "The kids' outgrown toys and gear could sell at weekend markets, with the kids.md": 'pass',
+      // An optional fee with a clear price.
+      'Businesses want instant payouts and would pay for them.md': 'pass',
+      // Grows fees by surprising customers.
+      "Many customers don't notice when the account fee rises.md": 'fail',
+      'Overdraft fees could rise without losing customers.md': 'fail',
+    },
+  },
+}

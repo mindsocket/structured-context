@@ -33,6 +33,8 @@ Resolution order: space `schema` > global `schema`. Schema resolution fails if n
 
 ## Bundled schemas
 
+Each bundled schema has [semantic rules](semantic-rules.md). `sctx schemas show <schema>` lists them.
+
 ### `strategy_general.json`
 
 Flexible planning schema spanning strategy + OST-like flow.
@@ -57,9 +59,11 @@ Main types:
 
 This schema reuses shared structural defs from partials via `$ref` and imports its hierarchy and rules from `_ost_strict` via `$metadata.imports`.
 
+Its type descriptions and semantic rules follow Teresa Torres' *Continuous Discovery Habits* (2021).
+
 ### `knowledge_wiki.json`
 
-Flat, LLM-maintained knowledge base (after Karpathy's LLM Wiki pattern). No hierarchy or required parent links; wikilinks between any pages are valid. Validates structure and provenance, not meaning.
+Flat, LLM-maintained knowledge base (after Karpathy's LLM Wiki pattern). No hierarchy or required parent links; wikilinks between any pages are valid. Validates structure and provenance.
 
 Main types:
 - `source`

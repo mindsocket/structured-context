@@ -44,6 +44,112 @@
         "semantic": {
           "rubric": "Verify that the opportunity is stated from the customer's perspective as a problem, pain point, or desire. It must not be a solution in disguise (e.g. 'build X feature') or a business metric (e.g. 'increase revenue')."
         }
+      },
+      {
+        "id": "outcome-product-outcome",
+        "category": "best-practice",
+        "type": "outcome",
+        "description": "The outcome is a product outcome the team can influence, not a business outcome, a traction metric or an output",
+        "semantic": {
+          "verdicts": {
+            "product-outcome": "A change in what customers do in the product, which the team can influence and which drives business value",
+            "business-outcome": {
+              "description": "A business result, such as revenue, market share or retention, that the team cannot move directly",
+              "guidance": "Find the customer behaviour in the product that drives it, and make that the outcome."
+            },
+            "traction-metric": {
+              "description": "The use of one named feature, screen, button or message, rather than the customer behaviour it is meant to drive",
+              "guidance": "Ask what customer value that use stands for, and measure that instead."
+            },
+            "output": {
+              "description": "A feature, project or deliverable to ship, even when it is worded as a goal",
+              "guidance": "Ask what should change for customers once it ships, and measure that instead."
+            }
+          },
+          "severity": { "business-outcome": "info", "traction-metric": "info", "output": "warning" }
+        }
+      },
+      {
+        "id": "opportunity-refines-parent",
+        "category": "coherence",
+        "type": "opportunity",
+        "description": "A top-level opportunity drives its outcome, and a child opportunity is a subset of its parent opportunity",
+        "semantic": {
+          "rubric": "Judge only how the opportunity relates to its parent. A real need in the same area as the parent does not refine the parent unless it fits the verdict's test.",
+          "scope": ["parent"],
+          "verdicts": {
+            "refines": "Under an outcome, addressing it would drive the outcome. Under an opportunity, it is one part, cause or case of the parent need, narrower than the parent",
+            "weak-link": {
+              "description": "Related to the parent, but the link is indirect, or it only restates the parent",
+              "guidance": "Name the narrower need it covers, or move it next to its parent."
+            },
+            "misplaced": {
+              "description": "It would not drive the outcome, or it is not part of the parent opportunity",
+              "guidance": "Move it under the outcome or opportunity it belongs to."
+            }
+          },
+          "severity": { "weak-link": "info", "misplaced": "warning" }
+        }
+      },
+      {
+        "id": "opportunities-distinct",
+        "category": "coherence",
+        "description": "Sibling opportunities are distinct: the team can address one without addressing another",
+        "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'opportunity']) >= 2",
+        "semantic": {
+          "rubric": "Judge the item's child opportunities as a set, and ignore its other children. They are distinct when each is a different need, so that addressing one does not address another.",
+          "scope": ["children"],
+          "verdicts": {
+            "distinct": "Each child opportunity is a different need",
+            "overlapping": {
+              "description": "Two child opportunities state the same need, or partly cover the same need, or one contains another",
+              "guidance": "Merge them, sharpen the boundary between them, or nest the narrower one under the broader one."
+            }
+          },
+          "severity": { "overlapping": "warning" }
+        }
+      },
+      {
+        "id": "solution-addresses-opportunity",
+        "category": "coherence",
+        "type": "solution",
+        "description": "The solution addresses its parent opportunity",
+        "semantic": {
+          "rubric": "Judge only whether the solution, if it worked, would resolve the parent need as the customer states it. A solution in the same area that leaves the stated need in place does not address it.",
+          "scope": ["parent"],
+          "verdicts": {
+            "addresses": "If it worked, it would resolve or reduce the parent need as the customer states it",
+            "tangential": {
+              "description": "It shares the parent's topic, but it would not resolve the need as the customer states it",
+              "guidance": "Say how it resolves the need, or move it under the opportunity it does address."
+            },
+            "misplaced": {
+              "description": "It addresses a different need, or none",
+              "guidance": "Move it under the opportunity it addresses."
+            }
+          },
+          "severity": { "tangential": "info", "misplaced": "warning" }
+        }
+      },
+      {
+        "id": "solution-serves-outcome",
+        "category": "coherence",
+        "type": "solution",
+        "description": "The solution serves the outcome above it, not only its parent opportunity",
+        "semantic": {
+          "rubric": "Follow the chain from the solution through its opportunities to the outcome. Pass when the solution, if it worked, would move the outcome's metric in the intended direction. Fail when it would not move the outcome, or would move it the wrong way, even if it addresses its parent opportunity.",
+          "scope": ["ancestors"]
+        }
+      },
+      {
+        "id": "assumption-category-fits",
+        "category": "best-practice",
+        "type": "assumption_test",
+        "description": "The assumption test's category is the kind of assumption it tests",
+        "when": "$exists(current.category)",
+        "semantic": {
+          "rubric": "Decide from the assumption alone which kind of assumption it is, using the category definitions. Pass only when that kind is the one in `category`."
+        }
       }
     ]
   },
@@ -81,7 +187,7 @@
         "category": {
           "type": "string",
           "enum": ["desirability", "viability", "feasibility", "usability", "ethical"],
-          "description": "Assumption type categories"
+          "description": "Desirability: do customers want it? Viability: should the business build it? Feasibility: can the team build it? Usability: can customers use it? Ethical: could it cause harm?"
         }
       },
       "required": ["assumption"]

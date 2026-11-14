@@ -1,0 +1,34 @@
+{
+  space: 'ost-trees',
+  expected: {
+    'opportunities-distinct': {
+      'Raise weekly invoice volume.md': 'distinct',
+      // The first two are nearly the same need.
+      'Get freelancers paid faster.md': 'overlapping',
+      // Late payment is one part of getting paid slowly.
+      'Shorten days to payment.md': 'overlapping',
+      // One topic, three different needs.
+      "I don't trust that my timesheet is right.md": 'distinct',
+      // Different causes of the parent need, which do not overlap each other.
+      "I can't find the meeting notes I need.md": 'distinct',
+      // The same need in different words.
+      'New hires productive sooner.md': 'overlapping',
+      // The solutions overlap, but the rule ignores them.
+      'I miss messages from clients.md': 'distinct',
+      // The second is broader wording of the first.
+      'Grow plan upgrades.md': 'overlapping',
+      'Increase repeat bookings.md': 'distinct',
+      // Both children are the fear of theft, in other words. Contrast with the next scenario.
+      "I don't feel safe leaving my bike at the station.md": 'overlapping',
+      // Contrast with the previous scenario.
+      "I don't feel safe parking my bike at work.md": 'distinct',
+      'More travellers check in online.md': 'distinct',
+      // The first two are the same need.
+      'Fewer support calls about access.md': 'overlapping',
+      'Moving house is stressful.md': 'distinct',
+      // Subscription spending is part of monthly spending.
+      'More members track spending weekly.md': 'overlapping',
+      'Planning family meals takes too long.md': 'distinct',
+    },
+  },
+}

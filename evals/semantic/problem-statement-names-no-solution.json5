@@ -1,0 +1,31 @@
+{
+  space: 'strategy-trees',
+  expected: {
+    'problem-statement-names-no-solution': {
+      'Opportunity 01.md#Problem statement': 'pass',
+      'Opportunity 02.md#Problem statement': 'pass',
+      'Opportunity 03.md#Problem statement': 'pass',
+      'Opportunity 04.md#Problem statement': 'pass',
+      'Opportunity 05.md#Problem statement': 'fail',
+      // The lack of a solution, worded as a problem.
+      'Opportunity 06.md#Problem statement': 'fail',
+      // The lack of a solution, worded as a problem.
+      'Opportunity 07.md#Problem statement': 'fail',
+      'Opportunity 08.md#Problem statement': 'fail',
+      // A problem, then a solution.
+      'Opportunity 09.md#Problem statement': 'fail',
+      // Suggests forecasting, but names no solution.
+      'Opportunity 10.md#Problem statement': 'pass',
+      'Opportunity 11.md#Problem statement': 'pass',
+      'Opportunity 12.md#Problem statement': 'fail',
+      // Names existing tools as context, not a solution.
+      'Opportunity 13.md#Problem statement': 'pass',
+      // Presumes the integration.
+      'Opportunity 14.md#Problem statement': 'fail',
+      // Contrast with the next case.
+      'Opportunity 15.md#Problem statement': 'fail',
+      // Contrast with the previous case.
+      'Opportunity 16.md#Problem statement': 'pass',
+    },
+  },
+}

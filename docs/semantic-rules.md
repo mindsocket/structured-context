@@ -146,6 +146,16 @@ Scope sends node data only, never the verdicts of other rules, and [gating](rule
 
 A global rule cannot have a `semantic` part, so it has no scope.
 
+The bundled schemas use scope in three ways. We recommend them as models for your own rules:
+
+| Check | Attach the rule to | Scope | Bundled example |
+|---|---|---|---|
+| The children are distinct, or cover the node | The parent, with a `when` that needs two or more children | `children` | `opportunities-distinct`, `goals-cover-parent` |
+| The node fits its parent | The child | `parent` | `opportunity-refines-parent`, `solution-addresses-opportunity` |
+| The node serves the intent of the levels above | The child | `ancestors` | `solution-serves-outcome`, `opportunity-serves-ancestors` |
+
+The rules are in the bundled partials, such as `schemas/_ost_strict.json`.
+
 ## Input size and trimming
 
 The input for one evaluated node is capped at about 32,000 estimated tokens. Over the cap, structured-context cuts node bodies, longest related bodies first, and marks each cut with `[RULE_EVALUATION_CONTENT_TRIMMED n chars]`. If the input still does not fit, the rule reports a semantic evaluation error. A run that trims content says so in its summary.
