@@ -44,5 +44,5 @@ Code comments and messages:
 ## Output
 
 List findings as `file:line, check number, proposed rewrite`, then apply them. Run `bun run lint` and, if
-`plugin/` changed, `bun run test:hook`. Finish by checking the "Definition of done" table in `AGENTS.md` for files
+`plugin/` changed, `bun run test:hook`. Finish by checking `docs/definition-of-done.md` for files
 the change affects but does not touch, then run `scripts/prose-check.sh --mark`.
