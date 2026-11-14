@@ -5,23 +5,24 @@
       'Help small cafés run a profitable kitchen.md': 'distinct',
       'Get ready for the Six Foot Track ultra.md': 'distinct',
       'Launch the podcast.md': 'distinct',
-      // After-hours messages and working late are the same result.
-      'Improve team health.md': 'duplicate',
-      // Social media subscribers count towards the 5,000.
+      // After-hours messages and working late are nearly the same result.
+      'Improve team health.md': 'overlapping',
+      // The June milestone is part of reaching 5,000.
       'Grow the newsletter.md': 'overlapping',
       'Make our home run on renewable energy.md': 'distinct',
       'Make our flat run on renewable energy.md': 'distinct',
-      // Super contributions are part of the 30% saved.
+      // Super contributions count towards the 30% saved.
       'Reach financial independence by 50.md': 'overlapping',
       // The first two are the same result in different words.
-      'Help remote teams feel connected.md': 'duplicate',
+      'Help remote teams feel connected.md': 'overlapping',
       'Renovate the bathroom.md': 'distinct',
       'Ship version 2 of the app.md': 'distinct',
-      // New wholesale accounts are part of wholesale revenue. Contrast with the next scenario.
+      // Café revenue is part of wholesale revenue. Contrast with the next scenario.
       "Grow the bakery's revenue.md": 'overlapping',
       // Contrast with the previous scenario.
       "Grow the market stall's revenue.md": 'distinct',
-      'Learn Japanese for the trip.md': 'duplicate',
+      // The last two are the same result.
+      'Learn Japanese for the trip.md': 'overlapping',
       'Run a sustainable family farm.md': 'distinct',
       'Run a sustainable market garden.md': 'distinct',
       // Plumber clients count towards the 50 tradie clients.

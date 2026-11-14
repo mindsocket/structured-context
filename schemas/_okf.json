@@ -20,7 +20,9 @@
         "category": "best-practice",
         "description": "A concept's description says in one line what the concept is or covers, beyond its title and type",
         "when": "$exists(current.description) and $length(current.description) > 0",
-        "semantic": {}
+        "semantic": {
+          "rubric": "Pass when the description adds what the concept contains, measures or does. Fail when it only rewords the title or type, even with a word or two added."
+        }
       },
       {
         "id": "okf-stale-after-generated",

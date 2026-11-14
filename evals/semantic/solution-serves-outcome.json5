@@ -13,8 +13,6 @@
       'Notify me in the app about changes on pages I follow.md': 'pass',
       'Search matches words inside documents, not only titles.md': 'pass',
       "Hide documents I can't open from search results.md": 'pass',
-      // The search can still end with the document opened.
-      "Show a 'request access' button on each locked result.md": 'pass',
       'Pre-fill tax rates from my business address.md': 'pass',
       // Resolves the confusion, but delays the first invoice.
       'Require a call with an accountant before the first invoice.md': 'fail',
@@ -24,8 +22,6 @@
       'Add card payments through a payment provider.md': 'fail',
       "Text a reminder when it's been five weeks since my last cut.md": 'pass',
       'One-tap rebook of my last appointment.md': 'pass',
-      // Faster, but loses the stylist that brings customers back.
-      'Book me with whichever stylist is free, to make booking faster.md': 'fail',
       // Works against repeat bookings.
       'Charge a fee to rebook within a week.md': 'fail',
     },

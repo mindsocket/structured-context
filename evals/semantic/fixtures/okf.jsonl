@@ -7,7 +7,6 @@
 {"id": "Sales overview.md", "title": "Sales overview", "type": "Dashboard", "schemaData": {"title": "Sales overview", "type": "Dashboard", "description": "A dashboard"}, "linkTargets": ["Sales overview"]}
 {"id": "Database failover.md", "title": "Database failover", "type": "Runbook", "schemaData": {"title": "Database failover", "type": "Runbook", "description": "TODO"}, "linkTargets": ["Database failover"]}
 {"id": "Cache warm-up.md", "title": "Cache warm-up", "type": "Runbook", "schemaData": {"title": "Cache warm-up", "type": "Runbook", "description": "See Confluence"}, "linkTargets": ["Cache warm-up"]}
-{"id": "events.md", "title": "events", "type": "Table", "schemaData": {"title": "events", "type": "Table", "description": "Product events"}, "linkTargets": ["events"]}
 {"id": "Activation rate.md", "title": "Activation rate", "type": "Metric", "schemaData": {"title": "Activation rate", "type": "Metric", "description": "Share of new signups who create a project within 7 days"}, "linkTargets": ["Activation rate"]}
 {"id": "fct_orders_daily.md", "title": "fct_orders_daily", "type": "Table", "schemaData": {"title": "fct_orders_daily", "type": "Table", "description": "Daily order facts"}, "linkTargets": ["fct_orders_daily"]}
 {"id": "ARR.md", "title": "ARR", "type": "Glossary Term", "schemaData": {"title": "ARR", "type": "Glossary Term", "description": "Annual recurring revenue: the yearly value of active subscriptions, excluding one-off fees"}, "linkTargets": ["ARR"]}

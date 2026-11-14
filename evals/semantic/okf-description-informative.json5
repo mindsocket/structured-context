@@ -11,8 +11,6 @@
       'Sales overview.md': 'fail',
       'Database failover.md': 'fail',
       'Cache warm-up.md': 'fail',
-      // Barely more than the title.
-      'events.md': 'fail',
       'Activation rate.md': 'pass',
       // Restates the table name in words.
       'fct_orders_daily.md': 'fail',

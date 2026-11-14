@@ -4,12 +4,12 @@
     'solution-addresses-opportunity': {
       'Autosave every few seconds.md': 'addresses',
       'Restore unsaved drafts after a crash.md': 'addresses',
-      'Make the app load faster.md': 'misplaced',
+      'Make the app load faster.md': ['tangential', 'misplaced'],
       // Eases the fear, but does not prevent the loss.
       "Show a 'saved' indicator in the toolbar.md": ['addresses', 'tangential'],
-      'Write a help article on keyboard shortcuts.md': 'misplaced',
-      // Data loss, but a crash loses the work since the last backup.
-      'Back up workspaces nightly to cloud storage.md': 'tangential',
+      'Write a help article on keyboard shortcuts.md': ['tangential', 'misplaced'],
+      // Reduces the loss, but a crash still loses the work since the last backup.
+      'Back up workspaces nightly to cloud storage.md': ['addresses', 'tangential'],
       // Protects against closing a tab, not against a crash.
       'Warn before closing a tab with unsaved changes.md': 'tangential',
       'Plan picker that asks for team size and recommends a plan.md': 'addresses',

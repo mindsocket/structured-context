@@ -53,15 +53,11 @@
           "verdicts": {
             "distinct": "Each child goal is a different result",
             "overlapping": {
-              "description": "Two child goals partly cover the same result, or one contains another",
-              "guidance": "Sharpen the boundary between them, or nest the narrower one under the broader one."
-            },
-            "duplicate": {
-              "description": "Two child goals state the same result in different words",
-              "guidance": "Merge them."
+              "description": "Two child goals state the same result, or partly cover the same result, or one contains another",
+              "guidance": "Merge them, sharpen the boundary between them, or nest the narrower one under the broader one."
             }
           },
-          "severity": { "overlapping": "warning", "duplicate": "warning" }
+          "severity": { "overlapping": "warning" }
         }
       },
       {
@@ -82,6 +78,7 @@
         "description": "A goal advances its parent mission, or is one part of its parent goal",
         "when": "$exists(parent)",
         "semantic": {
+          "rubric": "Judge only how the goal relates to its parent. A worthwhile goal in the same area as the parent does not advance the parent unless it fits the verdict's test.",
           "scope": ["parent"],
           "verdicts": {
             "advances": "Under a mission, achieving it moves the mission forward. Under a goal, it is one part of the parent goal, narrower than the parent",

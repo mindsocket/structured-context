@@ -58,7 +58,7 @@
               "guidance": "Find the customer behaviour in the product that drives it, and make that the outcome."
             },
             "traction-metric": {
-              "description": "The use of one specific feature or flow, which leaves no room to discover other ways to create value",
+              "description": "The use of one named feature, screen, button or message, rather than the customer behaviour it is meant to drive",
               "guidance": "Ask what customer value that use stands for, and measure that instead."
             },
             "output": {
@@ -75,6 +75,7 @@
         "type": "opportunity",
         "description": "A top-level opportunity drives its outcome, and a child opportunity is a subset of its parent opportunity",
         "semantic": {
+          "rubric": "Judge only how the opportunity relates to its parent. A real need in the same area as the parent does not refine the parent unless it fits the verdict's test.",
           "scope": ["parent"],
           "verdicts": {
             "refines": "Under an outcome, addressing it would drive the outcome. Under an opportunity, it is one part, cause or case of the parent need, narrower than the parent",
@@ -101,15 +102,11 @@
           "verdicts": {
             "distinct": "Each child opportunity is a different need",
             "overlapping": {
-              "description": "Two child opportunities partly cover the same need, or one contains another",
-              "guidance": "Sharpen the boundary between them, or nest the narrower one under the broader one."
-            },
-            "duplicate": {
-              "description": "Two child opportunities state the same need in different words",
-              "guidance": "Merge them."
+              "description": "Two child opportunities state the same need, or partly cover the same need, or one contains another",
+              "guidance": "Merge them, sharpen the boundary between them, or nest the narrower one under the broader one."
             }
           },
-          "severity": { "overlapping": "warning", "duplicate": "warning" }
+          "severity": { "overlapping": "warning" }
         }
       },
       {
@@ -118,6 +115,7 @@
         "type": "solution",
         "description": "The solution addresses its parent opportunity",
         "semantic": {
+          "rubric": "Judge only whether the solution, if it worked, would resolve the parent need as the customer states it. A solution in the same area that leaves the stated need in place does not address it.",
           "scope": ["parent"],
           "verdicts": {
             "addresses": "If it worked, it would resolve or reduce the parent need as the customer states it",
@@ -149,7 +147,9 @@
         "type": "assumption_test",
         "description": "The assumption test's category is the kind of assumption it tests",
         "when": "$exists(current.category)",
-        "semantic": {}
+        "semantic": {
+          "rubric": "Decide from the assumption alone which kind of assumption it is, using the category definitions. Pass only when that kind is the one in `category`."
+        }
       }
     ]
   },
