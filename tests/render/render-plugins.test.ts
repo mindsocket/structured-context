@@ -14,6 +14,11 @@ describe('render with discovered plugins', () => {
     expect(output.issues).toContainEqual({ severity: 'error', nodeId: 'Missing status.md' });
   });
 
+  it('lists resource folders from config roots and plugins', async () => {
+    const output = JSON.parse((await executeRender('probe.callbacks', context, {})) as string);
+    expect(output.mapViews).toEqual([{ dir: '.sctx' }, { dir: 'sctx-views', plugin: 'views' }]);
+  });
+
   it('exports the filtered graph', async () => {
     const output = JSON.parse(
       (await executeRender('probe.callbacks', context, { filter: "WHERE status = 'exploring'" })) as string,

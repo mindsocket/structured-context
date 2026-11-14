@@ -1,3 +1,4 @@
+import { basename, dirname } from 'node:path';
 import type { StructuredContextPlugin } from '../../../../../src/plugins/util';
 
 /** Renders what the render callbacks return, for tests. */
@@ -12,6 +13,9 @@ const probe: StructuredContextPlugin = {
       return JSON.stringify({
         issues: issues.map(({ severity, nodeId }) => ({ severity, nodeId })),
         nodes: graph?.nodes.map((n) => n.title).sort(),
+        mapViews: context.callbacks
+          ?.resourceDirs?.('map-views')
+          .map(({ dir, plugin }) => ({ dir: basename(dirname(dir)), plugin })),
       });
     },
   },
