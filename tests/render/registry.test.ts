@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'bun:test';
-import type { DeclaredPlugin } from '../../src/plugins/loader';
 import type { StructuredContextPlugin } from '../../src/plugins/util';
 import { buildFormatRegistry } from '../../src/render/registry';
 
-function makePlugin(name: string, formats: { name: string; description: string }[]): DeclaredPlugin {
+function makePlugin(name: string, formats: { name: string; description: string }[]): StructuredContextPlugin {
   const plugin: StructuredContextPlugin = {
     name,
     configSchema: { type: 'object' },
@@ -12,14 +11,12 @@ function makePlugin(name: string, formats: { name: string; description: string }
       render: () => '',
     },
   };
-  return { plugin, rawConfig: {} };
+  return plugin;
 }
 
 describe('buildFormatRegistry', () => {
   it('returns empty registry for plugins with no render hook', () => {
-    const loaded: DeclaredPlugin[] = [
-      { plugin: { name: 'sctx-foo', configSchema: { type: 'object' } }, rawConfig: {} },
-    ];
+    const loaded: StructuredContextPlugin[] = [{ name: 'sctx-foo', configSchema: { type: 'object' } }];
     expect(buildFormatRegistry(loaded)).toEqual([]);
   });
 
@@ -46,8 +43,8 @@ describe('buildFormatRegistry', () => {
   });
 
   it('skips plugins without a render hook and includes those with one', () => {
-    const loaded: DeclaredPlugin[] = [
-      { plugin: { name: 'sctx-norender', configSchema: { type: 'object' } }, rawConfig: {} },
+    const loaded: StructuredContextPlugin[] = [
+      { name: 'sctx-norender', configSchema: { type: 'object' } },
       ...[makePlugin('sctx-markdown', [{ name: 'bullets', description: 'Bullets' }])],
     ];
     const registry = buildFormatRegistry(loaded);

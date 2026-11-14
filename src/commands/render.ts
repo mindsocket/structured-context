@@ -1,8 +1,7 @@
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { availablePlugins, type DeclaredPlugin, discoverPlugins } from '../plugins/loader';
 import { isRenderMultiFileOutput } from '../plugins/util';
-import { buildFormatRegistry } from '../render/registry';
+import { renderFormats } from '../render/registry';
 import { executeRender } from '../render/render';
 import type { SpaceContext } from '../types';
 
@@ -89,11 +88,7 @@ export async function render(
 }
 
 export async function renderList(context?: SpaceContext): Promise<void> {
-  const plugins: DeclaredPlugin[] = context
-    ? await availablePlugins(context.space?.plugins ?? {}, context.configDir)
-    : (await discoverPlugins()).map((plugin) => ({ plugin, rawConfig: {} }));
-
-  const registry = buildFormatRegistry(plugins);
+  const registry = await renderFormats(context);
 
   if (registry.length === 0) {
     console.log('No render formats available.');
