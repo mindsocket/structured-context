@@ -142,8 +142,10 @@ const myRenderHook: RenderHook = {
 };
 ```
 
+A plugin in a config root's plugins folder provides its formats to every space, including spaces that don't list it in `plugins`. Its config is checked only when one of its formats is rendered.
+
 A render hook gets two callbacks in `context.callbacks`, so a plugin needs no runtime import of structured-context:
 
-- `validate(options)` validates the whole space and returns every issue, of every severity. Its options are those of `validateSpace`: `includeGated`, `ruleFilter`, `semantic` and `depth`. Semantic judging runs only when a run asks for it, so pass `semantic` from the render options, not from plugin config.
+- `validate(options)` validates the whole space and returns every issue, of every severity. It takes the options of `validateSpace`. Pass `semantic` only when the render run asks for it, never from plugin config, because semantic judging costs money.
 - `exportGraph()` returns the graph being rendered in the [space graph format](#space-graph-format), structured by the hierarchy the render selected.
 

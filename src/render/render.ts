@@ -1,20 +1,19 @@
 import { updateSpaceField } from '../config';
 import { assembleSpaceGraph } from '../load-space-graph';
-import { availablePlugins, configurePlugin } from '../plugins/loader';
+import { validatePluginConfig } from '../plugins/loader';
 import { type PluginContext, type RenderResult, shortenPluginName } from '../plugins/util';
 import { readSpace } from '../read/read-space';
 import { exportSpaceGraph } from '../space-graph-data';
 import type { SpaceContext } from '../types';
 import { validateSpace } from '../validate';
-import { buildFormatRegistry } from './registry';
+import { renderFormats } from './registry';
 
 export async function executeRender(
   formatName: string,
   context: SpaceContext,
   options: { filter?: string; hierarchy?: string; data?: Record<string, unknown> },
 ): Promise<RenderResult> {
-  const pluginMap: Record<string, Record<string, unknown>> = context.space?.plugins ?? {};
-  const registry = buildFormatRegistry(await availablePlugins(pluginMap, context.configDir));
+  const registry = await renderFormats(context);
 
   const entry = registry.find((r) => r.qualifiedName === formatName);
   if (!entry) {
@@ -23,7 +22,8 @@ export async function executeRender(
       `Unknown render format: "${formatName}".${available ? ` Available: ${available}` : ' No formats registered.'}`,
     );
   }
-  const { plugin, pluginConfig } = configurePlugin(entry.plugin, context.configDir);
+  const { plugin } = entry;
+  const pluginConfig = validatePluginConfig(plugin, context.space?.plugins ?? {}, context.configDir);
 
   const readResult = await readSpace(context);
   const graph = await assembleSpaceGraph(context, { filter: options.filter, hierarchy: options.hierarchy, readResult });
