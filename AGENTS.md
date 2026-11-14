@@ -16,53 +16,24 @@ Before starting new work, review [docs/concepts.md](docs/concepts.md) for canoni
 
 Space names (e.g. `personal`, `politics`) are resolved via a config file - `$SCTX_CONFIG`, `$XDG_CONFIG_HOME/structured-context/config.json`, `--config <file>` param, or the nearest `.sctx.json` or `.sctx/config.json` walking up from the working directory. Relative paths resolve from the config root, and local plugins, schemas and map views sit in `.sctx/` (`src/config/layout.ts`)
 
-The lefthook pre-commit hook syncs the plugin version (below), then runs biome (`--write`, re-staged) and the typecheck.
+The lefthook pre-commit hook syncs the plugin version, then runs biome (`--write`, re-staged) and the typecheck.
 
 ## Claude Code Plugin
 
-A Claude Code plugin lives at `plugin/`. It includes skills, commands and hooks used when working with collections of Obsidian markdown content (aka a space) in a vault.
-
-The command hooks in `plugin/hooks/hooks.json` baseline each turn and gate it at Stop. The mod (`plugin/hooks/register.tsx`, a hooks module) adds to them: a line under the answer and a band above the prompt for the turn's new issues, a status line, the schemas of the spaces in the working directory in the system prompt, and `spaces`, `validate` and `schema` tools. It never validates per tool call, because a space can be invalid partway through a multi-file change. A mod has no Node, so it reaches the hooks' state and the CLI through `plugin/scripts/mod-bridge.ts`. `plugin/types/index.d.ts` declares the mod's `$.state`.
-
-The map pane (`plugin/hooks/map-pane.tsx`, `/sctx-map`) draws a space's hierarchy with each node's validation results. A mod can't import packages, so the code it runs from core and `structured-context-map-views` is bundled into the committed `plugin/hooks/projection.js` by `bun run build:mod-projection`. The same command inlines the core types the mod shares (`scripts/mod-contract.ts`) into `plugin/types/index.d.ts`, which must be self-contained.
-
-The plugin version in `plugin/.claude-plugin/plugin.json` is managed by git hooks (`lefthook.yml`, `scripts/sync-plugin-version.ts`); never edit it by hand:
-- **pre-commit:** bumps the patch version for any commit touching `plugin/`, so the plugin version runs ahead of `package.json` between releases by design. It also syncs major.minor up when `package.json` moves ahead (i.e. a release).
-- **pre-push:** fails if a commit since the last tag changed `plugin/` without bumping the version.
+`plugin/` is a Claude Code plugin for working with spaces. [docs/architecture.md](docs/architecture.md#claude-code-plugin) describes its hooks, mod and map pane. Never edit the version in `plugin/.claude-plugin/plugin.json`, because git hooks bump it.
 
 ## Definition of done
 
-There are several places that need reviewing and updating with any new feature or change added:
-
-- README.md - overview, kept brief; detail belongs in docs/. Shown by `sctx docs`
-- AGENTS.md - this file
-- docs/* - `sctx docs <topic>` shows concepts.md, config.md, schemas.md (`schema`), rules.md and semantic-rules.md; also architecture.md, api.md
-- plugin/* - skills, commands, hooks, and scripts; update any affected parts
-
-"Affected" includes files the change does not touch. Search for old names, then reread each file below for meaning, not only for renamed words:
-
-| Change | Check |
-|---|---|
-| CLI command, flag or output | `docs/*` for the command; `plugin/skills/structured-context/references/commands.md`; the command list in `plugin/skills/structured-context/SKILL.md`; `plugin/commands/*` |
-| Rule, schema or `$metadata` shape | `docs/schemas.md`, `docs/rules.md`, `docs/semantic-rules.md`; `references/schema-authoring.md`, `references/schema-design.md`; bundled `schemas/` |
-| Bundled semantic rule | its eval in `evals/semantic/` |
-| User-visible error or warning message | the troubleshooting table in `SKILL.md` |
-| Config key or space config | `docs/config.md`; the config example in `references/commands.md` |
-| `validate --json` output | `plugin/scripts/state.ts` (the hooks parse it), `scripts/mod-contract.ts` and `bun run test:hook` |
-| Hook state or `schemas show` output | `plugin/scripts/mod-bridge.ts`, `plugin/types/index.d.ts` and `bun run test:mod` |
-| `src/browser.ts`, the space graph format, the types in `scripts/mod-contract.ts`, or the `structured-context-map-views` version | `bun run build:mod-projection` |
-| Parsing or node content | `docs/concepts.md`; the embedded nodes section in `SKILL.md` |
-| New term | `docs/concepts.md` |
-| New module, or a module taking on another's concern | Module Boundaries in `docs/architecture.md`; `tests/module-boundaries.test.ts` |
+A change is done when everything it affects is updated, including files it does not touch. See [docs/definition-of-done.md](docs/definition-of-done.md).
 
 ## Planning & Design Principles
 
 - **Simplicity first:** Strive for the simplest design that completely solves the problem. Prefer conventions and established filesystem patterns over adding new configuration, programmatic APIs, or abstractions.
 - **Explicitly state alternatives:** When planning or making architectural decisions, do not anchor to the first familiar mechanism. Formulate and state at least one alternative approach, weighing trade-offs, complexity, and ergonomic impact.
-- **Minimise blast radius:** Protect established boundaries and interfaces. Treat unnecessary ripple effects (such as making synchronous APIs asynchronous or adding dual APIs) as a design smell indicating the approach should be re-evaluated.
+- **Architecture first:** Before 1.0, choose the design that keeps the architecture right, even when it changes interfaces across modules. Replace the old way instead of keeping both.
 - **Module boundaries:** Each module owns one concern ([docs/architecture.md](docs/architecture.md#module-boundaries)). Pass what you have to the owning module and let it derive what it needs, instead of building its data for it.
 - **Public API surface:** Do not add exports to `src/api.ts`, `src/browser.ts` or `src/types.ts` (the `structured-context/api`, `/browser` and `/types` entry points), or add types or hooks to the plugin interface, without the maintainer's explicit agreement on that specific surface. Exporting something to make docs complete, to tidy up, or because a feature has a public-looking class is not a reason. Agreement on a function covers that function only: its option and result types are separate exports, so derive them in the consumer (`Parameters`, `ReturnType`) instead. If a change seems to need a new export, stop and propose it, with the consumer that needs it. Internal modules can change freely.
-- **Where a setting lives:** Config says *what* to use, CLI flags override it for one run, and the environment holds secrets and the config location only (`apiKeyEnv` names a secret; `SCTX_CONFIG` locates the config). Do not add env vars that set config values, and never infer a choice (such as a judge provider) from a variable that happens to be set: a key present for another tool must not be spent silently. Config also never switches on costly or outward-facing behaviour (such as semantic judging): each run asks for it, through a flag or an API option.
+- **Where a setting lives:** Settings go in config. The environment holds only secrets and the config location. Costly or outward-facing behaviour, such as semantic judging, is opt-in on each run.
 - **Reuse types:** Derive a type from the real one (`Pick`, `Partial`) instead of restating its shape. Keep CLI wording (flags, commands) out of library errors and the public API; the CLI adds its own hint. Once a feature has many files, give it a directory. Comments explain why, never restate the code.
 - **Failures are visible:** A rule or expression that cannot be evaluated is reported as a violation, never skipped or treated as a pass. Likewise a misconfiguration fails before any work or spend.
 
@@ -79,28 +50,24 @@ There are several places that need reviewing and updating with any new feature o
 
 ## Key Files
 
-- `src/api.ts` — Public library entry point (`structured-context/api`). Re-exports the supported programmatic surface. Keep CLI-only concerns out of it. Do not extend it without agreement (see **Public API surface** above).
-- `src/browser.ts` — Browser-safe entry point (`structured-context/browser`): rebuilding a graph from the space graph format. Nothing it imports may use Node built-ins; `/api` re-exports all of it.
-- `src/space-graph-data.ts` — The space graph format: `SPACE_GRAPH_DATA_SCHEMA`, `SpaceGraphData` (a typecheck fails if the two drift), `exportSpaceGraph`, `spaceGraphFrom`. Bump `SPACE_GRAPH_FORMAT_VERSION` when the shape changes. It is generated to `schemas/generated/space-graph/` (`latest.json`, plus a frozen `<formatVersion>.json` per release); generation fails if a released version's schema no longer matches.
-- `schemas/` — Bundled default schema files (JSON5) using the structured-context schema dialect and top-level `$metadata`. Files starting with `_` are "partials" (fragments for `$ref`).
-- `src/schema/metadata-contract.ts` — Single source of truth for the `$metadata` contract
-- `schemas/generated/latest/_structured_context_schema_meta.json` — Generated metaschema for the newest dialect (generated on build or with `bun run generate:schema-meta`). `schemas/generated/<version>/` folders are frozen copies, created by the `version` script (`generate:schema-meta --release`) only when a release changes the dialect; never edit them. `src/schema/meta-schemas.ts` loads them at runtime.
-- `src/rule/gating.ts` — Cascade gating and the entry point for rule evaluation (`evaluateRules`). It decides which node sets are evaluated, in what order, and which nodes are gated: a node that fails schema or hierarchy checks, or has a gating violation, is a gate, and the nodes below it are gated, reported as `gated` issues. A schema without a hierarchy takes the same path with nothing gated. See [docs/rules.md](docs/rules.md#cascade-gating).
-- `src/rule/rule-evaluator.ts` — Evaluates rules on one node set: applicability (`type`, `when`), expressions, and one judge call for the remaining semantic parts. It reports rule issues and gate-causing violations; gating owns order and suppression. The judge gets one `JudgeSession` (`src/judge/judge-node.ts`).
-- `src/judge/` — Semantic rule evaluation (the "judge" is its internal name): provider interface and types (`types.ts`), verdict resolution (`verdicts.ts`), per-node and grouped dispatch (`judge-node.ts`), related-node selection for `semantic.scope` (`context.ts`), the per-node input cap and body trimming (`trim.ts`), and providers (`provider/anthropic.ts`, `provider/openai.ts`, `provider/jev.ts`, `provider/fake.ts`), provider hydration and the bundled catalogue (`factory.ts`), and `sctx providers` (`src/commands/providers.ts`). See [docs/semantic-rules.md](docs/semantic-rules.md).
-- `src/rule/rule-filter.ts` — `--rule-filter` parsing and rule filtering by category, severity, type or id.
+- `src/api.ts`, `src/browser.ts`, `src/types.ts` — the public entry points (see **Public API surface** above). Nothing `browser.ts` imports may use Node built-ins.
+- `src/space-graph-data.ts` — the space graph format.
+- `src/schema/metadata-contract.ts` — the `$metadata` contract.
+- `schemas/` — bundled schemas; `_` files are partials. Never edit the frozen `schemas/generated/<version>/` folders.
+- `src/rule/gating.ts` — rule evaluation and cascade gating ([docs/rules.md](docs/rules.md#cascade-gating)).
+- `src/judge/` — semantic rules ([docs/semantic-rules.md](docs/semantic-rules.md)).
 
 ## Testing
-For most development only the main unit tests need re-running regularly.
-- `bun run test` — unit tests (fixtures in `tests/`)
-- `bun run test:hook` — unit test plugin hooks (`hook-test/unit/`) - hook development only
-- `bun run test:mod` — test the mod (`plugin/hooks/*.test.tsx`, with `claude plugin test`) - mod development only. CI runs it, and `claude plugin validate plugin`
-- `bun run test:hook:e2e` — test plugin hooks in Claude Code (`hook-test/`) - hook development only
-- `bun run test:smoke` — smoke tests run against locally configured spaces - only use when changes could affect compatibility.
-- `bun run test:package` — builds and packs the package, installs the tarball, and runs the installed CLI. Runs in CI and before every version bump; run it after changing the build, `tsconfig*.json` or `files`.
-- `bun run test:judge` — live judge tests (`tests/judge/live.test.ts`): one real provider call per provider whose API key is set. Costs money; use sparingly when changing judges or semantic rule behaviour.
-- `bun run test:models` — check that every bundled provider's configured model exists (no API keys)
-- `bun run eval:semantic --provider <name>` — semantic evals (`evals/`): how often a provider's verdicts match labelled cases. Costs money (`--check` doesn't). Run it when changing a bundled semantic rule, the schema descriptions it draws on, or a judge.
+
+Run `bun run test` during development. Run the others with `bun run` when a change touches their area:
+
+- `test:hook`, `test:hook:e2e` — plugin hooks
+- `test:mod` — the mod
+- `test:smoke` — compatibility with locally configured spaces
+- `test:package` — the build, `tsconfig*.json` or `files`
+- `test:judge` — judges; makes live provider calls, which cost money
+- `test:models` — the bundled providers' models
+- `eval:semantic --provider <name>` — bundled semantic rules, the schema descriptions they use, or a judge; costs money unless run with `--check`
 
 ## Debugging
 
@@ -108,3 +75,4 @@ For most development only the main unit tests need re-running regularly.
 
 ## Hooks
 Address issues related to change you made if a Stop hook reports them.
+The Stop hook and pre-push block while the branch adds docs or code comments that `doc-review` has not seen (`scripts/prose-check.sh`).

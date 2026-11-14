@@ -103,6 +103,18 @@ These rules keep the boundaries:
 
 ---
 
+## Claude Code Plugin
+
+The Claude Code plugin in `plugin/` has skills, commands and hooks for working with spaces.
+
+The command hooks in `plugin/hooks/hooks.json` baseline each turn and gate it at Stop. The mod (`plugin/hooks/register.tsx`, a hooks module) adds to them: a line under the answer and a band above the prompt for the turn's new issues, a status line, the schemas of the spaces in the working directory in the system prompt, and `spaces`, `validate` and `schema` tools. It never validates per tool call, because a space can be invalid partway through a multi-file change. A mod has no Node, so it reaches the hooks' state and the CLI through `plugin/scripts/mod-bridge.ts`. `plugin/types/index.d.ts` declares the mod's `$.state`.
+
+The map pane (`plugin/hooks/map-pane.tsx`, `/sctx-map`) draws a space's hierarchy with each node's validation results. A mod can't import packages, so `bun run build:mod-projection` bundles the code it runs from core and `structured-context-map-views` into the committed `plugin/hooks/projection.js`. The same command inlines the core types the mod shares (`scripts/mod-contract.ts`) into `plugin/types/index.d.ts`, which must be self-contained.
+
+Git hooks (`lefthook.yml`, `scripts/sync-plugin-version.ts`) manage the version in `plugin/.claude-plugin/plugin.json`. Pre-commit bumps the patch version for any commit touching `plugin/`, so the plugin version runs ahead of `package.json` between releases. It also raises major.minor to match `package.json` after a release. Pre-push fails if a commit since the last tag changed `plugin/` without a version bump.
+
+---
+
 ## Field Remapping
 
 Spaces may use different frontmatter field names than the canonical names expected by the schema (e.g. `record_type` instead of `type`). The `fieldMap` config option handles this transparently:
