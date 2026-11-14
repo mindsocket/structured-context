@@ -58,34 +58,37 @@ async function resolveExternalPlugin(name: string, configDir: string): Promise<S
   return plugin;
 }
 
-/** The plugins a space declares: external ones from the map in declaration order, then the built-ins. */
-async function declaredPlugins(
+/**
+ * The plugins a space uses: the ones its plugin map names, in map order, then the built-ins.
+ * A named plugin resolves from the config root's plugins folder, then npm.
+ */
+async function spacePlugins(
   pluginMap: Record<string, Record<string, unknown>>,
   configDir: string,
 ): Promise<StructuredContextPlugin[]> {
-  const external: StructuredContextPlugin[] = [];
+  const named: StructuredContextPlugin[] = [];
   for (const rawName of Object.keys(pluginMap)) {
     const name = normalizePluginName(rawName);
     if (isBuiltinPluginName(name)) continue;
     if (!name.startsWith(PLUGIN_PREFIX)) {
       throw new Error(`Plugin name must start with "${PLUGIN_PREFIX}" (got "${rawName}")`);
     }
-    external.push(await resolveExternalPlugin(name, configDir));
+    named.push(await resolveExternalPlugin(name, configDir));
   }
-  return [...external, ...builtinPlugins];
+  return [...named, ...builtinPlugins];
 }
 
 /**
- * Discover all available plugins: built-ins first, then any found in the plugins folder of
+ * Discover all available plugins: the built-ins, then any found in the plugins folder of
  * each loaded config file's root (the main config and the configs it includes).
- * Given a space's plugin map and config root, also includes the plugins the space declares,
- * which may come from npm, and that config root's plugins folder.
+ * Given a space, starts from the plugins it uses instead of the built-ins, and also searches
+ * its config root's plugins folder.
  */
 export async function discoverPlugins(space?: {
   pluginMap: Record<string, Record<string, unknown>>;
   configDir: string;
 }): Promise<StructuredContextPlugin[]> {
-  const plugins = space ? await declaredPlugins(space.pluginMap, space.configDir) : [...builtinPlugins];
+  const plugins = space ? await spacePlugins(space.pluginMap, space.configDir) : [...builtinPlugins];
   const seenNames = new Set(plugins.map((p) => p.name));
 
   const configDirs = Array.from(getConfigSourceFiles()).map((f) => configRoot(f));
@@ -125,18 +128,12 @@ export function validatePluginConfig(
   return pluginConfig;
 }
 
-/**
- * Load the plugins a space declares, each with its validated config.
- *
- * Built-in plugins are always included (with config from the map if declared, else {}).
- * External plugins are loaded from the map and come first, in declaration order.
- * Resolution order for external plugins: config-adjacent → npm.
- */
+/** The plugins a space uses, each with its validated config. Parse and templateSync try them in this order. */
 export async function loadPlugins(
   pluginMap: Record<string, Record<string, unknown>>,
   configDir: string,
 ): Promise<LoadedPlugin[]> {
-  return (await declaredPlugins(pluginMap, configDir)).map((plugin) => ({
+  return (await spacePlugins(pluginMap, configDir)).map((plugin) => ({
     plugin,
     pluginConfig: validatePluginConfig(plugin, pluginMap, configDir),
   }));
