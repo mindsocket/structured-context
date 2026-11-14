@@ -69,7 +69,7 @@ A config must define at least one of `spaces` or `includeSpacesFrom`. When using
 
 ## Plugins
 
-Use `plugins` to load parse plugins that read spaces from non-markdown sources. The built-in markdown plugin is always available without any declaration. Plugins are tried in order; the first to return a result wins. The `plugins` field is a map of plugin name to plugin config, and can be declared at the top level (applies to all spaces) or per-space (overrides the top level):
+`plugins` maps a plugin name to its config. Declare it at the top level for every space, or on a space to override the top level:
 
 ```json
 {
@@ -83,22 +83,20 @@ Use `plugins` to load parse plugins that read spaces from non-markdown sources. 
     }
   ],
   "plugins": {
-    "sctx-confluence": { "baseUrl": "https://example.atlassian.net" }
+    "sctx-example": { "baseUrl": "https://example.com" }
   }
 }
 ```
 
-All plugin names must start with `sctx-` (the prefix is optional in config and normalised on load). The special name `markdown` refers to the built-in markdown plugin. A plugin named in `plugins` is resolved in order: the root's plugins folder (`.sctx/plugins/{name}`, see [Resources folder](#resources-folder)), then npm. Each plugin must export a `configSchema` JSON Schema; config is validated against it on load. Fields annotated `format: 'path'` in a plugin's `configSchema` are resolved relative to the config root.
+Plugin names start with `sctx-`, which config may leave out. `markdown` is the built-in markdown plugin. A named plugin is found in the root's plugins folder (`.sctx/plugins/<name>`), else as an installed package. Its config is checked against the plugin's schema, and relative paths in it resolve from the config root.
 
-A plugin comes from one of three places, and where it comes from decides when it is used:
+Where a plugin comes from decides when it is used:
 
 | Plugin | Parse and template sync | Render formats |
 |---|---|---|
 | Built-in | Every space | Every space |
 | In a plugins folder (`.sctx/plugins/sctx-*`) | Spaces that name it in `plugins` | Every space |
 | Installed package (`sctx-*`) | Spaces that name it in `plugins` | Spaces that name it in `plugins` |
-
-Plugins can also contribute schemas and partials via a `<pluginRoot>/schemas/` directory (or `"sctx": { "schemas": "..." }` in `package.json`). Other resources follow the same pattern. For example, map view definitions go in `<pluginRoot>/map-views/`, or the folder named by `"sctx": { "map-views": "..." }`. If a space specifies a plugin-prefixed schema (e.g. `"sctx-wardley-mapping/wardley_map.json"`), schemas are resolved statically without executing plugin code, and the plugin's code hooks are loaded when parsing or rendering.
 
 ## Model providers and semantic rules
 

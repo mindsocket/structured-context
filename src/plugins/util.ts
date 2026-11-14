@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import type { AnySchemaObject } from 'ajv';
@@ -127,109 +127,58 @@ export type StructuredContextPlugin = {
   render?: RenderHook;
 };
 
-/**
- * Synchronously locate the root directory of an external plugin.
- * Resolution order:
- * 1. The config root's plugins folder: <plugins>/{name} or <plugins>/sctx-{name}
- * 2. Node module: resolve from configDir using standard module resolution
- */
+function isDirectory(path: string): boolean {
+  return existsSync(path) && statSync(path).isDirectory();
+}
+
+/** A plugin's root directory: in the config root's plugins folder, else by module resolution from configDir. */
 export function resolvePluginDir(pluginName: string, configDir: string): string | undefined {
-  const normalized = normalizePluginName(pluginName);
-  const short = shortenPluginName(pluginName);
+  const candidates = [normalizePluginName(pluginName), shortenPluginName(pluginName)];
 
   const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
-  for (const candidate of pluginsDir ? [normalized, short] : []) {
-    const localDir = resolve(pluginsDir!, candidate);
-    if (existsSync(localDir)) {
-      try {
-        if (statSync(localDir).isDirectory()) {
-          return localDir;
-        }
-      } catch {}
-    }
-  }
+  const local = pluginsDir && candidates.map((c) => resolve(pluginsDir, c)).find(isDirectory);
+  if (local) return local;
 
-  // Node module resolution from configDir
-  for (const candidate of [normalized, short]) {
+  const req = createRequire(join(configDir, 'package.json'));
+  for (const candidate of candidates) {
     try {
-      const req = createRequire(join(configDir, 'package.json'));
-      const pkgPath = req.resolve(`${candidate}/package.json`);
-      return dirname(pkgPath);
+      return dirname(req.resolve(`${candidate}/package.json`));
     } catch {
-      const nmCandidate = resolve(configDir, 'node_modules', candidate);
-      if (existsSync(nmCandidate)) {
-        try {
-          if (statSync(nmCandidate).isDirectory()) {
-            return nmCandidate;
-          }
-        } catch {}
-      }
+      // Not resolvable as a package; a package without a package.json export may still sit in node_modules.
+      const installed = resolve(configDir, 'node_modules', candidate);
+      if (isDirectory(installed)) return installed;
     }
   }
-
   return undefined;
 }
 
-/** A plugin's folder for one kind of resource: `"sctx": { "<kind>": "…" }` in its package.json, else `<pluginDir>/<kind>`. */
-export function pluginResourceDir(pluginDir: string, kind: string): string | undefined {
-  const isDir = (path: string) => existsSync(path) && statSync(path).isDirectory();
+/** A plugin's folder for one kind of resource: the folder its package.json names under `sctx`, else `<pluginDir>/<kind>`. */
+function pluginResourceDir(pluginDir: string, kind: string): string | undefined {
   const pkgJsonPath = join(pluginDir, 'package.json');
-  if (existsSync(pkgJsonPath)) {
-    try {
-      const declared = JSON.parse(readFileSync(pkgJsonPath, 'utf8')).sctx?.[kind];
-      if (typeof declared === 'string' && isDir(resolve(pluginDir, declared))) return resolve(pluginDir, declared);
-    } catch {}
-  }
-  const conventionDir = join(pluginDir, kind);
-  return isDir(conventionDir) ? conventionDir : undefined;
+  const named = existsSync(pkgJsonPath) ? JSON.parse(readFileSync(pkgJsonPath, 'utf8')).sctx?.[kind] : undefined;
+  const dir = typeof named === 'string' ? resolve(pluginDir, named) : join(pluginDir, kind);
+  return isDirectory(dir) ? dir : undefined;
 }
 
-/**
- * Synchronously locate the schemas directory for a plugin: its schemas resource folder
- * (see {@link pluginResourceDir}), else the plugins folder's `schemas/` (for test fixtures).
- */
+/** A plugin's schemas folder, else the plugins folder's `schemas/` (used by test fixtures). */
 export function resolvePluginSchemasDir(pluginName: string, configDir: string): string | undefined {
   const dir = resolvePluginDir(pluginName, configDir);
-  const schemasDir = dir && pluginResourceDir(dir, SCHEMAS_RESOURCE);
-  if (schemasDir) return schemasDir;
-
-  // 3. Check the plugins folder's schemas as fallback (e.g. test fixtures)
+  const own = dir && pluginResourceDir(dir, SCHEMAS_RESOURCE);
+  if (own) return own;
   const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
-  const fallbackSchemas = pluginsDir && resolve(pluginsDir, 'schemas');
-  if (fallbackSchemas && existsSync(fallbackSchemas)) {
-    try {
-      if (statSync(fallbackSchemas).isDirectory()) {
-        return fallbackSchemas;
-      }
-    } catch {}
-  }
-
-  return undefined;
+  const shared = pluginsDir && resolve(pluginsDir, SCHEMAS_RESOURCE);
+  return shared && isDirectory(shared) ? shared : undefined;
 }
 
-/**
- * The plugins a space names, in order: the plugin prefixing its schema (e.g. `sctx-wardley-mapping/wardley_map.json`),
- * then those configured on the space, then those configured globally. Built-ins are left out.
- */
-export function spacePluginNames(space: SpaceConfig | undefined, config: Config): string[] {
-  const names: string[] = [];
-  const rawSchema = space?.schema ?? config.schema;
-  if (rawSchema && !isAbsolute(rawSchema) && !rawSchema.startsWith('.')) {
-    const normalized = rawSchema.replace(/\\/g, '/');
-    const slashIdx = normalized.indexOf('/');
-    if (slashIdx !== -1) names.push(normalized.slice(0, slashIdx));
-  }
-  names.push(...Object.keys(space?.plugins ?? {}));
-  names.push(...Object.keys((config as { plugins?: Record<string, unknown> }).plugins ?? {}));
-  // Built-in plugins ship no resources. Resolving one as a package can query the npm registry or find an unrelated
-  // package of the same short name (such as `markdown`).
-  const seen = new Set<string>();
-  return names.filter((name) => {
-    const short = shortenPluginName(name);
-    if (isBuiltinPluginName(name) || seen.has(short)) return false;
-    seen.add(short);
-    return true;
-  });
+/** The non-built-in plugins a space names, by schema prefix or in `plugins`. */
+function spacePluginNames(space: SpaceConfig | undefined, config: Config): string[] {
+  const schema = (space?.schema ?? config.schema)?.replace(/\\/g, '/');
+  const schemaPlugin =
+    schema && !isAbsolute(schema) && !schema.startsWith('.') && schema.includes('/') ? [schema.split('/')[0]!] : [];
+  const topLevel = (config as { plugins?: Record<string, unknown> }).plugins ?? {};
+  const names = [...schemaPlugin, ...Object.keys(space?.plugins ?? {}), ...Object.keys(topLevel)];
+  // Resolving a built-in as a package can query the npm registry or find an unrelated package such as `markdown`.
+  return [...new Set(names.map(shortenPluginName))].filter((name) => !isBuiltinPluginName(name));
 }
 
 /** Synchronously collect all plugin schema sources available to a space. */
@@ -238,8 +187,30 @@ export function resolveSpacePluginSchemas(
   config: Config,
   configDir: string,
 ): PluginSchemaSource[] {
-  return spacePluginNames(space, config).flatMap((name) => {
-    const schemasDir = resolvePluginSchemasDir(name, configDir);
-    return schemasDir ? [{ pluginName: shortenPluginName(name), schemasDir }] : [];
+  return spacePluginNames(space, config).flatMap((pluginName) => {
+    const schemasDir = resolvePluginSchemasDir(pluginName, configDir);
+    return schemasDir ? [{ pluginName, schemasDir }] : [];
   });
+}
+
+/** Every folder of one kind of resource for a space: its config root's first, then its plugins'. */
+export function resourceDirs(context: SpaceContext, kind: string): Array<{ dir: string; plugin?: string }> {
+  const { configDir } = context;
+  const pluginsDir = resourceDir(configDir, CONFIG_PLUGINS_DIR);
+  const folderPlugins = pluginsDir
+    ? readdirSync(pluginsDir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && e.name.startsWith(PLUGIN_PREFIX))
+        .map((e) => shortenPluginName(e.name))
+    : [];
+  const plugins = [...new Set([...folderPlugins, ...spacePluginNames(context.space, context.config)])];
+
+  const own = resourceDir(configDir, kind);
+  return [
+    ...(own ? [{ dir: own }] : []),
+    ...plugins.flatMap((plugin) => {
+      const pluginDir = resolvePluginDir(plugin, configDir);
+      const dir = pluginDir && pluginResourceDir(pluginDir, kind);
+      return dir ? [{ dir, plugin }] : [];
+    }),
+  ];
 }

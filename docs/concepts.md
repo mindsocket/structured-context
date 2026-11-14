@@ -472,16 +472,7 @@ Status is required on all node types at _validation_ time. Note however that cur
 
 ## Plugin
 
-A **plugin** is a module that extends the tool's capabilities.
-
-Plugins that support parsing produce raw `SpaceNode[]` results given a suitable configuration. Graph edge resolution (`resolveGraphEdges`) is called by the core afterwards.
-
-The `plugins` field in config is a **map** from plugin name to plugin config object. All plugin names must start with `sctx-`, but the prefix is optional in config and normalised on load. Built-in plugins take precedence and all are loaded by default. External plugin names specified in config are then resolved in order:
-
-1. The config root's plugins folder: `.sctx/plugins/{sctx-name}`
-2. npm: a package matching `sctx-*`
-
-Each plugin declares a `configSchema` JSON Schema; the loader validates the config block against it before invoking the plugin. Config fields annotated with `format: 'path'` are resolved relative to the config root by the loader.
+A **plugin** is a module that reads spaces from a source (parse), syncs templates, or renders a space in a format. The `plugins` config names the plugins a space uses and holds each one's config. See [Plugins](config.md#plugins).
 
 ### Config root
 
@@ -489,7 +480,7 @@ The **config root** is the folder a config file's relative paths resolve from: t
 
 ### Dispatch contract
 
-Plugins are called in order (external plugins first, then built-ins). For each operation:
+For parse and template sync, plugins are called in order: those named in config first, then the built-ins.
 - A plugin that does not implement the hook is skipped.
 - A plugin that implements the hook returns `T | null`: non-null means "I handled it"; null means "not me, try the next plugin."
 - The first non-null result wins. If no plugin handles the operation, the command throws an error.
