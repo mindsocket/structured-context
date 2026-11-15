@@ -85,6 +85,7 @@
     "mdast-util-to-string": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
+    "sctx-map-views": "^0.6.2",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0"
   }

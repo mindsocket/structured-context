@@ -5,6 +5,7 @@ import { normalizePluginName } from './util';
 export const BUILTIN_PLUGIN_NAMES = {
   markdown: `${PLUGIN_PREFIX}markdown`,
   mermaid: `${PLUGIN_PREFIX}mermaid`,
+  mapViews: `${PLUGIN_PREFIX}map-views`,
   miro: `${PLUGIN_PREFIX}miro`,
 } as const;
 

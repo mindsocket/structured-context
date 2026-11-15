@@ -17,6 +17,7 @@
         "mdast-util-to-string": "^4.0.0",
         "remark-gfm": "^4.0.1",
         "remark-parse": "^11.0.0",
+        "sctx-map-views": "^0.6.2",
         "unified": "^11.0.5",
         "unist-util-visit": "^5.1.0",
       },
@@ -510,6 +511,8 @@
     "safer-buffer": ["safer-buffer@2.1.2", "", {}, "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg=="],
 
     "scheduler": ["scheduler@0.28.0", "", {}, "sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw=="],
+
+    "sctx-map-views": ["sctx-map-views@0.6.2", "", {}, "sha512-E7ZeoEjbvIXaabD6oc5ukZ767OUB/qfK+PV4DS6vm93+G6pg0v9RC7QLBdzS0sW82zZ86T+GJDLM3pdm9eUO2w=="],
 
     "section-matter": ["section-matter@1.0.0", "", { "dependencies": { "extend-shallow": "^2.0.1", "kind-of": "^6.0.0" } }, "sha512-vfD3pmTzGpufjScBh50YHKzEu2lxBWhVEHsNGoEXmCmn2hKGfeNLYMzCJpe8cD7gqX7TJluOVpBkAequ6dgMmA=="],
 
