@@ -9,10 +9,11 @@ describe('loadPlugins', () => {
   describe('built-in plugins', () => {
     it('always includes built-in plugins when no map is given', async () => {
       const loaded = await loadPlugins({}, CONFIG_DIR);
-      expect(loaded).toHaveLength(3);
+      expect(loaded).toHaveLength(4);
       expect(loaded.map((l) => l.plugin.name)).toContain('sctx-markdown');
       expect(loaded.map((l) => l.plugin.name)).toContain('sctx-mermaid');
       expect(loaded.map((l) => l.plugin.name)).toContain('sctx-miro');
+      expect(loaded.map((l) => l.plugin.name)).toContain('sctx-map-views');
       expect(loaded.find((l) => l.plugin.name === 'sctx-markdown')!.pluginConfig).toEqual({});
       expect(loaded.find((l) => l.plugin.name === 'sctx-mermaid')!.pluginConfig).toEqual({});
       expect(loaded.find((l) => l.plugin.name === 'sctx-miro')!.pluginConfig).toEqual({});
