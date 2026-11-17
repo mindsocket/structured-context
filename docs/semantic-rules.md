@@ -151,19 +151,22 @@ A global rule cannot have a `semantic` part, so it has no scope.
 
 A **rule template** is a rule with `"abstract": true`, which never runs. A rule that names it in `extends` takes all of its fields, then sets its own. Top-level fields replace the template's. Fields inside `semantic` replace the template's one at a time, so a rule can add a `criterion` and keep the template's rubric, scope and verdicts.
 
-The bundled partial `sctx://core/_semantic_patterns` holds four templates. To use one, add the partial to `$metadata.imports`:
+The bundled partial `sctx://core/_semantic_patterns` holds seven templates. To use one, add the partial to `$metadata.imports`:
 
 | Template | Checks | Attach the rule to | Scope | Bundled rules that extend it |
 |---|---|---|---|---|
-| `children-distinct` | The children are distinct | The parent, with a `when` that needs two or more children | `children` | `opportunities-distinct`, `goals-distinct` |
-| `children-cover-parent` | The children cover the parent | The parent, with the same `when` | `children` | `goals-cover-parent` |
-| `refines-parent` | The node is one part, cause, case or means of its parent | The child | `parent` | `opportunity-refines-parent`, `goal-advances-parent` |
-| `serves-ancestors` | The node serves the intent of the levels above | The child | `ancestors` | `solution-serves-outcome`, `opportunity-serves-ancestors` |
+| `ladders-up` | The node moves its parent forward, as a part of it or by driving it | The child | `parent` | `goal-does-not-ladder-up`, `opportunity-does-not-ladder-up` |
+| `overlapping-children` | No child counts towards another | The parent, with a `when` that needs two or more children | `children` | `overlapping-goals`, `overlapping-opportunities` |
+| `dependent-children` | The children are separate results, not steps in a sequence | The parent, with the same `when` | `children` | `dependent-goals` |
+| `children-distinct` | The children are distinct | The parent, with the same `when` | `children` | `opportunities-distinct` |
+| `children-cover-parent` | The children cover the parent | The parent, with the same `when` | `children` | None |
+| `refines-parent` | The node is one part, cause, case or means of its parent | The child | `parent` | `opportunity-refines-parent` |
+| `serves-ancestors` | The node serves the intent of the levels above | The child | `ancestors` | `solution-serves-outcome` |
 
 ```json
-{ "id": "goals-distinct", "extends": "children-distinct", "description": "Sibling goals are distinct",
+{ "id": "overlapping-goals", "extends": "overlapping-children", "description": "A mission's or goal's child goals are separate results",
   "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'goal']) >= 2",
-  "semantic": { "criterion": "Judge the child goals. Each should be a different result." } }
+  "semantic": { "criterion": "Judge the child goals. A goal overlaps another when achieving it achieves part of the other." } }
 ```
 
 A rule must extend a template, not another rule, and a template cannot extend a template. The rule is checked as a full rule once it takes the template's fields.

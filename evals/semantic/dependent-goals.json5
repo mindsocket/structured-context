@@ -1,0 +1,25 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "dependent-goals": {
+      // Each result can be pursued on its own.
+      "Help remote teams feel connected.md": "independent",
+      // Each can start today.
+      "Help small cafés run a profitable kitchen.md": "independent",
+      // Either store can go first.
+      "Ship version 2 of the app.md": "independent",
+      // They share a budget, but either can be done first.
+      "Make the house cheaper to run.md": "independent",
+      // Episodes have to be recorded before they can be published.
+      "Launch the podcast.md": "dependent",
+      // The old tiles have to come off before new ones go down.
+      "Renovate the bathroom.md": "dependent",
+      // A hidden sequence: there is no kitchen to fit out until there is a site.
+      "Open the second café.md": "dependent",
+      // One helps the other, but either can go ahead alone.
+      "Get fit for the ski season.md": "independent",
+      // Each recipe has to be written before it can be cooked and photographed.
+      "Publish the family cookbook.md": "dependent",
+    },
+  },
+}

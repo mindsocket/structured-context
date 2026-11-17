@@ -1,0 +1,27 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "overlapping-goals": {
+      // The June target counts towards the 5,000.
+      "Grow the newsletter.md": "overlapping",
+      // The first two are the same result in different words.
+      "Help remote teams feel connected.md": "overlapping",
+      // Three different results.
+      "Help small cafés run a profitable kitchen.md": "separate",
+      // Café revenue is part of wholesale revenue.
+      "Grow the bakery's revenue.md": "overlapping",
+      // Contrast with the bakery: two different revenue streams.
+      "Grow the market stall's revenue.md": "separate",
+      // Plumber clients count towards the 50 tradie clients.
+      "Be the go-to accountant for tradespeople.md": "overlapping",
+      // Two platforms, two results.
+      "Ship version 2 of the app.md": "separate",
+      // They share a budget, but neither counts towards the other.
+      "Make the house cheaper to run.md": "separate",
+      // Recording is not part of publishing, but it must come first: a dependency, not an overlap.
+      "Launch the podcast.md": "separate",
+      // The last two are the same result.
+      "Learn Japanese for the trip.md": "overlapping",
+    },
+  },
+}

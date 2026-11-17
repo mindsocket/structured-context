@@ -1,0 +1,23 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "overlapping-opportunities": {
+      // Four different needs.
+      "Cut shop setup time to one day.md": "separate",
+      // Two different needs.
+      "Grow weekly active shops.md": "separate",
+      // The last child restates the parent, so it contains its siblings.
+      "Shops don't have product data ready to import.md": "overlapping",
+      // The first two are nearly the same need.
+      "Get freelancers paid faster.md": "overlapping",
+      // The first two are the same need.
+      "Fewer support calls about signing in.md": "overlapping",
+      // Three different needs.
+      "Increase repeat bookings.md": "separate",
+      // Subscription spending is part of monthly spending.
+      "More members track spending weekly.md": "overlapping",
+      // Under an opportunity: three different causes of the parent need.
+      "Planning family meals takes too long.md": "separate",
+    },
+  },
+}

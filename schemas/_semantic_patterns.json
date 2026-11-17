@@ -57,6 +57,67 @@
         }
       },
       {
+        "id": "overlapping-children",
+        "abstract": true,
+        "category": "coherence",
+        "description": "A node's children are separate: none counts towards another",
+        "semantic": {
+          "rubric": "Judge the item's children as a set. If the criterion names a kind of child, judge only those and ignore the rest. Children overlap when two state the same thing, or when one counts towards or contains another. Children that share a topic, a team or a budget are separate if neither counts towards the other. Whether one child has to wait for another is a different question: ignore it.",
+          "scope": ["children"],
+          "includeContent": "fullScope",
+          "verdicts": {
+            "separate": "No child counts towards another",
+            "overlapping": {
+              "description": "Two children state the same thing, or one counts towards or contains another",
+              "guidance": "Merge them, sharpen the boundary between them, or nest the narrower one under the broader one."
+            }
+          },
+          "severity": { "overlapping": "warning" }
+        }
+      },
+      {
+        "id": "dependent-children",
+        "abstract": true,
+        "category": "coherence",
+        "description": "A node's children are separate results, not steps in a sequence",
+        "semantic": {
+          "rubric": "Judge the item's children as a set. If the criterion names a kind of child, judge only those and ignore the rest. Children are dependent when one cannot start, or cannot succeed, until another is finished, so they are steps in a sequence rather than separate results. The order may be stated, or plain from the bodies. Children that help each other, or share a team or a budget, are independent when each could go ahead on its own. Overlap between children is a different question: ignore it.",
+          "scope": ["children"],
+          "includeContent": "fullScope",
+          "verdicts": {
+            "independent": "Each child could go ahead on its own",
+            "dependent": {
+              "description": "One child has to be finished before another can start or succeed",
+              "guidance": "Keep separate results as the children, and move the steps into a plan under the result they deliver."
+            }
+          },
+          "severity": { "dependent": "warning" }
+        }
+      },
+      {
+        "id": "ladders-up",
+        "abstract": true,
+        "category": "coherence",
+        "description": "A node moves its parent forward, as a part of it or by driving it",
+        "semantic": {
+          "rubric": "Judge only how the item relates to its parent. The item ladders up when achieving or addressing it would move the parent forward, either because it is a part of the parent or because it drives the parent. The criterion says what moving forward means for these types. Something worthwhile in the same area that would not move the parent does not ladder up.",
+          "scope": ["parent"],
+          "includeContent": "fullScope",
+          "verdicts": {
+            "ladders-up": "Achieving it would move the parent forward, as a part of it or by driving it",
+            "loosely-related": {
+              "description": "Related to the parent, but the link is indirect or unclear, or it restates the parent in other words",
+              "guidance": "Say how it moves the parent, or narrow it to one part or driver of the parent."
+            },
+            "does-not-ladder-up": {
+              "description": "Achieving it would not move the parent forward",
+              "guidance": "Move it under the node it does move, or drop it."
+            }
+          },
+          "severity": { "loosely-related": "info", "does-not-ladder-up": "warning" }
+        }
+      },
+      {
         "id": "serves-ancestors",
         "abstract": true,
         "category": "coherence",
