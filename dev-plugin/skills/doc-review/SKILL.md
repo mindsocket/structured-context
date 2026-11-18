@@ -14,15 +14,16 @@ sometimes the right wording.
 
 ## Checks
 
-For every changed passage, ask:
+Read each changed paragraph or section in full, not only its changed lines, and ask:
 
 1. **Would someone new to the project understand it?** Flag decision history and internal jargon ("never merged by
    location", "A′", phase names). Say what does happen.
 2. **Does it earn its place?** Flag sentences that restate the previous one, state the obvious, spell out an
    implication the reader can work out, or describe what is not the case without a likely wrong assumption to
    correct. Flag error codes and flags the output already shows.
-3. **Is it in the right place?** Flag duplicated explanations (owned once, linked elsewhere). A README section is
-   a sentence or two pointing to docs/. Detail used rarely belongs in a skill's `references/` or a linked doc.
+3. **Is it in the right place?** Read the code and docs the passage describes, then flag duplicated explanations
+   (owned once, linked elsewhere). A README section is a sentence or two pointing to docs/. Detail used rarely
+   belongs in a skill's `references/` or a linked doc.
 4. **Is a recommendation labelled as one?** "It is recommended to..." rather than a rule stated as fact.
 5. **Follows the doc's convention:** a new entry matches its neighbours in size and shape. Do not describe call
    signatures, options, fields or types that the code already defines, since they go stale; say what it is for.
@@ -46,7 +47,8 @@ Code comments and messages:
 
 ## Output
 
-List findings as `file:line, check number, proposed rewrite`, then apply them. Run the repo's lint and any check
-its definition of done names for the area changed. Finish by checking the definition of done (in `AGENTS.md` or
-the doc it links) for files the change affects but does not touch, then run
+Go through the checks in order. List each finding as `file:line, check number, proposed rewrite`, and write "none"
+for a check with no findings. Then apply them. Run the repo's lint and any check its definition of done names for
+the area changed. Finish by checking the definition of done (in `AGENTS.md` or the doc it links) for files the
+change affects but does not touch, then run
 `${CLAUDE_PLUGIN_ROOT}/scripts/review-check.sh --mark prose`.
