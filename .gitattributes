@@ -1,3 +1,5 @@
 # Generated files: collapsed in GitHub diffs and left out of the sctx-dev review check.
 plugin/hooks/projection.js linguist-generated
 plugin/types/index.d.ts linguist-generated
+schemas/generated/** linguist-generated
+bun.lock linguist-generated
