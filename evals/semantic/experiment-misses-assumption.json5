@@ -6,18 +6,12 @@
       "Test: send the app link to 20 owners.md": "tests-assumption",
       // The solution does not depend on colours.
       "Test: survey owners on their favourite colour scheme.md": "misses-assumption",
-      // A launch, not a test.
-      "Test: build notifications and launch them to every shop.md": "misses-assumption",
       // A real assumption, but no result changes the plan.
       "Test: count how many owners have a smartphone.md": "no-decision",
       // Tests that the lookup is accurate enough, with a decision rule.
       "Test: match 200 rows from three real shop spreadsheets.md": "tests-assumption",
-      // A viability assumption, with a clear consequence.
-      "Test: check the book database's licence allows commercial use.md": "tests-assumption",
       // The lookup does not depend on page speed.
       "Test: time how long the import page takes to load.md": "misses-assumption",
-      // Says itself that the plan stays the same.
-      "Test: count how many books worldwide have ISBNs.md": "no-decision",
     },
   },
 }

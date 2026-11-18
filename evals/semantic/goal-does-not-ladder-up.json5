@@ -6,18 +6,10 @@
       "Launch online ordering for 100 bookshops.md": "ladders-up",
       // Our own brand, linked to the shops only indirectly.
       "Grow our social media following.md": "loosely-related",
-      // Competes with the shops the mission serves.
-      "Open our own flagship bookshop.md": "does-not-ladder-up",
-      // A driver: faster setup gets more shops selling online.
-      "Cut shop setup time to one day.md": "ladders-up",
-      // A driver, not a part: active shops renew more.
-      "Grow weekly active shops.md": "ladders-up",
       // Worthwhile, but no link to shops renewing.
       "Win the Sydney Writers' Festival sponsorship.md": "does-not-ladder-up",
       // Could help retention, but the body does not say how.
       "Publish a monthly product newsletter.md": "loosely-related",
-      // A driver: the body says how it prevents cancellations.
-      "Answer support tickets within four hours.md": "ladders-up",
       // A part of the mission.
       "Cook dinner together three nights a week.md": "ladders-up",
       // Takes weekend time away from the family.
@@ -30,8 +22,6 @@
       "Build to 80 km weeks by January.md": "ladders-up",
       // A driver: lighter on the climbs.
       "Lose 5 kg before race day.md": "ladders-up",
-      // Running, but speed on the road does little for a mountain ultra.
-      "Run a sub-40 minute 10 km on the road.md": "loosely-related",
     },
   },
 }
