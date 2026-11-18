@@ -18,7 +18,7 @@
       "Ship version 2 of the app.md": "separate",
       // They share a budget, but neither counts towards the other.
       "Make the house cheaper to run.md": "separate",
-      // Recording is not part of publishing, but it must come first: a dependency, not an overlap.
+      // Recording is not part of editing and releasing, but it must come first: a dependency, not an overlap.
       "Launch the podcast.md": "separate",
       // The last two are the same result.
       "Learn Japanese for the trip.md": "overlapping",

@@ -10,7 +10,7 @@
       "Ship version 2 of the app.md": "independent",
       // They share a budget, but either can be done first.
       "Make the house cheaper to run.md": "independent",
-      // Episodes have to be recorded before they can be published.
+      // Interviews have to be recorded before they can be edited and released.
       "Launch the podcast.md": "dependent",
       // The old tiles have to come off before new ones go down.
       "Renovate the bathroom.md": "dependent",

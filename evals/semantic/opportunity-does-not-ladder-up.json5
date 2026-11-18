@@ -8,7 +8,7 @@
       "Owners can't point their domain at our servers.md": "ladders-up",
       // A real need, but it does not change setup time.
       "Shops want to sell gift cards.md": "does-not-ladder-up",
-      // Same product, but it happens after setup.
+      // Touches setup, but costs an hour against a nine-day setup: an indirect link.
       "Owners find the dashboard cluttered.md": "loosely-related",
       // Under a goal: fixing it gets owners using the platform weekly.
       "Owners forget to check new online orders.md": "ladders-up",
