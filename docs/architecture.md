@@ -113,6 +113,10 @@ The map pane (`plugin/hooks/map-pane.tsx`, `/sctx-map`) draws a space's hierarch
 
 Git hooks (`lefthook.yml`, `scripts/sync-plugin-version.ts`) manage the version in `plugin/.claude-plugin/plugin.json`. Pre-commit bumps the patch version for any commit touching `plugin/`, so the plugin version runs ahead of `package.json` between releases. It also raises major.minor to match `package.json` after a release. Pre-push fails if a commit since the last tag changed `plugin/` without a version bump.
 
+### Contributor plugin
+
+`dev-plugin/` is `sctx-dev`, a second plugin in the same marketplace. It is for contributors to the structured-context repositories, not for users. It has the `doc-review` and `test-review` skills and `dev-plugin/scripts/review-check.sh`, which exits 2 while a branch adds prose (docs and code comments) or tests that no review has marked. Its Stop hook runs the check in the session's repo, or in each checkout directly under the folder the session started in. A repository opts in by enabling the plugin in its `.claude/settings.json` and calling the script from pre-push. The check skips paths that `.gitattributes` marks `linguist-generated`. The plugin has no version, so installs follow the marketplace's commits.
+
 ---
 
 ## Field Remapping
