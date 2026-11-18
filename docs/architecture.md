@@ -115,7 +115,7 @@ Git hooks (`lefthook.yml`, `scripts/sync-plugin-version.ts`) manage the version 
 
 ### Contributor plugin
 
-`dev-plugin/` is `sctx-dev`, a second plugin in the same marketplace. It is for contributors to the structured-context repositories, not for users. It has the `doc-review` and `test-review` skills and `dev-plugin/scripts/review-check.sh`, which exits 2 while a branch adds prose (docs and code comments) or tests that no review has marked. Its Stop hook runs the check in the session's repo, or in each checkout directly under the folder the session started in. A repository opts in by enabling the plugin in its `.claude/settings.json` and calling the script from pre-push. The check skips paths that `.gitattributes` marks `linguist-generated`. The plugin has no version, so installs follow the marketplace's commits.
+`dev-plugin/` is `sctx-dev`, a second plugin in the same marketplace. It is for contributors to the structured-context repositories, not for users. It has the `doc-review` and `test-review` skills and `dev-plugin/scripts/review-check.sh`, which exits 2 while a branch adds prose (docs and code comments) or tests that no review has marked. Its Stop and SubagentStop hooks run the check in the repo holding the hook's working directory, which for a subagent with its own worktree is that worktree. Where that directory is a folder above several checkouts, each checkout directly under it is checked. A repository opts in by enabling the plugin in its `.claude/settings.json` and calling the script from pre-push. The check skips paths that `.gitattributes` marks `linguist-generated`. The plugin has no version, so installs follow the marketplace's commits.
 
 ---
 

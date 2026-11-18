@@ -75,4 +75,4 @@ Run `bun run test` during development. Run the others with `bun run` when a chan
 
 ## Hooks
 Address issues related to change you made if a Stop hook reports them.
-The Stop hook and pre-push block while the branch adds docs, code comments or tests that the `doc-review` or `test-review` skill has not seen. Both come from the contributor plugin, `sctx-dev` ([docs/architecture.md](docs/architecture.md#contributor-plugin)).
+The Stop and SubagentStop hooks and pre-push block while the branch adds docs, code comments or tests that the `doc-review` or `test-review` skill has not seen. Both come from the contributor plugin, `sctx-dev` ([docs/architecture.md](docs/architecture.md#contributor-plugin)).
