@@ -14,10 +14,10 @@ import { join, resolve } from 'node:path';
 const ROOT = resolve(import.meta.dir, '../..');
 
 /** Docs that describe the current tree: agent instructions, README, top-level docs, and plugin skills. */
-const SCANNED = ['README.md', 'AGENTS.md', 'docs', 'plugin'];
+const SCANNED = ['README.md', 'AGENTS.md', 'docs', 'plugin', 'dev-plugin'];
 
 /** Repo-relative paths appear in backticks; these are the roots worth checking. */
-const PATH_PATTERN = /`\/?((?:src|tests|schemas|plugin|docs|scripts|hook-test|smoke)\/[^`\s]*)`/g;
+const PATH_PATTERN = /`\/?((?:src|tests|schemas|plugin|dev-plugin|docs|scripts|hook-test|smoke)\/[^`\s]*)`/g;
 
 /** Illustrative paths, not real ones: placeholders, globs, and naming-convention examples. */
 const PLACEHOLDER = /YYYY|<[^>]+>|\[[^\]]+\]|\*|PascalCase|kebab-case|\bNN\b|\.\.\./;

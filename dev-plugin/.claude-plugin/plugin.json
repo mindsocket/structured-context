@@ -1,0 +1,7 @@
+{
+  "name": "sctx-dev",
+  "description": "For contributors to structured-context repositories: doc-review and test-review skills, and a Stop hook that blocks while a branch adds prose or tests no review has seen.",
+  "homepage": "https://github.com/mindsocket/structured-context",
+  "repository": "https://github.com/mindsocket/structured-context",
+  "license": "MIT"
+}

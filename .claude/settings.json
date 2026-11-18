@@ -1,4 +1,12 @@
 {
+  "extraKnownMarketplaces": {
+    "structured-context": {
+      "source": { "source": "github", "repo": "mindsocket/structured-context" }
+    }
+  },
+  "enabledPlugins": {
+    "sctx-dev@structured-context": true
+  },
   "hooks": {
     "Stop": [
       {
@@ -6,10 +14,6 @@
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/lint-and-test.sh"
-          },
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/prose-check.sh"
           }
         ]
       }
