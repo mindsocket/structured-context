@@ -4,14 +4,6 @@
     "solution-does-not-address-opportunity": {
       // The owner learns of each order straight away.
       "Send a push notification to the owner's phone for each new order.md": "addresses",
-      // Reduces the delay, though not to zero.
-      "Email a 9 am summary of unseen orders.md": "addresses",
-      // Same screen, but nothing tells the owner to open it.
-      "Redesign the order screen with larger text.md": "tangential",
-      // A different need.
-      "Add gift card support.md": "does-not-address",
-      // The missing ISBNs get filled in.
-      "Look up ISBNs from title and author during import.md": "addresses",
       // Same topic, but shops still have to type every ISBN.
       "Write a help article on what an ISBN is.md": "tangential",
       // Unrelated to ISBNs.

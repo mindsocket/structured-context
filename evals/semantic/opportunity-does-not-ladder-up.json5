@@ -4,20 +4,12 @@
     "opportunity-does-not-ladder-up": {
       // Under a goal: fixing it moves setup time directly.
       "Shops don't have product data ready to import.md": "ladders-up",
-      // Under a goal: a named cause of slow setup.
-      "Owners can't point their domain at our servers.md": "ladders-up",
       // A real need, but it does not change setup time.
       "Shops want to sell gift cards.md": "does-not-ladder-up",
-      // Touches setup, but costs an hour against a nine-day setup: an indirect link.
-      "Owners find the dashboard cluttered.md": "loosely-related",
       // Under a goal: fixing it gets owners using the platform weekly.
       "Owners forget to check new online orders.md": "ladders-up",
-      // Offline, so it does not move weekly use of the platform.
-      "Shops want a printed catalogue to hand out.md": "does-not-ladder-up",
       // Under an opportunity: a cause of the parent need.
       "Our importer can't read common point-of-sale exports.md": "ladders-up",
-      // Under an opportunity: a part of the parent need.
-      "Shops' spreadsheets have no ISBNs.md": "ladders-up",
       // Under an opportunity: a different need.
       "Owners don't know how to price shipping.md": "does-not-ladder-up",
       // Restates the parent need in other words.
