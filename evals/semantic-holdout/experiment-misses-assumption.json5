@@ -1,0 +1,13 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "experiment-misses-assumption": {
+      // A launch, not a test.
+      "Test: build notifications and launch them to every shop.md": "misses-assumption",
+      // A viability assumption, with a clear consequence.
+      "Test: check the book database's licence allows commercial use.md": "tests-assumption",
+      // Says itself that the plan stays the same.
+      "Test: count how many books worldwide have ISBNs.md": "no-decision",
+    },
+  },
+}

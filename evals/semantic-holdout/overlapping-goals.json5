@@ -1,0 +1,15 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "overlapping-goals": {
+      // Three different results.
+      "Help small cafés run a profitable kitchen.md": "separate",
+      // Café revenue is part of wholesale revenue.
+      "Grow the bakery's revenue.md": "overlapping",
+      // Two platforms, two results.
+      "Ship version 2 of the app.md": "separate",
+      // The last two are the same result.
+      "Learn Japanese for the trip.md": "overlapping",
+    },
+  },
+}

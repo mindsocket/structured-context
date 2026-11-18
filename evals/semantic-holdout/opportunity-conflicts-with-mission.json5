@@ -1,0 +1,15 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "opportunity-conflicts-with-mission": {
+      // Grows revenue and brings readers into the shop.
+      "Shops want click-and-collect so readers come into the store.md": "consistent",
+      // Cuts the shops out of the sale.
+      "Publishers want to sell e-books to readers through our app.md": "conflicts",
+      // An optional fee with a clear price.
+      "Businesses want instant payouts and would pay for them.md": "consistent",
+      // Grows fees at the cost of fairness.
+      "Overdraft fees could rise without losing customers.md": "conflicts",
+    },
+  },
+}

@@ -1,0 +1,5 @@
+{
+  spaces: [
+    { name: 'strategy-pilot', path: 'fixtures/strategy-pilot.jsonl', schema: 'strategy_general.json' },
+  ],
+}

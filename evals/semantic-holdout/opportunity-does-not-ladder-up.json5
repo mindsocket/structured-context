@@ -1,0 +1,15 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "opportunity-does-not-ladder-up": {
+      // Under a goal: a named cause of slow setup.
+      "Owners can't point their domain at our servers.md": "ladders-up",
+      // Mostly after setup; the link to setup time is indirect.
+      "Owners find the dashboard cluttered.md": "loosely-related",
+      // Offline, so it does not move weekly use of the platform.
+      "Shops want a printed catalogue to hand out.md": "does-not-ladder-up",
+      // Under an opportunity: a part of the parent need.
+      "Shops' spreadsheets have no ISBNs.md": "ladders-up",
+    },
+  },
+}

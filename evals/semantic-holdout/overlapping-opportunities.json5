@@ -1,0 +1,11 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "overlapping-opportunities": {
+      // Four different needs.
+      "Cut shop setup time to one day.md": "separate",
+      // Subscription spending is part of monthly spending.
+      "More members track spending weekly.md": "overlapping",
+    },
+  },
+}

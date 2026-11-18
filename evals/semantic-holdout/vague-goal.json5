@@ -1,0 +1,15 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "vague-goal": {
+      // A number and a date.
+      "Reach 5,000 subscribers.md": "clear",
+      // A measured result.
+      "Answer support tickets within four hours.md": "clear",
+      // An activity with no end.
+      "Work on the podcast.md": "vague",
+      // No result someone could check.
+      "Get fit.md": "vague",
+    },
+  },
+}

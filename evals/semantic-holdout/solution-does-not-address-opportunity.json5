@@ -1,0 +1,15 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "solution-does-not-address-opportunity": {
+      // Reduces the delay, though not to zero.
+      "Email a 9 am summary of unseen orders.md": "addresses",
+      // Same screen, but nothing tells the owner to open it.
+      "Redesign the order screen with larger text.md": "tangential",
+      // A different need.
+      "Add gift card support.md": "does-not-address",
+      // The missing ISBNs get filled in.
+      "Look up ISBNs from title and author during import.md": "addresses",
+    },
+  },
+}
