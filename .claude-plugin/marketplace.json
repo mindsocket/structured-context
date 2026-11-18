@@ -12,8 +12,7 @@
     },
     {
       "name": "sctx-dev",
-      "source": "./dev-plugin",
-      "description": "For contributors to the structured-context repositories, not for users: review skills and a Stop hook that enforce each repo's documentation and test standards."
+      "source": "./dev-plugin"
     }
   ]
 }
