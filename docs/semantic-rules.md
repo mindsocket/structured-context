@@ -172,7 +172,7 @@ A rule must extend a template, not another rule, and a template cannot extend a 
 The bundled rules follow these conventions. We recommend them for your own rules.
 
 - **Name the problem.** A rule's id says what is wrong, from the node that gets the finding: `overlapping-goals`, `solution-does-not-address-opportunity`. Name only what the rule checks.
-- **A rule on a parent judges its children.** A check across children attaches to the parent, with `scope: ["children"]`. Its text talks about the parent's children, not about siblings.
+- **A rule on a parent judges its children.** A check across children attaches to the parent, with `scope: ["children"]`. Its name and text talk about the parent's children, not about siblings. The `siblings` scope stays available to rules that need it.
 - **Keep template text general.** A template's rubric and verdicts use structural words, such as parent, child and item, so any schema can use it. Domain words go in the rule's `criterion`, in terms any practitioner would use.
 - **Describe the type, then add a rule per misuse.** A type's `description` says what the type is for. Each known misuse of the type gets its own rule and its own eval cases.
 - **Check overlap and dependency separately.** Two children overlap when one counts towards another. Two children depend on each other when one has to finish before another can start. These are different questions, so they are different rules.

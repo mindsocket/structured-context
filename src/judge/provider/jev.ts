@@ -175,7 +175,7 @@ function withFraming(state: Record<string, unknown>, packed: boolean) {
     ...JUDGE_ROLE,
     layout,
     "`content`, when present, is an item's body text.",
-    '`relatedNodes`, when present, lists other entries linked to the item, such as its parent, children or ancestors, each with how it relates.',
+    '`relatedNodes`, when present, lists other entries linked to the item, such as its parent, siblings, children, ancestors or descendants, each with how it relates.',
     '`schemaDescriptions`, when present, says what each item type is for and what its fields mean.',
     'Each question gives the rule as its instructions and the allowed verdicts as its criteria.',
     ...JUDGE_STANCE,
