@@ -1,0 +1,19 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "vague-goal": {
+      // A concrete end state.
+      "Cook dinner together three nights a week.md": "clear",
+      // Clear, though only loosely linked to its parent: another rule judges that.
+      "Grow our social media following.md": "clear",
+      // A race, a time and a date.
+      "Run the Six Foot Track ultra in March.md": "clear",
+      // A topic, not a result.
+      "Customer support.md": "vague",
+      // A wish with no measure of done.
+      "Improve our customer support.md": "vague",
+      // No result someone could check.
+      "Be healthier.md": "vague",
+    },
+  },
+}

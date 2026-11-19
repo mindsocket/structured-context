@@ -1,0 +1,21 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "opportunity-conflicts-with-mission": {
+      // Grows revenue by undercutting the shops the mission serves.
+      "Readers want to buy direct from us at lower prices than shops.md": "conflicts",
+      // Grows revenue by helping the chains the independents compete with.
+      "Big chains want to license our ordering software.md": "conflicts",
+      // Revenue from shops that sends readers to them.
+      "Shops would pay for a featured listing in our reader app.md": "consistent",
+      // More commuters, and safer ones.
+      "New riders don't know the safe routes to work.md": "consistent",
+      // Could grow commuting, but rewards riding fast, against safety.
+      "Riders want a leaderboard for the fastest commute times.md": "conflicts",
+      // Fits the mission: secure parking.
+      "Riders have nowhere secure to leave bikes at work.md": "consistent",
+      // Grows fees by relying on surprise.
+      "Many customers don't notice when the account fee rises.md": "conflicts",
+    },
+  },
+}

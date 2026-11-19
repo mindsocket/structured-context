@@ -1,0 +1,19 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "solution-does-not-address-opportunity": {
+      // The owner learns of each order straight away.
+      "Send a push notification to the owner's phone for each new order.md": "addresses",
+      // Same topic, but shops still have to type every ISBN.
+      "Write a help article on what an ISBN is.md": "tangential",
+      // Unrelated to ISBNs.
+      "Offer cheaper shipping labels.md": "does-not-address",
+      // The owner never has to touch DNS.
+      "Connect the domain through the registrar's API.md": "addresses",
+      // The domain gets pointed, with help.
+      "Book a 15-minute call to change the DNS together.md": "addresses",
+      // Same setup flow, and the DNS step stays as hard.
+      "Make the setup wizard look friendlier.md": "tangential",
+    },
+  },
+}
