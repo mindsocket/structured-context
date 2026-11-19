@@ -2,7 +2,7 @@ import type { AnySchemaObject } from 'ajv';
 import { ruleSemantic } from '../rule/rule-severity';
 import type { Rule } from '../schema/metadata-contract';
 import { SEMANTIC_SCOPES } from '../schema/metadata-contract';
-import { mergeVariantProperties } from '../schema/schema-refs';
+import { mergeVariantProperties, resolveRef } from '../schema/schema-refs';
 import type { SpaceGraph } from '../space-graph';
 import type { NodeId, SpaceContext, SpaceNode } from '../types';
 import type { RelatedNode, SchemaDescriptions, SemanticJudgeInput } from './types';
@@ -119,8 +119,8 @@ function describeField(def: AnySchemaObject): string | undefined {
 }
 
 /**
- * The schema's descriptions of each node type: the `oneOf` entry's `description` and each field's `description`
- * and enum values. A type or field the schema does not describe is left out.
+ * The schema's descriptions of each node type: the `oneOf` entry's `description` (through a `$ref`) and each
+ * field's `description` and enum values. A type or field the schema does not describe is left out.
  */
 export function describeSchema({
   schema,
@@ -134,7 +134,8 @@ export function describeSchema({
       const text = SELF_EXPLAINED_FIELDS.has(name) ? undefined : describeField(def);
       if (text) fields[name] = text;
     }
-    const description = typeof entry.description === 'string' ? entry.description : undefined;
+    const variant = resolveRef(entry, schema, schemaRefRegistry) ?? entry;
+    const description = typeof variant.description === 'string' ? variant.description : undefined;
     if (!description && Object.keys(fields).length === 0) continue;
     const typeDef = properties.type;
     const names = typeDef?.const !== undefined ? [typeDef.const] : Array.isArray(typeDef?.enum) ? typeDef.enum : [];
