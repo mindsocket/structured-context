@@ -33,6 +33,8 @@ Resolution order: space `schema` > global `schema`. Schema resolution fails if n
 
 ## Bundled schemas
 
+Each bundled schema has [semantic rules](semantic-rules.md). `sctx schemas show <schema>` lists them.
+
 ### `strategy_general.json`
 
 Flexible planning schema spanning strategy + OST-like flow.
@@ -57,9 +59,11 @@ Main types:
 
 This schema reuses shared structural defs from partials via `$ref` and imports its hierarchy and rules from `_ost_strict` via `$metadata.imports`.
 
+Its type descriptions and semantic rules follow Teresa Torres' *Continuous Discovery Habits* (2021).
+
 ### `knowledge_wiki.json`
 
-Flat, LLM-maintained knowledge base (after Karpathy's LLM Wiki pattern). No hierarchy or required parent links; wikilinks between any pages are valid. Validates structure and provenance, not meaning.
+Flat, LLM-maintained knowledge base (after Karpathy's LLM Wiki pattern). No hierarchy or required parent links; wikilinks between any pages are valid. Validates structure and provenance.
 
 Main types:
 - `source`
@@ -398,7 +402,7 @@ Every schema `$id` uses the `sctx://` scheme. The shape of the `$id` says where 
 - `$id` values follow the [namespace rules](#schema-id-namespaces) and must not collide across bundled, plugin and local schemas.
 - `$ref` resolution is transitive across files.
 - Partials with no `$metadata` should prefer `$schema: "https://json-schema.org/draft/2020-12/schema"` so they validate standalone as plain JSON Schema fragments.
-- **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, `_okf.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference their entity types via `$ref` rather than redefining them.
+- **Bundled partials as entity libraries**: `_sctx_base.json`, `_strategy_general.json`, `_knowledge_wiki.json`, `_okf.json`, and `_ost_strict.json` provide reusable entity definitions and metadata. Composing schemas can reference their entity types via `$ref` rather than redefining them. `_semantic_patterns.json` provides [rule templates](semantic-rules.md#rule-templates).
 - **Partials can carry metadata**: Partials may include `$metadata` (hierarchy, aliases, relationships, rules). A schema gets it only by listing the partial in `$metadata.imports`; `$ref` alone brings none.
 
 ## Plugin-contributed schemas

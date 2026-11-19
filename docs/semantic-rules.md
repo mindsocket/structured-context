@@ -18,7 +18,7 @@ A rule is semantic when it has a `semantic` object. This page assumes you know [
 
    ```json
    {
-     "id": "opportunity-customer-need",
+     "id": "opportunity-not-a-customer-need",
      "category": "best-practice",
      "type": "opportunity",
      "description": "The opportunity is a customer need or pain point, not a solution or a business metric",
@@ -44,6 +44,7 @@ A semantic rule has the [common rule fields](rules.md) and a `semantic` object. 
 | Field | Required | Description |
 |---|---|---|
 | `semantic.rubric` | no | Tells the model what to assess. Default: `description` |
+| `semantic.criterion` | no | Text the model reads after the rubric. A rule that extends a [template](#rule-templates) uses it to make the template's rubric specific |
 | `semantic.verdicts` | no | The answers the model can give. Default: `pass` and `fail`. See [Verdicts](#verdicts) |
 | `semantic.severity` | if `semantic.verdicts` is set | The severity of each verdict. See [Severity](#severity) |
 | `semantic.scope` | no | The related nodes to send with the evaluated node. Default: none. See [Related nodes and content](#related-nodes-and-content) |
@@ -56,7 +57,7 @@ A semantic rule cannot be `global`. A rule can also have an `expression`; see [C
 A rule can have both an `expression` and a `semantic` part. An `expression` costs no model call. It uses the same [expression syntax and context](rules.md#writing-expressions) as any other rule. Use it for a requirement that an expression can verify, so the model only sees nodes worth the cost:
 
 ```json
-{ "id": "opportunity-customer-voice", "category": "coherence", "type": "opportunity",
+{ "id": "opportunity-not-in-customer-voice", "category": "coherence", "type": "opportunity",
   "description": "Opportunity is framed in customer voice",
   "expression": "$exists(current.source)", "semantic": {} }
 ```
@@ -139,12 +140,43 @@ Scope sends node data only, never the verdicts of other rules, and [gating](rule
 | `fullScope` | The bodies of the evaluated node and of every related node. `true` means the same |
 
 ```json
-{ "id": "solution-addresses-opportunity", "category": "coherence", "type": "solution",
+{ "id": "solution-does-not-address-opportunity", "category": "coherence", "type": "solution",
   "description": "The solution addresses the opportunity it sits under",
   "semantic": { "scope": ["parent"], "includeContent": "fullScope" } }
 ```
 
 A global rule cannot have a `semantic` part, so it has no scope.
+
+## Rule templates
+
+A **rule template** is a rule with `"abstract": true`, which never runs. A rule that names it in `extends` takes all of its fields, then sets its own. Top-level fields replace the template's. Fields inside `semantic` replace the template's one at a time, so a rule can add a `criterion` and keep the template's rubric, scope and verdicts.
+
+The bundled partial `sctx://core/_semantic_patterns` holds three templates. To use one, add the partial to `$metadata.imports`:
+
+| Template | Checks | Attach the rule to | Scope | Bundled rules that extend it |
+|---|---|---|---|---|
+| `ladders-up` | The node moves its parent forward, as a part of it or by driving it | The child | `parent` | `goal-does-not-ladder-up`, `opportunity-does-not-ladder-up` |
+| `overlapping-children` | No child counts towards another | The parent, with a `when` that needs two or more children | `children` | `overlapping-goals`, `overlapping-opportunities` |
+| `dependent-children` | The children are separate results, not steps in a sequence | The parent, with the same `when` | `children` | `dependent-goals` |
+
+```json
+{ "id": "overlapping-goals", "extends": "overlapping-children", "description": "A mission's or goal's child goals are separate results",
+  "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'goal']) >= 2",
+  "semantic": { "criterion": "Judge the child goals. A goal overlaps another when achieving it achieves part of the other." } }
+```
+
+A rule must extend a template, not another rule, and a template cannot extend a template. The rule is checked as a full rule once it takes the template's fields.
+
+## Writing semantic rules
+
+The bundled rules follow these conventions. We recommend them for your own rules.
+
+- **Name the problem.** A rule's id says what is wrong, from the node that gets the finding: `overlapping-goals`, `solution-does-not-address-opportunity`. Name only what the rule checks.
+- **A rule on a parent judges its children.** A check across children attaches to the parent, with `scope: ["children"]`. Its text talks about the parent's children, not about siblings.
+- **Keep template text general.** A template's rubric and verdicts use structural words, such as parent, child and item, so any schema can use it. Domain words go in the rule's `criterion`, in terms any practitioner would use.
+- **Describe the type, then add a rule per misuse.** A type's `description` says what the type is for. Each known misuse of the type gets its own rule and its own eval cases.
+- **Check overlap and dependency separately.** Two children overlap when one counts towards another. Two children depend on each other when one has to finish before another can start. These are different questions, so they are different rules.
+- **A child moves its parent forward as a part or a driver.** A child that is neither does not belong under that parent.
 
 ## Input size and trimming
 

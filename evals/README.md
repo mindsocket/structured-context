@@ -16,7 +16,7 @@ From outside this repo, run `bun run <path to structured-context>/evals/run.ts` 
 |---|---|
 | `--provider <name>` | The provider to judge with. Repeat it, or give a comma-separated list, to compare providers |
 | `--from <suite>` | The suite to run. Repeatable. Default: `core`. See [Suites](#suites) |
-| `--eval <name>` | Run only this eval, as `core/opportunity-customer-voice` or `opportunity-customer-voice`. Repeatable |
+| `--eval <name>` | Run only this eval, as `core/opportunity-not-in-customer-voice` or `opportunity-not-in-customer-voice`. Repeatable |
 | `--runs <n>` | Judge each eval this many times, to measure stability. Default: 3 |
 | `--per-node` | Send one request per node, even to a provider that packs several nodes into one request |
 | `--check` | Check the evals and stop, with no provider calls |
@@ -42,9 +42,9 @@ A suite is a directory of evals and the fixtures they use:
 
 ```
 evals/semantic/
-  opportunity-customer-voice.json5   an eval
-  fixtures.json5                     the fixtures, as space configs
-  fixtures/strict-ost.jsonl          a fixture's nodes
+  opportunity-not-in-customer-voice.json5   an eval
+  fixtures.json5                            the fixtures, as space configs
+  fixtures/strict-ost.jsonl                 a fixture's nodes
 ```
 
 | `--from` | Directory | Schema names resolve from |
@@ -61,7 +61,7 @@ An eval is a `.json5` file in the suite. It names a `space`: one of the suite's 
 {
   space: 'strict-ost',
   expected: {
-    'opportunity-customer-voice': {
+    'opportunity-not-in-customer-voice': {
       'Build a Slack integration.md': 'fail',
       // A solution in disguise.
       'Add a progress bar to workspace setup.md': 'fail',
@@ -79,6 +79,8 @@ A fixture is a space whose nodes are in a JSONL file in the suite. `fixtures.jso
 The nodes file holds one parsed node per line, as `sctx dump` prints them. To make one from markdown notes, configure them as a space and run `sctx dump <space> | jq -c '.nodes[]'`.
 
 For a rule whose `scope` sends related nodes, such as siblings, give each scenario its own small tree, so that one case's related nodes do not change another's.
+
+Give every node a body that shows the boundary its case tests, and write one comment per case that names that boundary. A case for a rule that judges related nodes uses only related nodes with enough detail to judge. When a label is disputed, make the body clearer before changing the label.
 
 ## Checks
 
