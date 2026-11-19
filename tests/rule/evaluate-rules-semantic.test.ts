@@ -58,7 +58,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
       expression: '$count(nodes[resolvedType="opportunity" and status="active"]) <= 2',
     },
     {
-      id: 'opportunity-customer-voice',
+      id: 'opportunity-not-in-customer-voice',
       category: 'best-practice',
       type: 'opportunity',
       description: 'Opportunity must be framed in customer voice, not a solution or business goal',
@@ -78,11 +78,11 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     const provider = new FakeJudgeProvider(
       new Map([
         [
-          'opportunity-customer-voice:I struggle to finish signup on mobile',
+          'opportunity-not-in-customer-voice:I struggle to finish signup on mobile',
           { pass: true, evidence: 'Clearly stated from customer perspective as a pain point' },
         ],
         [
-          'opportunity-customer-voice:Build social login integration',
+          'opportunity-not-in-customer-voice:Build social login integration',
           { pass: false, evidence: 'Stated as a solution feature ("Build social login") rather than a customer need' },
         ],
       ]),
@@ -93,7 +93,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     });
 
     expect(violations).toHaveLength(1);
-    expect(violations[0]?.ruleId).toBe('opportunity-customer-voice');
+    expect(violations[0]?.ruleId).toBe('opportunity-not-in-customer-voice');
     expect(violations[0]?.nodeId as string | undefined).toBe('bad-opp.md');
     expect(violations[0]?.category).toBe('best-practice');
     expect(violations[0]?.evidence).toBe(
@@ -112,7 +112,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
         description: 'Source must mention interview',
       },
       {
-        id: 'opportunity-customer-voice',
+        id: 'opportunity-not-in-customer-voice',
         category: 'best-practice',
         semantic: {},
         type: 'opportunity',
@@ -127,7 +127,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
     });
 
     // bad-opp.md source is "Engineering suggestion", so it failed require-interviews-source
-    // Therefore it should be gated from opportunity-customer-voice
+    // Therefore it should be gated from opportunity-not-in-customer-voice
     const badOppViolations = violations.filter((v) => v.nodeId === 'bad-opp.md');
     expect(badOppViolations).toHaveLength(1);
     expect(badOppViolations[0]?.ruleId).toBe('require-interviews-source');
@@ -140,7 +140,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
   it('applies a semantic rule check before the judge', async () => {
     const checked: Rule[] = [
       {
-        id: 'opportunity-customer-voice',
+        id: 'opportunity-not-in-customer-voice',
         category: 'best-practice',
         semantic: {},
         type: 'opportunity',
@@ -158,7 +158,7 @@ describe('evaluateRules without a hierarchy - semantic evaluation', () => {
       expect.objectContaining({ nodeId: 'valid-opp.md', evidence: 'Not customer voice', verdict: 'fail' }),
       expect.objectContaining({
         nodeId: 'bad-opp.md',
-        ruleId: 'opportunity-customer-voice',
+        ruleId: 'opportunity-not-in-customer-voice',
         category: 'best-practice',
         severity: 'info',
         evidence: 'expression failed: current.source = "User interview with Jane"',

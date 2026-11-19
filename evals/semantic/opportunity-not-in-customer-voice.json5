@@ -1,7 +1,7 @@
 {
   space: 'strict-ost',
   expected: {
-    'opportunity-customer-voice': {
+    'opportunity-not-in-customer-voice': {
       'Setting up a workspace takes so long that I give up.md': 'pass',
       "I can't tell which plan fits a team of my size.md": 'pass',
       "I'm afraid I'll lose my work if my browser crashes.md": 'pass',

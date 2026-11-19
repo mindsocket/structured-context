@@ -28,7 +28,7 @@ export type Expected = Record<string, Record<string, string[]>>;
 
 /** Labelled cases on the nodes of one space: a fixture, or a configured space. */
 export interface Eval {
-  /** `<suite>/<file name>`, e.g. `core/opportunity-customer-voice`. */
+  /** `<suite>/<file name>`, e.g. `core/opportunity-not-in-customer-voice`. */
   name: string;
   context: SpaceContext;
   expected: Expected;

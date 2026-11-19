@@ -43,11 +43,14 @@ describe('a suite directory', () => {
     ].join('\n'),
   );
   write('fixtures.json5', { spaces: [{ name: 'tree', path: 'nodes/tree.jsonl', schema: 'strict_ost.json' }] });
-  write('a.json5', { space: 'tree', expected: { 'opportunity-customer-voice': { 'Onboarding.md': 'fail' } } });
+  write('a.json5', { space: 'tree', expected: { 'opportunity-not-in-customer-voice': { 'Onboarding.md': 'fail' } } });
   write('b.json5', {
     space: 'tree',
     expected: {
-      'opportunity-customer-voice': { 'Grow usage.md': 'fail', 'Build a Slack integration.md': ['pass', 'fail'] },
+      'opportunity-not-in-customer-voice': {
+        'Grow usage.md': 'fail',
+        'Build a Slack integration.md': ['pass', 'fail'],
+      },
     },
   });
   mkdirSync(join(dir, 'space'));
@@ -59,7 +62,10 @@ describe('a suite directory', () => {
     join(dir, 'space', 'Onboarding.md'),
     '---\nstatus: identified\ntype: opportunity\nparent: "[[Grow usage]]"\nsource: Interviews\n---\n',
   );
-  write('mine.json5', { space: 'work', expected: { 'opportunity-customer-voice': { 'Onboarding.md': 'fail' } } });
+  write('mine.json5', {
+    space: 'work',
+    expected: { 'opportunity-not-in-customer-voice': { 'Onboarding.md': 'fail' } },
+  });
   const config: Config = {
     spaces: [{ name: 'work', path: join(dir, 'space'), schema: 'strict_ost.json', sourceDir: dir }],
   };
@@ -78,8 +84,8 @@ describe('a suite directory', () => {
 
   test('reports labels the rule never judges, and labels that accept every verdict', async () => {
     expect(await checkEval(b!)).toEqual([
-      `${b!.name}: rule "opportunity-customer-voice", node "Grow usage.md": not judged (unknown node, or the rule skips it)`,
-      `${b!.name}: rule "opportunity-customer-voice", node "Build a Slack integration.md": accepts every verdict`,
+      `${b!.name}: rule "opportunity-not-in-customer-voice", node "Grow usage.md": not judged (unknown node, or the rule skips it)`,
+      `${b!.name}: rule "opportunity-not-in-customer-voice", node "Build a Slack integration.md": accepts every verdict`,
     ]);
   });
 
