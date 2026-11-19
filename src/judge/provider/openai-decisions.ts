@@ -60,7 +60,7 @@ export class OpenAIDecisionsJudgeProvider implements SemanticJudgeProvider {
         questions: rules.map((rule) => ({
           type: 'choice',
           name: rule.id,
-          instructions: rule.rubric || rule.description,
+          instructions: rule.rubric,
           choices: Object.entries(rule.verdicts).map(([value, description]) => ({ value, description })),
         })),
       }),

@@ -4,7 +4,8 @@ import type { RuleCategory, SpaceNode } from '../types';
 export interface SemanticRuleSpec {
   id: string;
   description: string;
-  rubric?: string;
+  /** What the model judges against: the rule's rubric (or description), then its criterion. */
+  rubric: string;
   category: RuleCategory | string;
   /** Allowed verdicts, each with a description of when it applies. */
   verdicts: Record<string, string>;

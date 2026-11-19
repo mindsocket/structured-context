@@ -5,16 +5,26 @@ function attr(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+/** The judge's role, shared by every provider so that chat and decision models get the same framing. */
+export const JUDGE_ROLE = [
+  'You are a strict, objective judge. You decide whether an item meets a rule.',
+  'An item is one entry in a structured collection. It has a type, a title and fields.',
+];
+
+/** How to weigh the item, shared by every provider. */
+export const JUDGE_STANCE = [
+  'A field the item lacks may matter to the rule. Judge the item as it is.',
+  'Choose the one verdict that fits best.',
+];
+
 /** System prompt: a strict judge that answers with one verdict from a closed set, as JSON. */
 export function buildJudgeSystemPrompt(): string {
   return [
-    'You are a strict, objective judge. You decide whether an item meets a rule.',
-    'An item is one entry in a structured collection. It has a type, a title and fields.',
+    ...JUDGE_ROLE,
     "The user message holds the rule in <rule> and the item in <item>. `content`, when present, is the item's body text.",
     'It may also hold <related_items>: other entries linked to the item, such as its parent, siblings, children, ancestors or descendants, each with how it relates.',
     'It may also hold <item_types>: what each item type is for and what its fields mean.',
-    'A field the item lacks may matter to the rule. Judge the item as it is.',
-    'Choose the one verdict that fits best.',
+    ...JUDGE_STANCE,
     '',
     'You must respond ONLY with a JSON object in this exact format:',
     '{',
@@ -36,10 +46,9 @@ export function buildJudgeUserPrompt(
   { node, related = [], schemaDescriptions }: Pick<SemanticJudgeInput, 'node' | 'related' | 'schemaDescriptions'>,
   rule: SemanticRuleSpec,
 ): string {
-  const rubric = rule.rubric || rule.description;
   const lines: string[] = [
     `<rule id="${attr(rule.id)}" category="${attr(rule.category)}">`,
-    `<rubric>${rubric}</rubric>`,
+    `<rubric>${rule.rubric}</rubric>`,
     '<verdicts>',
     ...Object.entries(rule.verdicts).map(
       ([name, description]) => `<verdict name="${attr(name)}">${description}</verdict>`,

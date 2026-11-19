@@ -1,3 +1,4 @@
+import { JUDGE_ROLE, JUDGE_STANCE } from '../prompt';
 import { estimateTokens } from '../trim';
 import type {
   HydratedProvider,
@@ -56,9 +57,9 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
     for (let start = 0; start < rules.length; start += JEV_REQUEST_PACKING_LIMIT_QUESTIONS) {
       const part = rules.slice(start, start + JEV_REQUEST_PACKING_LIMIT_QUESTIONS);
       const questions: Record<string, unknown> = {};
-      for (const rule of part) questions[rule.id] = decisionQuestion(rule, rule.rubric || rule.description);
+      for (const rule of part) questions[rule.id] = decisionQuestion(rule, rule.rubric);
       const data = await this.post(
-        withDescriptions(nodeState(node, input.related), input.schemaDescriptions),
+        withFraming(withDescriptions(nodeState(node, input.related), input.schemaDescriptions), false),
         questions,
       );
       for (const rule of part) results[rule.id] = toResult(rule, data.answers?.[rule.id]);
@@ -116,13 +117,10 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
       nodes[`n${k}`] = nodeState(input.node, input.related);
       Object.assign(descriptions, input.schemaDescriptions);
       for (const rule of input.rules) {
-        questions[`${rule.id}__n${k}`] = decisionQuestion(
-          rule,
-          `For node \`nodes.n${k}\`: ${rule.rubric || rule.description}`,
-        );
+        questions[`${rule.id}__n${k}`] = decisionQuestion(rule, `For node \`nodes.n${k}\`: ${rule.rubric}`);
       }
     });
-    const data = await this.post(withDescriptions({ nodes }, descriptions), questions);
+    const data = await this.post(withFraming(withDescriptions({ nodes }, descriptions), true), questions);
     requestInputs.forEach((inputIndex, k) => {
       for (const rule of inputs[inputIndex]!.rules) {
         results[inputIndex]![rule.id] = toResult(rule, data.answers?.[`${rule.id}__n${k}`]);
@@ -166,6 +164,23 @@ function nodeState(node: SemanticJudgeInput['node'], related: RelatedNode[] = []
 /** The state with the schema's descriptions of the node types beside the nodes, when there are any. */
 function withDescriptions(state: Record<string, unknown>, descriptions: SchemaDescriptions | undefined) {
   return descriptions && Object.keys(descriptions).length > 0 ? { ...state, schemaDescriptions: descriptions } : state;
+}
+
+/** The framing chat providers get as a system prompt. The Decisions API has no system prompt, so it leads the state. */
+function withFraming(state: Record<string, unknown>, packed: boolean) {
+  const layout = packed
+    ? '`nodes` holds several items. Each question names the item to judge.'
+    : "The item's own fields sit at the top level of this state.";
+  const judgeInstructions = [
+    ...JUDGE_ROLE,
+    layout,
+    "`content`, when present, is an item's body text.",
+    '`relatedNodes`, when present, lists other entries linked to the item, such as its parent, children or ancestors, each with how it relates.',
+    '`schemaDescriptions`, when present, says what each item type is for and what its fields mean.',
+    'Each question gives the rule as its instructions and the allowed verdicts as its criteria.',
+    ...JUDGE_STANCE,
+  ].join(' ');
+  return { judgeInstructions, ...state };
 }
 
 function decisionQuestion(rule: SemanticRuleSpec, instructions: string) {

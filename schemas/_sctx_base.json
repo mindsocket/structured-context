@@ -4,16 +4,14 @@
   "description": "Shared definitions for structured-context schemas",
   "$defs": {
     "title": {
-      "type": "string",
-      "description": "Title of the node"
+      "type": "string"
     },
     "content": {
       "type": "string",
       "description": "Markdown source of the node's body, excluding its own heading or list marker and any nested embedded nodes"
     },
     "summary": {
-      "type": "string",
-      "description": "Short summary"
+      "type": "string"
     },
     "status": {
       "type": "string",
@@ -41,8 +39,7 @@
         "content": { "$ref": "#/$defs/content" },
         "tags": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "Categorization tags"
+          "items": { "type": "string" }
         }
       },
       "required": ["title"]

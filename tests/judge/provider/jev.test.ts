@@ -43,6 +43,8 @@ describe('JevJudgeProvider', () => {
     const sent = JSON.parse(calls[0]?.init.body as string);
     expect(sent.model).toBe('jev-latest');
     expect(sent.state).toMatchObject({ title: 'I cannot find my receipts', parents: ['Faster Tax Filing'] });
+    expect(Object.keys(sent.state)[0]).toBe('judgeInstructions');
+    expect(sent.state.judgeInstructions).toContain('You are a strict, objective judge.');
     expect(sent.questions.framing).toEqual({
       type: 'choice',
       instructions: 'Framing quality',
