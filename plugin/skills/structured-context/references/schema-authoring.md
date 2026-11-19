@@ -82,7 +82,7 @@ Other rule fields:
 
 ```json5
 {
-  "id": "solution-addresses-opportunity",
+  "id": "solution-does-not-address-opportunity",
   "category": "coherence",
   "type": "solution",
   "description": "A solution addresses the opportunity it sits under",
@@ -101,6 +101,8 @@ Other rule fields:
 - `includeContent` — `nodeOnly` (the evaluated node's body) or `fullScope`/`true` (every body in scope). Without it, no body is sent.
 - A rule with `scope` or `includeContent` may return `missing-context` (default `warning`) when its input was trimmed to fit.
 - Semantic rules send the schema's type and field descriptions to the model with the rubric. Descriptions that say what a good node looks like save repeating that detail in each rubric, and let more general rules draw on the schema.
+- To check a set of children, a fit with the parent, or the intent of the levels above, import `sctx://core/_semantic_patterns` and extend one of its rule templates: `{ "id": "…", "extends": "overlapping-children", "type": "…", "semantic": { "criterion": "…" } }`. `sctx docs semantic-rules` lists the templates.
+- Name a rule for the problem it finds (`overlapping-goals`), and keep domain words in `criterion`, not in a template. `sctx docs semantic-rules` gives the conventions under "Writing semantic rules".
 
 ## Metadata composition semantics
 
