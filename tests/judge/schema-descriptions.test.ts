@@ -15,9 +15,15 @@ describe('schema descriptions for the judge', () => {
   it("describes each node type's fields, with enum values", () => {
     expect(descriptions.opportunity?.fields?.source).toContain('Customer research source');
     expect(descriptions.opportunity?.fields?.status).toStartWith('one of: identified, wondering');
-    expect(descriptions.assumption_test?.fields?.category).toBe(
-      'Assumption type categories (one of: desirability, viability, feasibility, usability, ethical)',
+    expect(descriptions.assumption_test?.fields?.category).toEndWith(
+      '(one of: desirability, viability, feasibility, usability, ethical)',
     );
+    expect(descriptions.opportunity?.description).toStartWith('A customer need');
+  });
+
+  it('describes a type whose variant is a $ref', () => {
+    const wiki = describeSchema(loadSchema(join(import.meta.dir, '../../schemas/knowledge_wiki.json')));
+    expect(wiki.concept?.description).toStartWith('A concept page');
   });
 
   it('leaves out the fields every node has', () => {

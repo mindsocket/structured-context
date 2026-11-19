@@ -37,12 +37,126 @@
         "expression": "(current.status != 'exploring' and current.status != 'active') or $count(nodes[resolvedParentId=$$.current.id and resolvedType='solution']) >= 3"
       },
       {
-        "id": "opportunity-customer-voice",
+        "id": "opportunity-not-in-customer-voice",
         "category": "best-practice",
         "type": "opportunity",
         "description": "Opportunity must be framed in the customer's voice (something a customer would actually say) as a need or pain point, not a solution or business goal",
         "semantic": {
           "rubric": "Verify that the opportunity is stated from the customer's perspective as a problem, pain point, or desire. It must not be a solution in disguise (e.g. 'build X feature') or a business metric (e.g. 'increase revenue')."
+        }
+      },
+      {
+        "id": "outcome-not-a-product-outcome",
+        "category": "best-practice",
+        "type": "outcome",
+        "description": "The outcome is a product outcome the team can influence, not a business outcome, a traction metric or an output",
+        "semantic": {
+          "verdicts": {
+            "product-outcome": "A change in what customers do in the product, which the team can influence and which drives business value",
+            "business-outcome": {
+              "description": "A business result, such as revenue, market share or retention, that the team cannot move directly",
+              "guidance": "Find the customer behaviour in the product that drives it, and make that the outcome."
+            },
+            "traction-metric": {
+              "description": "The use of one named feature, screen, button or message, rather than the customer behaviour it is meant to drive",
+              "guidance": "Ask what customer value that use stands for, and measure that instead."
+            },
+            "output": {
+              "description": "A feature, project or deliverable to ship, even when it is worded as a goal",
+              "guidance": "Ask what should change for customers once it ships, and measure that instead."
+            }
+          },
+          "severity": { "business-outcome": "info", "traction-metric": "info", "output": "warning" }
+        }
+      },
+      {
+        "id": "opportunity-does-not-refine-parent",
+        "category": "coherence",
+        "type": "opportunity",
+        "description": "A top-level opportunity drives its outcome, and a child opportunity is a subset of its parent opportunity",
+        "semantic": {
+          "rubric": "Judge only how the item relates to its parent. Something worthwhile in the same area as the parent does not refine the parent unless it passes the criterion's test.",
+          "scope": ["parent"],
+          "verdicts": {
+            "refines": "It passes the criterion's test: it is one part, cause, case or means of its parent, narrower than the parent",
+            "weak-link": {
+              "description": "Related to the parent, but the link is indirect, or it restates the parent in other words instead of naming one part of it",
+              "guidance": "Say how it serves the parent, or narrow it to one part of the parent."
+            },
+            "misplaced": {
+              "description": "It does not belong under its parent",
+              "guidance": "Move it under the node it belongs to."
+            }
+          },
+          "severity": {
+            "weak-link": "info",
+            "misplaced": "warning"
+          },
+          "criterion": "Under an outcome, addressing the opportunity would drive the outcome. Under an opportunity, it is one part, cause or case of the parent need, narrower than the parent."
+        }
+      },
+      {
+        "id": "overlapping-opportunities",
+        "category": "coherence",
+        "description": "Sibling opportunities are distinct: the team can address one without addressing another",
+        "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'opportunity']) >= 2",
+        "semantic": {
+          "rubric": "Judge the item's children as a set. If the criterion names a kind of child, judge only those and ignore the rest. The children are distinct when each is a different need, result or idea, so that achieving or addressing one does not achieve or address another.",
+          "scope": ["children"],
+          "verdicts": {
+            "distinct": "Each child is different",
+            "overlapping": {
+              "description": "Two children state the same thing, or partly cover the same ground, or one contains another",
+              "guidance": "Merge them, sharpen the boundary between them, or nest the narrower one under the broader one."
+            }
+          },
+          "severity": {
+            "overlapping": "warning"
+          },
+          "criterion": "Judge the child opportunities. Each should be a different customer need, so that addressing one does not address another."
+        }
+      },
+      {
+        "id": "solution-does-not-address-opportunity",
+        "category": "coherence",
+        "type": "solution",
+        "description": "The solution addresses its parent opportunity",
+        "semantic": {
+          "rubric": "Judge only whether the solution, if it worked, would resolve the parent need as the customer states it. A solution in the same area that leaves the stated need in place does not address it.",
+          "scope": ["parent"],
+          "verdicts": {
+            "addresses": "If it worked, it would resolve or reduce the parent need as the customer states it",
+            "tangential": {
+              "description": "It shares the parent's topic, but it would not resolve the need as the customer states it",
+              "guidance": "Say how it resolves the need, or move it under the opportunity it does address."
+            },
+            "misplaced": {
+              "description": "It addresses a different need, or none",
+              "guidance": "Move it under the opportunity it addresses."
+            }
+          },
+          "severity": { "tangential": "info", "misplaced": "warning" }
+        }
+      },
+      {
+        "id": "solution-works-against-outcome",
+        "category": "coherence",
+        "type": "solution",
+        "description": "The solution serves the outcome above it, not only its parent opportunity",
+        "semantic": {
+          "rubric": "Follow the chain from the item through each ancestor to the top. Pass when the item, if achieved, serves every level as the criterion describes. Fail when it would serve its parent but ignore, or work against, the intent of a level above.",
+          "scope": ["ancestors"],
+          "criterion": "The top level is an outcome with a metric. The solution serves it when, if it worked, it would move that metric in the intended direction."
+        }
+      },
+      {
+        "id": "assumption-in-wrong-category",
+        "category": "best-practice",
+        "type": "assumption_test",
+        "description": "The assumption test's category is the kind of assumption it tests",
+        "when": "$exists(current.category)",
+        "semantic": {
+          "rubric": "Decide from the assumption alone which kind of assumption it is, using the category definitions. Pass only when that kind is the one in `category`."
         }
       }
     ]
@@ -81,7 +195,7 @@
         "category": {
           "type": "string",
           "enum": ["desirability", "viability", "feasibility", "usability", "ethical"],
-          "description": "Assumption type categories"
+          "description": "Desirability: do customers want it? Viability: should the business build it? Feasibility: can the team build it? Usability: can customers use it? Ethical: could it cause harm?"
         }
       },
       "required": ["assumption"]
