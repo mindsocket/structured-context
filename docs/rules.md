@@ -168,6 +168,10 @@ Example override:
 }
 ```
 
+### Rule templates
+
+A rule can reuse a rule template with `extends`. See [Rule templates](semantic-rules.md#rule-templates).
+
 ## Cascade gating
 
 When a schema uses `$metadata.hierarchy`, rule evaluation cascades down the hierarchy, one level at a time from roots and orphans. A node becomes a **gate** when it fails in a way that makes its descendants' rules untrustworthy or wasteful to run. The nodes below a gate are **gated**: their rules are not evaluated.

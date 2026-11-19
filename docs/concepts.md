@@ -185,6 +185,8 @@ Rules may be:
 
 Rules are distinct from schema validation: the schema checks structure; rules check meaning and quality.
 
+A **rule template** is a rule with `abstract: true`. It never runs; a rule that names it in `extends` takes its fields and sets its own.
+
 A rule's `when` is its **applicability condition**: a test that decides whether the rule applies to a node. Its `expression` is the test the node must pass.
 
 Each executable rule has a **category** (`validation`, `coherence`, `workflow`, `best-practice`) that supplies its default **severity** (`error`, `warning`, `info`). A rule may override its category's severity, but categories are the preferred grouping. Only `error` severity violations fail validation.
