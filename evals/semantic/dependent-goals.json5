@@ -1,0 +1,19 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "dependent-goals": {
+      // Each result can be pursued on its own.
+      "Help remote teams feel connected.md": "independent",
+      // Either store can go first.
+      "Ship version 2 of the app.md": "independent",
+      // They share a budget, but either can be done first.
+      "Make the house cheaper to run.md": "independent",
+      // Interviews have to be recorded before they can be edited and released.
+      "Launch the podcast.md": "dependent",
+      // The old tiles have to come off before new ones go down.
+      "Renovate the bathroom.md": "dependent",
+      // Each recipe has to be written before it can be cooked and photographed.
+      "Publish the family cookbook.md": "dependent",
+    },
+  },
+}

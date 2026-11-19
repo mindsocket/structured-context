@@ -5,6 +5,7 @@
   // Provides a hierarchy, aliases, relationships, and entity type $defs.
   // Schemas that import this partial get its metadata; a $ref to its $defs alone brings none.
   "$metadata": {
+    "imports": ["sctx://core/_semantic_patterns"],
     "hierarchy": {
       "levels": [
         "vision",
@@ -40,11 +41,153 @@
         "embeddedTemplateFields": ["assumption", "status", "confidence"],
         "multiple": true
       }
+    ],
+    "rules": [
+      {
+        "id": "goal-does-not-ladder-up",
+        "extends": "ladders-up",
+        "type": "goal",
+        "description": "A goal moves its parent mission or goal forward",
+        "when": "$exists(parent)",
+        "semantic": {
+          "criterion": "Under a mission, the goal ladders up when achieving it moves the mission forward. Under a goal, it ladders up when it is a part of the parent goal, or a result that drives it."
+        }
+      },
+      {
+        "id": "opportunity-does-not-ladder-up",
+        "extends": "ladders-up",
+        "type": "opportunity",
+        "description": "Addressing an opportunity moves its parent goal or opportunity forward",
+        "when": "$exists(parent)",
+        "semantic": {
+          "criterion": "Under a goal, the opportunity ladders up when addressing it would move the goal's result. Under an opportunity, it ladders up when it is a part or a cause of the parent need."
+        }
+      },
+      {
+        "id": "opportunity-conflicts-with-mission",
+        "category": "coherence",
+        "type": "opportunity",
+        "description": "Pursuing the opportunity works with the mission and vision above it, not against them",
+        "semantic": {
+          "rubric": "Follow the chain from the opportunity through its goals to the mission and vision. Judge only whether pursuing the opportunity would work against the intent of a level above. An opportunity that moves its goal but harms what the mission or vision stands for conflicts. An opportunity that fits the levels above, or does not touch them, is consistent.",
+          "scope": ["ancestors"],
+          "includeContent": "fullScope",
+          "verdicts": {
+            "consistent": "Pursuing it fits the levels above, or does not touch them",
+            "conflicts": {
+              "description": "Pursuing it would work against the mission or vision",
+              "guidance": "Drop it, or reshape it so that it serves the mission as well as the goal."
+            }
+          },
+          "severity": { "conflicts": "warning" }
+        }
+      },
+      {
+        "id": "solution-does-not-address-opportunity",
+        "category": "coherence",
+        "type": "solution",
+        "description": "The solution addresses its parent opportunity",
+        "when": "$exists(parent) and parent.resolvedType = 'opportunity'",
+        "semantic": {
+          "rubric": "Judge only whether the solution, if it worked, would resolve or reduce the parent need as stated. A solution in the same area that leaves the stated need in place does not address it.",
+          "scope": ["parent"],
+          "includeContent": "fullScope",
+          "verdicts": {
+            "addresses": "If it worked, the need as stated would be resolved or reduced",
+            "tangential": {
+              "description": "It shares the need's topic, but the need as stated would remain",
+              "guidance": "Say how it resolves the need, or move it under the opportunity it does address."
+            },
+            "does-not-address": {
+              "description": "It addresses a different need, or none",
+              "guidance": "Move it under the opportunity it addresses."
+            }
+          },
+          "severity": { "tangential": "info", "does-not-address": "warning" }
+        }
+      },
+      {
+        "id": "experiment-misses-assumption",
+        "category": "coherence",
+        "type": "experiment",
+        "description": "The experiment tests an assumption its parent solution depends on, and its result decides what happens next",
+        "when": "$exists(parent) and parent.resolvedType = 'solution'",
+        "semantic": {
+          "rubric": "Judge the experiment against its parent solution. It tests the assumption when it checks a belief the solution depends on, and a clear result would change whether the team goes ahead, changes course or stops. Building or launching the whole solution is not a test of an assumption.",
+          "scope": ["parent"],
+          "includeContent": "fullScope",
+          "verdicts": {
+            "tests-assumption": "It tests a belief the solution depends on, and its result would change the plan",
+            "no-decision": {
+              "description": "It tests a real assumption, but no result would change what happens next",
+              "guidance": "Say which result would change the plan, or drop the test."
+            },
+            "misses-assumption": {
+              "description": "It tests a belief the solution does not depend on, or it builds or launches the solution instead of testing it",
+              "guidance": "Name the riskiest belief the solution depends on, and test that."
+            }
+          },
+          "severity": { "no-decision": "info", "misses-assumption": "warning" }
+        }
+      },
+      {
+        "id": "overlapping-goals",
+        "extends": "overlapping-children",
+        "description": "A mission's or goal's child goals are separate results",
+        "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'goal']) >= 2",
+        "semantic": {
+          "criterion": "Judge the child goals. A goal overlaps another when achieving it achieves part of the other."
+        }
+      },
+      {
+        "id": "overlapping-opportunities",
+        "extends": "overlapping-children",
+        "description": "A goal's or opportunity's child opportunities are separate needs",
+        "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'opportunity']) >= 2",
+        "semantic": {
+          "criterion": "Judge the child opportunities. An opportunity overlaps another when addressing it addresses part of the other need."
+        }
+      },
+      {
+        "id": "dependent-goals",
+        "extends": "dependent-children",
+        "description": "A mission's or goal's child goals are separate results, not steps in a sequence",
+        "when": "$count(nodes[$$.current.id in resolvedParentIds and resolvedType = 'goal']) >= 2",
+        "semantic": {
+          "criterion": "Judge the child goals."
+        }
+      },
+      {
+        "id": "vague-goal",
+        "category": "best-practice",
+        "type": "goal",
+        "description": "A goal says what result counts as done",
+        "semantic": {
+          "rubric": "Judge the goal's title and body alone. It is clear when someone could tell from them what result counts as done: a measure, a date, or a concrete end state. A topic, an activity with no end, or a wish with no result is vague. Do not judge whether the goal is worthwhile or well placed.",
+          "includeContent": "nodeOnly",
+          "verdicts": {
+            "clear": "Someone could tell when it is done",
+            "vague": {
+              "description": "It names a topic, an activity or a wish, not a result someone could tell is done",
+              "guidance": "State the result, and how you will know it is done."
+            }
+          },
+          "severity": { "vague": "warning" }
+        }
+      },
+      {
+        "id": "problem-statement-names-solution",
+        "category": "best-practice",
+        "type": "problem_statement",
+        "description": "The problem statement states a problem, and does not name or presume a solution",
+        "semantic": { "includeContent": "nodeOnly" }
+      }
     ]
   },
   "$defs": {
     "dashboard": {
       "type": "object",
+      "description": "An overview page for the space. It is not part of the hierarchy.",
       "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "const": "dashboard" }
@@ -54,6 +197,7 @@
     },
     "ost_on_a_page": {
       "type": "object",
+      "description": "A one-page view of the tree or the space. It is not part of the hierarchy.",
       "allOf": [{ "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" }],
       "properties": {
         "type": { "enum": ["ost_on_a_page", "space_on_a_page"] }
@@ -63,6 +207,7 @@
     },
     "vision": {
       "type": "object",
+      "description": "The future you want to exist: a lasting, aspirational state of the world, not a plan or an activity.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/ostEntityProps" }
@@ -82,6 +227,7 @@
     },
     "mission": {
       "type": "object",
+      "description": "What you do, and for whom, to move towards the vision. It lasts for years and guides which goals to pursue.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -102,6 +248,7 @@
     },
     "goal": {
       "type": "object",
+      "description": "A result to achieve, stated clearly enough that someone can tell when it is done. Achieving it moves its parent mission or goal forward, as a part of it or by driving it. A parent's child goals are separate results: none counts towards another, and none has to wait for another. Steps in a sequence are a plan, not child goals.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -124,6 +271,7 @@
     },
     "opportunity": {
       "type": "object",
+      "description": "A need, problem or opening, stated so that someone can tell who has it and what it is. Addressing it moves its parent goal forward. Under an opportunity, it is a part or a cause of the parent need.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -157,6 +305,7 @@
     },
     "solution": {
       "type": "object",
+      "description": "One way to address the parent opportunity: if it worked, the need as stated would be resolved or reduced.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -190,6 +339,7 @@
     },
     "experiment": {
       "type": "object",
+      "description": "A small test of one assumption the parent solution depends on. Its result decides whether to go ahead, change course or stop.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -215,6 +365,7 @@
     },
     "assumption": {
       "type": "object",
+      "description": "A belief that must hold for the parent opportunity to succeed, with how confident you are in it.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },
@@ -241,6 +392,7 @@
     },
     "problem_statement": {
       "type": "object",
+      "description": "The problem that the parent opportunity addresses: who has it, what it is and why it matters. It names no solution.",
       "allOf": [
         { "$ref": "sctx://core/_sctx_base#/$defs/baseNodeProps" },
         { "$ref": "sctx://core/_sctx_base#/$defs/parentNodeProps" },

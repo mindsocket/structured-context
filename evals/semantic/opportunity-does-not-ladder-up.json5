@@ -1,0 +1,19 @@
+{
+  space: 'strategy-pilot',
+  expected: {
+    "opportunity-does-not-ladder-up": {
+      // Under a goal: fixing it moves setup time directly.
+      "Shops don't have product data ready to import.md": "ladders-up",
+      // A real need, but it does not change setup time.
+      "Shops want to sell gift cards.md": "does-not-ladder-up",
+      // Under a goal: fixing it gets owners using the platform weekly.
+      "Owners forget to check new online orders.md": "ladders-up",
+      // Under an opportunity: a cause of the parent need.
+      "Our importer can't read common point-of-sale exports.md": "ladders-up",
+      // Under an opportunity: a different need.
+      "Owners don't know how to price shipping.md": "does-not-ladder-up",
+      // Restates the parent need in other words.
+      "Shops aren't ready to import their stock.md": "loosely-related",
+    },
+  },
+}
