@@ -71,6 +71,8 @@ const SEMANTIC_SCHEMA = {
   properties: {
     /** What the model judges the node against. Falls back to the rule's `description`. */
     rubric: { type: 'string', minLength: 1 },
+    /** What this rule adds to its rubric: the model reads it after the rubric. Lets a template's rubric stay generic. */
+    criterion: { type: 'string', minLength: 1 },
     /**
      * The closed set of verdicts the model may return. Each is a description (what the verdict means, for the
      * model) or `{ description, guidance }`, where `guidance` is shown to the user when it fires.
@@ -119,65 +121,86 @@ const SEMANTIC_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-const RULE_SCHEMA = {
-  type: 'object',
-  properties: {
-    id: { type: 'string', minLength: 1 },
-    category: { enum: ['validation', 'coherence', 'workflow', 'best-practice'] },
-    /**
-     * Severity of a failed `expression` and of the default `fail` verdict. Defaults from the category.
-     */
-    severity: SEVERITY_SCHEMA,
-    description: { type: 'string', minLength: 1 },
-    /** JSONata test a node must pass. When the rule also has `semantic`, a failing node is reported without being evaluated by the model. */
-    expression: { type: 'string', minLength: 1 },
-    /** Optional JSONata applicability condition, evaluated per node before the rule runs. The rule applies only when it returns true. */
-    when: { type: 'string', minLength: 1 },
-    /** A model evaluates the node against a rubric. `{}` takes every default; `true` means the same. */
-    semantic: { oneOf: [{ const: true }, SEMANTIC_SCHEMA] },
-    type: { type: 'string', minLength: 1 },
-    /** Run once for the whole space instead of once per node. */
-    global: { type: 'boolean' },
-    override: { type: 'boolean' },
-    /** Whether a failure of this rule gates (suppresses) downstream rules on the node's hierarchy subtree. Defaults to true when the failure's severity is `error`. */
-    gatesDescendants: { type: 'boolean' },
+const RULE_PROPERTIES = {
+  id: { type: 'string', minLength: 1 },
+  category: { enum: ['validation', 'coherence', 'workflow', 'best-practice'] },
+  /**
+   * Severity of a failed `expression` and of the default `fail` verdict. Defaults from the category.
+   */
+  severity: SEVERITY_SCHEMA,
+  description: { type: 'string', minLength: 1 },
+  /** JSONata test a node must pass. When the rule also has `semantic`, a failing node is reported without being evaluated by the model. */
+  expression: { type: 'string', minLength: 1 },
+  /** Optional JSONata applicability condition, evaluated per node before the rule runs. The rule applies only when it returns true. */
+  when: { type: 'string', minLength: 1 },
+  /** A model evaluates the node against a rubric. `{}` takes every default; `true` means the same. */
+  semantic: { oneOf: [{ const: true }, SEMANTIC_SCHEMA] },
+  type: { type: 'string', minLength: 1 },
+  /** Run once for the whole space instead of once per node. */
+  global: { type: 'boolean' },
+  override: { type: 'boolean' },
+  /** Whether a failure of this rule gates (suppresses) downstream rules on the node's hierarchy subtree. Defaults to true when the failure's severity is `error`. */
+  gatesDescendants: { type: 'boolean' },
+} as const;
+
+const RULE_CONSTRAINTS = [
+  // A rule has an expression, a semantic part, or both.
+  { anyOf: [{ required: ['expression'] }, { required: ['semantic'] }] },
+  // A global rule has no node to apply to or to evaluate.
+  {
+    if: { required: ['global'], properties: { global: { const: true } } },
+    // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
+    then: { not: { anyOf: [{ required: ['when'] }, { required: ['type'] }, { required: ['semantic'] }] } },
   },
+  // Custom verdicts need a severity for each failing verdict.
+  {
+    if: { required: ['semantic'], properties: { semantic: { type: 'object', required: ['verdicts'] } } },
+    // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
+    then: { properties: { semantic: { type: 'object', required: ['severity'] } } },
+  },
+  // With the default verdicts, `fail` takes the rule's severity.
+  {
+    if: { required: ['semantic'], properties: { semantic: { type: 'object', not: { required: ['verdicts'] } } } },
+    // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
+    then: {
+      properties: {
+        semantic: { type: 'object', properties: { severity: { type: 'object', not: { required: ['fail'] } } } },
+      },
+    },
+  },
+  // A rule with custom verdicts and no expression has no failure for the top-level severity to describe.
+  {
+    if: {
+      required: ['semantic'],
+      properties: { semantic: { type: 'object', required: ['verdicts'] } },
+      not: { required: ['expression'] },
+    },
+    // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
+    then: { not: { required: ['severity'] } },
+  },
+] as const;
+
+/** A rule as it runs: declared in full, or resolved from the template it extends. */
+export const RULE_SCHEMA = {
+  type: 'object',
+  properties: RULE_PROPERTIES,
   required: ['id', 'category', 'description'],
   additionalProperties: false,
-  allOf: [
-    // A rule has an expression, a semantic part, or both.
-    { anyOf: [{ required: ['expression'] }, { required: ['semantic'] }] },
-    // A global rule has no node to apply to or to evaluate.
+  allOf: RULE_CONSTRAINTS,
+} as const;
+
+/**
+ * A rule as a schema declares it. A rule template (`abstract: true`) is a full rule that never runs. A rule with
+ * `extends` names a template and declares only what it changes; it is checked as a full rule once resolved.
+ */
+const DECLARED_RULE_SCHEMA = {
+  oneOf: [
+    { ...RULE_SCHEMA, properties: { ...RULE_PROPERTIES, abstract: { type: 'boolean' } } },
     {
-      if: { required: ['global'], properties: { global: { const: true } } },
-      // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
-      then: { not: { anyOf: [{ required: ['when'] }, { required: ['type'] }, { required: ['semantic'] }] } },
-    },
-    // Custom verdicts need a severity for each failing verdict.
-    {
-      if: { required: ['semantic'], properties: { semantic: { type: 'object', required: ['verdicts'] } } },
-      // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
-      then: { properties: { semantic: { type: 'object', required: ['severity'] } } },
-    },
-    // With the default verdicts, `fail` takes the rule's severity.
-    {
-      if: { required: ['semantic'], properties: { semantic: { type: 'object', not: { required: ['verdicts'] } } } },
-      // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
-      then: {
-        properties: {
-          semantic: { type: 'object', properties: { severity: { type: 'object', not: { required: ['fail'] } } } },
-        },
-      },
-    },
-    // A rule with custom verdicts and no expression has no failure for the top-level severity to describe.
-    {
-      if: {
-        required: ['semantic'],
-        properties: { semantic: { type: 'object', required: ['verdicts'] } },
-        not: { required: ['expression'] },
-      },
-      // biome-ignore lint/suspicious/noThenProperty: JSON Schema `if`/`then` keyword, not a thenable
-      then: { not: { required: ['severity'] } },
+      type: 'object',
+      properties: { ...RULE_PROPERTIES, extends: { type: 'string', minLength: 1 } },
+      required: ['id', 'extends'],
+      additionalProperties: false,
     },
   ],
 } as const;
@@ -260,7 +283,7 @@ export const METADATA_SCHEMA = {
     },
     rules: {
       type: 'array',
-      items: RULE_SCHEMA,
+      items: DECLARED_RULE_SCHEMA,
     },
   },
   additionalProperties: false,
@@ -289,5 +312,6 @@ export type MetadataContractRelationship = FromSchema<typeof RELATIONSHIP_SCHEMA
 export type SharedEdgeFields = FromSchema<typeof EDGE_SCHEMA>;
 export type SharedEmbeddingFields = FromSchema<typeof EMBEDDING_SCHEMA>;
 export type Rule = FromSchema<typeof RULE_SCHEMA>;
+export type DeclaredRule = FromSchema<typeof DECLARED_RULE_SCHEMA>;
 export type RuleSemantic = FromSchema<typeof SEMANTIC_SCHEMA>;
 export type MetadataRef = FromSchema<typeof REF_SCHEMA>;
