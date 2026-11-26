@@ -67,7 +67,7 @@
     "dts-bundle-generator": "9.5.1",
     "esbuild": "0.28.2",
     "lefthook": "^2.2.2",
-    "structured-context-map-views": "^0.6.0"
+    "structured-context-map-views": "^0.7.1"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -85,7 +85,7 @@
     "mdast-util-to-string": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
-    "sctx-map-views": "^0.6.2",
+    "sctx-map-views": "^0.7.1",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0"
   }
