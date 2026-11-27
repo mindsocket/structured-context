@@ -209,7 +209,7 @@ A **decision question** is one choice question about one node under one semantic
 
 The **per-node input cap** limits the input for one evaluated node and its related nodes. See [Input size and trimming](semantic-rules.md#input-size-and-trimming).
 
-The **verdict cache** stores semantic verdicts on disk keyed by node input, rule spec, model provider identity and prompt version, partitioned by config root and space name. See [Verdict caching](semantic-rules.md#verdict-caching).
+The **verdict cache** keeps semantic verdicts on disk across runs so unchanged nodes are not judged again. See [Verdict caching](semantic-rules.md#verdict-caching).
 
 ### Cascade gating
 

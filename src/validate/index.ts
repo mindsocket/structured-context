@@ -1,12 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from '../config';
-import { corePackageVersion, wrapWithVerdictCache } from '../judge/cache';
+import { withVerdictCache } from '../judge/cache';
 import { createJudgeProvider } from '../judge/factory';
 import type { JudgeSession } from '../judge/judge-node';
-import { isBuiltinPluginName } from '../plugins/builtin-names';
-import { resolvePluginDir } from '../plugins/util';
 import { readSpace } from '../read/read-space';
 import { evaluateRules, type FailedNodes, type RuleEvaluationResult } from '../rule/gating';
 import { filterRules, parseRuleFilter, type RuleFilter } from '../rule/rule-filter';
@@ -179,22 +176,6 @@ export interface ValidationOptions {
   judge?: JudgeSession;
 }
 
-function pluginVersionOf(source: string | undefined, configDir: string): string | undefined {
-  if (!source) return undefined;
-  if (isBuiltinPluginName(source)) return corePackageVersion();
-  const dir = resolvePluginDir(source, configDir);
-  if (!dir) return undefined;
-  const pkgPath = join(dir, 'package.json');
-  if (!existsSync(pkgPath)) return undefined;
-  try {
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version?: string };
-    return typeof pkg.version === 'string' ? pkg.version : undefined;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Invalid plugin package.json at ${pkgPath}: ${msg}`);
-  }
-}
-
 /** Throws `SctxError` `E_MODEL_PROVIDER_INVALID` when `semantic` names a provider that cannot be built. */
 function toValidationOptions(context: SpaceContext, options: CommonValidateOptions): ValidationOptions {
   const provider = createJudgeProvider(context.config, context.space, options.semantic);
@@ -217,13 +198,10 @@ function attachVerdictCache(
     ...validationOptions,
     judge: {
       ...validationOptions.judge,
-      provider: wrapWithVerdictCache(validationOptions.judge.provider, {
-        configDir: context.configDir,
-        spaceName: context.space.name,
-        schema: context.schema,
+      provider: withVerdictCache(validationOptions.judge.provider, context, {
         cacheDir: options.cacheDir,
         rejudge: options.rejudge,
-        pluginVersion: pluginVersionOf(pluginSource, context.configDir),
+        pluginSource,
       }),
     },
   };
