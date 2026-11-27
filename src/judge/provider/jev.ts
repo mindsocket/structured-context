@@ -1,7 +1,8 @@
-import { JUDGE_ROLE, JUDGE_STANCE } from '../prompt';
+import { hashPrompt, JUDGE_ROLE, JUDGE_STANCE } from '../prompt';
 import { estimateTokens } from '../trim';
 import type {
   HydratedProvider,
+  JudgeProviderIdentity,
   RelatedNode,
   SchemaDescriptions,
   SemanticJudgeInput,
@@ -40,6 +41,7 @@ type JevChoiceAnswer = {
  */
 export class JevJudgeProvider implements SemanticJudgeProvider {
   readonly name = 'jev';
+  readonly identity: JudgeProviderIdentity;
   private apiKey: string;
   private model: string;
   private endpoint: string;
@@ -48,6 +50,12 @@ export class JevJudgeProvider implements SemanticJudgeProvider {
     this.apiKey = options.apiKey ?? '';
     this.model = options.model || JEV_LATEST;
     this.endpoint = options.endpoint || OPENROUTER_DECISIONS_ENDPOINT;
+    this.identity = {
+      api: options.api,
+      model: this.model,
+      endpoint: this.endpoint,
+      promptVersion: JEV_PROMPT_VERSION,
+    };
   }
 
   async evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>> {
@@ -182,6 +190,11 @@ function withFraming(state: Record<string, unknown>, packed: boolean) {
   ].join(' ');
   return { judgeInstructions, ...state };
 }
+
+const JEV_PROMPT_VERSION = hashPrompt({
+  single: withFraming({}, false),
+  packed: withFraming({}, true),
+});
 
 function decisionQuestion(rule: SemanticRuleSpec, instructions: string) {
   return { type: 'choice', instructions, criteria: rule.verdicts };

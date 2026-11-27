@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import fg from 'fast-glob';
 import matter from 'gray-matter';
 import type { BaseNode } from '../../api';
@@ -30,6 +30,8 @@ function terminatedIssue(
 
 type ReadSpaceDirectoryOptions = {
   includeOnAPageFiles?: boolean;
+  /** When set, parse only these space-relative files and mark the result as partial. */
+  files?: string[];
 };
 
 export function readSpaceOnAPage(context: PluginContext): ParseResult {
@@ -96,7 +98,16 @@ export async function readSpaceDirectory(
 
   const edgeFields = getEdgeFieldNames(metadata);
 
-  const files = await fg('**/*.md', { cwd: directory, followSymbolicLinks: true });
+  const isPartial = options?.files !== undefined;
+  const files = isPartial
+    ? [...new Set(options.files!.map((f) => f.replace(/\\/g, '/').replace(/^\.\//, '')))].filter((file) => {
+        if (!file.endsWith('.md')) return false;
+        const abs = resolve(directory, file);
+        const rel = relative(directory, abs);
+        if (rel.startsWith('..') || isAbsolute(rel)) return false;
+        return existsSync(abs) && statSync(abs).isFile();
+      })
+    : await fg('**/*.md', { cwd: directory, followSymbolicLinks: true });
   const nodes: BaseNode[] = [];
   const parseIssues: ParseIssue[] = [];
   const excludedPages: NonNullable<ParseResult['excludedPages']> = [];
@@ -209,5 +220,11 @@ export async function readSpaceDirectory(
     }
   }
 
-  return { nodes, parseIssues, excludedPages, diagnostics: { kind: 'directory' } };
+  return {
+    nodes,
+    parseIssues,
+    excludedPages,
+    diagnostics: { kind: 'directory' },
+    ...(isPartial ? { partial: true } : {}),
+  };
 }

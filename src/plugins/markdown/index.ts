@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs';
 import type { FromSchema } from 'json-schema-to-ts';
 import { BUILTIN_PLUGIN_NAMES } from '../builtin-names';
-import type { ParseResult, PluginContext, StructuredContextPlugin } from '../util';
+import type { ParseOptions, ParseResult, PluginContext, StructuredContextPlugin } from '../util';
 import { readSpaceDirectory, readSpaceOnAPage } from './read-space';
 import { renderBullets } from './render-bullets';
 import { renderMarkdownDirectory } from './render-directory';
@@ -34,11 +34,11 @@ export function getMarkdownConfig(plugins?: Record<string, Record<string, unknow
   return (plugins?.[BUILTIN_PLUGIN_NAMES.markdown] ?? {}) as MarkdownPluginConfig;
 }
 
-async function parse(context: PluginContext): Promise<ParseResult | null> {
+async function parse(context: PluginContext, options?: ParseOptions): Promise<ParseResult | null> {
   if (statSync(context.space.path).isFile()) {
     return readSpaceOnAPage(context);
   }
-  return await readSpaceDirectory(context);
+  return await readSpaceDirectory(context, options?.files ? { files: options.files } : undefined);
 }
 
 export const markdownPlugin: StructuredContextPlugin = {

@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import type { NodeId } from '../types';
 import type { SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from './types';
 
 /** Escape a value for an XML attribute; element bodies stay raw, since the model reads them as text. */
@@ -94,6 +96,38 @@ export function buildJudgeUserPrompt(
   lines.push('', 'Evaluate the item against the rule. Return only JSON with "verdict", "confidence" and "evidence".');
   return lines.join('\n');
 }
+
+/** Deterministic 16-character SHA-256 hash of a provider's rendered prompt/framing template. */
+export function hashPrompt(value: unknown): string {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
+}
+
+/** Representative sample exercising all optional prompt sections (parents, related nodes, schema descriptions). */
+export const PROMPT_HASH_SAMPLE_INPUT: Pick<SemanticJudgeInput, 'node' | 'related' | 'schemaDescriptions'> = {
+  node: {
+    id: 'sample.md' as NodeId,
+    title: 'Sample',
+    resolvedType: 'sample',
+    schemaData: { status: 'active' },
+    parentTitles: ['Parent'],
+  },
+  related: [{ relations: ['parent'], title: 'Parent', type: 'parent', data: {} }],
+  schemaDescriptions: { sample: { description: 'Sample type', fields: { status: 'Lifecycle stage' } } },
+};
+
+const PROMPT_HASH_SAMPLE_RULE: SemanticRuleSpec = {
+  id: 'sample-rule',
+  description: 'Sample rule',
+  rubric: 'Sample rubric',
+  category: 'best-practice',
+  verdicts: { pass: 'Passes', fail: 'Fails' },
+};
+
+/** Content hash of the shared chat prompt (`buildJudgeSystemPrompt` + `buildJudgeUserPrompt`). */
+export const CHAT_PROMPT_VERSION = hashPrompt({
+  system: buildJudgeSystemPrompt(),
+  user: buildJudgeUserPrompt(PROMPT_HASH_SAMPLE_INPUT, PROMPT_HASH_SAMPLE_RULE),
+});
 
 /**
  * Parse judge output into a verdict from the rule's allowed set.

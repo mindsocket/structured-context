@@ -1,5 +1,11 @@
-import { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from '../prompt';
-import type { HydratedProvider, SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from '../types';
+import { buildJudgeSystemPrompt, buildJudgeUserPrompt, CHAT_PROMPT_VERSION, parseJudgeResponse } from '../prompt';
+import type {
+  HydratedProvider,
+  JudgeProviderIdentity,
+  SemanticJudgeInput,
+  SemanticJudgeResult,
+  SemanticRuleSpec,
+} from '../types';
 import { PerRuleJudgeProvider } from './per-rule';
 
 export interface AnthropicJudgeProviderOptions extends HydratedProvider {
@@ -13,6 +19,7 @@ export const ANTHROPIC_MESSAGES_ENDPOINT = 'https://api.anthropic.com/v1/message
 /** Judge provider for the Anthropic Messages API. Reads no environment: it takes hydrated values. */
 export class AnthropicJudgeProvider extends PerRuleJudgeProvider {
   readonly name = 'anthropic';
+  readonly identity: JudgeProviderIdentity;
   private apiKey: string;
   private model: string;
   private endpoint: string;
@@ -22,6 +29,12 @@ export class AnthropicJudgeProvider extends PerRuleJudgeProvider {
     this.apiKey = options.apiKey ?? '';
     this.model = options.model || RECOMMENDED_ANTHROPIC_MODEL;
     this.endpoint = options.endpoint || ANTHROPIC_MESSAGES_ENDPOINT;
+    this.identity = {
+      api: 'anthropic-messages',
+      model: this.model,
+      endpoint: this.endpoint,
+      promptVersion: CHAT_PROMPT_VERSION,
+    };
   }
 
   protected async judgeRule(input: SemanticJudgeInput, rule: SemanticRuleSpec): Promise<SemanticJudgeResult> {

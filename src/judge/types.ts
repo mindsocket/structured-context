@@ -64,9 +64,20 @@ export interface SemanticJudgeVerdict {
 /** A judge's answer for one rule: a verdict, or an error that applies to that rule only. */
 export type SemanticJudgeResult = SemanticJudgeVerdict | { error: string };
 
+/** Concrete provider identity used in verdict cache keys. */
+export interface JudgeProviderIdentity {
+  api: string;
+  model: string;
+  endpoint?: string;
+  /** Content hash of this provider's rendered prompt/framing template. */
+  promptVersion?: string;
+}
+
 /** Judge interface. Results are keyed by rule id; a missing key is treated as an error. */
 export interface SemanticJudgeProvider {
   readonly name: string;
+  /** Resolved wire API, model and endpoint for cache keying. */
+  readonly identity?: JudgeProviderIdentity;
   evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>>;
   /**
    * Optional: judge many nodes in one call, so a provider can fold them into fewer model calls. Returns one

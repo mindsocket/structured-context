@@ -11,7 +11,7 @@ Then use the `sctx` command for all operations. Always pass `--config <path>` wh
 ## validate
 
 ```bash
-sctx validate <space> [--watch] [--config <path>] [--depth <n>] [--include-gated] [--semantic [provider]] [--rule-filter <dim=values>]
+sctx validate <space> [--watch] [--config <path>] [--depth <n>] [--include-gated] [--semantic [provider]] [--no-cache] [--rejudge] [--rule-filter <dim=values>]
 ```
 
 Validates all `.md` files in the space against the JSON schema. For each file:
@@ -32,7 +32,8 @@ the top — useful for fixing a space level by level (fix the top, re-run with a
 them as gated — use it to surface cheap bottom-up checks even below a gate.
 `--semantic` also evaluates the `semantic` part of rules through the configured model provider
 (costly; off by default; `--semantic <provider>` uses that configured provider instead; `sctx providers`
-lists them). When input for a node exceeds the per-node input cap, node bodies are trimmed and the run
+lists them). Semantic verdicts are cached on disk by default; pass `--rejudge` to re-evaluate and update
+the cache for one run, or `--no-cache` to bypass reading and writing. When input for a node exceeds the per-node input cap, node bodies are trimmed and the run
 summary says which rules were affected. `--rule-filter <dimension>=<values>` (repeatable; category,
 severity, type, id) narrows which rules run. `--json` prints machine-readable results.
 
@@ -51,7 +52,7 @@ sctx validate <space> --watch
 ## validate-file
 
 ```bash
-sctx validate-file <path> [--json] [--include-gated] [--semantic [provider]] [--rule-filter <dim=values>]
+sctx validate-file <path> [--json] [--include-gated] [--semantic [provider]] [--no-cache] [--rejudge] [--rule-filter <dim=values>]
 ```
 
 Validates one file within its space: the space is found from the configured space paths, and
