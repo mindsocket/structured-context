@@ -1,9 +1,11 @@
-import { dirname } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import chokidar from 'chokidar';
-import { getConfigSourceFiles } from '../config';
+import { getConfigSourceFiles, loadConfig } from '../config';
 import { resolveSpacePluginSchemas } from '../plugins/util';
+import { readSpace, refreshReadResult } from '../read/read-space';
 import { bundledSchemasDir } from '../schema/schema';
-import type { RuleSeverity, SpaceContext, ValidationIssue } from '../types';
+import { createSpaceContext } from '../space-context';
+import type { ReadSpaceResult, RuleSeverity, SpaceContext, ValidationIssue } from '../types';
 import { formatSource, type ValidateSpaceOptions, type ValidationResult, validateSpace } from '../validate';
 
 /** What `validate --json` prints: the run's `ValidationResult` and a summary. The Claude Code plugin's scripts read it by this type. */
@@ -205,9 +207,18 @@ export async function watchValidate(context: SpaceContext): Promise<never> {
   process.stdout.write('\x1b[s');
 
   let exitCode = 0;
-  const innerValidate = async () => {
+  let currentContext = context;
+  let currentReadResult: ReadSpaceResult | undefined;
+  const resolvedSpacePath = resolve(spacePath);
+
+  const innerValidate = async (changedSpaceFile?: string) => {
     try {
-      exitCode = await validate(context);
+      if (changedSpaceFile && currentReadResult) {
+        currentReadResult = await refreshReadResult(currentContext, currentReadResult, [changedSpaceFile]);
+      } else {
+        currentReadResult = await readSpace(currentContext);
+      }
+      exitCode = await validate(currentContext, { readResult: currentReadResult });
     } catch (error) {
       console.error(`❌ Error during validation: ${error instanceof Error ? error.message : String(error)}`);
       exitCode = 2;
@@ -228,7 +239,26 @@ export async function watchValidate(context: SpaceContext): Promise<never> {
   const handleFileChange = async (filePath: string, action: string) => {
     process.stdout.write('\x1b[u\x1b[0J');
     console.log(`🔄 ${filePath} ${action}, re-validating...\n`);
-    await innerValidate();
+    const absFile = resolve(filePath);
+    const relToSpace = relative(resolvedSpacePath, absFile);
+    const isInSpace = relToSpace !== '' && !relToSpace.startsWith('..') && !isAbsolute(relToSpace);
+    if (isInSpace) {
+      await innerValidate(relToSpace.replace(/\\/g, '/'));
+    } else if (absFile === resolvedSpacePath) {
+      // Single-file space (space_on_a_page): re-read without reloading config/schema.
+      await innerValidate();
+    } else {
+      // Config or schema changed: rebuild context and do a full read.
+      try {
+        currentContext = createSpaceContext(context.space.name, loadConfig());
+      } catch (error) {
+        console.error(`❌ Error reloading config/schema: ${error instanceof Error ? error.message : String(error)}`);
+        exitCode = 2;
+        return;
+      }
+      currentReadResult = undefined;
+      await innerValidate();
+    }
   };
 
   watcher.on('add', (path) => handleFileChange(path, 'added'));

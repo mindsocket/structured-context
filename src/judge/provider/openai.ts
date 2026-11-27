@@ -1,5 +1,11 @@
-import { buildJudgeSystemPrompt, buildJudgeUserPrompt, parseJudgeResponse } from '../prompt';
-import type { HydratedProvider, SemanticJudgeInput, SemanticJudgeResult, SemanticRuleSpec } from '../types';
+import { buildJudgeSystemPrompt, buildJudgeUserPrompt, CHAT_PROMPT_VERSION, parseJudgeResponse } from '../prompt';
+import type {
+  HydratedProvider,
+  JudgeProviderIdentity,
+  SemanticJudgeInput,
+  SemanticJudgeResult,
+  SemanticRuleSpec,
+} from '../types';
 import { PerRuleJudgeProvider } from './per-rule';
 
 export interface OpenAIJudgeProviderOptions extends HydratedProvider {
@@ -16,6 +22,7 @@ export const OPENAI_COMPLETIONS_ENDPOINT = 'https://api.openai.com/v1';
  */
 export class OpenAIJudgeProvider extends PerRuleJudgeProvider {
   readonly name = 'openai';
+  readonly identity: JudgeProviderIdentity;
   private apiKey?: string;
   private model: string;
   private endpoint: string;
@@ -27,6 +34,12 @@ export class OpenAIJudgeProvider extends PerRuleJudgeProvider {
 
     const base = options.endpoint || OPENAI_COMPLETIONS_ENDPOINT;
     this.endpoint = base.endsWith('/chat/completions') ? base : `${base.replace(/\/+$/, '')}/chat/completions`;
+    this.identity = {
+      api: 'openai-completions',
+      model: this.model,
+      endpoint: this.endpoint,
+      promptVersion: CHAT_PROMPT_VERSION,
+    };
   }
 
   protected async judgeRule(input: SemanticJudgeInput, rule: SemanticRuleSpec): Promise<SemanticJudgeResult> {

@@ -76,6 +76,16 @@ flowchart LR
 
 Validation runs as one pipeline over the whole space. `validateSpace` returns its full result, and `validateFile` returns the part that belongs to one file, so a file's results match its part of a full run.
 
+### Incremental reads
+
+Long-lived hosts (such as editor plugins and `sctx validate --watch`) keep a `SpaceContext` and a `ReadSpaceResult` across edits. When files change, `refreshReadResult(context, previous, changedFiles)` drops the prior nodes, parse issues and excluded pages from those files, asks the parse plugin to parse only those files, merges the result, and re-runs `resolveGraphEdges` over the whole space.
+
+A parse plugin signals that it honoured the `files` list by returning `partial: true` on `ParseResult`. The built-in markdown directory reader implements partial parses. Plugins that ignore `files` (including `space_on_a_page`) return a full `ParseResult` without `partial: true`, and core treats that as a full read. A config or schema change requires a new `SpaceContext` and a full `readSpace`.
+
+### Verdict cache
+
+`src/judge/cache.ts` wraps the model provider in `CachedJudgeProvider` when semantic validation runs with caching enabled (the default). Cached verdicts are read before calling the provider, and only cache misses are sent (preserving batch packing for `evaluateNodes`). See [Verdict caching](semantic-rules.md#verdict-caching) for the cache location, key inputs, stored metadata and CLI flags.
+
 ---
 
 ## Module Boundaries

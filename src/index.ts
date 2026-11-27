@@ -60,11 +60,15 @@ program
     (v: string, prev: string[] = []) => [...prev, v],
   )
   .option('--semantic [provider]', 'Evaluate semantic rules, with the configured model provider or the one named')
+  .option('--no-cache', 'Disable the semantic verdict cache for this run (neither reads nor writes)')
+  .option('--rejudge', 'Ignore cached semantic verdicts for this run and write fresh verdicts to the cache')
   .action(async (filePath, options) => {
     process.exitCode = await validateFileCommand(filePath, {
       json: options.json,
       includeGated: options.includeGated,
       semantic: options.semantic,
+      cache: options.cache,
+      rejudge: options.rejudge,
       ruleFilter: options.ruleFilter,
     });
   });
@@ -90,6 +94,8 @@ program
     (v: string, prev: string[] = []) => [...prev, v],
   )
   .option('--semantic [provider]', 'Evaluate semantic rules, with the configured model provider or the one named')
+  .option('--no-cache', 'Disable the semantic verdict cache for this run (neither reads nor writes)')
+  .option('--rejudge', 'Ignore cached semantic verdicts for this run and write fresh verdicts to the cache')
   .action(async (spaceName, options) => {
     const context = buildSpaceContext(spaceName);
     if (options.watch) {
@@ -101,6 +107,8 @@ program
         depth: options.depth,
         includeGated: options.includeGated,
         semantic: options.semantic,
+        cache: options.cache,
+        rejudge: options.rejudge,
         ruleFilter: options.ruleFilter,
       });
     }

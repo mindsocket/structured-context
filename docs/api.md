@@ -15,6 +15,7 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `loadConfig()` | Load the resolved config (spaces, schemas) from the standard config locations. |
 | `createSpaceContext(spaceName, config, options?)` | Build a `SpaceContext` for a named space (resolves bundled, local, or plugin schemas). |
 | `readSpace(context)` | Read a space into a flat `ReadSpaceResult` (`nodes`, `parseIssues`, `diagnostics`, `source`). |
+| `refreshReadResult(context, previous, changedFiles)` | Incrementally update a `ReadSpaceResult` for changed space-relative files and re-resolve graph edges. |
 | `loadSpaceGraph(spaceName, config, options?)` | Read, assemble, and optionally filter a space into a navigable `SpaceGraph`. |
 | `assembleSpaceGraph(context, options?)` | Assemble (and optionally filter) a graph from a context you already hold. |
 | `buildSpaceGraph(nodes, hierarchy?)` | Build a navigable `SpaceGraph` directly from an array of `SpaceNode`s and a `Hierarchy` definition. |
@@ -22,6 +23,7 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `spaceGraphFrom(data, options?)` | Build a `SpaceGraph` from that JSON. |
 | `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. |
 | `validateFile(filePath, config)` | Validate a single file within its space. |
+| `resolveFileSpace(filePath, config)` | Find which configured space contains a file and its space-relative label. |
 | `listSchemas(options?)` | List the schemas available to a config: bundled, plugin-contributed and configured. |
 | `formatWikilink(target, alias?)` | Format a target into an Obsidian wikilink (`[[target]]` or `[[target|alias]]`). |
 | `parseWikilink(link)` | Parse a wikilink or target string into `{ target, anchor?, displayText? }`. |

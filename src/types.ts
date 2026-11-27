@@ -226,6 +226,8 @@ export type ReadSpaceResult = {
   unresolvedRefs: UnresolvedRef[];
   /** Content links that reach neither a node nor an excluded page. */
   unresolvedContentLinks: Array<{ nodeId: NodeId; target: string }>;
+  /** Pages read but not made nodes, kept so incremental refreshes preserve content-link resolution. */
+  excludedPages?: Array<Required<Pick<BaseNode, 'source' | 'linkTargets'>>>;
 };
 
 export type SpaceContext = {

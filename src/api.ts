@@ -48,7 +48,7 @@ export {
   resolvePluginSchemasDir,
   resolveSpacePluginSchemas,
 } from './plugins/util';
-export { readSpace } from './read/read-space';
+export { readSpace, refreshReadResult } from './read/read-space';
 export {
   buildTargetIndex,
   formatWikilink,
@@ -87,4 +87,4 @@ export type {
 } from './types';
 export { VALIDATION_ISSUE_KINDS } from './types';
 export type { ValidationResult } from './validate';
-export { validateFile, validateSpace } from './validate';
+export { resolveFileSpace, validateFile, validateSpace } from './validate';

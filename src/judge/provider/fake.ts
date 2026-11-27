@@ -1,4 +1,10 @@
-import type { SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult, SemanticRuleSpec } from '../types';
+import type {
+  JudgeProviderIdentity,
+  SemanticJudgeInput,
+  SemanticJudgeProvider,
+  SemanticJudgeResult,
+  SemanticRuleSpec,
+} from '../types';
 
 /** A fake answer: a full verdict, or the `{ pass }` shorthand mapped onto the default `pass`/`fail` verdicts. */
 export type FakeAnswer = SemanticJudgeResult | { pass: boolean; evidence?: string };
@@ -32,6 +38,7 @@ function normalise(answer: FakeAnswer): SemanticJudgeResult {
  */
 export class FakeJudgeProvider implements SemanticJudgeProvider {
   readonly name = 'fake';
+  readonly identity: JudgeProviderIdentity = { api: 'fake', model: 'fake', promptVersion: 'fake' };
   public callHistory: SemanticJudgeInput[] = [];
 
   constructor(private config?: FakeConfig) {}

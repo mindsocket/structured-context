@@ -1,4 +1,11 @@
-import type { HydratedProvider, SemanticJudgeInput, SemanticJudgeProvider, SemanticJudgeResult } from '../types';
+import { hashPrompt, PROMPT_HASH_SAMPLE_INPUT } from '../prompt';
+import type {
+  HydratedProvider,
+  JudgeProviderIdentity,
+  SemanticJudgeInput,
+  SemanticJudgeProvider,
+  SemanticJudgeResult,
+} from '../types';
 
 export interface OpenAIDecisionsJudgeProviderOptions extends HydratedProvider {
   apiKey?: string;
@@ -24,6 +31,7 @@ type OpenAIDecisionAnswer = {
  */
 export class OpenAIDecisionsJudgeProvider implements SemanticJudgeProvider {
   readonly name = 'openai-decisions';
+  readonly identity: JudgeProviderIdentity;
   private apiKey: string;
   private model: string;
   private endpoint: string;
@@ -32,31 +40,23 @@ export class OpenAIDecisionsJudgeProvider implements SemanticJudgeProvider {
     this.apiKey = options.apiKey ?? '';
     this.model = options.model || RECOMMENDED_OPENAI_DECISIONS_MODEL;
     this.endpoint = options.endpoint || OPENAI_DECISIONS_ENDPOINT;
+    this.identity = {
+      api: 'openai-decisions',
+      model: this.model,
+      endpoint: this.endpoint,
+      promptVersion: OPENAI_DECISIONS_PROMPT_VERSION,
+    };
   }
 
   async evaluate(input: SemanticJudgeInput): Promise<Record<string, SemanticJudgeResult>> {
-    const { node, rules } = input;
-
-    const stateLines = [
-      `Title: ${node.title}`,
-      `Type: ${node.resolvedType}`,
-      ...(node.parentTitles.length ? [`Parents: ${node.parentTitles.join(', ')}`] : []),
-      ...fieldLines(node.schemaData ?? {}),
-      ...(input.related ?? []).flatMap((r) => [
-        '',
-        `Related node (${r.relations.join(', ')}): ${r.title}`,
-        `Type: ${r.type}`,
-        ...fieldLines(r.data),
-      ]),
-      ...(input.schemaDescriptions ? ['', `Schema descriptions: ${JSON.stringify(input.schemaDescriptions)}`] : []),
-    ];
+    const { rules } = input;
 
     const res = await fetch(this.endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
       body: JSON.stringify({
         model: this.model,
-        input: stateLines.join('\n'),
+        input: buildInputText(input),
         questions: rules.map((rule) => ({
           type: 'choice',
           name: rule.id,
@@ -97,6 +97,25 @@ function fieldLines(data: Record<string, unknown>): string[] {
     .filter(([field]) => field !== 'title' && field !== 'type')
     .map(([field, value]) => `${field}: ${JSON.stringify(value) ?? String(value)}`);
 }
+
+function buildInputText(input: Pick<SemanticJudgeInput, 'node' | 'related' | 'schemaDescriptions'>): string {
+  const { node } = input;
+  return [
+    `Title: ${node.title}`,
+    `Type: ${node.resolvedType}`,
+    ...(node.parentTitles.length ? [`Parents: ${node.parentTitles.join(', ')}`] : []),
+    ...fieldLines(node.schemaData ?? {}),
+    ...(input.related ?? []).flatMap((r) => [
+      '',
+      `Related node (${r.relations.join(', ')}): ${r.title}`,
+      `Type: ${r.type}`,
+      ...fieldLines(r.data),
+    ]),
+    ...(input.schemaDescriptions ? ['', `Schema descriptions: ${JSON.stringify(input.schemaDescriptions)}`] : []),
+  ].join('\n');
+}
+
+const OPENAI_DECISIONS_PROMPT_VERSION = hashPrompt(buildInputText(PROMPT_HASH_SAMPLE_INPUT));
 
 function describeDistribution(
   choice: string,

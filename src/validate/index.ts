@@ -1,8 +1,12 @@
-import { isAbsolute, relative, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { ErrorObject } from 'ajv';
 import type { Config, SpaceConfig } from '../config';
+import { corePackageVersion, wrapWithVerdictCache } from '../judge/cache';
 import { createJudgeProvider } from '../judge/factory';
 import type { JudgeSession } from '../judge/judge-node';
+import { isBuiltinPluginName } from '../plugins/builtin-names';
+import { resolvePluginDir } from '../plugins/util';
 import { readSpace } from '../read/read-space';
 import { evaluateRules, type FailedNodes, type RuleEvaluationResult } from '../rule/gating';
 import { filterRules, parseRuleFilter, type RuleFilter } from '../rule/rule-filter';
@@ -159,6 +163,12 @@ interface CommonValidateOptions {
    * Without it, a rule runs only its `expression`, and a semantic-only rule is skipped.
    */
   semantic?: boolean | string;
+  /** Use the on-disk verdict cache for semantic rules (default `true`). Set `false` to disable reading and writing. */
+  cache?: boolean;
+  /** Ignore cached verdicts for this run and ask the model again, updating the cache with fresh verdicts. */
+  rejudge?: boolean;
+  /** Override the verdict cache root directory (defaults to `$XDG_CACHE_HOME/structured-context/`). */
+  cacheDir?: string;
 }
 
 /** What a validation run evaluates with: the options after the filter is parsed and the judge session is built. */
@@ -169,6 +179,22 @@ export interface ValidationOptions {
   judge?: JudgeSession;
 }
 
+function pluginVersionOf(source: string | undefined, configDir: string): string | undefined {
+  if (!source) return undefined;
+  if (isBuiltinPluginName(source)) return corePackageVersion();
+  const dir = resolvePluginDir(source, configDir);
+  if (!dir) return undefined;
+  const pkgPath = join(dir, 'package.json');
+  if (!existsSync(pkgPath)) return undefined;
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version?: string };
+    return typeof pkg.version === 'string' ? pkg.version : undefined;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Invalid plugin package.json at ${pkgPath}: ${msg}`);
+  }
+}
+
 /** Throws `SctxError` `E_MODEL_PROVIDER_INVALID` when `semantic` names a provider that cannot be built. */
 function toValidationOptions(context: SpaceContext, options: CommonValidateOptions): ValidationOptions {
   const provider = createJudgeProvider(context.config, context.space, options.semantic);
@@ -176,6 +202,30 @@ function toValidationOptions(context: SpaceContext, options: CommonValidateOptio
     includeGated: options.includeGated,
     ruleFilter: options.ruleFilter && parseRuleFilter(options.ruleFilter),
     ...(provider && { judge: { provider } }),
+  };
+}
+
+/** Wrap an already-built judge provider with the disk verdict cache once the parse plugin is known. */
+function attachVerdictCache(
+  context: SpaceContext,
+  options: CommonValidateOptions,
+  validationOptions: ValidationOptions,
+  pluginSource: string,
+): ValidationOptions {
+  if (!validationOptions.judge || options.cache === false) return validationOptions;
+  return {
+    ...validationOptions,
+    judge: {
+      ...validationOptions.judge,
+      provider: wrapWithVerdictCache(validationOptions.judge.provider, {
+        configDir: context.configDir,
+        spaceName: context.space.name,
+        schema: context.schema,
+        cacheDir: options.cacheDir,
+        rejudge: options.rejudge,
+        pluginVersion: pluginVersionOf(pluginSource, context.configDir),
+      }),
+    },
   };
 }
 
@@ -384,8 +434,10 @@ export async function validateSpace(
 ): Promise<ValidationResult> {
   const metadata = context.schema.metadata;
 
-  const runOptions = toValidationOptions(context, options);
+  // Validate provider and filter before reading the space so misconfigurations fail fast.
+  const prepared = toValidationOptions(context, options);
   const readResult = options.readResult ?? (await readSpace(context));
+  const runOptions = attachVerdictCache(context, options, prepared, readResult.source);
   let nodes = readResult.nodes;
 
   // Depth limiting: evaluate only hierarchy nodes within N breadth-first levels from the
@@ -435,10 +487,10 @@ export function resolveFileSpace(filePath: string, config: Config): { space: Spa
 
   for (const space of config.spaces) {
     const absSpace = isAbsolute(space.path) ? space.path : resolve(process.cwd(), space.path);
-    // Trailing slash prevents prefix-match false positives (e.g. /foo matching /foobar/)
-    const spaceDir = absSpace.endsWith('/') ? absSpace : `${absSpace}/`;
+    // Trailing separator prevents prefix-match false positives (e.g. /foo matching /foobar/)
+    const spaceDir = absSpace.endsWith(sep) ? absSpace : `${absSpace}${sep}`;
     if (absFile.startsWith(spaceDir) || absFile === absSpace) {
-      return { space, label: relative(absSpace, absFile) };
+      return { space, label: relative(absSpace, absFile).replace(/\\/g, '/') };
     }
   }
   return null;
@@ -461,13 +513,16 @@ export function fileNotInSpace(filePath: string): FileNotInSpaceResult {
  * Validate a file in an already-resolved space. Checks the whole space (required for graph
  * correctness), judging only the file, then selects the file's issues from the result.
  */
-export function validateResolvedFile(
+export async function validateResolvedFile(
   filePath: string,
   label: string,
   context: SpaceContext,
   options: Omit<ValidateFileOptions, 'configDir'> = {},
 ): Promise<FileValidationResult> {
-  return validateResolvedFileWith(filePath, label, context, toValidationOptions(context, options));
+  const prepared = toValidationOptions(context, options);
+  const readResult = await readSpace(context);
+  const runOptions = attachVerdictCache(context, options, prepared, readResult.source);
+  return validateResolvedFileWith(filePath, label, context, runOptions, readResult);
 }
 
 /** `validateResolvedFile` with the options already resolved, so a caller can supply its own judge. */
@@ -476,8 +531,9 @@ export async function validateResolvedFileWith(
   label: string,
   context: SpaceContext,
   validationOptions: ValidationOptions,
+  preRead?: ReadSpaceResult,
 ): Promise<FileValidationResult> {
-  const readResult = await readSpace(context);
+  const readResult = preRead ?? (await readSpace(context));
   const result = await validateNodes(context, readResult.nodes, readResult, {
     ...validationOptions,
     judge: validationOptions.judge && { ...validationOptions.judge, target: label },

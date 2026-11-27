@@ -43,6 +43,11 @@ export type PluginContext = SpaceContext & {
   };
 };
 
+export type ParseOptions = {
+  /** Source files (paths relative to the space root, as in `SourceLocation.file`) to parse. */
+  files?: string[];
+};
+
 export type ParseResult = {
   nodes: BaseNode[];
   /** Issues encountered while parsing files — excluded files with reason and severity. */
@@ -51,9 +56,11 @@ export type ParseResult = {
   excludedPages?: Array<Required<Pick<BaseNode, 'source' | 'linkTargets'>>>;
   /** Plugin diagnostics: keyed scalar or list values. */
   diagnostics: Record<string, number | string | string[]>;
+  /** True when the plugin honoured `options.files` and returned results for only those files. */
+  partial?: boolean;
 };
 
-export type ParseHook = (context: PluginContext) => Promise<ParseResult | null>;
+export type ParseHook = (context: PluginContext, options?: ParseOptions) => Promise<ParseResult | null>;
 
 export type TemplateSyncOptions = {
   dryRun?: boolean;
