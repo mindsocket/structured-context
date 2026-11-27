@@ -4,8 +4,6 @@ import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { PACKAGE_NAME } from '../constants';
-import { isBuiltinPluginName } from '../plugins/builtin-names';
-import { resolvePluginDir } from '../plugins/util';
 import type { SpaceContext } from '../types';
 import type {
   JudgeProviderIdentity,
@@ -23,7 +21,6 @@ type Entry = {
   key: string;
   verdict: SemanticJudgeVerdict;
   coreVersion: string;
-  pluginVersion?: string;
   schemaHash: string;
 };
 
@@ -40,22 +37,6 @@ function coreVersion(): string {
     _coreVersion = 'unknown';
   }
   return _coreVersion;
-}
-
-function pluginVersionOf(source: string | undefined, configDir: string): string | undefined {
-  if (!source) return undefined;
-  if (isBuiltinPluginName(source)) return coreVersion();
-  const dir = resolvePluginDir(source, configDir);
-  if (!dir) return undefined;
-  const pkgPath = join(dir, 'package.json');
-  if (!existsSync(pkgPath)) return undefined;
-  try {
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version?: string };
-    return typeof pkg.version === 'string' ? pkg.version : undefined;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Invalid plugin package.json at ${pkgPath}: ${msg}`);
-  }
 }
 
 function canonicalJson(value: unknown): string {
@@ -109,14 +90,13 @@ function saveEntries(filePath: string, entries: Record<string, Entry>): void {
 export function withVerdictCache(
   inner: SemanticJudgeProvider,
   context: Pick<SpaceContext, 'configDir' | 'space' | 'schema'>,
-  options: { cacheDir?: string; rejudge?: boolean; pluginSource?: string } = {},
+  options: { cacheDir?: string; rejudge?: boolean } = {},
 ): SemanticJudgeProvider {
   const identity: JudgeProviderIdentity = inner.identity ?? { api: inner.name, model: inner.name };
   const cacheRoot = options.cacheDir ?? join(process.env.XDG_CACHE_HOME || join(homedir(), '.cache'), PACKAGE_NAME);
   const filePath = verdictCachePath(cacheRoot, context.configDir, context.space.name);
   const rejudge = options.rejudge ?? false;
   const version = coreVersion();
-  const pluginVersion = pluginVersionOf(options.pluginSource, context.configDir);
   const schemaHash = sha256(canonicalJson(context.schema)).slice(0, 16);
   let entries: Record<string, Entry> | undefined;
 
@@ -171,7 +151,6 @@ export function withVerdictCache(
             key,
             verdict: res,
             coreVersion: version,
-            ...(pluginVersion !== undefined ? { pluginVersion } : {}),
             schemaHash,
           };
           dirty = true;
