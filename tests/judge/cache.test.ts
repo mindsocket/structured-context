@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Config } from '../../src/config';
-import { CachedJudgeProvider, canonicalStringify, verdictCacheKey, verdictCachePath } from '../../src/judge/cache';
+import { verdictCachePath, withVerdictCache } from '../../src/judge/cache';
 import { AnthropicJudgeProvider } from '../../src/judge/provider/anthropic';
 import { JevJudgeProvider } from '../../src/judge/provider/jev';
 import { OpenAIJudgeProvider } from '../../src/judge/provider/openai';
@@ -27,10 +27,7 @@ function makeTempDir(prefix = 'sctx-vcache-'): string {
   return dir;
 }
 
-const dummySchema: SchemaWithMetadata = {
-  type: 'object',
-  metadata: {},
-};
+const dummySchema: SchemaWithMetadata = { type: 'object', metadata: {} };
 
 const ruleA: SemanticRuleSpec = {
   id: 'rule-a',
@@ -48,12 +45,7 @@ const ruleB: SemanticRuleSpec = {
   verdicts: { pass: 'Coherent', fail: 'Incoherent' },
 };
 
-function makeInput(
-  id: string,
-  title: string,
-  rules: SemanticRuleSpec[] = [ruleA],
-  extra?: Partial<SemanticJudgeInput>,
-): SemanticJudgeInput {
+function makeInput(id: string, title: string, rules: SemanticRuleSpec[] = [ruleA]): SemanticJudgeInput {
   return {
     node: {
       id: id as NodeId,
@@ -63,8 +55,11 @@ function makeInput(
       parentTitles: ['Goal 1'],
     },
     rules,
-    ...extra,
   };
+}
+
+function makeContext(configDir: string, spaceName: string) {
+  return { configDir, space: { name: spaceName, path: configDir }, schema: dummySchema };
 }
 
 class SpyProvider implements SemanticJudgeProvider {
@@ -95,57 +90,38 @@ class SpyProvider implements SemanticJudgeProvider {
 }
 
 afterEach(() => {
-  for (const dir of tempDirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
 describe('verdict cache', () => {
-  test('canonicalStringify produces identical keys regardless of property insertion order', () => {
-    const a = { z: 1, a: { c: 3, b: 2, omitted: undefined } };
-    const b = { a: { b: 2, c: 3 }, z: 1 };
-    expect(canonicalStringify(a)).toBe(canonicalStringify(b));
-  });
-
   test('second run makes zero provider calls and never persists judge input', async () => {
     const cacheDir = makeTempDir();
     const configDir = makeTempDir();
+    const ctx = makeContext(configDir, 'my-space');
     const spy = new SpyProvider((input) =>
       Object.fromEntries(input.rules.map((r) => [r.id, { verdict: 'pass', confidence: 0.92, evidence: 'ok' }])),
     );
 
-    const opts = {
-      configDir,
-      spaceName: 'my-space',
-      schema: dummySchema,
-      cacheDir,
-      pluginVersion: '0.25.0',
-    };
-
     const inputs = [makeInput('a.md', 'Alpha', [ruleA, ruleB]), makeInput('b.md', 'Beta', [ruleA])];
+    const opts = { cacheDir, pluginSource: 'sctx-markdown' };
 
-    const first = new CachedJudgeProvider(spy, opts);
-    const res1 = await first.evaluateNodes(inputs);
+    const res1 = await withVerdictCache(spy, ctx, opts).evaluateNodes!(inputs);
     expect(spy.calls).toHaveLength(1);
     expect(res1[0]?.['rule-a']).toEqual({ verdict: 'pass', confidence: 0.92, evidence: 'ok' });
 
-    // New CachedJudgeProvider instance simulates a second CLI run reading from disk
-    const second = new CachedJudgeProvider(spy, opts);
-    const res2 = await second.evaluateNodes(inputs);
-    expect(spy.calls).toHaveLength(1); // zero additional provider calls
+    const res2 = await withVerdictCache(spy, ctx, opts).evaluateNodes!(inputs);
+    expect(spy.calls).toHaveLength(1);
     expect(res2).toEqual(res1);
 
-    // Verify stored file has metadata and never contains node content or titles
-    const raw = readFileSync(first.cachePath, 'utf-8');
+    const raw = readFileSync(verdictCachePath(cacheDir, configDir, 'my-space'), 'utf-8');
     expect(raw).not.toContain('Secret body of Alpha');
     expect(raw).not.toContain('Alpha');
-    const parsed = JSON.parse(raw);
-    const entries = Object.values(parsed.entries) as Array<Record<string, unknown>>;
+    const entries = Object.values(JSON.parse(raw).entries) as Array<Record<string, unknown>>;
     expect(entries).toHaveLength(3);
     for (const entry of entries) {
       expect(typeof entry.key).toBe('string');
       expect(typeof entry.coreVersion).toBe('string');
-      expect(entry.pluginVersion).toBe('0.25.0');
+      expect(typeof entry.pluginVersion).toBe('string');
       expect(typeof entry.schemaHash).toBe('string');
       expect(entry.verdict).toBeDefined();
     }
@@ -154,19 +130,19 @@ describe('verdict cache', () => {
   test('re-judges only changed nodes and changed rules', async () => {
     const cacheDir = makeTempDir();
     const configDir = makeTempDir();
+    const ctx = makeContext(configDir, 'space-a');
     const spy = new SpyProvider((input) =>
       Object.fromEntries(input.rules.map((r) => [r.id, { verdict: 'pass', evidence: `judged ${input.node.title}` }])),
     );
-    const opts = { configDir, spaceName: 'space-a', schema: dummySchema, cacheDir };
 
-    const p1 = new CachedJudgeProvider(spy, opts);
-    await p1.evaluateNodes([makeInput('a.md', 'Alpha', [ruleA, ruleB]), makeInput('b.md', 'Beta', [ruleA, ruleB])]);
+    await withVerdictCache(spy, ctx, { cacheDir }).evaluateNodes!([
+      makeInput('a.md', 'Alpha', [ruleA, ruleB]),
+      makeInput('b.md', 'Beta', [ruleA, ruleB]),
+    ]);
     expect(spy.calls).toHaveLength(1);
 
-    // Edit Beta's content and edit ruleB's rubric; Alpha + ruleA should still hit cache
     const ruleBEdited: SemanticRuleSpec = { ...ruleB, rubric: 'Is B very good?' };
-    const p2 = new CachedJudgeProvider(spy, opts);
-    await p2.evaluateNodes([
+    await withVerdictCache(spy, ctx, { cacheDir }).evaluateNodes!([
       makeInput('a.md', 'Alpha', [ruleA, ruleBEdited]),
       makeInput('b.md', 'Beta Changed', [ruleA, ruleBEdited]),
     ]);
@@ -174,10 +150,8 @@ describe('verdict cache', () => {
     expect(spy.calls).toHaveLength(2);
     const secondCall = spy.calls[1]!;
     expect(secondCall).toHaveLength(2);
-    // Alpha only missed ruleBEdited
     expect(secondCall[0]!.node.id).toBe('a.md' as NodeId);
     expect(secondCall[0]!.rules.map((r) => r.id)).toEqual(['rule-b']);
-    // Beta Changed missed both rules
     expect(secondCall[1]!.node.id).toBe('b.md' as NodeId);
     expect(secondCall[1]!.rules.map((r) => r.id)).toEqual(['rule-a', 'rule-b']);
   });
@@ -185,6 +159,7 @@ describe('verdict cache', () => {
   test('never caches provider errors or unknown verdicts', async () => {
     const cacheDir = makeTempDir();
     const configDir = makeTempDir();
+    const ctx = makeContext(configDir, 'space-err');
     let attempt = 0;
     const spy = new SpyProvider(() => {
       attempt++;
@@ -193,15 +168,12 @@ describe('verdict cache', () => {
       }
       return { 'rule-a': { verdict: 'pass' }, 'rule-b': { verdict: 'fail' } };
     });
-    const opts = { configDir, spaceName: 'space-err', schema: dummySchema, cacheDir };
 
-    const p1 = new CachedJudgeProvider(spy, opts);
-    const first = await p1.evaluate(makeInput('a.md', 'Alpha', [ruleA, ruleB]));
+    const first = await withVerdictCache(spy, ctx, { cacheDir }).evaluate(makeInput('a.md', 'Alpha', [ruleA, ruleB]));
     expect(first['rule-a']).toEqual({ error: 'rate limited' });
-    expect(existsSync(p1.cachePath)).toBe(false);
+    expect(existsSync(verdictCachePath(cacheDir, configDir, 'space-err'))).toBe(false);
 
-    const p2 = new CachedJudgeProvider(spy, opts);
-    const second = await p2.evaluate(makeInput('a.md', 'Alpha', [ruleA, ruleB]));
+    const second = await withVerdictCache(spy, ctx, { cacheDir }).evaluate(makeInput('a.md', 'Alpha', [ruleA, ruleB]));
     expect(second['rule-a']).toEqual({ verdict: 'pass' });
     expect(second['rule-b']).toEqual({ verdict: 'fail' });
     expect(attempt).toBe(2);
@@ -210,23 +182,42 @@ describe('verdict cache', () => {
   test('rejudge bypasses cache reads and overwrites cached verdicts', async () => {
     const cacheDir = makeTempDir();
     const configDir = makeTempDir();
+    const ctx = makeContext(configDir, 'space-rejudge');
     let verdict: 'pass' | 'fail' = 'pass';
     const spy = new SpyProvider(() => ({ 'rule-a': { verdict } }));
-    const opts = { configDir, spaceName: 'space-rejudge', schema: dummySchema, cacheDir };
-
     const input = makeInput('a.md', 'Alpha', [ruleA]);
-    await new CachedJudgeProvider(spy, opts).evaluate(input);
+
+    await withVerdictCache(spy, ctx, { cacheDir }).evaluate(input);
     expect(spy.calls).toHaveLength(1);
 
     verdict = 'fail';
-    const rejudged = await new CachedJudgeProvider(spy, { ...opts, rejudge: true }).evaluate(input);
+    const rejudged = await withVerdictCache(spy, ctx, { cacheDir, rejudge: true }).evaluate(input);
     expect(spy.calls).toHaveLength(2);
     expect(rejudged['rule-a']).toEqual({ verdict: 'fail' });
 
-    // Subsequent normal run sees the updated verdict without calling the provider
-    const after = await new CachedJudgeProvider(spy, opts).evaluate(input);
+    const after = await withVerdictCache(spy, ctx, { cacheDir }).evaluate(input);
     expect(spy.calls).toHaveLength(2);
     expect(after['rule-a']).toEqual({ verdict: 'fail' });
+  });
+
+  test('model change misses cache', async () => {
+    const cacheDir = makeTempDir();
+    const configDir = makeTempDir();
+    const ctx = makeContext(configDir, 'space-model');
+    const spy1 = new SpyProvider(() => ({ 'rule-a': { verdict: 'pass' } }), {
+      api: 'openrouter-decisions',
+      model: 'v1',
+    });
+    const spy2 = new SpyProvider(() => ({ 'rule-a': { verdict: 'fail' } }), {
+      api: 'openrouter-decisions',
+      model: 'v2',
+    });
+    const input = makeInput('a.md', 'Alpha', [ruleA]);
+
+    await withVerdictCache(spy1, ctx, { cacheDir }).evaluate(input);
+    const res = await withVerdictCache(spy2, ctx, { cacheDir }).evaluate(input);
+    expect(spy2.calls).toHaveLength(1);
+    expect(res['rule-a']).toEqual({ verdict: 'fail' });
   });
 
   test('each real provider exposes a content-hashed promptVersion on its identity', () => {
@@ -239,17 +230,9 @@ describe('verdict cache', () => {
     for (const provider of providers) {
       expect(provider.identity.promptVersion).toMatch(/^[0-9a-f]{16}$/);
     }
-    // Chat providers share the chat prompt hash; decision providers each hash their own wire format.
     expect(providers[0]!.identity.promptVersion).toBe(providers[1]!.identity.promptVersion);
     expect(providers[2]!.identity.promptVersion).not.toBe(providers[0]!.identity.promptVersion);
     expect(providers[3]!.identity.promptVersion).not.toBe(providers[2]!.identity.promptVersion);
-  });
-
-  test('model change produces a different cache key', () => {
-    const input = makeInput('a.md', 'Alpha', [ruleA]);
-    const k1 = verdictCacheKey(input, ruleA, { api: 'openrouter-decisions', model: 'jev-v1' });
-    const k2 = verdictCacheKey(input, ruleA, { api: 'openrouter-decisions', model: 'jev-v2' });
-    expect(k1).not.toBe(k2);
   });
 
   test('corrupt cache file throws an error naming the file', async () => {
@@ -260,12 +243,7 @@ describe('verdict cache', () => {
     writeFileSync(path, '{not valid json', 'utf-8');
 
     const spy = new SpyProvider(() => ({ 'rule-a': { verdict: 'pass' } }));
-    const provider = new CachedJudgeProvider(spy, {
-      configDir,
-      spaceName: 'corrupt-space',
-      schema: dummySchema,
-      cacheDir,
-    });
+    const provider = withVerdictCache(spy, makeContext(configDir, 'corrupt-space'), { cacheDir });
     await expect(provider.evaluate(makeInput('a.md', 'Alpha', [ruleA]))).rejects.toThrow(path);
     expect(spy.calls).toHaveLength(0);
   });
@@ -307,11 +285,9 @@ describe('verdict cache', () => {
     const context = createSpaceContext('s1', config, { configDir: root });
     const expectedPath = verdictCachePath(cacheDir, root, 's1');
 
-    // cache: false writes nothing
     await validateSpace(context, { semantic: true, cache: false, cacheDir });
     expect(existsSync(expectedPath)).toBe(false);
 
-    // default (cache: true) writes the partition file
     await validateSpace(context, { semantic: true, cacheDir });
     expect(existsSync(expectedPath)).toBe(true);
   });

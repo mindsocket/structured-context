@@ -43,10 +43,7 @@ A rule's `expression` costs no model call, so it runs on every validation. Witho
 
 structured-context caches semantic verdicts on disk by default so repeated `--semantic` runs only judge nodes whose inputs changed.
 
-- **Location:** `$XDG_CACHE_HOME/structured-context/` (or `~/.cache/structured-context/`), in one folder per space (`<space>-<hash>/verdicts.json`). Delete a space's folder to clear its verdicts on its own.
-- **Cache key:** One key per node and rule, hashing the evaluated node, its related nodes for the rule's scope, the schema descriptions for those types, the rule spec, the provider's API, model and endpoint, and the prompt version. Editing a node re-judges only the rules whose input includes that node.
-- **Stored data:** Each entry stores the key, the verdict and metadata (core version, plugin version, schema hash). Node content and provider errors are never stored.
-- **Controls:** Pass `--rejudge` to ask the model again for one run and update the cache. Pass `--no-cache` to bypass the cache without reading or writing.
+Verdicts are stored per space under `$XDG_CACHE_HOME/structured-context/` (or `~/.cache/structured-context/`). Delete a space's folder to clear its cache. Errors and node content are never stored.
 
 ## Rule fields
 
