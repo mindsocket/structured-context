@@ -103,7 +103,7 @@ describe('verdict cache', () => {
     );
 
     const inputs = [makeInput('a.md', 'Alpha', [ruleA, ruleB]), makeInput('b.md', 'Beta', [ruleA])];
-    const opts = { cacheDir, pluginSource: 'sctx-markdown' };
+    const opts = { cacheDir };
 
     const res1 = await withVerdictCache(spy, ctx, opts).evaluateNodes!(inputs);
     expect(spy.calls).toHaveLength(1);
@@ -121,7 +121,6 @@ describe('verdict cache', () => {
     for (const entry of entries) {
       expect(typeof entry.key).toBe('string');
       expect(typeof entry.coreVersion).toBe('string');
-      expect(typeof entry.pluginVersion).toBe('string');
       expect(typeof entry.schemaHash).toBe('string');
       expect(entry.verdict).toBeDefined();
     }

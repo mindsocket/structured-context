@@ -43,7 +43,7 @@ A rule's `expression` costs no model call, so it runs on every validation. Witho
 
 structured-context caches semantic verdicts on disk by default so repeated `--semantic` runs only judge nodes whose inputs changed.
 
-Verdicts are stored per space under `$XDG_CACHE_HOME/structured-context/` (or `~/.cache/structured-context/`). Delete a space's folder to clear its cache. Errors and node content are never stored.
+Verdicts are stored per space under `$XDG_CACHE_HOME/structured-context/` (or `~/.cache/structured-context/`). Delete a space's folder to clear its cache. Evaluation errors and node content are never stored.
 
 ## Rule fields
 

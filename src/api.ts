@@ -87,4 +87,4 @@ export type {
 } from './types';
 export { VALIDATION_ISSUE_KINDS } from './types';
 export type { ValidationResult } from './validate';
-export { resolveFileSpace, validateFile, validateSpace } from './validate';
+export { validateFile, validateSpace } from './validate';

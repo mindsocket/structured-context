@@ -23,7 +23,6 @@ see [architecture.md](architecture.md#information-flow) for that flow.
 | `spaceGraphFrom(data, options?)` | Build a `SpaceGraph` from that JSON. |
 | `validateSpace(context, options?)` | Run full validation (schema, references, rules, duplicates) over a space. |
 | `validateFile(filePath, config)` | Validate a single file within its space. |
-| `resolveFileSpace(filePath, config)` | Find which configured space contains a file and its space-relative label. |
 | `listSchemas(options?)` | List the schemas available to a config: bundled, plugin-contributed and configured. |
 | `formatWikilink(target, alias?)` | Format a target into an Obsidian wikilink (`[[target]]` or `[[target|alias]]`). |
 | `parseWikilink(link)` | Parse a wikilink or target string into `{ target, anchor?, displayText? }`. |
