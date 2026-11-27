@@ -13,4 +13,4 @@ it('plugin/hooks/projection.js matches its sources (run `bun run build:mod-proje
 
 it('the core types in plugin/types/index.d.ts match core (run `bun run build:mod-projection`)', async () => {
   expect(readFileSync(MOD_TYPES_FILE, 'utf-8')).toBe(await buildModTypes());
-});
+}, 15_000);

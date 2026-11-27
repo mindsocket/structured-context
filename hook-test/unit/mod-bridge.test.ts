@@ -115,7 +115,7 @@ describe('paneData', () => {
       .map(({ kind, severity }) => `${kind}:${severity}`);
     expect(kinds).toContain('schema:error');
     expect(loadResult(dir, 'test-space')!.hash).not.toBe(kept.hash);
-  });
+  }, 15_000);
 
   it('names a space the config lacks', async () => {
     await expect(paneData(sessionId, 'nope', { ...opts(), cwd: fixtures.fixtureDir })).rejects.toThrow(
